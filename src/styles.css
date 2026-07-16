@@ -182,3 +182,83 @@
     letter-spacing: -0.01em;
   }
 }
+
+/* ============================================================
+ * Admin Panel — Neon Pink Theme (aplica apenas no dark mode)
+ * ============================================================ */
+
+.dark .admin-shell {
+  background-color: oklch(0.09 0.015 350);
+}
+
+/* Sidebar / menu — hover e ativo mais claros com borda neon rosa */
+.dark .admin-shell .admin-nav-link {
+  border: 1px solid transparent;
+}
+.dark .admin-shell .admin-nav-link:hover {
+  background-color: oklch(0.32 0.08 355);
+  color: oklch(1 0 0);
+  border-color: var(--neon-pink);
+  box-shadow: 0 0 0 1px var(--neon-pink), 0 0 12px oklch(0.72 0.28 5 / 55%);
+}
+.dark .admin-shell .admin-nav-link[data-active] {
+  background-color: oklch(0.38 0.12 355);
+  color: oklch(1 0 0);
+  border-color: var(--neon-pink);
+  box-shadow: 0 0 0 1px var(--neon-pink), 0 0 18px oklch(0.72 0.28 5 / 75%);
+}
+
+/* Efeito neon rosa nos boxes/cards do admin */
+.dark .admin-shell [data-slot="card"],
+.dark .admin-shell .admin-card,
+.dark .admin-shell main section,
+.dark .admin-shell main article {
+  border-color: oklch(0.72 0.28 5 / 40%);
+  box-shadow:
+    0 0 0 1px oklch(0.72 0.28 5 / 25%),
+    0 0 22px oklch(0.72 0.28 5 / 18%),
+    0 10px 30px -12px oklch(0 0 0 / 60%);
+  transition: box-shadow 0.25s ease, border-color 0.25s ease;
+}
+.dark .admin-shell [data-slot="card"]:hover,
+.dark .admin-shell .admin-card:hover {
+  border-color: var(--neon-pink);
+  box-shadow:
+    0 0 0 1px var(--neon-pink),
+    0 0 32px oklch(0.72 0.28 5 / 45%),
+    0 12px 36px -12px oklch(0 0 0 / 70%);
+}
+
+/* Header do admin ganha assinatura neon */
+.dark .admin-shell > div > header {
+  border-bottom-color: oklch(0.72 0.28 5 / 45%);
+  box-shadow: 0 1px 0 0 oklch(0.72 0.28 5 / 35%), 0 8px 24px -12px oklch(0.72 0.28 5 / 25%);
+}
+
+/* Sidebar borda direita neon */
+.dark .admin-shell aside {
+  border-right-color: oklch(0.72 0.28 5 / 45%);
+  box-shadow: inset -1px 0 0 0 oklch(0.72 0.28 5 / 30%);
+}
+
+/* Badges/pills verdes viram verde limão com letras escuras (dark only) */
+.dark .admin-shell .bg-success,
+.dark .admin-shell [class*="bg-success"] {
+  background-color: var(--success) !important;
+  color: var(--success-foreground) !important;
+}
+.dark .admin-shell .text-success {
+  color: var(--success) !important;
+}
+
+/* Light mode: menu hover/ativo também mais claros com toque rosa suave */
+.admin-shell .admin-nav-link:hover {
+  background-color: oklch(0.97 0.02 355);
+  color: var(--sidebar-primary);
+}
+.admin-shell .admin-nav-link[data-active] {
+  background-color: oklch(0.94 0.04 355);
+  color: var(--sidebar-primary);
+  box-shadow: inset 0 0 0 1px oklch(0.55 0.16 5 / 40%);
+}
+
