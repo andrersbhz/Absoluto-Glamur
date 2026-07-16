@@ -22,9 +22,9 @@ const nav: NavItem[] = [
   { label: "IA (OpenAI/Gemini)", icon: Zap, to: "/admin/ai", phase: 7 },
   { label: "Dashboard executivo", icon: BarChart3, to: "/admin/dashboard", phase: 8 },
   { label: "Preferências globais", icon: Settings, to: "/admin/settings", phase: 8 },
-  { label: "Conformidade", icon: ShieldCheck, phase: 8 },
-  { label: "Usuários e permissões", icon: Users, phase: 1 },
-  { label: "Uso do plano gratuito", icon: Gauge, phase: 2 },
+  { label: "Conformidade", icon: ShieldCheck, to: "/admin/compliance", phase: 8 },
+  { label: "Usuários e permissões", icon: Users, to: "/admin/users", phase: 1 },
+  { label: "Uso do plano gratuito", icon: Gauge, to: "/admin/usage", phase: 8 },
 ];
 
 export function AdminLayout({ children }: { children: ReactNode }) {
