@@ -115,6 +115,90 @@ function Index() {
   );
 }
 
+function CustomBlock({ block }: { block: HomepageBlock }) {
+  const data = (block.data ?? {}) as Record<string, string | number | string[] | undefined>;
+  const { data: collProducts = [] } = useQuery({
+    ...featuredProductsQuery(String(data.slug ?? "")),
+    enabled: block.kind === "collection" && !!data.slug,
+  });
+
+  if (block.kind === "hero") {
+    return (
+      <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+        <div
+          className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary/80 via-berry to-plum p-10 text-primary-foreground shadow-elegant"
+          style={
+            typeof data.image_url === "string"
+              ? { backgroundImage: `url(${data.image_url})`, backgroundSize: "cover", backgroundPosition: "center" }
+              : undefined
+          }
+        >
+          <div className="relative z-10 max-w-xl">
+            {block.subtitle && (
+              <p className="text-xs uppercase tracking-[0.2em] opacity-90">{block.subtitle}</p>
+            )}
+            {block.title && <h2 className="mt-3 font-display text-4xl">{block.title}</h2>}
+            {typeof data.cta_href === "string" && (
+              <a
+                href={data.cta_href}
+                className="mt-6 inline-flex rounded-lg bg-background px-5 py-2.5 text-sm font-medium text-foreground shadow-soft hover:opacity-90"
+              >
+                {typeof data.cta_label === "string" ? data.cta_label : "Ver mais"}
+              </a>
+            )}
+          </div>
+          {typeof data.image_url === "string" && <div className="absolute inset-0 bg-black/20" />}
+        </div>
+      </section>
+    );
+  }
+
+  if (block.kind === "banner") {
+    const href = typeof data.href === "string" ? data.href : "#";
+    const img = typeof data.image_url === "string" ? data.image_url : null;
+    return (
+      <section className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        <a href={href} className="block overflow-hidden rounded-2xl border border-border shadow-soft">
+          {img ? (
+            <img src={img} alt={block.title ?? ""} className="w-full object-cover" loading="lazy" />
+          ) : (
+            <div className="flex items-center justify-between bg-secondary px-6 py-8">
+              <div>
+                {block.title && <h3 className="font-display text-2xl">{block.title}</h3>}
+                {block.subtitle && <p className="text-sm text-muted-foreground">{block.subtitle}</p>}
+              </div>
+            </div>
+          )}
+        </a>
+      </section>
+    );
+  }
+
+  if (block.kind === "collection" && collProducts.length > 0) {
+    return (
+      <FeaturedSection
+        title={block.title ?? "Coleção"}
+        subtitle={block.subtitle ?? ""}
+        link={{ label: "Ver todos", search: { collection: String(data.slug ?? "") } }}
+        products={collProducts}
+      />
+    );
+  }
+
+  if (block.kind === "text") {
+    return (
+      <section className="mx-auto max-w-3xl px-4 py-10 sm:px-6 lg:px-8 text-center">
+        {block.title && <h2 className="font-display text-3xl">{block.title}</h2>}
+        {typeof data.body === "string" && (
+          <p className="mt-3 text-muted-foreground whitespace-pre-line">{data.body}</p>
+        )}
+      </section>
+    );
+  }
+
+  return null;
+}
+
 function FeaturedSection({
   title,
   subtitle,
