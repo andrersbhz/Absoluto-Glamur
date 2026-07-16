@@ -23,6 +23,7 @@ import { Route as AuthenticatedFavoritesRouteImport } from './routes/_authentica
 import { Route as AuthenticatedCheckoutRouteImport } from './routes/_authenticated/checkout'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as AuthenticatedAccountRouteImport } from './routes/_authenticated/account'
+import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin.index'
 import { Route as AuthenticatedCheckoutOrderIdRouteImport } from './routes/_authenticated/checkout.$orderId'
 import { Route as AuthenticatedAdminUsersRouteImport } from './routes/_authenticated/admin.users'
 import { Route as AuthenticatedAdminUsageRouteImport } from './routes/_authenticated/admin.usage'
@@ -109,6 +110,11 @@ const AuthenticatedAccountRoute = AuthenticatedAccountRouteImport.update({
   id: '/account',
   path: '/account',
   getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedAdminIndexRoute = AuthenticatedAdminIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AuthenticatedAdminRoute,
 } as any)
 const AuthenticatedCheckoutOrderIdRoute =
   AuthenticatedCheckoutOrderIdRouteImport.update({
@@ -236,6 +242,7 @@ export interface FileRoutesByFullPath {
   '/admin/usage': typeof AuthenticatedAdminUsageRoute
   '/admin/users': typeof AuthenticatedAdminUsersRoute
   '/checkout/$orderId': typeof AuthenticatedCheckoutOrderIdRoute
+  '/admin/': typeof AuthenticatedAdminIndexRoute
   '/admin/catalog/$id': typeof AuthenticatedAdminCatalogIdRoute
   '/admin/imports/$id': typeof AuthenticatedAdminImportsIdRoute
   '/admin/intelligence/$id': typeof AuthenticatedAdminIntelligenceIdRoute
@@ -248,7 +255,6 @@ export interface FileRoutesByTo {
   '/products': typeof ProductsRouteWithChildren
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/account': typeof AuthenticatedAccountRoute
-  '/admin': typeof AuthenticatedAdminRouteWithChildren
   '/checkout': typeof AuthenticatedCheckoutRouteWithChildren
   '/favorites': typeof AuthenticatedFavoritesRoute
   '/orders': typeof AuthenticatedOrdersRoute
@@ -268,6 +274,7 @@ export interface FileRoutesByTo {
   '/admin/usage': typeof AuthenticatedAdminUsageRoute
   '/admin/users': typeof AuthenticatedAdminUsersRoute
   '/checkout/$orderId': typeof AuthenticatedCheckoutOrderIdRoute
+  '/admin': typeof AuthenticatedAdminIndexRoute
   '/admin/catalog/$id': typeof AuthenticatedAdminCatalogIdRoute
   '/admin/imports/$id': typeof AuthenticatedAdminImportsIdRoute
   '/admin/intelligence/$id': typeof AuthenticatedAdminIntelligenceIdRoute
@@ -302,6 +309,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/usage': typeof AuthenticatedAdminUsageRoute
   '/_authenticated/admin/users': typeof AuthenticatedAdminUsersRoute
   '/_authenticated/checkout/$orderId': typeof AuthenticatedCheckoutOrderIdRoute
+  '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
   '/_authenticated/admin/catalog/$id': typeof AuthenticatedAdminCatalogIdRoute
   '/_authenticated/admin/imports/$id': typeof AuthenticatedAdminImportsIdRoute
   '/_authenticated/admin/intelligence/$id': typeof AuthenticatedAdminIntelligenceIdRoute
@@ -336,6 +344,7 @@ export interface FileRouteTypes {
     | '/admin/usage'
     | '/admin/users'
     | '/checkout/$orderId'
+    | '/admin/'
     | '/admin/catalog/$id'
     | '/admin/imports/$id'
     | '/admin/intelligence/$id'
@@ -348,7 +357,6 @@ export interface FileRouteTypes {
     | '/products'
     | '/sitemap.xml'
     | '/account'
-    | '/admin'
     | '/checkout'
     | '/favorites'
     | '/orders'
@@ -368,6 +376,7 @@ export interface FileRouteTypes {
     | '/admin/usage'
     | '/admin/users'
     | '/checkout/$orderId'
+    | '/admin'
     | '/admin/catalog/$id'
     | '/admin/imports/$id'
     | '/admin/intelligence/$id'
@@ -401,6 +410,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/usage'
     | '/_authenticated/admin/users'
     | '/_authenticated/checkout/$orderId'
+    | '/_authenticated/admin/'
     | '/_authenticated/admin/catalog/$id'
     | '/_authenticated/admin/imports/$id'
     | '/_authenticated/admin/intelligence/$id'
@@ -516,6 +526,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/account'
       preLoaderRoute: typeof AuthenticatedAccountRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/admin/': {
+      id: '/_authenticated/admin/'
+      path: '/'
+      fullPath: '/admin/'
+      preLoaderRoute: typeof AuthenticatedAdminIndexRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
     }
     '/_authenticated/checkout/$orderId': {
       id: '/_authenticated/checkout/$orderId'
@@ -695,6 +712,7 @@ interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminSettingsRoute: typeof AuthenticatedAdminSettingsRoute
   AuthenticatedAdminUsageRoute: typeof AuthenticatedAdminUsageRoute
   AuthenticatedAdminUsersRoute: typeof AuthenticatedAdminUsersRoute
+  AuthenticatedAdminIndexRoute: typeof AuthenticatedAdminIndexRoute
 }
 
 const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
@@ -711,6 +729,7 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminSettingsRoute: AuthenticatedAdminSettingsRoute,
   AuthenticatedAdminUsageRoute: AuthenticatedAdminUsageRoute,
   AuthenticatedAdminUsersRoute: AuthenticatedAdminUsersRoute,
+  AuthenticatedAdminIndexRoute: AuthenticatedAdminIndexRoute,
 }
 
 const AuthenticatedAdminRouteWithChildren =
