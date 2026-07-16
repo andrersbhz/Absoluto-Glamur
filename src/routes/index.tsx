@@ -71,6 +71,10 @@ function Index() {
           </div>
         </section>
       )}
+      {blocks.map((b) => (
+        <CustomBlock key={b.id} block={b} />
+      ))}
+
 
       {newArrivals.length > 0 && (
         <FeaturedSection
