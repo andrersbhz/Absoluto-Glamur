@@ -279,6 +279,63 @@ export type Database = {
         }
         Relationships: []
       }
+      integrations: {
+        Row: {
+          api_key: string | null
+          api_secret: string | null
+          category: string
+          config: Json
+          created_at: string
+          description: string | null
+          display_name: string
+          enabled: boolean
+          last_error: string | null
+          last_status: string | null
+          last_verified_at: string | null
+          mode: string
+          provider: string
+          updated_at: string
+          updated_by: string | null
+          webhook_token: string | null
+        }
+        Insert: {
+          api_key?: string | null
+          api_secret?: string | null
+          category?: string
+          config?: Json
+          created_at?: string
+          description?: string | null
+          display_name: string
+          enabled?: boolean
+          last_error?: string | null
+          last_status?: string | null
+          last_verified_at?: string | null
+          mode?: string
+          provider: string
+          updated_at?: string
+          updated_by?: string | null
+          webhook_token?: string | null
+        }
+        Update: {
+          api_key?: string | null
+          api_secret?: string | null
+          category?: string
+          config?: Json
+          created_at?: string
+          description?: string | null
+          display_name?: string
+          enabled?: boolean
+          last_error?: string | null
+          last_status?: string | null
+          last_verified_at?: string | null
+          mode?: string
+          provider?: string
+          updated_at?: string
+          updated_by?: string | null
+          webhook_token?: string | null
+        }
+        Relationships: []
+      }
       order_items: {
         Row: {
           created_at: string
