@@ -15,18 +15,49 @@ export const Route = createFileRoute("/products/$slug")({
     if (!product) throw notFound();
     return { product };
   },
-  head: ({ loaderData }) => {
+  head: ({ loaderData, params }) => {
     if (!loaderData) return { meta: [{ title: "Produto não encontrado · Bloom" }, { name: "robots", content: "noindex" }] };
     const p = loaderData.product;
+    const image = p.seo?.og_image_url ?? p.media?.[0]?.url ?? undefined;
+    const defaultVariant = p.variants?.find((v) => v.is_default) ?? p.variants?.[0];
+    const activePrice = defaultVariant?.prices?.find((pr) => pr.is_active);
+    const priceBRL =
+      activePrice && ((activePrice.sale_price_cents ?? activePrice.list_price_cents) / 100).toFixed(2);
     return {
       meta: [
         { title: (p.seo?.meta_title ?? p.name) + " · Bloom" },
         { name: "description", content: p.seo?.meta_description ?? p.short_description ?? p.name },
         { property: "og:title", content: p.seo?.meta_title ?? p.name },
         { property: "og:description", content: p.seo?.meta_description ?? p.short_description ?? "" },
-        ...(p.seo?.og_image_url || p.media?.[0]?.url
-          ? [{ property: "og:image", content: p.seo?.og_image_url ?? p.media[0].url }]
-          : []),
+        { property: "og:type", content: "product" },
+        { property: "og:url", content: `/products/${params.slug}` },
+        ...(image ? [{ property: "og:image", content: image }, { property: "twitter:image", content: image }] : []),
+      ],
+      links: [{ rel: "canonical", href: `/products/${params.slug}` }],
+      scripts: [
+        {
+          type: "application/ld+json",
+          children: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "Product",
+            name: p.name,
+            description: p.seo?.meta_description ?? p.short_description ?? undefined,
+            image: image ? [image] : undefined,
+            brand: p.brand?.name ? { "@type": "Brand", name: p.brand.name } : undefined,
+            aggregateRating:
+              p.rating_count > 0
+                ? { "@type": "AggregateRating", ratingValue: p.rating_avg, reviewCount: p.rating_count }
+                : undefined,
+            offers: priceBRL
+              ? {
+                  "@type": "Offer",
+                  priceCurrency: "BRL",
+                  price: priceBRL,
+                  availability: "https://schema.org/InStock",
+                }
+              : undefined,
+          }),
+        },
       ],
     };
   },

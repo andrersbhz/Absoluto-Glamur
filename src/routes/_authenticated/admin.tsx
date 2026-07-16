@@ -25,7 +25,7 @@ const phases = [
   { n: 3, title: "Checkout & PIX", done: true, items: ["Endereços", "Pedidos", "Asaas/PIX", "Webhooks", "Integrações"] },
   { n: 4, title: "AliExpress", done: true, items: ["Importador URL/JSON", "Markup configurável", "Publicação"] },
   { n: 5, title: "Inteligência", done: true, items: ["Scores", "Precificação", "Editor + Publicar"] },
-  { n: 6, title: "Marketing", done: false, items: ["Google Merchant", "Meta Catalog", "Campanhas"] },
+  { n: 6, title: "Marketing & SEO", done: true, items: ["Homepage blocks", "Coleções", "Sitemap dinâmico", "JSON-LD"] },
   { n: 7, title: "IA", done: false, items: ["OpenAI", "Gemini", "SEO", "Análises"] },
   { n: 8, title: "Dashboard & Compliance", done: false, items: ["Métricas", "Alertas", "Uso do plano", "Regulatório"] },
 ];
@@ -119,6 +119,23 @@ function AdminHome() {
               className="rounded-lg bg-primary px-4 py-2 text-sm text-primary-foreground shadow-soft hover:opacity-90"
             >
               Abrir importador
+            </Link>
+          </div>
+        </div>
+
+        <div className="mt-6 rounded-2xl border border-border bg-card p-6 shadow-soft">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="font-display text-xl">Marketing & SEO</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Blocos da homepage, coleções em destaque, sitemap dinâmico e JSON-LD.
+              </p>
+            </div>
+            <Link
+              to="/admin/marketing"
+              className="rounded-lg bg-primary px-4 py-2 text-sm text-primary-foreground shadow-soft hover:opacity-90"
+            >
+              Abrir painel
             </Link>
           </div>
         </div>
