@@ -23,7 +23,7 @@ const phases = [
   { n: 1, title: "Fundação", done: true, items: ["Auth", "Perfis", "Funções", "Design system"] },
   { n: 2, title: "Catálogo", done: true, items: ["Produtos", "Variantes", "Categorias", "Mídias", "Carrinho"] },
   { n: 3, title: "Checkout & PIX", done: true, items: ["Endereços", "Pedidos", "Asaas/PIX", "Webhooks", "Integrações"] },
-  { n: 4, title: "AliExpress", done: false, items: ["Importador", "Preço/Estoque", "Rastreamento"] },
+  { n: 4, title: "AliExpress", done: true, items: ["Importador URL/JSON", "Markup configurável", "Publicação"] },
   { n: 5, title: "Inteligência", done: false, items: ["Scores", "Precificação", "Editor + Publicar"] },
   { n: 6, title: "Marketing", done: false, items: ["Google Merchant", "Meta Catalog", "Campanhas"] },
   { n: 7, title: "IA", done: false, items: ["OpenAI", "Gemini", "SEO", "Análises"] },
@@ -102,6 +102,23 @@ function AdminHome() {
               className="rounded-lg bg-primary px-4 py-2 text-sm text-primary-foreground shadow-soft hover:opacity-90"
             >
               Abrir catálogo
+            </Link>
+          </div>
+        </div>
+
+        <div className="mt-6 rounded-2xl border border-border bg-card p-6 shadow-soft">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="font-display text-xl">Importador de produtos</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Importe do AliExpress via URL (Firecrawl), JSON/CSV ou API oficial. Configure markup e publique.
+              </p>
+            </div>
+            <Link
+              to="/admin/imports"
+              className="rounded-lg bg-primary px-4 py-2 text-sm text-primary-foreground shadow-soft hover:opacity-90"
+            >
+              Abrir importador
             </Link>
           </div>
         </div>
