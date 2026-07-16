@@ -1,8 +1,8 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import {
-  BarChart3, Boxes, Gauge, LayoutDashboard, LogOut, Megaphone, Moon, Package,
-  Plug, Settings, ShieldCheck, ShoppingCart, Sparkles, Sun, Users, Zap,
+  BarChart3, Boxes, ExternalLink, Gauge, LayoutDashboard, LogOut, Megaphone, Moon, Package,
+  Plug, Settings, ShieldCheck, ShoppingCart, Sparkles, Store, Sun, Users, Zap,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
@@ -91,6 +91,17 @@ export function AdminLayout({ children }: { children: ReactNode }) {
             <p className="text-sm text-foreground">{user?.email}</p>
           </div>
           <div className="flex items-center gap-3">
+            <Link
+              to="/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 rounded-lg border border-primary/40 bg-primary/10 px-3 py-1.5 text-sm font-medium text-primary transition hover:bg-primary/20"
+              title="Abrir a loja em nova aba"
+            >
+              <Store className="h-4 w-4" />
+              <span className="hidden sm:inline">Ver loja</span>
+              <ExternalLink className="h-3 w-3 opacity-70" />
+            </Link>
             <div className="hidden gap-1 sm:flex">
               {roles.map((r) => (
                 <Badge key={r} variant="secondary">{r}</Badge>
