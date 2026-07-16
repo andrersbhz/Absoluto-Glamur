@@ -153,7 +153,7 @@ export const getAdminProduct = createServerFn({ method: "GET" })
            inventory:product_inventory(stock)
          ),
          media:product_media(id, url, alt, position),
-         seo:product_seo(title, description)`,
+         seo:product_seo(meta_title, meta_description)`,
       )
       .eq("id", data.id)
       .maybeSingle();
@@ -167,7 +167,8 @@ export const getAdminProduct = createServerFn({ method: "GET" })
     const variants = (p.variants as unknown as V[]) ?? [];
     const def = variants.find((v) => v.is_default) ?? variants[0];
     const price = def?.prices?.find((x) => x.is_active) ?? def?.prices?.[0];
-    const seoRow = (p.seo as unknown as { title: string | null; description: string | null }[] | null)?.[0];
+    const seoRow = (p.seo as unknown as { meta_title: string | null; meta_description: string | null } | { meta_title: string | null; meta_description: string | null }[] | null);
+    const seoObj = Array.isArray(seoRow) ? seoRow[0] : seoRow;
     return {
       id: p.id,
       slug: p.slug,
@@ -189,7 +190,7 @@ export const getAdminProduct = createServerFn({ method: "GET" })
       },
       media: ((p.media as unknown as { id: string; url: string; alt: string | null; position: number }[]) ?? [])
         .sort((a, b) => a.position - b.position),
-      seo: { title: seoRow?.title ?? null, description: seoRow?.description ?? null },
+      seo: { title: seoObj?.meta_title ?? null, description: seoObj?.meta_description ?? null },
     };
   });
 
@@ -357,16 +358,14 @@ export const upsertAdminProduct = createServerFn({ method: "POST" })
 
     // SEO upsert
     if (data.seo) {
-      const { error } = await supabaseAdmin
-        .from("product_seo")
-        .upsert(
-          {
-            product_id: productId,
-            title: data.seo.title ?? null,
-            description: data.seo.description ?? null,
-          },
-          { onConflict: "product_id" },
-        );
+      const { error } = await supabaseAdmin.from("product_seo").upsert(
+        {
+          product_id: productId,
+          meta_title: data.seo.title ?? null,
+          meta_description: data.seo.description ?? null,
+        },
+        { onConflict: "product_id" },
+      );
       if (error) throw new Error(error.message);
     }
 
