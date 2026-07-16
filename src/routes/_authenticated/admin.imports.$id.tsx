@@ -16,7 +16,7 @@ import {
   type NormalizedProduct,
 } from "@/lib/aliexpress-import.functions";
 import { listBrandsAndCategories } from "@/lib/admin-catalog.functions";
-import { formatCurrency } from "@/lib/format";
+import { formatBRL } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/admin/imports/$id")({
   head: () => ({ meta: [{ title: "Editar importação · Admin" }] }),
