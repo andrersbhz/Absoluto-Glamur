@@ -96,7 +96,8 @@ function HomepageBlocksPanel() {
 
   const updateBlock = async (id: string, patch: Record<string, unknown>) => {
     setSaving(id);
-    const { error } = await supabase.from("homepage_blocks").update(patch).eq("id", id);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await supabase.from("homepage_blocks").update(patch as any).eq("id", id);
     setSaving(null);
     if (error) return toast.error(error.message);
     refresh();
