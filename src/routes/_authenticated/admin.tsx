@@ -23,7 +23,7 @@ const phases = [
   { n: 1, title: "Fundação", done: true, items: ["Auth", "Perfis", "Funções", "Design system"] },
   { n: 2, title: "Catálogo", done: true, items: ["Produtos", "Variantes", "Categorias", "Mídias", "Carrinho"] },
   { n: 3, title: "Checkout & PIX", done: true, items: ["Endereços", "Pedidos", "Asaas/PIX", "Webhooks", "Integrações"] },
-  { n: 4, title: "AliExpress", done: false, items: ["Importador", "Preço/Estoque", "Rastreamento"] },
+  { n: 4, title: "AliExpress", done: true, items: ["Importador URL/JSON", "Markup configurável", "Publicação"] },
   { n: 5, title: "Inteligência", done: false, items: ["Scores", "Precificação", "Editor + Publicar"] },
   { n: 6, title: "Marketing", done: false, items: ["Google Merchant", "Meta Catalog", "Campanhas"] },
   { n: 7, title: "IA", done: false, items: ["OpenAI", "Gemini", "SEO", "Análises"] },
