@@ -27,7 +27,7 @@ const phases = [
   { n: 5, title: "Inteligência", done: true, items: ["Scores", "Precificação", "Editor + Publicar"] },
   { n: 6, title: "Marketing & SEO", done: true, items: ["Homepage blocks", "Coleções", "Sitemap dinâmico", "JSON-LD"] },
   { n: 7, title: "IA", done: true, items: ["Descrições", "SEO", "Marketing", "Log de uso"] },
-  { n: 8, title: "Dashboard & Compliance", done: false, items: ["Métricas", "Alertas", "Uso do plano", "Regulatório"] },
+  { n: 8, title: "Dashboard & Monitor", done: true, items: ["Métricas", "Alertas 70/85/95%", "Exportação CSV", "Uso do plano"] },
 ];
 
 function AdminHome() {
