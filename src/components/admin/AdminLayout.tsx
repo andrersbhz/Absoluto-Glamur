@@ -1,11 +1,12 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import {
-  BarChart3, Boxes, Gauge, LayoutDashboard, LogOut, Megaphone, Package,
-  Plug, Settings, ShieldCheck, ShoppingCart, Sparkles, Users, Zap,
+  BarChart3, Boxes, Gauge, LayoutDashboard, LogOut, Megaphone, Moon, Package,
+  Plug, Settings, ShieldCheck, ShoppingCart, Sparkles, Sun, Users, Zap,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
+import { useTheme } from "@/hooks/use-theme";
 import { Badge } from "@/components/ui/badge";
 
 type NavItem = { label: string; icon: typeof LayoutDashboard; to?: string; phase: number };
@@ -28,6 +29,7 @@ const nav: NavItem[] = [
 
 export function AdminLayout({ children }: { children: ReactNode }) {
   const { user, roles } = useAuth();
+  const { theme, toggle } = useTheme();
   const navigate = useNavigate();
 
   async function signOut() {
@@ -88,6 +90,15 @@ export function AdminLayout({ children }: { children: ReactNode }) {
                 <Badge key={r} variant="secondary">{r}</Badge>
               ))}
             </div>
+            <button
+              onClick={toggle}
+              aria-label={theme === "dark" ? "Ativar modo claro" : "Ativar modo escuro"}
+              title={theme === "dark" ? "Modo claro" : "Modo escuro"}
+              className="inline-flex items-center gap-1 rounded-lg border border-border px-3 py-1.5 text-sm text-foreground transition hover:bg-secondary"
+            >
+              {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+              <span className="hidden sm:inline">{theme === "dark" ? "Claro" : "Escuro"}</span>
+            </button>
             <button
               onClick={signOut}
               className="inline-flex items-center gap-1 rounded-lg border border-border px-3 py-1.5 text-sm text-foreground transition hover:bg-secondary"
