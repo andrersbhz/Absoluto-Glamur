@@ -95,14 +95,15 @@ function CartPage() {
                 <span className="font-display text-lg">Total</span>
                 <span className="font-display text-lg">{formatBRL(subtotal)}</span>
               </div>
-              <button
-                disabled
-                title="Disponível na Fase 3"
-                className="mt-6 w-full cursor-not-allowed rounded-lg bg-primary px-5 py-3 text-sm font-medium text-primary-foreground opacity-70"
+              <Link
+                to="/checkout"
+                className="mt-6 block w-full rounded-lg bg-primary px-5 py-3 text-center text-sm font-medium text-primary-foreground shadow-soft hover:opacity-90"
               >
                 Ir para o checkout
-              </button>
-              <p className="mt-2 text-center text-[11px] text-muted-foreground">Checkout PIX chega na Fase 3.</p>
+              </Link>
+              <p className="mt-2 text-center text-[11px] text-muted-foreground">
+                Pagamento seguro via PIX · frete grátis
+              </p>
               <button
                 onClick={clear}
                 className="mt-4 w-full text-xs text-muted-foreground hover:text-foreground"
