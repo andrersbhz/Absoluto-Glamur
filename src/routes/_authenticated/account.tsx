@@ -90,9 +90,19 @@ function AccountPage() {
           </Button>
         </form>
 
-        <div className="mt-6 rounded-2xl border border-dashed border-border bg-secondary/40 p-6 text-sm text-muted-foreground">
-          <p className="font-medium text-foreground">Meus pedidos, endereços e favoritos</p>
-          <p className="mt-1">Chegam nas Fases 2 e 3 (catálogo + checkout).</p>
+        <div className="mt-6 grid gap-3 sm:grid-cols-3">
+          <Link to="/orders" className="rounded-2xl border border-border bg-card p-5 shadow-soft transition hover:border-primary">
+            <p className="font-display text-lg">Meus pedidos</p>
+            <p className="mt-1 text-xs text-muted-foreground">Acompanhe pagamentos e entregas.</p>
+          </Link>
+          <Link to="/favorites" className="rounded-2xl border border-border bg-card p-5 shadow-soft transition hover:border-primary">
+            <p className="font-display text-lg">Favoritos</p>
+            <p className="mt-1 text-xs text-muted-foreground">Produtos que você salvou.</p>
+          </Link>
+          <Link to="/products" search={{} as never} className="rounded-2xl border border-border bg-card p-5 shadow-soft transition hover:border-primary">
+            <p className="font-display text-lg">Loja</p>
+            <p className="mt-1 text-xs text-muted-foreground">Explorar o catálogo.</p>
+          </Link>
         </div>
       </div>
     </StoreLayout>
