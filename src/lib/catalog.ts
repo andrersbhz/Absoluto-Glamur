@@ -165,8 +165,11 @@ export function pickDefaultVariant(p: Pick<ProductListItem, "variants">) {
   return variants.find((v) => v.is_default) ?? variants[0];
 }
 
-export function pickActivePrice(v: ProductListItem["variants"][number] | undefined) {
+export function pickActivePrice(
+  v: { prices: { list_price_cents: number; sale_price_cents: number | null; is_active: boolean }[] } | undefined,
+) {
   if (!v) return null;
   const active = (v.prices ?? []).find((p) => p.is_active) ?? v.prices?.[0];
   return active ?? null;
 }
+
