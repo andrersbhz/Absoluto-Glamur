@@ -14,6 +14,66 @@ export type Database = {
   }
   public: {
     Tables: {
+      addresses: {
+        Row: {
+          city: string
+          complement: string | null
+          country: string
+          created_at: string
+          district: string
+          document: string | null
+          id: string
+          is_default: boolean
+          label: string | null
+          number: string
+          phone: string | null
+          recipient_name: string
+          state: string
+          street: string
+          updated_at: string
+          user_id: string
+          zip_code: string
+        }
+        Insert: {
+          city: string
+          complement?: string | null
+          country?: string
+          created_at?: string
+          district: string
+          document?: string | null
+          id?: string
+          is_default?: boolean
+          label?: string | null
+          number: string
+          phone?: string | null
+          recipient_name: string
+          state: string
+          street: string
+          updated_at?: string
+          user_id: string
+          zip_code: string
+        }
+        Update: {
+          city?: string
+          complement?: string | null
+          country?: string
+          created_at?: string
+          district?: string
+          document?: string | null
+          id?: string
+          is_default?: boolean
+          label?: string | null
+          number?: string
+          phone?: string | null
+          recipient_name?: string
+          state?: string
+          street?: string
+          updated_at?: string
+          user_id?: string
+          zip_code?: string
+        }
+        Relationships: []
+      }
       audit_logs: {
         Row: {
           action: string
@@ -218,6 +278,240 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      order_items: {
+        Row: {
+          created_at: string
+          id: string
+          image_url: string | null
+          order_id: string
+          product_id: string | null
+          product_name: string
+          quantity: number
+          slug: string | null
+          total_cents: number
+          unit_cents: number
+          variant_id: string | null
+          variant_name: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          order_id: string
+          product_id?: string | null
+          product_name: string
+          quantity: number
+          slug?: string | null
+          total_cents: number
+          unit_cents: number
+          variant_id?: string | null
+          variant_name?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          order_id?: string
+          product_id?: string | null
+          product_name?: string
+          quantity?: number
+          slug?: string | null
+          total_cents?: number
+          unit_cents?: number
+          variant_id?: string | null
+          variant_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "order_items_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_items_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "order_items_variant_id_fkey"
+            columns: ["variant_id"]
+            isOneToOne: false
+            referencedRelation: "product_variants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      orders: {
+        Row: {
+          cancelled_at: string | null
+          code: string
+          created_at: string
+          currency: string
+          customer_document: string
+          customer_email: string
+          customer_name: string
+          customer_phone: string | null
+          discount_cents: number
+          id: string
+          notes: string | null
+          paid_at: string | null
+          shipping_address: Json
+          shipping_cents: number
+          status: Database["public"]["Enums"]["order_status"]
+          subtotal_cents: number
+          total_cents: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          cancelled_at?: string | null
+          code: string
+          created_at?: string
+          currency?: string
+          customer_document: string
+          customer_email: string
+          customer_name: string
+          customer_phone?: string | null
+          discount_cents?: number
+          id?: string
+          notes?: string | null
+          paid_at?: string | null
+          shipping_address: Json
+          shipping_cents?: number
+          status?: Database["public"]["Enums"]["order_status"]
+          subtotal_cents: number
+          total_cents: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          cancelled_at?: string | null
+          code?: string
+          created_at?: string
+          currency?: string
+          customer_document?: string
+          customer_email?: string
+          customer_name?: string
+          customer_phone?: string | null
+          discount_cents?: number
+          id?: string
+          notes?: string | null
+          paid_at?: string | null
+          shipping_address?: Json
+          shipping_cents?: number
+          status?: Database["public"]["Enums"]["order_status"]
+          subtotal_cents?: number
+          total_cents?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      payment_events: {
+        Row: {
+          created_at: string
+          error: string | null
+          event_type: string
+          external_id: string | null
+          id: string
+          payload: Json
+          processed: boolean
+          processed_at: string | null
+          provider: string
+        }
+        Insert: {
+          created_at?: string
+          error?: string | null
+          event_type: string
+          external_id?: string | null
+          id?: string
+          payload: Json
+          processed?: boolean
+          processed_at?: string | null
+          provider: string
+        }
+        Update: {
+          created_at?: string
+          error?: string | null
+          event_type?: string
+          external_id?: string | null
+          id?: string
+          payload?: Json
+          processed?: boolean
+          processed_at?: string | null
+          provider?: string
+        }
+        Relationships: []
+      }
+      payments: {
+        Row: {
+          amount_cents: number
+          created_at: string
+          external_customer_id: string | null
+          external_id: string | null
+          id: string
+          invoice_url: string | null
+          method: Database["public"]["Enums"]["payment_method"]
+          order_id: string
+          paid_at: string | null
+          pix_expires_at: string | null
+          pix_payload: string | null
+          pix_qr_code: string | null
+          provider: string
+          raw: Json | null
+          status: Database["public"]["Enums"]["payment_status"]
+          updated_at: string
+        }
+        Insert: {
+          amount_cents: number
+          created_at?: string
+          external_customer_id?: string | null
+          external_id?: string | null
+          id?: string
+          invoice_url?: string | null
+          method?: Database["public"]["Enums"]["payment_method"]
+          order_id: string
+          paid_at?: string | null
+          pix_expires_at?: string | null
+          pix_payload?: string | null
+          pix_qr_code?: string | null
+          provider?: string
+          raw?: Json | null
+          status?: Database["public"]["Enums"]["payment_status"]
+          updated_at?: string
+        }
+        Update: {
+          amount_cents?: number
+          created_at?: string
+          external_customer_id?: string | null
+          external_id?: string | null
+          id?: string
+          invoice_url?: string | null
+          method?: Database["public"]["Enums"]["payment_method"]
+          order_id?: string
+          paid_at?: string | null
+          pix_expires_at?: string | null
+          pix_payload?: string | null
+          pix_qr_code?: string | null
+          provider?: string
+          raw?: Json | null
+          status?: Database["public"]["Enums"]["payment_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_order_id_fkey"
+            columns: ["order_id"]
+            isOneToOne: false
+            referencedRelation: "orders"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       permissions: {
         Row: {
@@ -713,6 +1007,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      generate_order_code: { Args: never; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -735,6 +1030,25 @@ export type Database = {
         | "compliance"
         | "customer"
       media_kind: "image" | "video"
+      order_status:
+        | "pending"
+        | "awaiting_payment"
+        | "paid"
+        | "processing"
+        | "shipped"
+        | "delivered"
+        | "cancelled"
+        | "refunded"
+        | "failed"
+      payment_method: "pix" | "credit_card" | "boleto"
+      payment_status:
+        | "pending"
+        | "confirmed"
+        | "received"
+        | "overdue"
+        | "refunded"
+        | "cancelled"
+        | "failed"
       product_status: "draft" | "active" | "archived"
     }
     CompositeTypes: {
@@ -876,6 +1190,27 @@ export const Constants = {
         "customer",
       ],
       media_kind: ["image", "video"],
+      order_status: [
+        "pending",
+        "awaiting_payment",
+        "paid",
+        "processing",
+        "shipped",
+        "delivered",
+        "cancelled",
+        "refunded",
+        "failed",
+      ],
+      payment_method: ["pix", "credit_card", "boleto"],
+      payment_status: [
+        "pending",
+        "confirmed",
+        "received",
+        "overdue",
+        "refunded",
+        "cancelled",
+        "failed",
+      ],
       product_status: ["draft", "active", "archived"],
     },
   },
