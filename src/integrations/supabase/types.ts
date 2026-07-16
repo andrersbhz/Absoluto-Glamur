@@ -74,6 +74,66 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_generations: {
+        Row: {
+          cost_usd: number | null
+          created_at: string
+          error: string | null
+          id: string
+          input: Json
+          input_tokens: number | null
+          latency_ms: number | null
+          model: string
+          output: string | null
+          output_tokens: number | null
+          provider: string
+          purpose: string
+          related_id: string | null
+          related_kind: string | null
+          status: string
+          total_tokens: number | null
+          user_id: string | null
+        }
+        Insert: {
+          cost_usd?: number | null
+          created_at?: string
+          error?: string | null
+          id?: string
+          input?: Json
+          input_tokens?: number | null
+          latency_ms?: number | null
+          model: string
+          output?: string | null
+          output_tokens?: number | null
+          provider?: string
+          purpose: string
+          related_id?: string | null
+          related_kind?: string | null
+          status?: string
+          total_tokens?: number | null
+          user_id?: string | null
+        }
+        Update: {
+          cost_usd?: number | null
+          created_at?: string
+          error?: string | null
+          id?: string
+          input?: Json
+          input_tokens?: number | null
+          latency_ms?: number | null
+          model?: string
+          output?: string | null
+          output_tokens?: number | null
+          provider?: string
+          purpose?: string
+          related_id?: string | null
+          related_kind?: string | null
+          status?: string
+          total_tokens?: number | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       audit_logs: {
         Row: {
           action: string
