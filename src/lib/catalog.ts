@@ -85,18 +85,22 @@ export function featuredProductsQuery(collectionSlug: string) {
   return productListQuery({ collection: collectionSlug, limit: 8 });
 }
 
-export type ProductDetail = ProductListItem & {
+export type ProductDetail = Omit<ProductListItem, "variants"> & {
   description: string | null;
   tags: string[];
   attributes: Record<string, unknown>;
-  variants: (ProductListItem["variants"][number] & {
+  variants: {
+    id: string;
     sku: string;
     name: string | null;
     options: Record<string, unknown>;
+    is_default: boolean;
+    prices: { list_price_cents: number; sale_price_cents: number | null; is_active: boolean }[];
     inventory: { stock: number; reserved: number } | null;
-  })[];
+  }[];
   seo: { meta_title: string | null; meta_description: string | null; og_image_url: string | null } | null;
 };
+
 
 export function productDetailQuery(slug: string) {
   return queryOptions({
