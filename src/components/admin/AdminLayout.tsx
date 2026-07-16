@@ -29,6 +29,7 @@ const nav: NavItem[] = [
 
 export function AdminLayout({ children }: { children: ReactNode }) {
   const { user, roles } = useAuth();
+  const { theme, toggle } = useTheme();
   const navigate = useNavigate();
 
   async function signOut() {
