@@ -2,7 +2,7 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import {
   BarChart3, Boxes, Gauge, LayoutDashboard, LogOut, Megaphone, Package,
-  Plug, ShieldCheck, ShoppingCart, Sparkles, Users, Zap,
+  Plug, Settings, ShieldCheck, ShoppingCart, Sparkles, Users, Zap,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
@@ -20,6 +20,7 @@ const nav: NavItem[] = [
   { label: "Marketing & SEO", icon: Megaphone, to: "/admin/marketing", phase: 6 },
   { label: "IA (OpenAI/Gemini)", icon: Zap, to: "/admin/ai", phase: 7 },
   { label: "Dashboard executivo", icon: BarChart3, to: "/admin/dashboard", phase: 8 },
+  { label: "Preferências globais", icon: Settings, to: "/admin/settings", phase: 8 },
   { label: "Conformidade", icon: ShieldCheck, phase: 8 },
   { label: "Usuários e permissões", icon: Users, phase: 1 },
   { label: "Uso do plano gratuito", icon: Gauge, phase: 2 },
