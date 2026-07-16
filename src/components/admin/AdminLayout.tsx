@@ -1,11 +1,12 @@
 import { Link, useNavigate } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import {
-  BarChart3, Boxes, Gauge, LayoutDashboard, LogOut, Megaphone, Package,
-  Plug, Settings, ShieldCheck, ShoppingCart, Sparkles, Users, Zap,
+  BarChart3, Boxes, Gauge, LayoutDashboard, LogOut, Megaphone, Moon, Package,
+  Plug, Settings, ShieldCheck, ShoppingCart, Sparkles, Sun, Users, Zap,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
+import { useTheme } from "@/hooks/use-theme";
 import { Badge } from "@/components/ui/badge";
 
 type NavItem = { label: string; icon: typeof LayoutDashboard; to?: string; phase: number };
