@@ -264,7 +264,8 @@ function CollectionsPanel() {
   };
 
   const update = async (id: string, patch: Record<string, unknown>) => {
-    const { error } = await supabase.from("collections").update(patch).eq("id", id);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await supabase.from("collections").update(patch as any).eq("id", id);
     if (error) return toast.error(error.message);
     refresh();
   };
