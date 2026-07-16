@@ -20,6 +20,7 @@ const nav: NavItem[] = [
   { label: "Marketing & SEO", icon: Megaphone, to: "/admin/marketing", phase: 6 },
   { label: "IA (OpenAI/Gemini)", icon: Zap, to: "/admin/ai", phase: 7 },
   { label: "Dashboard executivo", icon: BarChart3, to: "/admin/dashboard", phase: 8 },
+  { label: "Preferências globais", icon: Settings, to: "/admin/settings", phase: 8 },
   { label: "Conformidade", icon: ShieldCheck, phase: 8 },
   { label: "Usuários e permissões", icon: Users, phase: 1 },
   { label: "Uso do plano gratuito", icon: Gauge, phase: 2 },
