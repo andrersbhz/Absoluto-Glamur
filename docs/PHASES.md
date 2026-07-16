@@ -21,7 +21,7 @@ Baseado no briefing mestre. Cada fase é uma entrega isolada, testável e valida
 | RLS ativa em todas as tabelas | ✅ |
 | Perfis e roles funcionando | ✅ |
 | Nenhuma chave no front-end | ✅ |
-| Catálogo, carrinho, checkout, PIX | ⏳ Fases 2 e 3 |
+| Catálogo, carrinho, checkout, PIX | ✅ Catálogo/carrinho local · ⏳ Checkout+PIX (Fase 3) |
 | Importador AliExpress real | ⏳ Fase 4 |
 | Scores com memória de cálculo | ⏳ Fase 5 |
 | Google/Meta preparados | ⏳ Fase 6 |
