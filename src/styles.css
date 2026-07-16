@@ -124,39 +124,41 @@
 }
 
 .dark {
-  --background: oklch(0.19 0.02 350);
+  --background: oklch(0.13 0.02 350);
   --foreground: oklch(0.97 0.008 20);
-  --card: oklch(0.24 0.03 350);
+  --card: oklch(0.18 0.025 350);
   --card-foreground: oklch(0.97 0.008 20);
-  --popover: oklch(0.24 0.03 350);
+  --popover: oklch(0.18 0.025 350);
   --popover-foreground: oklch(0.97 0.008 20);
-  --primary: oklch(0.62 0.16 5);
-  --primary-foreground: oklch(0.99 0.005 20);
-  --secondary: oklch(0.28 0.03 350);
+  --primary: oklch(0.7 0.24 5);
+  --primary-foreground: oklch(0.15 0.02 350);
+  --secondary: oklch(0.22 0.03 350);
   --secondary-foreground: oklch(0.97 0.008 20);
-  --muted: oklch(0.28 0.03 350);
-  --muted-foreground: oklch(0.7 0.02 350);
-  --accent: oklch(0.7 0.09 80);
-  --accent-foreground: oklch(0.2 0.03 60);
+  --muted: oklch(0.22 0.03 350);
+  --muted-foreground: oklch(0.72 0.02 350);
+  --accent: oklch(0.88 0.22 130);
+  --accent-foreground: oklch(0.18 0.05 140);
   --destructive: oklch(0.65 0.18 20);
   --destructive-foreground: oklch(0.99 0.005 20);
   --border: oklch(1 0 0 / 10%);
   --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.62 0.16 5);
+  --ring: oklch(0.7 0.24 5);
   --plum: oklch(0.55 0.08 355);
-  --berry: oklch(0.62 0.14 5);
+  --berry: oklch(0.7 0.24 5);
   --lavender: oklch(0.75 0.05 320);
   --champagne: oklch(0.82 0.09 80);
-  --success: oklch(0.65 0.12 160);
+  --success: oklch(0.88 0.22 130);            /* verde limão neon */
+  --success-foreground: oklch(0.18 0.05 140); /* letras escuras sobre limão */
   --warning: oklch(0.75 0.14 70);
-  --sidebar: oklch(0.22 0.02 350);
+  --neon-pink: oklch(0.72 0.28 5);
+  --sidebar: oklch(0.15 0.02 350);
   --sidebar-foreground: oklch(0.97 0.008 20);
-  --sidebar-primary: oklch(0.62 0.16 5);
-  --sidebar-primary-foreground: oklch(0.99 0.005 20);
-  --sidebar-accent: oklch(0.28 0.03 350);
-  --sidebar-accent-foreground: oklch(0.97 0.008 20);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.62 0.16 5);
+  --sidebar-primary: oklch(0.7 0.24 5);
+  --sidebar-primary-foreground: oklch(0.15 0.02 350);
+  --sidebar-accent: oklch(0.28 0.05 355);
+  --sidebar-accent-foreground: oklch(0.99 0.005 20);
+  --sidebar-border: oklch(0.72 0.28 5 / 35%);
+  --sidebar-ring: oklch(0.72 0.28 5);
 }
 
 @layer base {
@@ -180,3 +182,83 @@
     letter-spacing: -0.01em;
   }
 }
+
+/* ============================================================
+ * Admin Panel — Neon Pink Theme (aplica apenas no dark mode)
+ * ============================================================ */
+
+.dark .admin-shell {
+  background-color: oklch(0.09 0.015 350);
+}
+
+/* Sidebar / menu — hover e ativo mais claros com borda neon rosa */
+.dark .admin-shell .admin-nav-link {
+  border: 1px solid transparent;
+}
+.dark .admin-shell .admin-nav-link:hover {
+  background-color: oklch(0.32 0.08 355);
+  color: oklch(1 0 0);
+  border-color: var(--neon-pink);
+  box-shadow: 0 0 0 1px var(--neon-pink), 0 0 12px oklch(0.72 0.28 5 / 55%);
+}
+.dark .admin-shell .admin-nav-link[data-active] {
+  background-color: oklch(0.38 0.12 355);
+  color: oklch(1 0 0);
+  border-color: var(--neon-pink);
+  box-shadow: 0 0 0 1px var(--neon-pink), 0 0 18px oklch(0.72 0.28 5 / 75%);
+}
+
+/* Efeito neon rosa nos boxes/cards do admin */
+.dark .admin-shell [data-slot="card"],
+.dark .admin-shell .admin-card,
+.dark .admin-shell main section,
+.dark .admin-shell main article {
+  border-color: oklch(0.72 0.28 5 / 40%);
+  box-shadow:
+    0 0 0 1px oklch(0.72 0.28 5 / 25%),
+    0 0 22px oklch(0.72 0.28 5 / 18%),
+    0 10px 30px -12px oklch(0 0 0 / 60%);
+  transition: box-shadow 0.25s ease, border-color 0.25s ease;
+}
+.dark .admin-shell [data-slot="card"]:hover,
+.dark .admin-shell .admin-card:hover {
+  border-color: var(--neon-pink);
+  box-shadow:
+    0 0 0 1px var(--neon-pink),
+    0 0 32px oklch(0.72 0.28 5 / 45%),
+    0 12px 36px -12px oklch(0 0 0 / 70%);
+}
+
+/* Header do admin ganha assinatura neon */
+.dark .admin-shell > div > header {
+  border-bottom-color: oklch(0.72 0.28 5 / 45%);
+  box-shadow: 0 1px 0 0 oklch(0.72 0.28 5 / 35%), 0 8px 24px -12px oklch(0.72 0.28 5 / 25%);
+}
+
+/* Sidebar borda direita neon */
+.dark .admin-shell aside {
+  border-right-color: oklch(0.72 0.28 5 / 45%);
+  box-shadow: inset -1px 0 0 0 oklch(0.72 0.28 5 / 30%);
+}
+
+/* Badges/pills verdes viram verde limão com letras escuras (dark only) */
+.dark .admin-shell .bg-success,
+.dark .admin-shell [class*="bg-success"] {
+  background-color: var(--success) !important;
+  color: var(--success-foreground) !important;
+}
+.dark .admin-shell .text-success {
+  color: var(--success) !important;
+}
+
+/* Light mode: menu hover/ativo também mais claros com toque rosa suave */
+.admin-shell .admin-nav-link:hover {
+  background-color: oklch(0.97 0.02 355);
+  color: var(--sidebar-primary);
+}
+.admin-shell .admin-nav-link[data-active] {
+  background-color: oklch(0.94 0.04 355);
+  color: var(--sidebar-primary);
+  box-shadow: inset 0 0 0 1px oklch(0.55 0.16 5 / 40%);
+}
+
