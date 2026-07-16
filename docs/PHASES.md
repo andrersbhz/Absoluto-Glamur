@@ -9,7 +9,7 @@ Baseado no briefing mestre. Cada fase é uma entrega isolada, testável e valida
 - [ ] **Fase 5 — Inteligência de produtos:** scores 0–100 com memória de cálculo (`product_scores`, `product_score_components`, `product_score_versions`), precificação (`pricing_rules`, `pricing_cost_components`, `pricing_calculations`), fluxo Editar + Adicionar à loja.
 - [ ] **Fase 6 — Marketing:** feed Google Merchant, feed Meta Catalog, conjuntos dinâmicos, gerador de campanhas + carrosséis, UTM.
 - [x] **Fase 7 — IA:** Lovable AI Gateway (Gemini + GPT), gerador de descrições/SEO/marketing/revisão, log de uso (`ai_generations`), guardrails contra invenção de dados regulatórios.
-- [ ] **Fase 8 — Dashboard & Monitor:** métricas agregadas (vendas, conversão, clientes, produtos, marketing, integrações), página "Uso do plano gratuito", alertas 70/85/95%, exportações CSV, backup.
+- [x] **Fase 8 — Dashboard & Monitor:** métricas agregadas (vendas, conversão, clientes, produtos, IA), receita diária, top produtos, alertas 70/85/95% de uso do plano gratuito e exportação CSV de pedidos.
 
 ## Critérios de conclusão (do briefing) — status
 
