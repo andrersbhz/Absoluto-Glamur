@@ -26,7 +26,7 @@ const phases = [
   { n: 4, title: "AliExpress", done: true, items: ["Importador URL/JSON", "Markup configurável", "Publicação"] },
   { n: 5, title: "Inteligência", done: true, items: ["Scores", "Precificação", "Editor + Publicar"] },
   { n: 6, title: "Marketing & SEO", done: true, items: ["Homepage blocks", "Coleções", "Sitemap dinâmico", "JSON-LD"] },
-  { n: 7, title: "IA", done: false, items: ["OpenAI", "Gemini", "SEO", "Análises"] },
+  { n: 7, title: "IA", done: true, items: ["Descrições", "SEO", "Marketing", "Log de uso"] },
   { n: 8, title: "Dashboard & Compliance", done: false, items: ["Métricas", "Alertas", "Uso do plano", "Regulatório"] },
 ];
 
@@ -139,6 +139,25 @@ function AdminHome() {
             </Link>
           </div>
         </div>
+
+        <div className="mt-6 rounded-2xl border border-border bg-card p-6 shadow-soft">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="font-display text-xl">IA de conteúdo</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Gere descrições, SEO e copy de marketing com Lovable AI. Uso é logado automaticamente.
+              </p>
+            </div>
+            <Link
+              to="/admin/ai"
+              className="rounded-lg bg-primary px-4 py-2 text-sm text-primary-foreground shadow-soft hover:opacity-90"
+            >
+              Abrir IA
+            </Link>
+          </div>
+        </div>
+
+
 
         <div className="mt-6 text-sm">
           <Link to="/account" className="text-primary hover:underline">← Voltar para minha conta</Link>
