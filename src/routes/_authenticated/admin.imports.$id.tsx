@@ -117,7 +117,7 @@ function ImportDetail() {
       });
     },
     onSuccess: (r) => {
-      toast.success(`Publicado: ${formatCurrency(r.price_cents)}`);
+      toast.success(`Publicado: ${formatBRL(r.price_cents)}`);
       navigate({ to: "/admin/catalog/$id", params: { id: r.id } });
     },
     onError: (e: Error) => toast.error(e.message),
@@ -315,7 +315,7 @@ function ImportDetail() {
               </Fld>
               <div className="rounded-lg bg-primary/10 p-3 text-center">
                 <div className="text-xs text-muted-foreground">Preço final calculado</div>
-                <div className="font-display text-2xl text-primary">{formatCurrency(previewCents)}</div>
+                <div className="font-display text-2xl text-primary">{formatBRL(previewCents)}</div>
               </div>
             </Card>
 
