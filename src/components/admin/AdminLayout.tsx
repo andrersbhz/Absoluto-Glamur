@@ -2,16 +2,19 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import {
   BarChart3, Boxes, Gauge, LayoutDashboard, LogOut, Megaphone, Package,
-  ShieldCheck, ShoppingCart, Sparkles, Users, Zap,
+  Plug, ShieldCheck, ShoppingCart, Sparkles, Users, Zap,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { Badge } from "@/components/ui/badge";
 
-const nav = [
+type NavItem = { label: string; icon: typeof LayoutDashboard; to?: string; phase: number };
+
+const nav: NavItem[] = [
   { label: "Visão geral", icon: LayoutDashboard, to: "/admin", phase: 1 },
+  { label: "Integrações", icon: Plug, to: "/admin/integrations", phase: 1 },
+  { label: "Pedidos", icon: ShoppingCart, to: "/admin/orders", phase: 3 },
   { label: "Catálogo", icon: Package, phase: 2 },
-  { label: "Pedidos", icon: ShoppingCart, phase: 3 },
   { label: "Importador AliExpress", icon: Boxes, phase: 4 },
   { label: "Inteligência de produtos", icon: Sparkles, phase: 5 },
   { label: "Marketing (Google/Meta)", icon: Megaphone, phase: 6 },
@@ -40,18 +43,18 @@ export function AdminLayout({ children }: { children: ReactNode }) {
         </Link>
         <nav className="mt-8 space-y-1 text-sm">
           {nav.map((item) => {
-            const disabled = item.phase !== 1;
+            const enabled = !!item.to;
             const Icon = item.icon;
             const inner = (
               <span className="flex items-center gap-2">
                 <Icon className="h-4 w-4" />
                 <span className="flex-1">{item.label}</span>
-                {disabled && (
+                {!enabled && (
                   <Badge variant="outline" className="ml-auto text-[10px]">F{item.phase}</Badge>
                 )}
               </span>
             );
-            return item.to && !disabled ? (
+            return enabled && item.to ? (
               <Link
                 key={item.label}
                 to={item.to}

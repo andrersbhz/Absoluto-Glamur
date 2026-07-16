@@ -17,9 +17,15 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as ProductsSlugRouteImport } from './routes/products.$slug'
 import { Route as AuthResetPasswordRouteImport } from './routes/auth.reset-password'
 import { Route as AuthForgotRouteImport } from './routes/auth.forgot'
+import { Route as AuthenticatedOrdersRouteImport } from './routes/_authenticated/orders'
 import { Route as AuthenticatedFavoritesRouteImport } from './routes/_authenticated/favorites'
+import { Route as AuthenticatedCheckoutRouteImport } from './routes/_authenticated/checkout'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as AuthenticatedAccountRouteImport } from './routes/_authenticated/account'
+import { Route as AuthenticatedCheckoutOrderIdRouteImport } from './routes/_authenticated/checkout.$orderId'
+import { Route as AuthenticatedAdminOrdersRouteImport } from './routes/_authenticated/admin.orders'
+import { Route as AuthenticatedAdminIntegrationsRouteImport } from './routes/_authenticated/admin.integrations'
+import { Route as ApiPublicWebhooksAsaasRouteImport } from './routes/api/public/webhooks/asaas'
 
 const ProductsRoute = ProductsRouteImport.update({
   id: '/products',
@@ -60,9 +66,19 @@ const AuthForgotRoute = AuthForgotRouteImport.update({
   path: '/forgot',
   getParentRoute: () => AuthRoute,
 } as any)
+const AuthenticatedOrdersRoute = AuthenticatedOrdersRouteImport.update({
+  id: '/orders',
+  path: '/orders',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedFavoritesRoute = AuthenticatedFavoritesRouteImport.update({
   id: '/favorites',
   path: '/favorites',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedCheckoutRoute = AuthenticatedCheckoutRouteImport.update({
+  id: '/checkout',
+  path: '/checkout',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
@@ -75,6 +91,29 @@ const AuthenticatedAccountRoute = AuthenticatedAccountRouteImport.update({
   path: '/account',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedCheckoutOrderIdRoute =
+  AuthenticatedCheckoutOrderIdRouteImport.update({
+    id: '/$orderId',
+    path: '/$orderId',
+    getParentRoute: () => AuthenticatedCheckoutRoute,
+  } as any)
+const AuthenticatedAdminOrdersRoute =
+  AuthenticatedAdminOrdersRouteImport.update({
+    id: '/orders',
+    path: '/orders',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const AuthenticatedAdminIntegrationsRoute =
+  AuthenticatedAdminIntegrationsRouteImport.update({
+    id: '/integrations',
+    path: '/integrations',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const ApiPublicWebhooksAsaasRoute = ApiPublicWebhooksAsaasRouteImport.update({
+  id: '/api/public/webhooks/asaas',
+  path: '/api/public/webhooks/asaas',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -82,11 +121,17 @@ export interface FileRoutesByFullPath {
   '/cart': typeof CartRoute
   '/products': typeof ProductsRouteWithChildren
   '/account': typeof AuthenticatedAccountRoute
-  '/admin': typeof AuthenticatedAdminRoute
+  '/admin': typeof AuthenticatedAdminRouteWithChildren
+  '/checkout': typeof AuthenticatedCheckoutRouteWithChildren
   '/favorites': typeof AuthenticatedFavoritesRoute
+  '/orders': typeof AuthenticatedOrdersRoute
   '/auth/forgot': typeof AuthForgotRoute
   '/auth/reset-password': typeof AuthResetPasswordRoute
   '/products/$slug': typeof ProductsSlugRoute
+  '/admin/integrations': typeof AuthenticatedAdminIntegrationsRoute
+  '/admin/orders': typeof AuthenticatedAdminOrdersRoute
+  '/checkout/$orderId': typeof AuthenticatedCheckoutOrderIdRoute
+  '/api/public/webhooks/asaas': typeof ApiPublicWebhooksAsaasRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -94,11 +139,17 @@ export interface FileRoutesByTo {
   '/cart': typeof CartRoute
   '/products': typeof ProductsRouteWithChildren
   '/account': typeof AuthenticatedAccountRoute
-  '/admin': typeof AuthenticatedAdminRoute
+  '/admin': typeof AuthenticatedAdminRouteWithChildren
+  '/checkout': typeof AuthenticatedCheckoutRouteWithChildren
   '/favorites': typeof AuthenticatedFavoritesRoute
+  '/orders': typeof AuthenticatedOrdersRoute
   '/auth/forgot': typeof AuthForgotRoute
   '/auth/reset-password': typeof AuthResetPasswordRoute
   '/products/$slug': typeof ProductsSlugRoute
+  '/admin/integrations': typeof AuthenticatedAdminIntegrationsRoute
+  '/admin/orders': typeof AuthenticatedAdminOrdersRoute
+  '/checkout/$orderId': typeof AuthenticatedCheckoutOrderIdRoute
+  '/api/public/webhooks/asaas': typeof ApiPublicWebhooksAsaasRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -108,11 +159,17 @@ export interface FileRoutesById {
   '/cart': typeof CartRoute
   '/products': typeof ProductsRouteWithChildren
   '/_authenticated/account': typeof AuthenticatedAccountRoute
-  '/_authenticated/admin': typeof AuthenticatedAdminRoute
+  '/_authenticated/admin': typeof AuthenticatedAdminRouteWithChildren
+  '/_authenticated/checkout': typeof AuthenticatedCheckoutRouteWithChildren
   '/_authenticated/favorites': typeof AuthenticatedFavoritesRoute
+  '/_authenticated/orders': typeof AuthenticatedOrdersRoute
   '/auth/forgot': typeof AuthForgotRoute
   '/auth/reset-password': typeof AuthResetPasswordRoute
   '/products/$slug': typeof ProductsSlugRoute
+  '/_authenticated/admin/integrations': typeof AuthenticatedAdminIntegrationsRoute
+  '/_authenticated/admin/orders': typeof AuthenticatedAdminOrdersRoute
+  '/_authenticated/checkout/$orderId': typeof AuthenticatedCheckoutOrderIdRoute
+  '/api/public/webhooks/asaas': typeof ApiPublicWebhooksAsaasRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -123,10 +180,16 @@ export interface FileRouteTypes {
     | '/products'
     | '/account'
     | '/admin'
+    | '/checkout'
     | '/favorites'
+    | '/orders'
     | '/auth/forgot'
     | '/auth/reset-password'
     | '/products/$slug'
+    | '/admin/integrations'
+    | '/admin/orders'
+    | '/checkout/$orderId'
+    | '/api/public/webhooks/asaas'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -135,10 +198,16 @@ export interface FileRouteTypes {
     | '/products'
     | '/account'
     | '/admin'
+    | '/checkout'
     | '/favorites'
+    | '/orders'
     | '/auth/forgot'
     | '/auth/reset-password'
     | '/products/$slug'
+    | '/admin/integrations'
+    | '/admin/orders'
+    | '/checkout/$orderId'
+    | '/api/public/webhooks/asaas'
   id:
     | '__root__'
     | '/'
@@ -148,10 +217,16 @@ export interface FileRouteTypes {
     | '/products'
     | '/_authenticated/account'
     | '/_authenticated/admin'
+    | '/_authenticated/checkout'
     | '/_authenticated/favorites'
+    | '/_authenticated/orders'
     | '/auth/forgot'
     | '/auth/reset-password'
     | '/products/$slug'
+    | '/_authenticated/admin/integrations'
+    | '/_authenticated/admin/orders'
+    | '/_authenticated/checkout/$orderId'
+    | '/api/public/webhooks/asaas'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -160,6 +235,7 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRouteWithChildren
   CartRoute: typeof CartRoute
   ProductsRoute: typeof ProductsRouteWithChildren
+  ApiPublicWebhooksAsaasRoute: typeof ApiPublicWebhooksAsaasRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -220,11 +296,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthForgotRouteImport
       parentRoute: typeof AuthRoute
     }
+    '/_authenticated/orders': {
+      id: '/_authenticated/orders'
+      path: '/orders'
+      fullPath: '/orders'
+      preLoaderRoute: typeof AuthenticatedOrdersRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/favorites': {
       id: '/_authenticated/favorites'
       path: '/favorites'
       fullPath: '/favorites'
       preLoaderRoute: typeof AuthenticatedFavoritesRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/checkout': {
+      id: '/_authenticated/checkout'
+      path: '/checkout'
+      fullPath: '/checkout'
+      preLoaderRoute: typeof AuthenticatedCheckoutRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/admin': {
@@ -241,19 +331,77 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAccountRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/checkout/$orderId': {
+      id: '/_authenticated/checkout/$orderId'
+      path: '/$orderId'
+      fullPath: '/checkout/$orderId'
+      preLoaderRoute: typeof AuthenticatedCheckoutOrderIdRouteImport
+      parentRoute: typeof AuthenticatedCheckoutRoute
+    }
+    '/_authenticated/admin/orders': {
+      id: '/_authenticated/admin/orders'
+      path: '/orders'
+      fullPath: '/admin/orders'
+      preLoaderRoute: typeof AuthenticatedAdminOrdersRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/admin/integrations': {
+      id: '/_authenticated/admin/integrations'
+      path: '/integrations'
+      fullPath: '/admin/integrations'
+      preLoaderRoute: typeof AuthenticatedAdminIntegrationsRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/api/public/webhooks/asaas': {
+      id: '/api/public/webhooks/asaas'
+      path: '/api/public/webhooks/asaas'
+      fullPath: '/api/public/webhooks/asaas'
+      preLoaderRoute: typeof ApiPublicWebhooksAsaasRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
+interface AuthenticatedAdminRouteChildren {
+  AuthenticatedAdminIntegrationsRoute: typeof AuthenticatedAdminIntegrationsRoute
+  AuthenticatedAdminOrdersRoute: typeof AuthenticatedAdminOrdersRoute
+}
+
+const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
+  AuthenticatedAdminIntegrationsRoute: AuthenticatedAdminIntegrationsRoute,
+  AuthenticatedAdminOrdersRoute: AuthenticatedAdminOrdersRoute,
+}
+
+const AuthenticatedAdminRouteWithChildren =
+  AuthenticatedAdminRoute._addFileChildren(AuthenticatedAdminRouteChildren)
+
+interface AuthenticatedCheckoutRouteChildren {
+  AuthenticatedCheckoutOrderIdRoute: typeof AuthenticatedCheckoutOrderIdRoute
+}
+
+const AuthenticatedCheckoutRouteChildren: AuthenticatedCheckoutRouteChildren = {
+  AuthenticatedCheckoutOrderIdRoute: AuthenticatedCheckoutOrderIdRoute,
+}
+
+const AuthenticatedCheckoutRouteWithChildren =
+  AuthenticatedCheckoutRoute._addFileChildren(
+    AuthenticatedCheckoutRouteChildren,
+  )
+
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAccountRoute: typeof AuthenticatedAccountRoute
-  AuthenticatedAdminRoute: typeof AuthenticatedAdminRoute
+  AuthenticatedAdminRoute: typeof AuthenticatedAdminRouteWithChildren
+  AuthenticatedCheckoutRoute: typeof AuthenticatedCheckoutRouteWithChildren
   AuthenticatedFavoritesRoute: typeof AuthenticatedFavoritesRoute
+  AuthenticatedOrdersRoute: typeof AuthenticatedOrdersRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAccountRoute: AuthenticatedAccountRoute,
-  AuthenticatedAdminRoute: AuthenticatedAdminRoute,
+  AuthenticatedAdminRoute: AuthenticatedAdminRouteWithChildren,
+  AuthenticatedCheckoutRoute: AuthenticatedCheckoutRouteWithChildren,
   AuthenticatedFavoritesRoute: AuthenticatedFavoritesRoute,
+  AuthenticatedOrdersRoute: AuthenticatedOrdersRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
@@ -289,6 +437,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRouteWithChildren,
   CartRoute: CartRoute,
   ProductsRoute: ProductsRouteWithChildren,
+  ApiPublicWebhooksAsaasRoute: ApiPublicWebhooksAsaasRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

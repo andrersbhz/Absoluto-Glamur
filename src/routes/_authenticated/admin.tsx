@@ -21,8 +21,8 @@ export const Route = createFileRoute("/_authenticated/admin")({
 
 const phases = [
   { n: 1, title: "Fundação", done: true, items: ["Auth", "Perfis", "Funções", "Design system"] },
-  { n: 2, title: "Catálogo", done: false, items: ["Produtos", "Variantes", "Categorias", "Mídias", "Carrinho"] },
-  { n: 3, title: "Checkout & PIX", done: false, items: ["Endereços", "Pedidos", "Asaas/PIX", "Webhooks"] },
+  { n: 2, title: "Catálogo", done: true, items: ["Produtos", "Variantes", "Categorias", "Mídias", "Carrinho"] },
+  { n: 3, title: "Checkout & PIX", done: true, items: ["Endereços", "Pedidos", "Asaas/PIX", "Webhooks", "Integrações"] },
   { n: 4, title: "AliExpress", done: false, items: ["Importador", "Preço/Estoque", "Rastreamento"] },
   { n: 5, title: "Inteligência", done: false, items: ["Scores", "Precificação", "Editor + Publicar"] },
   { n: 6, title: "Marketing", done: false, items: ["Google Merchant", "Meta Catalog", "Campanhas"] },
@@ -63,22 +63,30 @@ function AdminHome() {
           ))}
         </div>
 
-        <div className="mt-10 rounded-2xl border border-dashed border-border bg-secondary/40 p-6">
-          <h2 className="font-display text-xl">Integrações</h2>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Nenhuma integração externa configurada ainda. Cada uma será conectada em sua fase, com solicitação segura das credenciais:
-          </p>
-          <ul className="mt-3 grid gap-1 text-sm text-muted-foreground sm:grid-cols-2">
-            <li>• AliExpress — Fase 4</li>
-            <li>• Asaas / Mercado Pago — Fase 3</li>
-            <li>• Google Ads / Merchant / GA4 / Search Console / GTM — Fase 6</li>
-            <li>• Meta Business / Pixel / Catalog / CAPI — Fase 6</li>
+        <div className="mt-10 rounded-2xl border border-border bg-card p-6 shadow-soft">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="font-display text-xl">Integrações</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Configure chaves de API e webhooks de todos os provedores externos.
+              </p>
+            </div>
+            <Link
+              to="/admin/integrations"
+              className="rounded-lg bg-primary px-4 py-2 text-sm text-primary-foreground shadow-soft hover:opacity-90"
+            >
+              Abrir painel
+            </Link>
+          </div>
+          <ul className="mt-4 grid gap-1 text-sm text-muted-foreground sm:grid-cols-2">
+            <li>• Asaas (PIX/boleto/cartão) — Fase 3</li>
+            <li>• Mercado Pago — Fase 3+</li>
+            <li>• Melhor Envio / Correios — Fase 3+</li>
+            <li>• Google Ads / Merchant — Fase 6</li>
+            <li>• Meta Business / Pixel / CAPI — Fase 6</li>
             <li>• OpenAI / Gemini — Fase 7</li>
-            <li>• Cloudflare R2 (opcional) — futuro</li>
+            <li>• Cloudflare R2 — futuro</li>
           </ul>
-          <p className="mt-4 text-xs text-muted-foreground">
-            Enquanto uma integração não estiver conectada, os componentes correspondentes exibirão o status “Integração não configurada”.
-          </p>
         </div>
 
         <div className="mt-6 text-sm">
