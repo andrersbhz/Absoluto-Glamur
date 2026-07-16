@@ -90,10 +90,10 @@ export const computeProductScore = createServerFn({ method: "POST" })
 
     // Demand (20%)
     const dFav = clamp((favCount ?? 0) * 10);
-    const dFeatured = product.is_featured ? 100 : 40;
+    const dFeatured = p.is_featured ? 100 : 40;
     const demand = Math.round(dFav * 0.6 + dFeatured * 0.4);
     comps.push({ key: "demand_favorites", label: "Favoritos", weight: 12, raw_value: favCount ?? 0, normalized: dFav, source: "favorites" });
-    comps.push({ key: "demand_featured", label: "Em destaque", weight: 8, raw_value: product.is_featured ? 1 : 0, normalized: dFeatured, source: "products.is_featured" });
+    comps.push({ key: "demand_featured", label: "Em destaque", weight: 8, raw_value: p.is_featured ? 1 : 0, normalized: dFeatured, source: "products.is_featured" });
 
     // Margin (25%)
     const margin = clamp(marginPct * 1.5);
@@ -108,10 +108,10 @@ export const computeProductScore = createServerFn({ method: "POST" })
 
     // Risk inverse (15%): higher = safer
     const rStock = stock >= 5 ? 100 : stock > 0 ? 50 : 0;
-    const rStatus = product.status === "active" ? 100 : 40;
+    const rStatus = p.status === "active" ? 100 : 40;
     const risk = Math.round(rStock * 0.6 + rStatus * 0.4);
     comps.push({ key: "risk_stock", label: "Estoque", weight: 9, raw_value: stock, normalized: rStock, source: "product_inventory" });
-    comps.push({ key: "risk_status", label: "Status", weight: 6, raw_value: product.status === "active" ? 1 : 0, normalized: rStatus, source: "products.status" });
+    comps.push({ key: "risk_status", label: "Status", weight: 6, raw_value: p.status === "active" ? 1 : 0, normalized: rStatus, source: "products.status" });
 
     const overall = Math.round(
       quality * 0.25 + demand * 0.20 + margin * 0.25 + competitiveness * 0.15 + risk * 0.15,
