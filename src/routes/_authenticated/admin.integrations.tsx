@@ -11,6 +11,8 @@ import {
   listIntegrations,
   saveIntegration,
   testIntegration,
+  type IntegrationDTO,
+  type SaveIntegrationInput,
 } from "@/lib/integrations.functions";
 
 export const Route = createFileRoute("/_authenticated/admin/integrations")({
@@ -24,7 +26,7 @@ export const Route = createFileRoute("/_authenticated/admin/integrations")({
   component: IntegrationsPage,
 });
 
-type Integration = Awaited<ReturnType<typeof listIntegrations>>[number];
+type Integration = IntegrationDTO;
 
 const CATEGORY_LABELS: Record<string, string> = {
   payments: "Pagamentos",
@@ -109,7 +111,7 @@ function IntegrationCard({ integration }: { integration: Integration }) {
   const [enabled, setEnabled] = useState(integration.enabled);
 
   const saveMut = useMutation({
-    mutationFn: (v: Parameters<typeof saveIntegration>[0]["data"]) => save({ data: v }),
+    mutationFn: (v: SaveIntegrationInput) => save({ data: v }),
     onSuccess: () => {
       toast.success("Integração salva");
       qc.invalidateQueries({ queryKey: ["integrations"] });

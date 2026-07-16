@@ -47,7 +47,8 @@ export const Route = createFileRoute("/api/public/webhooks/asaas")({
           provider: "asaas",
           event_type: payload.event ?? "unknown",
           external_id: payload.payment?.id ?? null,
-          payload: payload as unknown as Record<string, unknown>,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          payload: payload as any,
         });
 
         const chargeId = payload.payment?.id;
@@ -57,9 +58,11 @@ export const Route = createFileRoute("/api/public/webhooks/asaas")({
           const { data: pay } = await supabaseAdmin
             .from("payments")
             .update({
-              status: map.payment,
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              status: map.payment as any,
               paid_at: paidAt,
-              raw: (payload.payment ?? {}) as unknown as Record<string, unknown>,
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              raw: (payload.payment ?? {}) as any,
             })
             .eq("provider", "asaas")
             .eq("external_id", chargeId)
@@ -70,7 +73,8 @@ export const Route = createFileRoute("/api/public/webhooks/asaas")({
             await supabaseAdmin
               .from("orders")
               .update({
-                status: map.order,
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                status: map.order as any,
                 paid_at: paidAt,
               })
               .eq("id", pay.order_id);

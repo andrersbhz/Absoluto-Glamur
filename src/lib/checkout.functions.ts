@@ -31,6 +31,8 @@ const CheckoutSchema = z.object({
   saveAddress: z.boolean().optional(),
   notes: z.string().max(500).optional().nullable(),
 });
+export type CheckoutInput = z.infer<typeof CheckoutSchema>;
+
 
 export const createPixCheckout = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])

@@ -9,7 +9,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { cartTotals, useCart } from "@/lib/cart-store";
 import { formatBRL } from "@/lib/format";
-import { createPixCheckout } from "@/lib/checkout.functions";
+import { createPixCheckout, type CheckoutInput } from "@/lib/checkout.functions";
 
 export const Route = createFileRoute("/_authenticated/checkout")({
   head: () => ({ meta: [{ title: "Checkout · Bloom" }] }),
@@ -73,8 +73,7 @@ function CheckoutPage() {
 
   const createFn = useServerFn(createPixCheckout);
   const mut = useMutation({
-    mutationFn: (payload: Parameters<typeof createPixCheckout>[0]["data"]) =>
-      createFn({ data: payload }),
+    mutationFn: (payload: CheckoutInput) => createFn({ data: payload }),
     onSuccess: (r) => {
       clear();
       navigate({ to: "/checkout/$orderId", params: { orderId: r.orderId } });
