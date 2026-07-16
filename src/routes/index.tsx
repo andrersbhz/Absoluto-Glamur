@@ -4,6 +4,7 @@ import { Sparkles, ShieldCheck, Truck } from "lucide-react";
 import { StoreLayout } from "@/components/store/StoreLayout";
 import { ProductCard } from "@/components/store/ProductCard";
 import { categoriesQuery, featuredProductsQuery } from "@/lib/catalog";
+import { homepageBlocksQuery, type HomepageBlock } from "@/lib/marketing";
 
 export const Route = createFileRoute("/")({
   component: Index,
@@ -13,6 +14,7 @@ function Index() {
   const { data: bestsellers = [] } = useQuery(featuredProductsQuery("mais-vendidos"));
   const { data: newArrivals = [] } = useQuery(featuredProductsQuery("lancamentos"));
   const { data: categories = [] } = useQuery(categoriesQuery());
+  const { data: blocks = [] } = useQuery(homepageBlocksQuery());
 
   return (
     <StoreLayout>
