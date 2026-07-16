@@ -2,10 +2,8 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
-async function assertAdmin(context: {
-  supabase: { rpc: (fn: string, args: Record<string, unknown>) => Promise<{ data: boolean | null }> };
-  userId: string;
-}) {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function assertAdmin(context: any) {
   const { data } = await context.supabase.rpc("is_admin", { _user_id: context.userId });
   if (!data) throw new Error("Acesso restrito a administradores");
 }
@@ -16,9 +14,28 @@ function mask(v: string | null): string | null {
   return v.slice(0, 4) + "••••" + v.slice(-4);
 }
 
+export type IntegrationDTO = {
+  provider: string;
+  category: string;
+  display_name: string;
+  description: string | null;
+  enabled: boolean;
+  mode: "sandbox" | "production";
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  config: any;
+  last_verified_at: string | null;
+  last_status: string | null;
+  last_error: string | null;
+  updated_at: string;
+  api_key_masked: string | null;
+  webhook_token_masked: string | null;
+  has_api_key: boolean;
+  has_webhook_token: boolean;
+};
+
 export const listIntegrations = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
+  .handler(async ({ context }): Promise<IntegrationDTO[]> => {
     await assertAdmin(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data, error } = await supabaseAdmin
@@ -35,8 +52,8 @@ export const listIntegrations = createServerFn({ method: "GET" })
       display_name: i.display_name,
       description: i.description,
       enabled: i.enabled,
-      mode: i.mode as "sandbox" | "production",
-      config: i.config as Record<string, unknown>,
+      mode: (i.mode as "sandbox" | "production") ?? "sandbox",
+      config: i.config,
       last_verified_at: i.last_verified_at,
       last_status: i.last_status,
       last_error: i.last_error,
@@ -56,6 +73,7 @@ const SaveSchema = z.object({
   webhook_token: z.string().nullable().optional(),
   config: z.record(z.string(), z.unknown()).optional(),
 });
+export type SaveIntegrationInput = z.infer<typeof SaveSchema>;
 
 export const saveIntegration = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -63,7 +81,8 @@ export const saveIntegration = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const update: Record<string, unknown> = { updated_by: context.userId };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const update: any = { updated_by: context.userId };
     if (data.enabled !== undefined) update.enabled = data.enabled;
     if (data.mode) update.mode = data.mode;
     if (data.api_key !== undefined) update.api_key = data.api_key || null;
