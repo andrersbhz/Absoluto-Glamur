@@ -266,7 +266,11 @@ export const getUsageOverview = createServerFn({ method: "GET" })
 
     const rowCounts = await Promise.all(
       tables.map(async (table) => {
-        const { count, error } = await supabaseAdmin.from(table).select("*", { count: "exact", head: true });
+        // The generated database type only accepts literal table names; this runtime list is intentional.
+        const { count, error } = await supabaseAdmin
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          .from(table as any)
+          .select("*", { count: "exact", head: true });
         if (error) throw new Error(error.message);
         return { table, count: count ?? 0 };
       }),
