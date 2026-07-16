@@ -1,8 +1,8 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import {
-  BarChart3, Boxes, Gauge, LayoutDashboard, LogOut, Megaphone, Moon, Package,
-  Plug, Settings, ShieldCheck, ShoppingCart, Sparkles, Sun, Users, Zap,
+  BarChart3, Boxes, ExternalLink, Gauge, LayoutDashboard, LogOut, Megaphone, Moon, Package,
+  Plug, Settings, ShieldCheck, ShoppingCart, Sparkles, Store, Sun, Users, Zap,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
