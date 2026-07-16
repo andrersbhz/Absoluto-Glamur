@@ -118,10 +118,10 @@ export const getDashboardMetrics = createServerFn({ method: "POST" })
     const ai_tokens_30d = ai.reduce((s: number, r: any) => s + (r.total_tokens ?? 0), 0);
 
     // Rough DB rows count (sum of a few known tables)
-    const rowTables = ["orders", "products", "profiles", "ai_generations", "product_imports", "order_items"];
+    const rowTables = ["orders", "products", "profiles", "ai_generations", "product_imports", "order_items"] as const;
     let database_rows = 0;
     for (const t of rowTables) {
-      const { count } = await supabaseAdmin.from(t).select("id", { count: "exact", head: true });
+      const { count } = await (supabaseAdmin.from(t) as any).select("id", { count: "exact", head: true });
       database_rows += count ?? 0;
     }
 
