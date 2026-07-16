@@ -24,10 +24,12 @@ import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/
 import { Route as AuthenticatedAccountRouteImport } from './routes/_authenticated/account'
 import { Route as AuthenticatedCheckoutOrderIdRouteImport } from './routes/_authenticated/checkout.$orderId'
 import { Route as AuthenticatedAdminOrdersRouteImport } from './routes/_authenticated/admin.orders'
+import { Route as AuthenticatedAdminIntelligenceRouteImport } from './routes/_authenticated/admin.intelligence'
 import { Route as AuthenticatedAdminIntegrationsRouteImport } from './routes/_authenticated/admin.integrations'
 import { Route as AuthenticatedAdminImportsRouteImport } from './routes/_authenticated/admin.imports'
 import { Route as AuthenticatedAdminCatalogRouteImport } from './routes/_authenticated/admin.catalog'
 import { Route as ApiPublicWebhooksAsaasRouteImport } from './routes/api/public/webhooks/asaas'
+import { Route as AuthenticatedAdminIntelligenceIdRouteImport } from './routes/_authenticated/admin.intelligence.$id'
 import { Route as AuthenticatedAdminImportsIdRouteImport } from './routes/_authenticated/admin.imports.$id'
 import { Route as AuthenticatedAdminCatalogIdRouteImport } from './routes/_authenticated/admin.catalog.$id'
 
@@ -107,6 +109,12 @@ const AuthenticatedAdminOrdersRoute =
     path: '/orders',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
+const AuthenticatedAdminIntelligenceRoute =
+  AuthenticatedAdminIntelligenceRouteImport.update({
+    id: '/intelligence',
+    path: '/intelligence',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
 const AuthenticatedAdminIntegrationsRoute =
   AuthenticatedAdminIntegrationsRouteImport.update({
     id: '/integrations',
@@ -130,6 +138,12 @@ const ApiPublicWebhooksAsaasRoute = ApiPublicWebhooksAsaasRouteImport.update({
   path: '/api/public/webhooks/asaas',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedAdminIntelligenceIdRoute =
+  AuthenticatedAdminIntelligenceIdRouteImport.update({
+    id: '/$id',
+    path: '/$id',
+    getParentRoute: () => AuthenticatedAdminIntelligenceRoute,
+  } as any)
 const AuthenticatedAdminImportsIdRoute =
   AuthenticatedAdminImportsIdRouteImport.update({
     id: '/$id',
@@ -159,10 +173,12 @@ export interface FileRoutesByFullPath {
   '/admin/catalog': typeof AuthenticatedAdminCatalogRouteWithChildren
   '/admin/imports': typeof AuthenticatedAdminImportsRouteWithChildren
   '/admin/integrations': typeof AuthenticatedAdminIntegrationsRoute
+  '/admin/intelligence': typeof AuthenticatedAdminIntelligenceRouteWithChildren
   '/admin/orders': typeof AuthenticatedAdminOrdersRoute
   '/checkout/$orderId': typeof AuthenticatedCheckoutOrderIdRoute
   '/admin/catalog/$id': typeof AuthenticatedAdminCatalogIdRoute
   '/admin/imports/$id': typeof AuthenticatedAdminImportsIdRoute
+  '/admin/intelligence/$id': typeof AuthenticatedAdminIntelligenceIdRoute
   '/api/public/webhooks/asaas': typeof ApiPublicWebhooksAsaasRoute
 }
 export interface FileRoutesByTo {
@@ -181,10 +197,12 @@ export interface FileRoutesByTo {
   '/admin/catalog': typeof AuthenticatedAdminCatalogRouteWithChildren
   '/admin/imports': typeof AuthenticatedAdminImportsRouteWithChildren
   '/admin/integrations': typeof AuthenticatedAdminIntegrationsRoute
+  '/admin/intelligence': typeof AuthenticatedAdminIntelligenceRouteWithChildren
   '/admin/orders': typeof AuthenticatedAdminOrdersRoute
   '/checkout/$orderId': typeof AuthenticatedCheckoutOrderIdRoute
   '/admin/catalog/$id': typeof AuthenticatedAdminCatalogIdRoute
   '/admin/imports/$id': typeof AuthenticatedAdminImportsIdRoute
+  '/admin/intelligence/$id': typeof AuthenticatedAdminIntelligenceIdRoute
   '/api/public/webhooks/asaas': typeof ApiPublicWebhooksAsaasRoute
 }
 export interface FileRoutesById {
@@ -205,10 +223,12 @@ export interface FileRoutesById {
   '/_authenticated/admin/catalog': typeof AuthenticatedAdminCatalogRouteWithChildren
   '/_authenticated/admin/imports': typeof AuthenticatedAdminImportsRouteWithChildren
   '/_authenticated/admin/integrations': typeof AuthenticatedAdminIntegrationsRoute
+  '/_authenticated/admin/intelligence': typeof AuthenticatedAdminIntelligenceRouteWithChildren
   '/_authenticated/admin/orders': typeof AuthenticatedAdminOrdersRoute
   '/_authenticated/checkout/$orderId': typeof AuthenticatedCheckoutOrderIdRoute
   '/_authenticated/admin/catalog/$id': typeof AuthenticatedAdminCatalogIdRoute
   '/_authenticated/admin/imports/$id': typeof AuthenticatedAdminImportsIdRoute
+  '/_authenticated/admin/intelligence/$id': typeof AuthenticatedAdminIntelligenceIdRoute
   '/api/public/webhooks/asaas': typeof ApiPublicWebhooksAsaasRoute
 }
 export interface FileRouteTypes {
@@ -229,10 +249,12 @@ export interface FileRouteTypes {
     | '/admin/catalog'
     | '/admin/imports'
     | '/admin/integrations'
+    | '/admin/intelligence'
     | '/admin/orders'
     | '/checkout/$orderId'
     | '/admin/catalog/$id'
     | '/admin/imports/$id'
+    | '/admin/intelligence/$id'
     | '/api/public/webhooks/asaas'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -251,10 +273,12 @@ export interface FileRouteTypes {
     | '/admin/catalog'
     | '/admin/imports'
     | '/admin/integrations'
+    | '/admin/intelligence'
     | '/admin/orders'
     | '/checkout/$orderId'
     | '/admin/catalog/$id'
     | '/admin/imports/$id'
+    | '/admin/intelligence/$id'
     | '/api/public/webhooks/asaas'
   id:
     | '__root__'
@@ -274,10 +298,12 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/catalog'
     | '/_authenticated/admin/imports'
     | '/_authenticated/admin/integrations'
+    | '/_authenticated/admin/intelligence'
     | '/_authenticated/admin/orders'
     | '/_authenticated/checkout/$orderId'
     | '/_authenticated/admin/catalog/$id'
     | '/_authenticated/admin/imports/$id'
+    | '/_authenticated/admin/intelligence/$id'
     | '/api/public/webhooks/asaas'
   fileRoutesById: FileRoutesById
 }
@@ -397,6 +423,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminOrdersRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/_authenticated/admin/intelligence': {
+      id: '/_authenticated/admin/intelligence'
+      path: '/intelligence'
+      fullPath: '/admin/intelligence'
+      preLoaderRoute: typeof AuthenticatedAdminIntelligenceRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
     '/_authenticated/admin/integrations': {
       id: '/_authenticated/admin/integrations'
       path: '/integrations'
@@ -424,6 +457,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/api/public/webhooks/asaas'
       preLoaderRoute: typeof ApiPublicWebhooksAsaasRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/admin/intelligence/$id': {
+      id: '/_authenticated/admin/intelligence/$id'
+      path: '/$id'
+      fullPath: '/admin/intelligence/$id'
+      preLoaderRoute: typeof AuthenticatedAdminIntelligenceIdRouteImport
+      parentRoute: typeof AuthenticatedAdminIntelligenceRoute
     }
     '/_authenticated/admin/imports/$id': {
       id: '/_authenticated/admin/imports/$id'
@@ -470,10 +510,26 @@ const AuthenticatedAdminImportsRouteWithChildren =
     AuthenticatedAdminImportsRouteChildren,
   )
 
+interface AuthenticatedAdminIntelligenceRouteChildren {
+  AuthenticatedAdminIntelligenceIdRoute: typeof AuthenticatedAdminIntelligenceIdRoute
+}
+
+const AuthenticatedAdminIntelligenceRouteChildren: AuthenticatedAdminIntelligenceRouteChildren =
+  {
+    AuthenticatedAdminIntelligenceIdRoute:
+      AuthenticatedAdminIntelligenceIdRoute,
+  }
+
+const AuthenticatedAdminIntelligenceRouteWithChildren =
+  AuthenticatedAdminIntelligenceRoute._addFileChildren(
+    AuthenticatedAdminIntelligenceRouteChildren,
+  )
+
 interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminCatalogRoute: typeof AuthenticatedAdminCatalogRouteWithChildren
   AuthenticatedAdminImportsRoute: typeof AuthenticatedAdminImportsRouteWithChildren
   AuthenticatedAdminIntegrationsRoute: typeof AuthenticatedAdminIntegrationsRoute
+  AuthenticatedAdminIntelligenceRoute: typeof AuthenticatedAdminIntelligenceRouteWithChildren
   AuthenticatedAdminOrdersRoute: typeof AuthenticatedAdminOrdersRoute
 }
 
@@ -481,6 +537,8 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminCatalogRoute: AuthenticatedAdminCatalogRouteWithChildren,
   AuthenticatedAdminImportsRoute: AuthenticatedAdminImportsRouteWithChildren,
   AuthenticatedAdminIntegrationsRoute: AuthenticatedAdminIntegrationsRoute,
+  AuthenticatedAdminIntelligenceRoute:
+    AuthenticatedAdminIntelligenceRouteWithChildren,
   AuthenticatedAdminOrdersRoute: AuthenticatedAdminOrdersRoute,
 }
 
