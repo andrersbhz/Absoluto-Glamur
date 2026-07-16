@@ -24,6 +24,7 @@ import { Route as AuthenticatedCheckoutRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as AuthenticatedAccountRouteImport } from './routes/_authenticated/account'
 import { Route as AuthenticatedCheckoutOrderIdRouteImport } from './routes/_authenticated/checkout.$orderId'
+import { Route as AuthenticatedAdminSettingsRouteImport } from './routes/_authenticated/admin.settings'
 import { Route as AuthenticatedAdminOrdersRouteImport } from './routes/_authenticated/admin.orders'
 import { Route as AuthenticatedAdminMarketingRouteImport } from './routes/_authenticated/admin.marketing'
 import { Route as AuthenticatedAdminIntelligenceRouteImport } from './routes/_authenticated/admin.intelligence'
@@ -111,6 +112,12 @@ const AuthenticatedCheckoutOrderIdRoute =
     id: '/$orderId',
     path: '/$orderId',
     getParentRoute: () => AuthenticatedCheckoutRoute,
+  } as any)
+const AuthenticatedAdminSettingsRoute =
+  AuthenticatedAdminSettingsRouteImport.update({
+    id: '/settings',
+    path: '/settings',
+    getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
 const AuthenticatedAdminOrdersRoute =
   AuthenticatedAdminOrdersRouteImport.update({
@@ -205,6 +212,7 @@ export interface FileRoutesByFullPath {
   '/admin/intelligence': typeof AuthenticatedAdminIntelligenceRouteWithChildren
   '/admin/marketing': typeof AuthenticatedAdminMarketingRoute
   '/admin/orders': typeof AuthenticatedAdminOrdersRoute
+  '/admin/settings': typeof AuthenticatedAdminSettingsRoute
   '/checkout/$orderId': typeof AuthenticatedCheckoutOrderIdRoute
   '/admin/catalog/$id': typeof AuthenticatedAdminCatalogIdRoute
   '/admin/imports/$id': typeof AuthenticatedAdminImportsIdRoute
@@ -233,6 +241,7 @@ export interface FileRoutesByTo {
   '/admin/intelligence': typeof AuthenticatedAdminIntelligenceRouteWithChildren
   '/admin/marketing': typeof AuthenticatedAdminMarketingRoute
   '/admin/orders': typeof AuthenticatedAdminOrdersRoute
+  '/admin/settings': typeof AuthenticatedAdminSettingsRoute
   '/checkout/$orderId': typeof AuthenticatedCheckoutOrderIdRoute
   '/admin/catalog/$id': typeof AuthenticatedAdminCatalogIdRoute
   '/admin/imports/$id': typeof AuthenticatedAdminImportsIdRoute
@@ -263,6 +272,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/intelligence': typeof AuthenticatedAdminIntelligenceRouteWithChildren
   '/_authenticated/admin/marketing': typeof AuthenticatedAdminMarketingRoute
   '/_authenticated/admin/orders': typeof AuthenticatedAdminOrdersRoute
+  '/_authenticated/admin/settings': typeof AuthenticatedAdminSettingsRoute
   '/_authenticated/checkout/$orderId': typeof AuthenticatedCheckoutOrderIdRoute
   '/_authenticated/admin/catalog/$id': typeof AuthenticatedAdminCatalogIdRoute
   '/_authenticated/admin/imports/$id': typeof AuthenticatedAdminImportsIdRoute
@@ -293,6 +303,7 @@ export interface FileRouteTypes {
     | '/admin/intelligence'
     | '/admin/marketing'
     | '/admin/orders'
+    | '/admin/settings'
     | '/checkout/$orderId'
     | '/admin/catalog/$id'
     | '/admin/imports/$id'
@@ -321,6 +332,7 @@ export interface FileRouteTypes {
     | '/admin/intelligence'
     | '/admin/marketing'
     | '/admin/orders'
+    | '/admin/settings'
     | '/checkout/$orderId'
     | '/admin/catalog/$id'
     | '/admin/imports/$id'
@@ -350,6 +362,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/intelligence'
     | '/_authenticated/admin/marketing'
     | '/_authenticated/admin/orders'
+    | '/_authenticated/admin/settings'
     | '/_authenticated/checkout/$orderId'
     | '/_authenticated/admin/catalog/$id'
     | '/_authenticated/admin/imports/$id'
@@ -473,6 +486,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/checkout/$orderId'
       preLoaderRoute: typeof AuthenticatedCheckoutOrderIdRouteImport
       parentRoute: typeof AuthenticatedCheckoutRoute
+    }
+    '/_authenticated/admin/settings': {
+      id: '/_authenticated/admin/settings'
+      path: '/settings'
+      fullPath: '/admin/settings'
+      preLoaderRoute: typeof AuthenticatedAdminSettingsRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
     }
     '/_authenticated/admin/orders': {
       id: '/_authenticated/admin/orders'
@@ -613,6 +633,7 @@ interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminIntelligenceRoute: typeof AuthenticatedAdminIntelligenceRouteWithChildren
   AuthenticatedAdminMarketingRoute: typeof AuthenticatedAdminMarketingRoute
   AuthenticatedAdminOrdersRoute: typeof AuthenticatedAdminOrdersRoute
+  AuthenticatedAdminSettingsRoute: typeof AuthenticatedAdminSettingsRoute
 }
 
 const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
@@ -625,6 +646,7 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
     AuthenticatedAdminIntelligenceRouteWithChildren,
   AuthenticatedAdminMarketingRoute: AuthenticatedAdminMarketingRoute,
   AuthenticatedAdminOrdersRoute: AuthenticatedAdminOrdersRoute,
+  AuthenticatedAdminSettingsRoute: AuthenticatedAdminSettingsRoute,
 }
 
 const AuthenticatedAdminRouteWithChildren =

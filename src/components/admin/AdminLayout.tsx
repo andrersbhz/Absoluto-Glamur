@@ -2,7 +2,7 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import {
   BarChart3, Boxes, Gauge, LayoutDashboard, LogOut, Megaphone, Package,
-  Plug, ShieldCheck, ShoppingCart, Sparkles, Users, Zap,
+  Plug, Settings, ShieldCheck, ShoppingCart, Sparkles, Users, Zap,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
