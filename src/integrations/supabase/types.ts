@@ -591,6 +591,176 @@ export type Database = {
         }
         Relationships: []
       }
+      pricing_calculations: {
+        Row: {
+          applied: boolean
+          breakdown: Json
+          computed_at: string
+          computed_by: string | null
+          cost_cents: number
+          final_price_cents: number
+          id: string
+          margin_pct: number
+          product_id: string
+          rule_id: string | null
+          suggested_price_cents: number
+        }
+        Insert: {
+          applied?: boolean
+          breakdown: Json
+          computed_at?: string
+          computed_by?: string | null
+          cost_cents: number
+          final_price_cents: number
+          id?: string
+          margin_pct: number
+          product_id: string
+          rule_id?: string | null
+          suggested_price_cents: number
+        }
+        Update: {
+          applied?: boolean
+          breakdown?: Json
+          computed_at?: string
+          computed_by?: string | null
+          cost_cents?: number
+          final_price_cents?: number
+          id?: string
+          margin_pct?: number
+          product_id?: string
+          rule_id?: string | null
+          suggested_price_cents?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pricing_calculations_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pricing_calculations_rule_id_fkey"
+            columns: ["rule_id"]
+            isOneToOne: false
+            referencedRelation: "pricing_rules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pricing_cost_components: {
+        Row: {
+          amount_cents: number
+          created_at: string
+          id: string
+          key: string
+          label: string
+          notes: string | null
+          pct_of_price: number | null
+          product_id: string
+          updated_at: string
+        }
+        Insert: {
+          amount_cents?: number
+          created_at?: string
+          id?: string
+          key: string
+          label: string
+          notes?: string | null
+          pct_of_price?: number | null
+          product_id: string
+          updated_at?: string
+        }
+        Update: {
+          amount_cents?: number
+          created_at?: string
+          id?: string
+          key?: string
+          label?: string
+          notes?: string | null
+          pct_of_price?: number | null
+          product_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pricing_cost_components_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pricing_rules: {
+        Row: {
+          applies_to_brand_id: string | null
+          applies_to_category_id: string | null
+          created_at: string
+          description: string | null
+          fixed_fee_cents: number
+          id: string
+          is_active: boolean
+          is_default: boolean
+          markup_pct: number
+          max_margin_pct: number | null
+          min_margin_pct: number | null
+          name: string
+          priority: number
+          rounding: string
+          updated_at: string
+        }
+        Insert: {
+          applies_to_brand_id?: string | null
+          applies_to_category_id?: string | null
+          created_at?: string
+          description?: string | null
+          fixed_fee_cents?: number
+          id?: string
+          is_active?: boolean
+          is_default?: boolean
+          markup_pct?: number
+          max_margin_pct?: number | null
+          min_margin_pct?: number | null
+          name: string
+          priority?: number
+          rounding?: string
+          updated_at?: string
+        }
+        Update: {
+          applies_to_brand_id?: string | null
+          applies_to_category_id?: string | null
+          created_at?: string
+          description?: string | null
+          fixed_fee_cents?: number
+          id?: string
+          is_active?: boolean
+          is_default?: boolean
+          markup_pct?: number
+          max_margin_pct?: number | null
+          min_margin_pct?: number | null
+          name?: string
+          priority?: number
+          rounding?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pricing_rules_applies_to_brand_id_fkey"
+            columns: ["applies_to_brand_id"]
+            isOneToOne: false
+            referencedRelation: "brands"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pricing_rules_applies_to_category_id_fkey"
+            columns: ["applies_to_category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       product_collections: {
         Row: {
           collection_id: string
@@ -849,6 +1019,144 @@ export type Database = {
             foreignKeyName: "product_reviews_product_id_fkey"
             columns: ["product_id"]
             isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      product_score_components: {
+        Row: {
+          created_at: string
+          id: string
+          key: string
+          label: string
+          normalized: number
+          notes: string | null
+          raw_value: number | null
+          score_id: string
+          source: string | null
+          weight: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          key: string
+          label: string
+          normalized?: number
+          notes?: string | null
+          raw_value?: number | null
+          score_id: string
+          source?: string | null
+          weight?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          key?: string
+          label?: string
+          normalized?: number
+          notes?: string | null
+          raw_value?: number | null
+          score_id?: string
+          source?: string | null
+          weight?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_score_components_score_id_fkey"
+            columns: ["score_id"]
+            isOneToOne: false
+            referencedRelation: "product_scores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      product_score_versions: {
+        Row: {
+          computed_at: string
+          computed_by: string | null
+          id: string
+          overall: number
+          product_id: string
+          snapshot: Json
+        }
+        Insert: {
+          computed_at?: string
+          computed_by?: string | null
+          id?: string
+          overall: number
+          product_id: string
+          snapshot: Json
+        }
+        Update: {
+          computed_at?: string
+          computed_by?: string | null
+          id?: string
+          overall?: number
+          product_id?: string
+          snapshot?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_score_versions_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      product_scores: {
+        Row: {
+          competitiveness: number
+          computed_at: string
+          created_at: string
+          demand: number
+          id: string
+          label: string | null
+          margin: number
+          overall: number
+          product_id: string
+          quality: number
+          recommendation: string | null
+          risk: number
+          updated_at: string
+        }
+        Insert: {
+          competitiveness?: number
+          computed_at?: string
+          created_at?: string
+          demand?: number
+          id?: string
+          label?: string | null
+          margin?: number
+          overall?: number
+          product_id: string
+          quality?: number
+          recommendation?: string | null
+          risk?: number
+          updated_at?: string
+        }
+        Update: {
+          competitiveness?: number
+          computed_at?: string
+          created_at?: string
+          demand?: number
+          id?: string
+          label?: string | null
+          margin?: number
+          overall?: number
+          product_id?: string
+          quality?: number
+          recommendation?: string | null
+          risk?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_scores_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: true
             referencedRelation: "products"
             referencedColumns: ["id"]
           },
