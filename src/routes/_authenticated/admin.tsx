@@ -123,6 +123,23 @@ function AdminHome() {
           </div>
         </div>
 
+        <div className="mt-6 rounded-2xl border border-border bg-card p-6 shadow-soft">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="font-display text-xl">Marketing & SEO</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Blocos da homepage, coleções em destaque, sitemap dinâmico e JSON-LD.
+              </p>
+            </div>
+            <Link
+              to="/admin/marketing"
+              className="rounded-lg bg-primary px-4 py-2 text-sm text-primary-foreground shadow-soft hover:opacity-90"
+            >
+              Abrir painel
+            </Link>
+          </div>
+        </div>
+
         <div className="mt-6 text-sm">
           <Link to="/account" className="text-primary hover:underline">← Voltar para minha conta</Link>
         </div>
