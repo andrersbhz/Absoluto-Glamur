@@ -624,6 +624,65 @@ export type Database = {
           },
         ]
       }
+      product_imports: {
+        Row: {
+          created_at: string
+          error: string | null
+          id: string
+          imported_by: string | null
+          markup_fixed: number | null
+          markup_percent: number | null
+          normalized_data: Json
+          product_id: string | null
+          raw_data: Json
+          source: string
+          source_id: string | null
+          source_url: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          error?: string | null
+          id?: string
+          imported_by?: string | null
+          markup_fixed?: number | null
+          markup_percent?: number | null
+          normalized_data?: Json
+          product_id?: string | null
+          raw_data?: Json
+          source: string
+          source_id?: string | null
+          source_url?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          error?: string | null
+          id?: string
+          imported_by?: string | null
+          markup_fixed?: number | null
+          markup_percent?: number | null
+          normalized_data?: Json
+          product_id?: string | null
+          raw_data?: Json
+          source?: string
+          source_id?: string | null
+          source_url?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_imports_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       product_inventory: {
         Row: {
           low_stock_threshold: number
