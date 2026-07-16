@@ -89,6 +89,23 @@ function AdminHome() {
           </ul>
         </div>
 
+        <div className="mt-6 rounded-2xl border border-border bg-card p-6 shadow-soft">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="font-display text-xl">Catálogo</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Crie e publique produtos, defina preço, estoque, mídias e SEO.
+              </p>
+            </div>
+            <Link
+              to="/admin/catalog"
+              className="rounded-lg bg-primary px-4 py-2 text-sm text-primary-foreground shadow-soft hover:opacity-90"
+            >
+              Abrir catálogo
+            </Link>
+          </div>
+        </div>
+
         <div className="mt-6 text-sm">
           <Link to="/account" className="text-primary hover:underline">← Voltar para minha conta</Link>
         </div>

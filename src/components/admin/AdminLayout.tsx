@@ -14,7 +14,7 @@ const nav: NavItem[] = [
   { label: "Visão geral", icon: LayoutDashboard, to: "/admin", phase: 1 },
   { label: "Integrações", icon: Plug, to: "/admin/integrations", phase: 1 },
   { label: "Pedidos", icon: ShoppingCart, to: "/admin/orders", phase: 3 },
-  { label: "Catálogo", icon: Package, phase: 2 },
+  { label: "Catálogo", icon: Package, to: "/admin/catalog", phase: 2 },
   { label: "Importador AliExpress", icon: Boxes, phase: 4 },
   { label: "Inteligência de produtos", icon: Sparkles, phase: 5 },
   { label: "Marketing (Google/Meta)", icon: Megaphone, phase: 6 },
