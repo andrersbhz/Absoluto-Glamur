@@ -31,15 +31,19 @@ export function AdminLayout({ children }: { children: ReactNode }) {
   const { user, roles } = useAuth();
   const { theme, toggle } = useTheme();
   const navigate = useNavigate();
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
 
   async function signOut() {
     await supabase.auth.signOut();
     navigate({ to: "/" });
   }
 
+  const isActive = (to?: string) =>
+    !!to && (to === "/admin" ? pathname === "/admin" : pathname.startsWith(to));
+
   return (
-    <div className="flex min-h-screen bg-background">
-      <aside className="hidden w-64 shrink-0 border-r border-border bg-sidebar p-4 lg:block">
+    <div className="admin-shell flex min-h-screen bg-background">
+      <aside className="hidden w-64 shrink-0 border-r border-sidebar-border bg-sidebar p-4 lg:block">
         <Link to="/" className="block font-display text-2xl text-primary">
           bloom<span className="text-plum">.</span>
           <span className="ml-2 align-top text-xs font-sans text-muted-foreground">admin</span>
@@ -47,6 +51,7 @@ export function AdminLayout({ children }: { children: ReactNode }) {
         <nav className="mt-8 space-y-1 text-sm">
           {nav.map((item) => {
             const enabled = !!item.to;
+            const active = isActive(item.to);
             const Icon = item.icon;
             const inner = (
               <span className="flex items-center gap-2">
@@ -61,7 +66,8 @@ export function AdminLayout({ children }: { children: ReactNode }) {
               <Link
                 key={item.label}
                 to={item.to}
-                className="flex rounded-lg px-3 py-2 text-sidebar-foreground transition hover:bg-sidebar-accent"
+                data-active={active || undefined}
+                className="admin-nav-link flex rounded-lg px-3 py-2 text-sidebar-foreground transition"
               >
                 {inner}
               </Link>
