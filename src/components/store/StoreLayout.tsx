@@ -1,10 +1,31 @@
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { Heart, Search, ShoppingBag, User } from "lucide-react";
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useAuth } from "@/hooks/use-auth";
+import { useQuery } from "@tanstack/react-query";
+import { categoriesQuery } from "@/lib/catalog";
+import { useCart } from "@/lib/cart-store";
 
 export function StoreLayout({ children }: { children: ReactNode }) {
   const { user } = useAuth();
+  const navigate = useNavigate();
+  const { data: categories = [] } = useQuery(categoriesQuery());
+  const cartCount = useCart((s) => s.items.reduce((n, i) => n + i.quantity, 0));
+
+  const [q, setQ] = useState("");
+  const [openSearch, setOpenSearch] = useState(false);
+
+  // debounce navigate to /products?q=...
+  useEffect(() => {
+    if (!openSearch) return;
+    const timer = setTimeout(() => {
+      if (q.trim().length >= 2) {
+        navigate({ to: "/products", search: { q: q.trim() } as never });
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [q, openSearch, navigate]);
+
   return (
     <div className="flex min-h-screen flex-col bg-background">
       <header className="sticky top-0 z-40 border-b border-border/60 bg-background/85 backdrop-blur">
@@ -13,31 +34,33 @@ export function StoreLayout({ children }: { children: ReactNode }) {
             bloom<span className="text-plum">.</span>
           </Link>
           <nav className="hidden items-center gap-6 text-sm text-muted-foreground md:flex">
-            <span className="cursor-not-allowed opacity-60" title="Fase 2">Skincare</span>
-            <span className="cursor-not-allowed opacity-60" title="Fase 2">Maquiagem</span>
-            <span className="cursor-not-allowed opacity-60" title="Fase 2">Cabelos</span>
-            <span className="cursor-not-allowed opacity-60" title="Fase 2">Kits</span>
-            <span className="cursor-not-allowed opacity-60" title="Fase 2">Ofertas</span>
+            {categories.slice(0, 5).map((c) => (
+              <Link
+                key={c.id}
+                to="/products"
+                search={{ category: c.slug } as never}
+                className="transition hover:text-foreground"
+              >
+                {c.name}
+              </Link>
+            ))}
           </nav>
           <div className="flex items-center gap-1">
             <button
               type="button"
               aria-label="Buscar"
-              className="rounded-full p-2 text-muted-foreground opacity-60 transition hover:bg-secondary"
-              disabled
-              title="Disponível na Fase 2"
+              onClick={() => setOpenSearch((v) => !v)}
+              className="rounded-full p-2 text-foreground transition hover:bg-secondary"
             >
               <Search className="h-5 w-5" />
             </button>
-            <button
-              type="button"
+            <Link
+              to={user ? "/favorites" : "/auth"}
               aria-label="Favoritos"
-              className="rounded-full p-2 text-muted-foreground opacity-60 transition hover:bg-secondary"
-              disabled
-              title="Disponível na Fase 2"
+              className="rounded-full p-2 text-foreground transition hover:bg-secondary"
             >
               <Heart className="h-5 w-5" />
-            </button>
+            </Link>
             <Link
               to={user ? "/account" : "/auth"}
               aria-label="Minha conta"
@@ -45,17 +68,33 @@ export function StoreLayout({ children }: { children: ReactNode }) {
             >
               <User className="h-5 w-5" />
             </Link>
-            <button
-              type="button"
+            <Link
+              to="/cart"
               aria-label="Carrinho"
-              className="rounded-full p-2 text-muted-foreground opacity-60 transition hover:bg-secondary"
-              disabled
-              title="Disponível na Fase 3"
+              className="relative rounded-full p-2 text-foreground transition hover:bg-secondary"
             >
               <ShoppingBag className="h-5 w-5" />
-            </button>
+              {cartCount > 0 && (
+                <span className="absolute -right-0.5 -top-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-medium text-primary-foreground">
+                  {cartCount}
+                </span>
+              )}
+            </Link>
           </div>
         </div>
+        {openSearch && (
+          <div className="border-t border-border/60 bg-background">
+            <div className="mx-auto max-w-7xl px-4 py-3 sm:px-6 lg:px-8">
+              <input
+                autoFocus
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                placeholder="Buscar produtos, marcas, categorias..."
+                className="w-full rounded-lg border border-border bg-background px-4 py-2.5 text-sm outline-none focus:border-primary"
+              />
+            </div>
+          </div>
+        )}
       </header>
 
       <main className="flex-1">{children}</main>
@@ -71,10 +110,13 @@ export function StoreLayout({ children }: { children: ReactNode }) {
           <div>
             <p className="text-sm font-medium text-foreground">Loja</p>
             <ul className="mt-3 space-y-2 text-sm text-muted-foreground">
-              <li>Skincare</li>
-              <li>Maquiagem</li>
-              <li>Cabelos</li>
-              <li>Kits</li>
+              {categories.slice(0, 5).map((c) => (
+                <li key={c.id}>
+                  <Link to="/products" search={{ category: c.slug } as never} className="hover:text-foreground">
+                    {c.name}
+                  </Link>
+                </li>
+              ))}
             </ul>
           </div>
           <div>
