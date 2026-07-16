@@ -54,19 +54,22 @@ export const computeProductScore = createServerFn({ method: "POST" })
 
     if (!product) throw new Error("Produto não encontrado");
 
-    const mediaCount = product.media?.length ?? 0;
-    const descLen = (product.description ?? "").length;
-    const hasSEO = !!(product.seo?.[0]?.title && product.seo?.[0]?.description);
-    const reviews = product.reviews ?? [];
+    const p: any = product;
+    const mediaCount = p.media?.length ?? 0;
+    const descLen = (p.description ?? "").length;
+    const seoRow = Array.isArray(p.seo) ? p.seo[0] : p.seo;
+    const hasSEO = !!(seoRow?.title && seoRow?.description);
+    const reviews = p.reviews ?? [];
     const avgRating = reviews.length
       ? reviews.reduce((s: number, r: any) => s + Number(r.rating ?? 0), 0) / reviews.length
       : 0;
 
-    const defVar = product.variants?.find((v: any) => v.is_default) ?? product.variants?.[0];
-    const stock = defVar?.inventory?.[0]?.stock ?? 0;
-    const activePrice = defVar?.prices?.find((p: any) => p.is_active);
+    const defVar = p.variants?.find((v: any) => v.is_default) ?? p.variants?.[0];
+    const invRow = Array.isArray(defVar?.inventory) ? defVar.inventory[0] : defVar?.inventory;
+    const stock = invRow?.stock ?? 0;
+    const activePrice = defVar?.prices?.find((pr: any) => pr.is_active);
     const priceCents = activePrice?.sale_price_cents ?? activePrice?.list_price_cents ?? 0;
-    const costCents = (product.costs ?? []).reduce((s: number, c: any) => s + (c.amount_cents ?? 0), 0);
+    const costCents = (p.costs ?? []).reduce((s: number, c: any) => s + (c.amount_cents ?? 0), 0);
     const marginPct = priceCents > 0 ? ((priceCents - costCents) / priceCents) * 100 : 0;
 
     const { count: favCount } = await supabaseAdmin
