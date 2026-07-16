@@ -204,7 +204,8 @@ export const createPixCheckout = createServerFn({ method: "POST" })
         pix_payload: pix.payload,
         pix_expires_at: pix.expirationDate ? new Date(pix.expirationDate).toISOString() : null,
         invoice_url: charge.invoiceUrl ?? null,
-        raw: charge as unknown as Record<string, unknown>,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        raw: charge as any,
       });
       if (payErr) throw new Error(payErr.message);
 
