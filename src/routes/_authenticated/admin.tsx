@@ -25,7 +25,7 @@ const phases = [
   { n: 3, title: "Checkout & PIX", done: true, items: ["Endereços", "Pedidos", "Asaas/PIX", "Webhooks", "Integrações"] },
   { n: 4, title: "AliExpress", done: true, items: ["Importador URL/JSON", "Markup configurável", "Publicação"] },
   { n: 5, title: "Inteligência", done: true, items: ["Scores", "Precificação", "Editor + Publicar"] },
-  { n: 6, title: "Marketing", done: false, items: ["Google Merchant", "Meta Catalog", "Campanhas"] },
+  { n: 6, title: "Marketing & SEO", done: true, items: ["Homepage blocks", "Coleções", "Sitemap dinâmico", "JSON-LD"] },
   { n: 7, title: "IA", done: false, items: ["OpenAI", "Gemini", "SEO", "Análises"] },
   { n: 8, title: "Dashboard & Compliance", done: false, items: ["Métricas", "Alertas", "Uso do plano", "Regulatório"] },
 ];
