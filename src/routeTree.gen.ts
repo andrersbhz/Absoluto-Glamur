@@ -35,8 +35,8 @@ import { Route as AuthenticatedAdminIntegrationsRouteImport } from './routes/_au
 import { Route as AuthenticatedAdminImportsRouteImport } from './routes/_authenticated/admin.imports'
 import { Route as AuthenticatedAdminDashboardRouteImport } from './routes/_authenticated/admin.dashboard'
 import { Route as AuthenticatedAdminComplianceRouteImport } from './routes/_authenticated/admin.compliance'
-import { Route as AuthenticatedAdminCatalogRouteImport } from './routes/_authenticated/admin.catalog'
 import { Route as AuthenticatedAdminAiRouteImport } from './routes/_authenticated/admin.ai'
+import { Route as AuthenticatedAdminCatalogIndexRouteImport } from './routes/_authenticated/admin.catalog.index'
 import { Route as ApiPublicWebhooksNupayRouteImport } from './routes/api/public/webhooks/nupay'
 import { Route as ApiPublicWebhooksAsaasRouteImport } from './routes/api/public/webhooks/asaas'
 import { Route as AuthenticatedAdminIntelligenceIdRouteImport } from './routes/_authenticated/admin.intelligence.$id'
@@ -181,17 +181,17 @@ const AuthenticatedAdminComplianceRoute =
     path: '/compliance',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
-const AuthenticatedAdminCatalogRoute =
-  AuthenticatedAdminCatalogRouteImport.update({
-    id: '/catalog',
-    path: '/catalog',
-    getParentRoute: () => AuthenticatedAdminRoute,
-  } as any)
 const AuthenticatedAdminAiRoute = AuthenticatedAdminAiRouteImport.update({
   id: '/ai',
   path: '/ai',
   getParentRoute: () => AuthenticatedAdminRoute,
 } as any)
+const AuthenticatedAdminCatalogIndexRoute =
+  AuthenticatedAdminCatalogIndexRouteImport.update({
+    id: '/catalog/',
+    path: '/catalog/',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
 const ApiPublicWebhooksNupayRoute = ApiPublicWebhooksNupayRouteImport.update({
   id: '/api/public/webhooks/nupay',
   path: '/api/public/webhooks/nupay',
@@ -216,9 +216,9 @@ const AuthenticatedAdminImportsIdRoute =
   } as any)
 const AuthenticatedAdminCatalogIdRoute =
   AuthenticatedAdminCatalogIdRouteImport.update({
-    id: '/$id',
-    path: '/$id',
-    getParentRoute: () => AuthenticatedAdminCatalogRoute,
+    id: '/catalog/$id',
+    path: '/catalog/$id',
+    getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
 
 export interface FileRoutesByFullPath {
@@ -236,7 +236,6 @@ export interface FileRoutesByFullPath {
   '/auth/reset-password': typeof AuthResetPasswordRoute
   '/products/$slug': typeof ProductsSlugRoute
   '/admin/ai': typeof AuthenticatedAdminAiRoute
-  '/admin/catalog': typeof AuthenticatedAdminCatalogRouteWithChildren
   '/admin/compliance': typeof AuthenticatedAdminComplianceRoute
   '/admin/dashboard': typeof AuthenticatedAdminDashboardRoute
   '/admin/imports': typeof AuthenticatedAdminImportsRouteWithChildren
@@ -254,6 +253,7 @@ export interface FileRoutesByFullPath {
   '/admin/intelligence/$id': typeof AuthenticatedAdminIntelligenceIdRoute
   '/api/public/webhooks/asaas': typeof ApiPublicWebhooksAsaasRoute
   '/api/public/webhooks/nupay': typeof ApiPublicWebhooksNupayRoute
+  '/admin/catalog/': typeof AuthenticatedAdminCatalogIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -269,7 +269,6 @@ export interface FileRoutesByTo {
   '/auth/reset-password': typeof AuthResetPasswordRoute
   '/products/$slug': typeof ProductsSlugRoute
   '/admin/ai': typeof AuthenticatedAdminAiRoute
-  '/admin/catalog': typeof AuthenticatedAdminCatalogRouteWithChildren
   '/admin/compliance': typeof AuthenticatedAdminComplianceRoute
   '/admin/dashboard': typeof AuthenticatedAdminDashboardRoute
   '/admin/imports': typeof AuthenticatedAdminImportsRouteWithChildren
@@ -287,6 +286,7 @@ export interface FileRoutesByTo {
   '/admin/intelligence/$id': typeof AuthenticatedAdminIntelligenceIdRoute
   '/api/public/webhooks/asaas': typeof ApiPublicWebhooksAsaasRoute
   '/api/public/webhooks/nupay': typeof ApiPublicWebhooksNupayRoute
+  '/admin/catalog': typeof AuthenticatedAdminCatalogIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -305,7 +305,6 @@ export interface FileRoutesById {
   '/auth/reset-password': typeof AuthResetPasswordRoute
   '/products/$slug': typeof ProductsSlugRoute
   '/_authenticated/admin/ai': typeof AuthenticatedAdminAiRoute
-  '/_authenticated/admin/catalog': typeof AuthenticatedAdminCatalogRouteWithChildren
   '/_authenticated/admin/compliance': typeof AuthenticatedAdminComplianceRoute
   '/_authenticated/admin/dashboard': typeof AuthenticatedAdminDashboardRoute
   '/_authenticated/admin/imports': typeof AuthenticatedAdminImportsRouteWithChildren
@@ -323,6 +322,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/intelligence/$id': typeof AuthenticatedAdminIntelligenceIdRoute
   '/api/public/webhooks/asaas': typeof ApiPublicWebhooksAsaasRoute
   '/api/public/webhooks/nupay': typeof ApiPublicWebhooksNupayRoute
+  '/_authenticated/admin/catalog/': typeof AuthenticatedAdminCatalogIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -341,7 +341,6 @@ export interface FileRouteTypes {
     | '/auth/reset-password'
     | '/products/$slug'
     | '/admin/ai'
-    | '/admin/catalog'
     | '/admin/compliance'
     | '/admin/dashboard'
     | '/admin/imports'
@@ -359,6 +358,7 @@ export interface FileRouteTypes {
     | '/admin/intelligence/$id'
     | '/api/public/webhooks/asaas'
     | '/api/public/webhooks/nupay'
+    | '/admin/catalog/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -374,7 +374,6 @@ export interface FileRouteTypes {
     | '/auth/reset-password'
     | '/products/$slug'
     | '/admin/ai'
-    | '/admin/catalog'
     | '/admin/compliance'
     | '/admin/dashboard'
     | '/admin/imports'
@@ -392,6 +391,7 @@ export interface FileRouteTypes {
     | '/admin/intelligence/$id'
     | '/api/public/webhooks/asaas'
     | '/api/public/webhooks/nupay'
+    | '/admin/catalog'
   id:
     | '__root__'
     | '/'
@@ -409,7 +409,6 @@ export interface FileRouteTypes {
     | '/auth/reset-password'
     | '/products/$slug'
     | '/_authenticated/admin/ai'
-    | '/_authenticated/admin/catalog'
     | '/_authenticated/admin/compliance'
     | '/_authenticated/admin/dashboard'
     | '/_authenticated/admin/imports'
@@ -427,6 +426,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/intelligence/$id'
     | '/api/public/webhooks/asaas'
     | '/api/public/webhooks/nupay'
+    | '/_authenticated/admin/catalog/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -624,18 +624,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminComplianceRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
-    '/_authenticated/admin/catalog': {
-      id: '/_authenticated/admin/catalog'
-      path: '/catalog'
-      fullPath: '/admin/catalog'
-      preLoaderRoute: typeof AuthenticatedAdminCatalogRouteImport
-      parentRoute: typeof AuthenticatedAdminRoute
-    }
     '/_authenticated/admin/ai': {
       id: '/_authenticated/admin/ai'
       path: '/ai'
       fullPath: '/admin/ai'
       preLoaderRoute: typeof AuthenticatedAdminAiRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/admin/catalog/': {
+      id: '/_authenticated/admin/catalog/'
+      path: '/catalog'
+      fullPath: '/admin/catalog/'
+      preLoaderRoute: typeof AuthenticatedAdminCatalogIndexRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
     '/api/public/webhooks/nupay': {
@@ -668,27 +668,13 @@ declare module '@tanstack/react-router' {
     }
     '/_authenticated/admin/catalog/$id': {
       id: '/_authenticated/admin/catalog/$id'
-      path: '/$id'
+      path: '/catalog/$id'
       fullPath: '/admin/catalog/$id'
       preLoaderRoute: typeof AuthenticatedAdminCatalogIdRouteImport
-      parentRoute: typeof AuthenticatedAdminCatalogRoute
+      parentRoute: typeof AuthenticatedAdminRoute
     }
   }
 }
-
-interface AuthenticatedAdminCatalogRouteChildren {
-  AuthenticatedAdminCatalogIdRoute: typeof AuthenticatedAdminCatalogIdRoute
-}
-
-const AuthenticatedAdminCatalogRouteChildren: AuthenticatedAdminCatalogRouteChildren =
-  {
-    AuthenticatedAdminCatalogIdRoute: AuthenticatedAdminCatalogIdRoute,
-  }
-
-const AuthenticatedAdminCatalogRouteWithChildren =
-  AuthenticatedAdminCatalogRoute._addFileChildren(
-    AuthenticatedAdminCatalogRouteChildren,
-  )
 
 interface AuthenticatedAdminImportsRouteChildren {
   AuthenticatedAdminImportsIdRoute: typeof AuthenticatedAdminImportsIdRoute
@@ -721,7 +707,6 @@ const AuthenticatedAdminIntelligenceRouteWithChildren =
 
 interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminAiRoute: typeof AuthenticatedAdminAiRoute
-  AuthenticatedAdminCatalogRoute: typeof AuthenticatedAdminCatalogRouteWithChildren
   AuthenticatedAdminComplianceRoute: typeof AuthenticatedAdminComplianceRoute
   AuthenticatedAdminDashboardRoute: typeof AuthenticatedAdminDashboardRoute
   AuthenticatedAdminImportsRoute: typeof AuthenticatedAdminImportsRouteWithChildren
@@ -733,11 +718,12 @@ interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminUsageRoute: typeof AuthenticatedAdminUsageRoute
   AuthenticatedAdminUsersRoute: typeof AuthenticatedAdminUsersRoute
   AuthenticatedAdminIndexRoute: typeof AuthenticatedAdminIndexRoute
+  AuthenticatedAdminCatalogIdRoute: typeof AuthenticatedAdminCatalogIdRoute
+  AuthenticatedAdminCatalogIndexRoute: typeof AuthenticatedAdminCatalogIndexRoute
 }
 
 const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminAiRoute: AuthenticatedAdminAiRoute,
-  AuthenticatedAdminCatalogRoute: AuthenticatedAdminCatalogRouteWithChildren,
   AuthenticatedAdminComplianceRoute: AuthenticatedAdminComplianceRoute,
   AuthenticatedAdminDashboardRoute: AuthenticatedAdminDashboardRoute,
   AuthenticatedAdminImportsRoute: AuthenticatedAdminImportsRouteWithChildren,
@@ -750,6 +736,8 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminUsageRoute: AuthenticatedAdminUsageRoute,
   AuthenticatedAdminUsersRoute: AuthenticatedAdminUsersRoute,
   AuthenticatedAdminIndexRoute: AuthenticatedAdminIndexRoute,
+  AuthenticatedAdminCatalogIdRoute: AuthenticatedAdminCatalogIdRoute,
+  AuthenticatedAdminCatalogIndexRoute: AuthenticatedAdminCatalogIndexRoute,
 }
 
 const AuthenticatedAdminRouteWithChildren =
