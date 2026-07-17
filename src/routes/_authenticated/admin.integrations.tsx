@@ -346,3 +346,108 @@ function IntegrationCard({ integration }: { integration: Integration }) {
     </div>
   );
 }
+
+const PROVIDER_OPTIONS: { id: string; label: string }[] = [
+  { id: "asaas", label: "Asaas" },
+  { id: "nupay", label: "NuPay (Nubank)" },
+  { id: "stripe", label: "Stripe" },
+  { id: "mercadopago", label: "Mercado Pago" },
+];
+
+const METHOD_LABELS: Record<PaymentMethodKey, string> = {
+  pix: "PIX",
+  credit_card: "Cartão de crédito",
+  boleto: "Boleto bancário",
+  nubank_redirect: "Pagar com Nubank",
+};
+
+function RoutingPanel() {
+  const qc = useQueryClient();
+  const listFn = useServerFn(listAdminRouting);
+  const updateFn = useServerFn(updateRouting);
+  const q = useQuery({ queryKey: ["admin-routing"], queryFn: () => listFn() });
+
+  const mut = useMutation({
+    mutationFn: (input: {
+      method: PaymentMethodKey;
+      provider?: string;
+      enabled?: boolean;
+    }) => updateFn({ data: input }),
+    onSuccess: () => {
+      toast.success("Roteamento atualizado");
+      qc.invalidateQueries({ queryKey: ["admin-routing"] });
+      qc.invalidateQueries({ queryKey: ["checkout-methods"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const rows: CheckoutMethodDTO[] = q.data ?? [];
+
+  return (
+    <section className="mt-10">
+      <div className="flex items-center gap-2">
+        <RouteIcon className="h-4 w-4 text-primary" />
+        <h2 className="text-xs uppercase tracking-widest text-muted-foreground">
+          Roteamento de métodos
+        </h2>
+      </div>
+      <p className="mt-1 text-xs text-muted-foreground">
+        Escolha qual provedor processa cada método. Configuração híbrida — ex.: PIX via Asaas + cartão via Stripe + Nubank via NuPay.
+      </p>
+      <div className="mt-3 overflow-hidden rounded-2xl border border-border bg-card shadow-soft">
+        <table className="w-full text-sm">
+          <thead className="bg-secondary/40 text-xs uppercase tracking-widest text-muted-foreground">
+            <tr>
+              <th className="px-4 py-2 text-left">Método</th>
+              <th className="px-4 py-2 text-left">Provedor</th>
+              <th className="px-4 py-2 text-left">Ativo</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r) => (
+              <tr key={r.method} className="border-t border-border">
+                <td className="px-4 py-3 font-medium">{METHOD_LABELS[r.method]}</td>
+                <td className="px-4 py-3">
+                  <select
+                    value={r.provider}
+                    onChange={(e) =>
+                      mut.mutate({ method: r.method, provider: e.target.value })
+                    }
+                    className="rounded-md border border-border bg-background px-2 py-1 text-sm"
+                  >
+                    {PROVIDER_OPTIONS.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.label}
+                      </option>
+                    ))}
+                  </select>
+                </td>
+                <td className="px-4 py-3">
+                  <label className="inline-flex cursor-pointer items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={r.enabled}
+                      onChange={(e) =>
+                        mut.mutate({ method: r.method, enabled: e.target.checked })
+                      }
+                    />
+                    <span className="text-xs text-muted-foreground">
+                      {r.enabled ? "Visível no checkout" : "Oculto"}
+                    </span>
+                  </label>
+                </td>
+              </tr>
+            ))}
+            {rows.length === 0 && (
+              <tr>
+                <td colSpan={3} className="px-4 py-6 text-center text-xs text-muted-foreground">
+                  {q.isLoading ? "Carregando…" : "Nenhum método configurado."}
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
