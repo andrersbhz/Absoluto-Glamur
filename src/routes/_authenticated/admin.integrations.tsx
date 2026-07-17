@@ -77,6 +77,8 @@ function IntegrationsPage() {
           </p>
         )}
 
+        <RoutingPanel />
+
         <div className="mt-8 space-y-10">
           {Object.entries(grouped).map(([cat, items]) => (
             <section key={cat}>
