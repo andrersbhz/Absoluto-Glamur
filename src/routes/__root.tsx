@@ -86,14 +86,17 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:title", content: "Absoluto Glamur · Cosméticos premium" },
       {
         property: "og:description",
-        content: "Curadoria feminina de skincare, maquiagem e cabelos.",
+        content: "Absoluto Glamur — beleza, skincare e maquiagem selecionadas com curadoria. Loja online com envio para todo o Brasil.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "Absoluto Glamur · Cosméticos premium" },
+      { name: "twitter:description", content: "Absoluto Glamur — beleza, skincare e maquiagem selecionadas com curadoria. Loja online com envio para todo o Brasil." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/be040f5f-bd15-4a98-8b8d-e90c140eacaf/id-preview-0aae106e--c8e28b23-eac8-4d4a-9c23-26a7e47a2ec8.lovable.app-1784319380473.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/be040f5f-bd15-4a98-8b8d-e90c140eacaf/id-preview-0aae106e--c8e28b23-eac8-4d4a-9c23-26a7e47a2ec8.lovable.app-1784319380473.png" },
     ],
     links: [
       { rel: "stylesheet", href: appCss },
-      { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       {
