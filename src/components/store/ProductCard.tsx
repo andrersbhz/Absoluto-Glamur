@@ -36,7 +36,7 @@ export function ProductCard({ product }: { product: ProductListItem }) {
           />
         ) : (
           <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-primary/30 to-plum text-primary-foreground/60">
-            <span className="font-display text-4xl opacity-40">bloom.</span>
+            <span className="font-display text-4xl opacity-40">absoluto glamur.</span>
           </div>
         )}
       </Link>

@@ -22,7 +22,7 @@ import {
 } from "@/lib/payment-routing.functions";
 
 export const Route = createFileRoute("/_authenticated/admin/integrations")({
-  head: () => ({ meta: [{ title: "Integrações · Admin Bloom" }] }),
+  head: () => ({ meta: [{ title: "Integrações · Admin Absoluto Glamur" }] }),
   beforeLoad: async () => {
     const { data: userData } = await supabase.auth.getUser();
     if (!userData.user) throw redirect({ to: "/auth" });

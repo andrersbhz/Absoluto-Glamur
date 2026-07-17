@@ -3,7 +3,7 @@ import { AdminLayout } from "@/components/admin/AdminLayout";
 import { Badge } from "@/components/ui/badge";
 
 export const Route = createFileRoute("/_authenticated/admin/")({
-  head: () => ({ meta: [{ title: "Visão geral · Admin Bloom" }] }),
+  head: () => ({ meta: [{ title: "Visão geral · Admin Absoluto Glamur" }] }),
   component: AdminHome,
 });
 
@@ -22,7 +22,7 @@ function AdminHome() {
   return (
     <AdminLayout>
       <div className="mx-auto max-w-5xl">
-        <h1 className="font-display text-3xl">Bem-vinda ao Bloom Admin</h1>
+        <h1 className="font-display text-3xl">Bem-vinda ao Absoluto Glamur Admin</h1>
         <p className="mt-2 text-muted-foreground">
           Todas as fases do sistema estão concluídas e cada módulo administrativo está conectado a dados dinâmicos.
         </p>

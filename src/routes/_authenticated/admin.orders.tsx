@@ -6,7 +6,7 @@ import { formatBRL } from "@/lib/format";
 import { Badge } from "@/components/ui/badge";
 
 export const Route = createFileRoute("/_authenticated/admin/orders")({
-  head: () => ({ meta: [{ title: "Pedidos · Admin Bloom" }] }),
+  head: () => ({ meta: [{ title: "Pedidos · Admin Absoluto Glamur" }] }),
   beforeLoad: async () => {
     const { data: userData } = await supabase.auth.getUser();
     if (!userData.user) throw redirect({ to: "/auth" });

@@ -15,7 +15,7 @@ export const Route = createFileRoute("/products")({
   validateSearch: (search) => searchSchema.parse(search),
   head: () => ({
     meta: [
-      { title: "Produtos · Bloom" },
+      { title: "Produtos · Absoluto Glamur" },
       { name: "description", content: "Explore nosso catálogo de skincare, maquiagem e cabelos." },
     ],
   }),

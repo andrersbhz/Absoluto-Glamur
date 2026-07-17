@@ -102,7 +102,7 @@ export function StoreLayout({ children }: { children: ReactNode }) {
       <footer className="mt-16 border-t border-border/60 bg-secondary/40">
         <div className="mx-auto grid max-w-7xl gap-8 px-4 py-12 sm:grid-cols-2 lg:grid-cols-4 lg:px-8">
           <div>
-            <p className="font-display text-2xl text-primary">bloom<span className="text-plum">.</span></p>
+            <p className="font-display text-2xl text-primary">absoluto glamur<span className="text-plum">.</span></p>
             <p className="mt-3 max-w-xs text-sm text-muted-foreground">
               Curadoria feminina de skincare, maquiagem e cabelos com envio para todo o Brasil.
             </p>
@@ -138,7 +138,7 @@ export function StoreLayout({ children }: { children: ReactNode }) {
           </div>
         </div>
         <div className="border-t border-border/60 py-4 text-center text-xs text-muted-foreground">
-          © {new Date().getFullYear()} Bloom Cosméticos. Todos os direitos reservados.
+          © {new Date().getFullYear()} Absoluto Glamur Cosméticos. Todos os direitos reservados.
         </div>
       </footer>
     </div>

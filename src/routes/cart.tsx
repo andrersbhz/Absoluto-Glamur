@@ -5,7 +5,7 @@ import { cartTotals, useCart } from "@/lib/cart-store";
 import { formatBRL } from "@/lib/format";
 
 export const Route = createFileRoute("/cart")({
-  head: () => ({ meta: [{ title: "Carrinho · Bloom" }] }),
+  head: () => ({ meta: [{ title: "Carrinho · Absoluto Glamur" }] }),
   component: CartPage,
 });
 

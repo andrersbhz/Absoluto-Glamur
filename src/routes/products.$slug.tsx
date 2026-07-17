@@ -16,7 +16,7 @@ export const Route = createFileRoute("/products/$slug")({
     return { product };
   },
   head: ({ loaderData, params }) => {
-    if (!loaderData) return { meta: [{ title: "Produto não encontrado · Bloom" }, { name: "robots", content: "noindex" }] };
+    if (!loaderData) return { meta: [{ title: "Produto não encontrado · Absoluto Glamur" }, { name: "robots", content: "noindex" }] };
     const p = loaderData.product;
     const image = p.seo?.og_image_url ?? p.media?.[0]?.url ?? undefined;
     const defaultVariant = p.variants?.find((v) => v.is_default) ?? p.variants?.[0];
@@ -25,7 +25,7 @@ export const Route = createFileRoute("/products/$slug")({
       activePrice && ((activePrice.sale_price_cents ?? activePrice.list_price_cents) / 100).toFixed(2);
     return {
       meta: [
-        { title: (p.seo?.meta_title ?? p.name) + " · Bloom" },
+        { title: (p.seo?.meta_title ?? p.name) + " · Absoluto Glamur" },
         { name: "description", content: p.seo?.meta_description ?? p.short_description ?? p.name },
         { property: "og:title", content: p.seo?.meta_title ?? p.name },
         { property: "og:description", content: p.seo?.meta_description ?? p.short_description ?? "" },
@@ -119,7 +119,7 @@ function ProductPage() {
                 <img src={cover} alt={media[0]?.alt ?? product.name} className="h-full w-full object-cover" />
               ) : (
                 <div className="flex h-full items-center justify-center bg-gradient-to-br from-primary/40 to-plum">
-                  <span className="font-display text-6xl text-primary-foreground/40">bloom.</span>
+                  <span className="font-display text-6xl text-primary-foreground/40">absoluto glamur.</span>
                 </div>
               )}
             </div>

@@ -1,4 +1,4 @@
-# Arquitetura — Bloom Cosméticos
+# Arquitetura — Absoluto Glamur Cosméticos
 
 ## Stack
 

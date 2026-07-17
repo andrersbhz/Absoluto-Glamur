@@ -16,7 +16,7 @@ async function assertAiAccess(context: any) {
 }
 
 // Guardrails: avoid regulatory/medical claims typical of cosmetics scams.
-const SYSTEM_BASE = `Você é a IA de conteúdo da Bloom, uma loja de cosméticos brasileira.
+const SYSTEM_BASE = `Você é a IA de conteúdo da Absoluto Glamur, uma loja de cosméticos brasileira.
 Regras obrigatórias:
 - Escreva em português do Brasil, tom acolhedor, elegante e claro.
 - NUNCA prometa cura, tratamento médico, resultados milagrosos ou comparações com medicamentos.

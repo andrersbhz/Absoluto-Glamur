@@ -7,7 +7,7 @@ import { useAuth } from "@/hooks/use-auth";
 import type { ProductListItem } from "@/lib/catalog";
 
 export const Route = createFileRoute("/_authenticated/favorites")({
-  head: () => ({ meta: [{ title: "Favoritos · Bloom" }, { name: "robots", content: "noindex" }] }),
+  head: () => ({ meta: [{ title: "Favoritos · Absoluto Glamur" }, { name: "robots", content: "noindex" }] }),
   component: FavoritesPage,
 });
 

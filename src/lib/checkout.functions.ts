@@ -251,7 +251,7 @@ async function handleAsaasPix(ctx: OrderContext, integ: any) {
       billingType: "PIX",
       value: ctx.total / 100,
       dueDate: due,
-      description: `Pedido ${ctx.code} · Bloom Cosméticos`,
+      description: `Pedido ${ctx.code} · Absoluto Glamur Cosméticos`,
       externalReference: ctx.orderId,
     }),
   });
@@ -307,7 +307,7 @@ async function handleAsaasBoleto(ctx: OrderContext, integ: any) {
         billingType: "BOLETO",
         value: ctx.total / 100,
         dueDate: due,
-        description: `Pedido ${ctx.code} · Bloom Cosméticos`,
+        description: `Pedido ${ctx.code} · Absoluto Glamur Cosméticos`,
         externalReference: ctx.orderId,
       }),
     },
@@ -364,7 +364,7 @@ async function handleNuPayRedirect(ctx: OrderContext, integ: any) {
         tax_id: ctx.document,
         phone: ctx.phone,
       },
-      description: `Pedido ${ctx.code} · Bloom Cosméticos`,
+      description: `Pedido ${ctx.code} · Absoluto Glamur Cosméticos`,
       return_url: returnUrl,
     }),
   });
