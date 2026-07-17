@@ -285,7 +285,7 @@ export const scrapeUrlPreview = createServerFn({ method: "POST" })
 
     // Convert price to BRL
     let priceBrl: number | null = raw.price_original;
-    const srcCurrency = (raw.currency ?? "USD").toUpperCase();
+    const srcCurrency = (raw.currency ?? "BRL").toUpperCase();
     if (raw.price_original != null && srcCurrency !== "BRL") {
       const live = await fetchFxToBrl(srcCurrency);
       const rate = live ?? settings.fx_rate;
