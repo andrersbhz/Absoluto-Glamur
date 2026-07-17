@@ -202,7 +202,7 @@ async function scrapeViaFirecrawl(url: string): Promise<NormalizedProduct> {
     description: j.description || md.slice(0, 4000) || null,
     images: Array.isArray(j.images) ? j.images.filter((s: unknown) => typeof s === "string").slice(0, 10) : [],
     price_original: typeof j.price === "number" ? j.price : null,
-    currency: typeof j.currency === "string" ? j.currency : "USD",
+    currency: typeof j.currency === "string" ? j.currency : "BRL",
     sku: typeof j.sku === "string" ? j.sku : null,
     weight_grams: typeof j.weight_grams === "number" ? Math.round(j.weight_grams) : null,
     source_url: url,
