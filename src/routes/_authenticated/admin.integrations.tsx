@@ -318,7 +318,7 @@ function IntegrationCard({ integration }: { integration: Integration }) {
                 className="w-full rounded-lg border border-border bg-background px-3 py-2 font-mono text-sm"
               />
               <span className="mt-1 block text-[11px] text-muted-foreground">
-                No Asaas: Configurações → Notificações via webhook. Cadastre a URL acima e este token.
+                Cadastre a URL acima e este token no painel do provedor ({integration.provider}).
               </span>
             </label>
           )}
@@ -331,6 +331,7 @@ function IntegrationCard({ integration }: { integration: Integration }) {
                   enabled,
                   api_key: apiKey ? apiKey : undefined,
                   webhook_token: webhookToken ? webhookToken : undefined,
+                  config: isNuPay && merchantKey ? { merchant_key: merchantKey } : undefined,
                 })
               }
               disabled={saveMut.isPending}
