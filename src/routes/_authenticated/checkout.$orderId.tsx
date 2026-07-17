@@ -20,11 +20,14 @@ type OrderWithPayment = {
   paid_at: string | null;
   payments: {
     status: string;
+    method: string;
+    provider: string;
     pix_qr_code: string | null;
     pix_payload: string | null;
     pix_expires_at: string | null;
     amount_cents: number;
     invoice_url: string | null;
+    redirect_url: string | null;
   }[];
 };
 
@@ -37,7 +40,7 @@ function PixPage() {
       const { data, error } = await supabase
         .from("orders")
         .select(
-          "id, code, status, total_cents, paid_at, payments(status, pix_qr_code, pix_payload, pix_expires_at, amount_cents, invoice_url)",
+          "id, code, status, total_cents, paid_at, payments(status, method, provider, pix_qr_code, pix_payload, pix_expires_at, amount_cents, invoice_url, redirect_url)",
         )
         .eq("id", orderId)
         .maybeSingle();
@@ -72,8 +75,14 @@ function PixPage() {
 
             {paid ? (
               <PaidState orderCode={order.code} />
-            ) : payment ? (
+            ) : payment && payment.method === "pix" && payment.pix_qr_code ? (
               <PendingState payment={payment} expiresAt={payment.pix_expires_at} />
+            ) : payment && (payment.redirect_url || payment.invoice_url) ? (
+              <RedirectState
+                url={payment.redirect_url ?? payment.invoice_url!}
+                provider={payment.provider}
+                method={payment.method}
+              />
             ) : (
               <p className="mt-8 text-sm text-destructive">
                 Pagamento não gerado. Volte ao checkout e tente novamente.
@@ -204,4 +213,44 @@ function formatRemaining(ms: number) {
   const s = totalSec % 60;
   const pad = (n: number) => n.toString().padStart(2, "0");
   return h > 0 ? `${h}h ${pad(m)}min` : `${pad(m)}:${pad(s)}`;
+}
+
+function RedirectState({
+  url,
+  provider,
+  method,
+}: {
+  url: string;
+  provider: string;
+  method: string;
+}) {
+  const label =
+    method === "boleto"
+      ? "Abrir boleto"
+      : provider === "nupay"
+        ? "Continuar no app Nubank"
+        : "Continuar no gateway";
+  return (
+    <div className="mt-8 rounded-2xl border border-border bg-card p-8 text-center shadow-soft">
+      <h2 className="font-display text-2xl">Finalize seu pagamento</h2>
+      <p className="mt-2 text-sm text-muted-foreground">
+        Você será redirecionado para <span className="font-medium capitalize">{provider}</span> para concluir. A confirmação retorna automaticamente aqui.
+      </p>
+      <a
+        href={url}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="mt-6 inline-block rounded-lg bg-primary px-6 py-3 text-sm font-medium text-primary-foreground shadow-soft"
+      >
+        {label}
+      </a>
+      <p className="mt-4 inline-flex items-center gap-2 text-xs text-muted-foreground">
+        <span className="relative inline-flex h-2 w-2">
+          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-70" />
+          <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
+        </span>
+        Aguardando confirmação do gateway…
+      </p>
+    </div>
+  );
 }

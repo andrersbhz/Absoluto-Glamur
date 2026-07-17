@@ -30,34 +30,65 @@ const CheckoutSchema = z.object({
   address: AddressSchema,
   saveAddress: z.boolean().optional(),
   notes: z.string().max(500).optional().nullable(),
+  method: z.enum(["pix", "credit_card", "boleto", "nubank_redirect"]).optional(),
+  returnUrl: z.string().url().optional(),
 });
 export type CheckoutInput = z.infer<typeof CheckoutSchema>;
 
+type OrderItemInsert = {
+  product_id: string;
+  variant_id: string;
+  product_name: string;
+  variant_name: string | null;
+  slug: string;
+  image_url: string | null;
+  unit_cents: number;
+  quantity: number;
+  total_cents: number;
+};
 
-export const createPixCheckout = createServerFn({ method: "POST" })
+type OrderContext = {
+  orderId: string;
+  code: string;
+  total: number;
+  document: string;
+  phone: string;
+  data: CheckoutInput;
+};
+
+export const createCheckout = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((v: unknown) => CheckoutSchema.parse(v))
   .handler(async ({ data, context }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { asaasFetch } = await import("./asaas.server");
+    const method = data.method ?? "pix";
 
-    // 1) Config Asaas
+    // 1) Resolver provedor via routing table
+    const { data: route } = await supabaseAdmin
+      .from("payment_method_routing")
+      .select("provider, enabled")
+      .eq("method", method)
+      .maybeSingle();
+    if (!route?.enabled) {
+      throw new Error(
+        `Método "${method}" não está habilitado. Peça ao administrador para ativar em Admin → Integrações.`,
+      );
+    }
+    const provider = route.provider;
+
+    // 2) Carrega credenciais do provedor
     const { data: integ } = await supabaseAdmin
       .from("integrations")
-      .select("api_key, mode, enabled")
-      .eq("provider", "asaas")
+      .select("api_key, mode, enabled, webhook_token, config")
+      .eq("provider", provider)
       .maybeSingle();
     if (!integ?.enabled || !integ.api_key) {
       throw new Error(
-        "Pagamento indisponível. Peça ao administrador para configurar e ativar o Asaas em Integrações.",
+        `Provedor "${provider}" não está configurado. Peça ao administrador para configurá-lo em Admin → Integrações.`,
       );
     }
-    const asaasCfg = {
-      apiKey: integ.api_key,
-      env: (integ.mode as "sandbox" | "production") ?? "sandbox",
-    };
 
-    // 2) Preços autoritativos do banco (nunca confiar no cliente)
+    // 3) Preços autoritativos + itens
     const variantIds = data.items.map((i) => i.variantId);
     const { data: variants, error: varErr } = await supabaseAdmin
       .from("product_variants")
@@ -81,7 +112,7 @@ export const createPixCheckout = createServerFn({ method: "POST" })
     const vmap = new Map<string, VariantRow>();
     (variants as unknown as VariantRow[] | null)?.forEach((v) => vmap.set(v.id, v));
 
-    const orderItems = data.items.map((i) => {
+    const orderItems: OrderItemInsert[] = data.items.map((i) => {
       const v = vmap.get(i.variantId);
       if (!v || !v.is_active || !v.product?.is_active) {
         throw new Error("Um dos produtos não está mais disponível.");
@@ -111,11 +142,11 @@ export const createPixCheckout = createServerFn({ method: "POST" })
     });
 
     const subtotal = orderItems.reduce((s, i) => s + i.total_cents, 0);
-    const shipping = 0; // Frete grátis nesta fase
+    const shipping = 0;
     const total = subtotal + shipping;
     if (total < 100) throw new Error("Valor mínimo do pedido é R$ 1,00.");
 
-    // 3) Cria pedido + itens
+    // 4) Cria pedido
     const { data: codeData } = await supabaseAdmin.rpc("generate_order_code");
     const code = (codeData as unknown as string) ?? `BL-${Date.now()}`;
     const document = data.customer.document.replace(/\D/g, "");
@@ -162,62 +193,203 @@ export const createPixCheckout = createServerFn({ method: "POST" })
       });
     }
 
-    // 4) Cria cliente + cobrança PIX no Asaas
+    const ctx: OrderContext = { orderId: order.id, code: order.code, total, document, phone, data };
+
+    // 5) Dispatch para o adapter certo
     try {
-      const customer = await asaasFetch<{ id: string }>(asaasCfg, "/customers", {
-        method: "POST",
-        body: JSON.stringify({
-          name: data.customer.name,
-          email: data.customer.email,
-          cpfCnpj: document,
-          mobilePhone: phone,
-          externalReference: context.userId,
-        }),
-      });
-
-      const due = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
-      const charge = await asaasFetch<{ id: string; invoiceUrl?: string }>(asaasCfg, "/payments", {
-        method: "POST",
-        body: JSON.stringify({
-          customer: customer.id,
-          billingType: "PIX",
-          value: total / 100,
-          dueDate: due,
-          description: `Pedido ${code} · Bloom Cosméticos`,
-          externalReference: order.id,
-        }),
-      });
-
-      const pix = await asaasFetch<{
-        encodedImage: string;
-        payload: string;
-        expirationDate?: string;
-      }>(asaasCfg, `/payments/${charge.id}/pixQrCode`);
-
-      const { error: payErr } = await supabaseAdmin.from("payments").insert({
-        order_id: order.id,
-        provider: "asaas",
-        method: "pix",
-        status: "pending",
-        amount_cents: total,
-        external_id: charge.id,
-        external_customer_id: customer.id,
-        pix_qr_code: pix.encodedImage,
-        pix_payload: pix.payload,
-        pix_expires_at: pix.expirationDate ? new Date(pix.expirationDate).toISOString() : null,
-        invoice_url: charge.invoiceUrl ?? null,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        raw: charge as any,
-      });
-      if (payErr) throw new Error(payErr.message);
-
-      return { orderId: order.id, code: order.code };
+      if (provider === "asaas" && method === "pix") {
+        return await handleAsaasPix(ctx, integ);
+      }
+      if (provider === "asaas" && method === "boleto") {
+        return await handleAsaasBoleto(ctx, integ);
+      }
+      if (provider === "nupay" && method === "nubank_redirect") {
+        return await handleNuPayRedirect(ctx, integ);
+      }
+      throw new Error(
+        `Combinação provedor="${provider}" + método="${method}" ainda não é suportada.`,
+      );
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       await supabaseAdmin
         .from("orders")
         .update({ status: "failed", notes: `Falha no gateway: ${msg}` })
         .eq("id", order.id);
-      throw new Error(`Não conseguimos gerar o PIX: ${msg}`);
+      throw new Error(`Não conseguimos iniciar o pagamento: ${msg}`);
     }
   });
+
+/** Backward-compat: rota antiga /checkout continua chamando createPixCheckout. */
+export const createPixCheckout = createCheckout;
+
+// ------------ Adapters ------------
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function handleAsaasPix(ctx: OrderContext, integ: any) {
+  const { asaasFetch } = await import("./asaas.server");
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const cfg = {
+    apiKey: integ.api_key as string,
+    env: (integ.mode as "sandbox" | "production") ?? "sandbox",
+  };
+
+  const customer = await asaasFetch<{ id: string }>(cfg, "/customers", {
+    method: "POST",
+    body: JSON.stringify({
+      name: ctx.data.customer.name,
+      email: ctx.data.customer.email,
+      cpfCnpj: ctx.document,
+      mobilePhone: ctx.phone,
+      externalReference: ctx.orderId,
+    }),
+  });
+  const due = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const charge = await asaasFetch<{ id: string; invoiceUrl?: string }>(cfg, "/payments", {
+    method: "POST",
+    body: JSON.stringify({
+      customer: customer.id,
+      billingType: "PIX",
+      value: ctx.total / 100,
+      dueDate: due,
+      description: `Pedido ${ctx.code} · Bloom Cosméticos`,
+      externalReference: ctx.orderId,
+    }),
+  });
+  const pix = await asaasFetch<{ encodedImage: string; payload: string; expirationDate?: string }>(
+    cfg,
+    `/payments/${charge.id}/pixQrCode`,
+  );
+
+  const { error } = await supabaseAdmin.from("payments").insert({
+    order_id: ctx.orderId,
+    provider: "asaas",
+    method: "pix",
+    status: "pending",
+    amount_cents: ctx.total,
+    external_id: charge.id,
+    external_customer_id: customer.id,
+    pix_qr_code: pix.encodedImage,
+    pix_payload: pix.payload,
+    pix_expires_at: pix.expirationDate ? new Date(pix.expirationDate).toISOString() : null,
+    invoice_url: charge.invoiceUrl ?? null,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    raw: charge as any,
+  });
+  if (error) throw new Error(error.message);
+  return { orderId: ctx.orderId, code: ctx.code, method: "pix" as const };
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function handleAsaasBoleto(ctx: OrderContext, integ: any) {
+  const { asaasFetch } = await import("./asaas.server");
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const cfg = {
+    apiKey: integ.api_key as string,
+    env: (integ.mode as "sandbox" | "production") ?? "sandbox",
+  };
+  const customer = await asaasFetch<{ id: string }>(cfg, "/customers", {
+    method: "POST",
+    body: JSON.stringify({
+      name: ctx.data.customer.name,
+      email: ctx.data.customer.email,
+      cpfCnpj: ctx.document,
+      mobilePhone: ctx.phone,
+    }),
+  });
+  const due = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  const charge = await asaasFetch<{ id: string; invoiceUrl?: string; bankSlipUrl?: string }>(
+    cfg,
+    "/payments",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        customer: customer.id,
+        billingType: "BOLETO",
+        value: ctx.total / 100,
+        dueDate: due,
+        description: `Pedido ${ctx.code} · Bloom Cosméticos`,
+        externalReference: ctx.orderId,
+      }),
+    },
+  );
+
+  const { error } = await supabaseAdmin.from("payments").insert({
+    order_id: ctx.orderId,
+    provider: "asaas",
+    method: "boleto",
+    status: "pending",
+    amount_cents: ctx.total,
+    external_id: charge.id,
+    external_customer_id: customer.id,
+    invoice_url: charge.bankSlipUrl ?? charge.invoiceUrl ?? null,
+    redirect_url: charge.bankSlipUrl ?? charge.invoiceUrl ?? null,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    raw: charge as any,
+  });
+  if (error) throw new Error(error.message);
+  return { orderId: ctx.orderId, code: ctx.code, method: "boleto" as const };
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function handleNuPayRedirect(ctx: OrderContext, integ: any) {
+  const { nupayFetch } = await import("./nupay.server");
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const merchantKey = (integ.config?.merchant_key as string | undefined) ?? "";
+  const merchantToken = integ.api_key as string;
+  if (!merchantKey) {
+    throw new Error("Configure a Merchant Key do NuPay em Admin → Integrações.");
+  }
+  const cfg = {
+    merchantKey,
+    merchantToken,
+    env: (integ.mode as "sandbox" | "production") ?? "sandbox",
+  };
+
+  const returnUrl = ctx.data.returnUrl ?? `https://bloom.app/checkout/${ctx.orderId}`;
+  // Docs: POST /checkout/v1/orders → cria sessão + URL de redirecionamento
+  const session = await nupayFetch<{
+    id: string;
+    session_id?: string;
+    redirect_url?: string;
+    redirectUrl?: string;
+    status?: string;
+  }>(cfg, "/checkout/v1/orders", {
+    method: "POST",
+    body: JSON.stringify({
+      reference_id: ctx.orderId,
+      amount: { value: ctx.total, currency: "BRL" },
+      customer: {
+        name: ctx.data.customer.name,
+        email: ctx.data.customer.email,
+        tax_id: ctx.document,
+        phone: ctx.phone,
+      },
+      description: `Pedido ${ctx.code} · Bloom Cosméticos`,
+      return_url: returnUrl,
+    }),
+  });
+
+  const redirect = session.redirect_url ?? session.redirectUrl ?? null;
+
+  const { error } = await supabaseAdmin.from("payments").insert({
+    order_id: ctx.orderId,
+    provider: "nupay",
+    method: "nubank_redirect",
+    status: "pending",
+    amount_cents: ctx.total,
+    external_id: session.id,
+    session_id: session.session_id ?? session.id,
+    redirect_url: redirect,
+    return_url: returnUrl,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    raw: session as any,
+  });
+  if (error) throw new Error(error.message);
+
+  return {
+    orderId: ctx.orderId,
+    code: ctx.code,
+    method: "nubank_redirect" as const,
+    redirectUrl: redirect,
+  };
+}

@@ -1,61 +1,54 @@
 
-# Fase 1 — Fundação
+## Objetivo
 
-O Lovable Cloud (banco/auth/storage/functions gerenciados no plano gratuito) já foi ativado neste projeto. Nesta fase entrego apenas a fundação — sem catálogo, checkout, integrações externas nem IA (essas são as Fases 2–8 do seu briefing).
+Analisei a documentação da **NuPay for Business (Nubank)**: é uma API baseada em sessões — o comprador é redirecionado ao app do Nubank, aprova o pagamento, volta pra loja, e o status é atualizado em tempo real via **webhook** (`callbackUrl`) enviado pela NuPay a cada mudança da sessão/pagamento. Autenticação via headers `X-Merchant-Key` + `X-Merchant-Token`.
 
-## O que será implementado
+Vou adicionar NuPay ao painel de Integrações e refatorar o checkout para suportar **múltiplos gateways por método** (PIX, cartão, Nubank redirect), permitindo configuração híbrida — ex.: PIX pelo Asaas + cartão pela Stripe + botão "Pagar com Nubank" via NuPay.
 
-### 1. Banco de dados (migration SQL versionada)
-- `app_role` enum: `superadmin, admin, catalog, marketing, finance, support, logistics, analyst, compliance, customer`.
-- `profiles` — 1:1 com `auth.users` (nome, telefone, avatar, criado em, atualizado em). Trigger `handle_new_user` cria perfil no signup.
-- `user_roles` — vínculo user→role (tabela separada, nunca role em profiles).
-- `permissions` + `role_permissions` — permissões nomeadas por role (editáveis).
-- `audit_logs` — auditoria de ações administrativas.
-- `user_sessions` — metadados de sessão (device, ip_hash, revogada).
-- Função `has_role(_user_id, _role)` `SECURITY DEFINER` para uso em policies (evita recursão).
-- RLS habilitado + GRANTs corretos em todas as tabelas públicas.
-- Policies: cliente lê/edita apenas o próprio profile; admin lê tudo via `has_role`; roles só editáveis por superadmin/admin.
+## Escopo
 
-### 2. Autenticação
-- Login com e-mail/senha + Google (via `lovable.auth.signInWithOAuth`) — padrão do Lovable Cloud.
-- Cadastro com verificação de e-mail.
-- Recuperação de senha (`/auth/forgot`) + página `/auth/reset-password`.
-- Sessão persistente, `onAuthStateChange` no root, logout com limpeza de cache.
-- Rota `/auth` pública; subtree `_authenticated/` protegido pelo gate gerenciado.
+### 1. Banco de dados (migration)
+- Adicionar novas linhas em `integrations`: `nupay` (categoria `payments`), `stripe`, `mercadopago` (placeholders — ativados quando o admin colar as chaves).
+- Nova tabela `payment_method_routing` — mapeia cada método (`pix`, `credit_card`, `boleto`, `nubank_redirect`) ao provedor ativo escolhido pelo admin. Uma linha por método, com `provider` e `enabled`. Isso é o coração da configuração híbrida.
+- Estender `payments`: coluna `session_id` (para NuPay), `approval_code`, `redirect_url`. Estender enum de métodos com `nubank_redirect` e `credit_card`.
+- GRANTs + RLS (leitura só admin, escrita só admin/superadmin).
 
-### 3. Design system (paleta feminina premium do briefing)
-- Tokens semânticos em `src/styles.css` (oklch): fundo `#FFF8F7`, rosa berry `#C64B76`, ameixa `#6D405F`, lavanda `#A890AE`, champagne `#D7B47A`, etc.
-- Fontes: serif elegante para display (Fraunces) + sans neutro (Inter) via `<link>` no root.
-- Tokens de sombra suave, borda 8–10px, gradientes sutis.
-- Variantes shadcn (`button`, `card`, `input`, `badge`, `toast`) alinhadas aos tokens.
-- Skeletons, estados vazios, toasts globais (sonner).
+### 2. Backend — server functions e rotas
+- `src/lib/nupay.server.ts` — cliente HTTP para `sandbox-api.spinpay.com.br` / `api.spinpay.com.br` com os headers de auth.
+- `src/lib/checkout.functions.ts` — refatorar `createPixCheckout` em `createCheckout({ method })` que:
+  1. Lê `payment_method_routing` pra descobrir o provedor daquele método.
+  2. Cria o pedido no banco (lógica atual).
+  3. Delega ao adaptador do provedor (Asaas PIX, NuPay session, Stripe intent…).
+  4. Retorna `{ orderId, code, redirectUrl?, pixQrCode? }` — a página de checkout já sabe renderizar QR ou redirecionar.
+- `src/routes/api/public/webhooks/nupay.ts` — nova rota pública que valida o `webhook_token` da integração, mapeia `status` NuPay (`approved`/`completed`/`canceled`/`expired`) pro status interno do pedido em tempo real e grava evento em `payment_events`.
+- `src/routes/_authenticated/checkout.return.tsx` — landing de retorno do app Nubank (`returnUrl`): lê `sessionId` da query, chama `GET /sessions/{id}`, cria o pagamento via `POST /payments` e redireciona pra `/checkout/{orderId}`.
+- `listIntegrations`/`testIntegration` — adicionar caso `nupay` (chama `/v1/checkouts/sessions/by-reference/health-check` só pra validar auth).
 
-### 4. Layouts
-- `StoreLayout` — header (logo, busca placeholder, favoritos, conta, carrinho), footer (categorias, políticas, newsletter placeholder).
-- `AdminLayout` (rota `/_authenticated/admin`) — sidebar com seções da Fase 2–8 (marcadas como "em breve"), topbar com usuário/role.
-- Placeholders de rotas para as fases seguintes já criados (Catálogo, Pedidos, Marketing, IA, Dashboard, Uso do plano gratuito) mostrando "Fase X — não implementado".
+### 3. Frontend
+- **Admin › Integrações**: cards novos pra NuPay/Stripe/Mercado Pago aparecem automaticamente (já é dinâmico). NuPay ganha campo extra pra `X-Merchant-Token` (além da API key). URL de webhook exibida pra copiar.
+- **Admin › Integrações › aba "Roteamento de métodos"**: nova seção com uma linha por método de pagamento e um `<select>` do provedor ativo pra aquele método. É onde se monta o setup híbrido.
+- **Loja › Checkout** (`src/routes/_authenticated/checkout.tsx`): 
+  - Novo passo "Forma de pagamento" que consulta os métodos habilitados no roteamento e mostra as opções (PIX, Cartão, Nubank).
+  - Submit chama `createCheckout({ method })`; se voltar `redirectUrl`, faz `window.location = redirectUrl`; senão exibe QR (fluxo atual).
+- **Loja › `/checkout/return`**: tela intermediária mostrando "Confirmando com Nubank…" enquanto o backend cria o payment.
 
-### 5. Rotas iniciais
-- `/` — home da loja (hero + seções placeholder governadas pelo `homepage_blocks` que virá na Fase 2; hoje mostra hero + CTA).
-- `/auth`, `/auth/forgot`, `/auth/reset-password`.
-- `/_authenticated/account` — minha conta (edita profile).
-- `/_authenticated/admin` — dashboard admin básico com card de boas-vindas + navegação para as próximas fases.
-- `/404`.
+### 4. Segurança
+- Webhook NuPay valida `webhook_token` da integração no header customizado + timing-safe compare.
+- Chaves nunca no cliente — todas as chamadas passam pelos server functions com service role, igual ao padrão atual.
+- RLS: `payment_method_routing` só leitura/escrita por admin.
 
-### 6. Documentação
-- `docs/ENV.md` — variáveis (públicas VITE_* já presentes; segredos futuros das Fases 4/6/7/13/14).
-- `docs/ARCHITECTURE.md` — decisões (fila em Postgres, sem Redis/NestJS, R2 futuro, mídias por URL até publicação).
-- `docs/PHASES.md` — checklist das Fases 2–8 mapeando o briefing.
+### 5. Documentação
+- Atualizar `docs/PHASES.md` com a mudança de arquitetura multi-gateway.
+- `docs/ENV.md` — anotar que as chaves de NuPay/Stripe/MP são persistidas na tabela `integrations`, não em env vars.
 
-## O que NÃO será implementado agora (Fases 2–8)
-Catálogo, importador AliExpress, inteligência de produtos, precificação, carrinho, PIX/Asaas, Google/Meta, OpenAI/Gemini, dashboard de métricas, monitor do plano gratuito, fila de jobs, realtime, compliance, backup. Cada uma dessas será uma entrega própria após a Fase 1 estar validada — o schema já é preparado para receber cada uma sem recriar nada.
+## Fora do escopo desta entrega
+- Implementação real dos adaptadores Stripe e Mercado Pago — a estrutura fica pronta (cards no painel, roteamento, tabela), mas as chamadas efetivas ficam como placeholder ("Configuração aceita, integração ativada em breve") pra não misturar 3 gateways novos numa entrega só. Se quiser Stripe/MP funcionais agora, é só pedir na sequência.
+- Split de pagamento (rachar 1 pedido entre 2 gateways) — o híbrido aqui é **por método**, não por transação.
 
-## Detalhes técnicos
-
-- Stack: TanStack Start + React 19 + Tailwind v4 + shadcn/ui + Supabase gerenciado (Lovable Cloud).
-- Server functions só onde precisar de service role (nada na Fase 1 além do trigger `handle_new_user`).
-- `_authenticated/route.tsx` é gerenciado pela integração — não editado.
-- Google OAuth ativado via `supabase--configure_social_auth` na mesma migration.
-- Nenhuma chave secreta no front. `SUPABASE_SERVICE_ROLE_KEY` só server-side (não usada nesta fase).
-
-Após aprovação, entrego a Fase 1 completa em um único passo e paramos para você validar antes de eu abrir a Fase 2 (Catálogo).
+## Ordem de execução
+1. Migration (integrations + routing + payments extension).
+2. `nupay.server.ts` + refactor de `checkout.functions.ts` com sistema de adaptadores.
+3. Webhook `/api/public/webhooks/nupay` + rota de retorno.
+4. UI de roteamento no painel de integrações.
+5. Seletor de método no checkout da loja.
+6. Teste ponta a ponta em sandbox.

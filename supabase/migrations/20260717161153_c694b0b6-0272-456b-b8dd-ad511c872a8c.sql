@@ -1,0 +1,1 @@
+ALTER TYPE public.payment_method ADD VALUE IF NOT EXISTS 'nubank_redirect';

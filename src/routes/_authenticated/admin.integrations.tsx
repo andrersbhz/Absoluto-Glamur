@@ -2,7 +2,7 @@ import { createFileRoute, redirect, Link } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
-import { AlertCircle, CheckCircle2, Copy, Plug, RefreshCw, Save, TestTube } from "lucide-react";
+import { AlertCircle, CheckCircle2, Copy, Plug, RefreshCw, Route as RouteIcon, Save, TestTube } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { AdminLayout } from "@/components/admin/AdminLayout";
@@ -14,6 +14,12 @@ import {
   type IntegrationDTO,
   type SaveIntegrationInput,
 } from "@/lib/integrations.functions";
+import {
+  listAdminRouting,
+  updateRouting,
+  type PaymentMethodKey,
+  type CheckoutMethodDTO,
+} from "@/lib/payment-routing.functions";
 
 export const Route = createFileRoute("/_authenticated/admin/integrations")({
   head: () => ({ meta: [{ title: "Integrações · Admin Bloom" }] }),
