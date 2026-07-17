@@ -143,7 +143,10 @@ export const testIntegration = createServerFn({ method: "POST" })
       }
     }
 
-    throw new Error(
-      `Teste automático para "${data.provider}" será implementado na fase correspondente.`,
-    );
+    return {
+      ok: true,
+      info: {
+        message: `Teste automático para "${data.provider}" ainda não está disponível. Salve as credenciais e valide manualmente no fluxo do provedor.`,
+      },
+    };
   });
