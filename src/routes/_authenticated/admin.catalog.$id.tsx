@@ -1,8 +1,19 @@
 import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useEffect, useState } from "react";
-import { ArrowLeft, Plus, Save, Trash2 } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import {
+  ArrowLeft,
+  ArrowDown,
+  ArrowUp,
+  ImageIcon,
+  Plus,
+  Save,
+  Search,
+  Star,
+  Tag,
+  Trash2,
+} from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { AdminLayout } from "@/components/admin/AdminLayout";
@@ -70,14 +81,26 @@ const empty: FormState = {
 };
 
 function toCents(v: string): number {
-  const n = Number(v.replace(",", "."));
+  const n = Number(v.replace(/\./g, "").replace(",", "."));
   if (!isFinite(n) || n < 0) return 0;
   return Math.round(n * 100);
 }
 function fromCents(c: number | null | undefined): string {
   if (c == null) return "";
-  return (c / 100).toFixed(2);
+  return (c / 100).toFixed(2).replace(".", ",");
 }
+function slugify(v: string) {
+  return v
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)+/g, "")
+    .slice(0, 80);
+}
+const brl = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
+
+type TabId = "general" | "pricing" | "media" | "seo" | "publish";
 
 function CatalogEditor() {
   const { id } = Route.useParams();
@@ -95,6 +118,8 @@ function CatalogEditor() {
   });
 
   const [form, setForm] = useState<FormState>(empty);
+  const [tab, setTab] = useState<TabId>("general");
+  const [slugTouched, setSlugTouched] = useState(false);
 
   useEffect(() => {
     if (!isNew && prodQ.data) {
@@ -118,13 +143,27 @@ function CatalogEditor() {
         meta_title: p.seo.title ?? "",
         meta_description: p.seo.description ?? "",
       });
+      setSlugTouched(true);
     }
   }, [isNew, prodQ.data]);
+
+  // Auto-slug from name until user touches slug field
+  useEffect(() => {
+    if (isNew && !slugTouched) {
+      setForm((f) => ({ ...f, slug: slugify(f.name) }));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.name]);
+
+  const listCents = toCents(form.list_price);
+  const saleCents = form.sale_price.trim() ? toCents(form.sale_price) : 0;
+  const discount =
+    saleCents > 0 && saleCents < listCents ? Math.round((1 - saleCents / listCents) * 100) : 0;
 
   const save = useMutation({
     mutationFn: (payload: AdminProductInput) => upsert({ data: payload }),
     onSuccess: (r) => {
-      toast.success("Produto salvo");
+      toast.success("Produto salvo com sucesso");
       if (isNew) navigate({ to: "/admin/catalog/$id", params: { id: r.id! } });
     },
     onError: (e: Error) => toast.error(e.message),
@@ -132,12 +171,21 @@ function CatalogEditor() {
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
-    const list = toCents(form.list_price);
-    if (list <= 0) {
-      toast.error("Informe um preço válido.");
+    if (!form.name.trim()) {
+      toast.error("Informe o nome do produto.");
+      setTab("general");
       return;
     }
-    const saleNum = form.sale_price.trim() ? toCents(form.sale_price) : null;
+    if (!form.sku.trim()) {
+      toast.error("Informe o SKU.");
+      setTab("pricing");
+      return;
+    }
+    if (listCents <= 0) {
+      toast.error("Informe um preço válido.");
+      setTab("pricing");
+      return;
+    }
     const payload: AdminProductInput = {
       id: isNew ? null : id,
       name: form.name.trim(),
@@ -154,8 +202,8 @@ function CatalogEditor() {
         .filter(Boolean),
       variant: {
         sku: form.sku.trim(),
-        list_price_cents: list,
-        sale_price_cents: saleNum && saleNum > 0 && saleNum < list ? saleNum : null,
+        list_price_cents: listCents,
+        sale_price_cents: saleCents > 0 && saleCents < listCents ? saleCents : null,
         stock: Math.max(0, parseInt(form.stock || "0", 10) || 0),
         weight_grams: form.weight ? Math.max(0, parseInt(form.weight, 10) || 0) : null,
       },
@@ -171,10 +219,30 @@ function CatalogEditor() {
   }
 
   const loading = !isNew && prodQ.isLoading;
+  const cover = form.media[0]?.url;
+
+  const tabs: { id: TabId; label: string; hint?: string }[] = useMemo(
+    () => [
+      { id: "general", label: "Geral" },
+      { id: "pricing", label: "Preço & Estoque" },
+      { id: "media", label: `Mídia (${form.media.length})` },
+      { id: "seo", label: "SEO" },
+      { id: "publish", label: "Publicação" },
+    ],
+    [form.media.length],
+  );
+
+  function moveMedia(i: number, dir: -1 | 1) {
+    const j = i + dir;
+    if (j < 0 || j >= form.media.length) return;
+    const media = [...form.media];
+    [media[i], media[j]] = [media[j], media[i]];
+    setForm({ ...form, media });
+  }
 
   return (
     <AdminLayout>
-      <div className="mx-auto max-w-4xl">
+      <div className="mx-auto max-w-6xl pb-32">
         <Link
           to="/admin/catalog"
           className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
@@ -182,245 +250,506 @@ function CatalogEditor() {
           <ArrowLeft className="h-4 w-4" /> Voltar ao catálogo
         </Link>
 
-        <h1 className="mt-3 font-display text-3xl">
-          {isNew ? "Novo produto" : form.name || "Editar produto"}
-        </h1>
+        {/* Header */}
+        <div className="mt-3 flex flex-wrap items-start justify-between gap-4">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2">
+              <h1 className="truncate font-display text-3xl">
+                {isNew ? "Novo produto" : form.name || "Editar produto"}
+              </h1>
+              <StatusBadge status={form.status} />
+              {form.is_featured && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-primary/15 px-2 py-0.5 text-[11px] text-primary">
+                  <Star className="h-3 w-3" /> Destaque
+                </span>
+              )}
+            </div>
+            {form.slug && (
+              <p className="mt-1 truncate font-mono text-xs text-muted-foreground">
+                /produtos/{form.slug}
+              </p>
+            )}
+          </div>
+        </div>
 
         {loading ? (
           <p className="mt-10 text-sm text-muted-foreground">Carregando…</p>
         ) : (
-          <form onSubmit={submit} className="mt-6 space-y-6">
-            <Section title="Informações">
-              <div className="grid gap-4 sm:grid-cols-2">
-                <Field label="Nome" required>
-                  <input
-                    required
-                    value={form.name}
-                    onChange={(e) => setForm({ ...form, name: e.target.value })}
-                    className="input"
-                  />
-                </Field>
-                <Field label="Slug (URL)" hint="Deixe vazio para gerar automaticamente.">
-                  <input
-                    value={form.slug}
-                    onChange={(e) => setForm({ ...form, slug: e.target.value })}
-                    placeholder="ex: serum-vitamina-c"
-                    className="input font-mono text-sm"
-                  />
-                </Field>
-                <Field label="Marca">
-                  <select
-                    value={form.brand_id}
-                    onChange={(e) => setForm({ ...form, brand_id: e.target.value })}
-                    className="input"
-                  >
-                    <option value="">— sem marca —</option>
-                    {metaQ.data?.brands.map((b) => (
-                      <option key={b.id} value={b.id}>
-                        {b.name}
-                      </option>
-                    ))}
-                  </select>
-                </Field>
-                <Field label="Categoria">
-                  <select
-                    value={form.category_id}
-                    onChange={(e) => setForm({ ...form, category_id: e.target.value })}
-                    className="input"
-                  >
-                    <option value="">— sem categoria —</option>
-                    {metaQ.data?.categories.map((c) => (
-                      <option key={c.id} value={c.id}>
-                        {c.name}
-                      </option>
-                    ))}
-                  </select>
-                </Field>
-              </div>
-              <Field label="Descrição curta" hint="Aparece nos cards e listagens (máx. ~200 caracteres).">
-                <textarea
-                  value={form.short_description}
-                  onChange={(e) => setForm({ ...form, short_description: e.target.value })}
-                  rows={2}
-                  className="input"
-                />
-              </Field>
-              <Field label="Descrição completa">
-                <textarea
-                  value={form.description}
-                  onChange={(e) => setForm({ ...form, description: e.target.value })}
-                  rows={6}
-                  className="input"
-                />
-              </Field>
-              <Field label="Tags" hint="Separadas por vírgula.">
-                <input
-                  value={form.tags}
-                  onChange={(e) => setForm({ ...form, tags: e.target.value })}
-                  className="input"
-                  placeholder="hidratante, vegano, sensível"
-                />
-              </Field>
-            </Section>
-
-            <Section title="Preço e estoque">
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                <Field label="SKU" required>
-                  <input
-                    required
-                    value={form.sku}
-                    onChange={(e) => setForm({ ...form, sku: e.target.value })}
-                    className="input font-mono"
-                  />
-                </Field>
-                <Field label="Preço (R$)" required>
-                  <input
-                    required
-                    inputMode="decimal"
-                    value={form.list_price}
-                    onChange={(e) => setForm({ ...form, list_price: e.target.value })}
-                    className="input"
-                    placeholder="0,00"
-                  />
-                </Field>
-                <Field label="Preço promocional (R$)" hint="Opcional. Precisa ser menor que o preço.">
-                  <input
-                    inputMode="decimal"
-                    value={form.sale_price}
-                    onChange={(e) => setForm({ ...form, sale_price: e.target.value })}
-                    className="input"
-                    placeholder="0,00"
-                  />
-                </Field>
-                <Field label="Estoque">
-                  <input
-                    type="number"
-                    min={0}
-                    value={form.stock}
-                    onChange={(e) => setForm({ ...form, stock: e.target.value })}
-                    className="input"
-                  />
-                </Field>
-                <Field label="Peso (gramas)" hint="Usado para frete futuro.">
-                  <input
-                    type="number"
-                    min={0}
-                    value={form.weight}
-                    onChange={(e) => setForm({ ...form, weight: e.target.value })}
-                    className="input"
-                  />
-                </Field>
-              </div>
-            </Section>
-
-            <Section title="Mídia (imagens)">
-              <div className="space-y-3">
-                {form.media.map((m, i) => (
-                  <div key={i} className="grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
-                    <input
-                      value={m.url}
-                      onChange={(e) => {
-                        const media = [...form.media];
-                        media[i] = { ...media[i], url: e.target.value };
-                        setForm({ ...form, media });
-                      }}
-                      placeholder="https://…"
-                      className="input font-mono text-xs"
-                    />
-                    <input
-                      value={m.alt}
-                      onChange={(e) => {
-                        const media = [...form.media];
-                        media[i] = { ...media[i], alt: e.target.value };
-                        setForm({ ...form, media });
-                      }}
-                      placeholder="Texto alternativo (acessibilidade)"
-                      className="input text-xs"
-                    />
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setForm({ ...form, media: form.media.filter((_, j) => j !== i) })
-                      }
-                      className="rounded-lg border border-border p-2 text-destructive hover:bg-destructive/10"
-                      aria-label="Remover imagem"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </div>
-                ))}
+          <form onSubmit={submit} className="mt-6">
+            {/* Tabs */}
+            <div className="sticky top-0 z-10 -mx-2 flex gap-1 overflow-x-auto border-b border-border bg-background/95 px-2 py-2 backdrop-blur">
+              {tabs.map((t) => (
                 <button
+                  key={t.id}
                   type="button"
-                  onClick={() => setForm({ ...form, media: [...form.media, { url: "", alt: "" }] })}
-                  className="inline-flex items-center gap-1 rounded-lg border border-dashed border-border px-3 py-1.5 text-xs text-muted-foreground hover:bg-secondary"
+                  onClick={() => setTab(t.id)}
+                  className={`whitespace-nowrap rounded-lg px-3 py-1.5 text-sm transition ${
+                    tab === t.id
+                      ? "bg-primary text-primary-foreground shadow-soft"
+                      : "text-muted-foreground hover:bg-secondary"
+                  }`}
                 >
-                  <Plus className="h-3.5 w-3.5" /> Adicionar imagem
+                  {t.label}
                 </button>
-              </div>
-            </Section>
+              ))}
+            </div>
 
-            <Section title="SEO">
-              <div className="grid gap-4">
-                <Field label="Meta title" hint="Título mostrado no Google (recomendado &lt; 60 caracteres).">
-                  <input
-                    value={form.meta_title}
-                    onChange={(e) => setForm({ ...form, meta_title: e.target.value })}
-                    className="input"
-                    maxLength={80}
-                  />
-                </Field>
-                <Field label="Meta description" hint="Resumo no Google (recomendado &lt; 160 caracteres).">
-                  <textarea
-                    value={form.meta_description}
-                    onChange={(e) => setForm({ ...form, meta_description: e.target.value })}
-                    className="input"
-                    rows={3}
-                    maxLength={200}
-                  />
-                </Field>
-              </div>
-            </Section>
+            <div className="mt-6 grid gap-6 lg:grid-cols-[1fr_320px]">
+              <div className="space-y-6">
+                {tab === "general" && (
+                  <Section title="Informações básicas">
+                    <Field label="Nome do produto" required>
+                      <input
+                        required
+                        value={form.name}
+                        onChange={(e) => setForm({ ...form, name: e.target.value })}
+                        className="input"
+                        placeholder="Ex: Sérum facial vitamina C 30ml"
+                      />
+                    </Field>
+                    <Field label="Slug (URL)" hint="Gerado automaticamente a partir do nome.">
+                      <div className="flex items-center rounded-lg border border-border bg-background focus-within:outline focus-within:outline-2 focus-within:outline-primary/40">
+                        <span className="pl-3 font-mono text-xs text-muted-foreground">
+                          /produtos/
+                        </span>
+                        <input
+                          value={form.slug}
+                          onChange={(e) => {
+                            setSlugTouched(true);
+                            setForm({ ...form, slug: slugify(e.target.value) });
+                          }}
+                          placeholder="serum-vitamina-c"
+                          className="w-full bg-transparent px-2 py-2 font-mono text-sm focus:outline-none"
+                        />
+                      </div>
+                    </Field>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <Field label="Marca">
+                        <select
+                          value={form.brand_id}
+                          onChange={(e) => setForm({ ...form, brand_id: e.target.value })}
+                          className="input"
+                        >
+                          <option value="">— sem marca —</option>
+                          {metaQ.data?.brands.map((b) => (
+                            <option key={b.id} value={b.id}>
+                              {b.name}
+                            </option>
+                          ))}
+                        </select>
+                      </Field>
+                      <Field label="Categoria">
+                        <select
+                          value={form.category_id}
+                          onChange={(e) => setForm({ ...form, category_id: e.target.value })}
+                          className="input"
+                        >
+                          <option value="">— sem categoria —</option>
+                          {metaQ.data?.categories.map((c) => (
+                            <option key={c.id} value={c.id}>
+                              {c.name}
+                            </option>
+                          ))}
+                        </select>
+                      </Field>
+                    </div>
+                    <Field
+                      label="Descrição curta"
+                      hint={`${form.short_description.length}/200 · aparece nos cards e listagens.`}
+                    >
+                      <textarea
+                        value={form.short_description}
+                        onChange={(e) =>
+                          setForm({ ...form, short_description: e.target.value.slice(0, 200) })
+                        }
+                        rows={2}
+                        className="input"
+                        placeholder="Frase que resume o benefício principal."
+                      />
+                    </Field>
+                    <Field label="Descrição completa" hint="Suporta quebras de linha.">
+                      <textarea
+                        value={form.description}
+                        onChange={(e) => setForm({ ...form, description: e.target.value })}
+                        rows={8}
+                        className="input"
+                        placeholder="Ingredientes, modo de uso, benefícios detalhados…"
+                      />
+                    </Field>
+                    <Field label="Tags" hint="Separadas por vírgula.">
+                      <div className="relative">
+                        <Tag className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                        <input
+                          value={form.tags}
+                          onChange={(e) => setForm({ ...form, tags: e.target.value })}
+                          className="input pl-8"
+                          placeholder="hidratante, vegano, sensível"
+                        />
+                      </div>
+                      {form.tags.trim() && (
+                        <div className="mt-2 flex flex-wrap gap-1.5">
+                          {form.tags
+                            .split(",")
+                            .map((t) => t.trim())
+                            .filter(Boolean)
+                            .map((t, i) => (
+                              <span
+                                key={i}
+                                className="rounded-full bg-secondary px-2 py-0.5 text-[11px] text-secondary-foreground"
+                              >
+                                #{t}
+                              </span>
+                            ))}
+                        </div>
+                      )}
+                    </Field>
+                  </Section>
+                )}
 
-            <Section title="Publicação">
-              <div className="grid gap-4 sm:grid-cols-2">
-                <Field label="Status">
-                  <select
-                    value={form.status}
-                    onChange={(e) =>
-                      setForm({ ...form, status: e.target.value as FormState["status"] })
-                    }
-                    className="input"
-                  >
-                    <option value="draft">Rascunho (invisível na loja)</option>
-                    <option value="active">Ativo (visível na loja)</option>
-                    <option value="archived">Arquivado</option>
-                  </select>
-                </Field>
-                <label className="flex items-end gap-2 pb-2 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={form.is_featured}
-                    onChange={(e) => setForm({ ...form, is_featured: e.target.checked })}
-                    className="h-4 w-4"
-                  />
-                  <span>Destacar na home</span>
-                </label>
-              </div>
-            </Section>
+                {tab === "pricing" && (
+                  <Section title="Preço, SKU e estoque">
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <Field label="SKU (código único)" required>
+                        <input
+                          required
+                          value={form.sku}
+                          onChange={(e) => setForm({ ...form, sku: e.target.value })}
+                          className="input font-mono"
+                          placeholder="AG-SER-VITC-30"
+                        />
+                      </Field>
+                      <Field label="Estoque disponível">
+                        <input
+                          type="number"
+                          min={0}
+                          value={form.stock}
+                          onChange={(e) => setForm({ ...form, stock: e.target.value })}
+                          className="input"
+                        />
+                      </Field>
+                    </div>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <Field label="Preço cheio" required hint="Valor em reais (R$).">
+                        <MoneyInput
+                          value={form.list_price}
+                          onChange={(v) => setForm({ ...form, list_price: v })}
+                          required
+                        />
+                      </Field>
+                      <Field
+                        label="Preço promocional"
+                        hint="Opcional. Precisa ser menor que o preço cheio."
+                      >
+                        <MoneyInput
+                          value={form.sale_price}
+                          onChange={(v) => setForm({ ...form, sale_price: v })}
+                        />
+                      </Field>
+                    </div>
+                    {(listCents > 0 || saleCents > 0) && (
+                      <div className="rounded-xl border border-border bg-secondary/40 p-4">
+                        <p className="text-xs uppercase tracking-wide text-muted-foreground">
+                          Como aparecerá na loja
+                        </p>
+                        <div className="mt-2 flex items-baseline gap-3">
+                          {saleCents > 0 && saleCents < listCents ? (
+                            <>
+                              <span className="font-display text-2xl text-foreground">
+                                {brl.format(saleCents / 100)}
+                              </span>
+                              <span className="text-sm text-muted-foreground line-through">
+                                {brl.format(listCents / 100)}
+                              </span>
+                              <span className="rounded-full bg-primary/15 px-2 py-0.5 text-xs text-primary">
+                                −{discount}%
+                              </span>
+                            </>
+                          ) : (
+                            <span className="font-display text-2xl text-foreground">
+                              {brl.format(listCents / 100)}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                    <Field label="Peso (gramas)" hint="Usado para cálculo de frete.">
+                      <input
+                        type="number"
+                        min={0}
+                        value={form.weight}
+                        onChange={(e) => setForm({ ...form, weight: e.target.value })}
+                        className="input"
+                        placeholder="80"
+                      />
+                    </Field>
+                  </Section>
+                )}
 
-            <div className="sticky bottom-0 -mx-6 border-t border-border bg-background/95 px-6 py-4 backdrop-blur lg:-mx-10 lg:px-10">
-              <div className="mx-auto flex max-w-4xl items-center justify-between">
-                <p className="text-xs text-muted-foreground">
-                  {isNew ? "O produto é criado como rascunho até você mudar o status." : "As alterações entram no ar assim que você salvar."}
+                {tab === "media" && (
+                  <Section title="Imagens do produto">
+                    <p className="text-xs text-muted-foreground">
+                      A primeira imagem é a capa. Cole URLs de imagens (ex: CDN Unsplash, Cloudinary
+                      ou seu bucket).
+                    </p>
+                    <div className="space-y-3">
+                      {form.media.map((m, i) => (
+                        <div
+                          key={i}
+                          className="grid gap-3 rounded-xl border border-border bg-card p-3 sm:grid-cols-[72px_1fr_auto]"
+                        >
+                          <div className="flex h-[72px] w-[72px] items-center justify-center overflow-hidden rounded-lg border border-border bg-secondary">
+                            {m.url ? (
+                              <img
+                                src={m.url}
+                                alt={m.alt || ""}
+                                className="h-full w-full object-cover"
+                                onError={(e) => {
+                                  (e.currentTarget as HTMLImageElement).style.display = "none";
+                                }}
+                              />
+                            ) : (
+                              <ImageIcon className="h-6 w-6 text-muted-foreground" />
+                            )}
+                          </div>
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-2">
+                              {i === 0 && (
+                                <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[10px] text-primary">
+                                  Capa
+                                </span>
+                              )}
+                              <span className="text-[11px] text-muted-foreground">
+                                Posição {i + 1}
+                              </span>
+                            </div>
+                            <input
+                              value={m.url}
+                              onChange={(e) => {
+                                const media = [...form.media];
+                                media[i] = { ...media[i], url: e.target.value };
+                                setForm({ ...form, media });
+                              }}
+                              placeholder="https://…"
+                              className="input font-mono text-xs"
+                            />
+                            <input
+                              value={m.alt}
+                              onChange={(e) => {
+                                const media = [...form.media];
+                                media[i] = { ...media[i], alt: e.target.value };
+                                setForm({ ...form, media });
+                              }}
+                              placeholder="Descrição da imagem (acessibilidade)"
+                              className="input text-xs"
+                            />
+                          </div>
+                          <div className="flex flex-col gap-1">
+                            <button
+                              type="button"
+                              onClick={() => moveMedia(i, -1)}
+                              disabled={i === 0}
+                              className="rounded-md border border-border p-1.5 text-muted-foreground hover:bg-secondary disabled:opacity-30"
+                              aria-label="Mover para cima"
+                            >
+                              <ArrowUp className="h-3.5 w-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => moveMedia(i, 1)}
+                              disabled={i === form.media.length - 1}
+                              className="rounded-md border border-border p-1.5 text-muted-foreground hover:bg-secondary disabled:opacity-30"
+                              aria-label="Mover para baixo"
+                            >
+                              <ArrowDown className="h-3.5 w-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setForm({ ...form, media: form.media.filter((_, j) => j !== i) })
+                              }
+                              className="rounded-md border border-border p-1.5 text-destructive hover:bg-destructive/10"
+                              aria-label="Remover imagem"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setForm({ ...form, media: [...form.media, { url: "", alt: "" }] })
+                        }
+                        className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-border px-3 py-4 text-sm text-muted-foreground hover:bg-secondary"
+                      >
+                        <Plus className="h-4 w-4" /> Adicionar imagem
+                      </button>
+                    </div>
+                  </Section>
+                )}
+
+                {tab === "seo" && (
+                  <Section title="Otimização para busca (SEO)">
+                    <Field
+                      label="Meta title"
+                      hint={`${form.meta_title.length}/60 · título mostrado no Google.`}
+                    >
+                      <input
+                        value={form.meta_title}
+                        onChange={(e) =>
+                          setForm({ ...form, meta_title: e.target.value.slice(0, 80) })
+                        }
+                        className="input"
+                        placeholder={form.name || "Título otimizado para o Google"}
+                      />
+                    </Field>
+                    <Field
+                      label="Meta description"
+                      hint={`${form.meta_description.length}/160 · resumo mostrado no Google.`}
+                    >
+                      <textarea
+                        value={form.meta_description}
+                        onChange={(e) =>
+                          setForm({ ...form, meta_description: e.target.value.slice(0, 200) })
+                        }
+                        className="input"
+                        rows={3}
+                        placeholder={
+                          form.short_description || "Descrição atrativa com benefícios e call-to-action."
+                        }
+                      />
+                    </Field>
+                    <div className="rounded-xl border border-border bg-secondary/40 p-4">
+                      <p className="mb-2 flex items-center gap-1 text-xs uppercase tracking-wide text-muted-foreground">
+                        <Search className="h-3 w-3" /> Prévia no Google
+                      </p>
+                      <p className="truncate text-sm text-primary underline">
+                        {form.meta_title || form.name || "Título do produto"}
+                      </p>
+                      <p className="text-xs text-emerald-600 dark:text-emerald-400">
+                        absolutoglamur.com.br › produtos › {form.slug || "slug-do-produto"}
+                      </p>
+                      <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
+                        {form.meta_description ||
+                          form.short_description ||
+                          "Escreva uma descrição atrativa para aparecer aqui."}
+                      </p>
+                    </div>
+                  </Section>
+                )}
+
+                {tab === "publish" && (
+                  <Section title="Status e visibilidade">
+                    <Field label="Status na loja">
+                      <select
+                        value={form.status}
+                        onChange={(e) =>
+                          setForm({ ...form, status: e.target.value as FormState["status"] })
+                        }
+                        className="input"
+                      >
+                        <option value="draft">Rascunho — invisível na loja</option>
+                        <option value="active">Ativo — visível para clientes</option>
+                        <option value="archived">Arquivado — removido do catálogo</option>
+                      </select>
+                    </Field>
+                    <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-border bg-card p-4">
+                      <input
+                        type="checkbox"
+                        checked={form.is_featured}
+                        onChange={(e) => setForm({ ...form, is_featured: e.target.checked })}
+                        className="h-4 w-4"
+                      />
+                      <div>
+                        <p className="text-sm font-medium">Destacar na home</p>
+                        <p className="text-xs text-muted-foreground">
+                          Produtos em destaque aparecem em blocos configurados no marketing.
+                        </p>
+                      </div>
+                    </label>
+                  </Section>
+                )}
+              </div>
+
+              {/* Aside preview */}
+              <aside className="space-y-4 lg:sticky lg:top-16 lg:self-start">
+                <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-soft">
+                  <div className="flex aspect-[4/5] items-center justify-center overflow-hidden bg-secondary">
+                    {cover ? (
+                      <img src={cover} alt={form.name} className="h-full w-full object-cover" />
+                    ) : (
+                      <div className="flex flex-col items-center gap-2 text-muted-foreground">
+                        <ImageIcon className="h-8 w-8" />
+                        <p className="text-xs">Sem imagem</p>
+                      </div>
+                    )}
+                  </div>
+                  <div className="space-y-2 p-4">
+                    <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
+                      {metaQ.data?.brands.find((b) => b.id === form.brand_id)?.name ??
+                        "Sem marca"}
+                    </p>
+                    <p className="line-clamp-2 font-display text-base">
+                      {form.name || "Nome do produto"}
+                    </p>
+                    {listCents > 0 ? (
+                      <div className="flex items-baseline gap-2">
+                        <span className="font-display text-lg">
+                          {brl.format(
+                            (saleCents > 0 && saleCents < listCents ? saleCents : listCents) / 100,
+                          )}
+                        </span>
+                        {saleCents > 0 && saleCents < listCents && (
+                          <span className="text-xs text-muted-foreground line-through">
+                            {brl.format(listCents / 100)}
+                          </span>
+                        )}
+                      </div>
+                    ) : (
+                      <span className="text-sm text-muted-foreground">Sem preço</span>
+                    )}
+                  </div>
+                </div>
+                <div className="rounded-2xl border border-border bg-card p-4 text-xs shadow-soft">
+                  <p className="mb-2 font-medium">Checklist</p>
+                  <ul className="space-y-1.5 text-muted-foreground">
+                    <Check ok={!!form.name.trim()}>Nome preenchido</Check>
+                    <Check ok={!!form.sku.trim()}>SKU definido</Check>
+                    <Check ok={listCents > 0}>Preço cheio</Check>
+                    <Check ok={form.media.length > 0 && !!form.media[0].url}>
+                      Pelo menos 1 imagem
+                    </Check>
+                    <Check ok={!!form.short_description.trim()}>Descrição curta</Check>
+                    <Check ok={!!form.category_id}>Categoria selecionada</Check>
+                  </ul>
+                </div>
+              </aside>
+            </div>
+
+            {/* Sticky save bar */}
+            <div className="fixed bottom-0 left-0 right-0 z-20 border-t border-border bg-background/95 px-4 py-3 backdrop-blur">
+              <div className="mx-auto flex max-w-6xl items-center justify-between gap-3">
+                <p className="hidden text-xs text-muted-foreground sm:block">
+                  {isNew
+                    ? "O produto é criado como rascunho até você mudar o status para Ativo."
+                    : "As alterações entram no ar assim que você salvar."}
                 </p>
-                <button
-                  type="submit"
-                  disabled={save.isPending}
-                  className="inline-flex items-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-sm text-primary-foreground shadow-soft disabled:opacity-60"
-                >
-                  <Save className="h-4 w-4" />
-                  {save.isPending ? "Salvando…" : "Salvar produto"}
-                </button>
+                <div className="flex items-center gap-2">
+                  <Link
+                    to="/admin/catalog"
+                    className="rounded-lg border border-border px-4 py-2.5 text-sm text-muted-foreground hover:bg-secondary"
+                  >
+                    Cancelar
+                  </Link>
+                  <button
+                    type="submit"
+                    disabled={save.isPending}
+                    className="inline-flex items-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-sm text-primary-foreground shadow-soft disabled:opacity-60"
+                  >
+                    <Save className="h-4 w-4" />
+                    {save.isPending ? "Salvando…" : "Salvar produto"}
+                  </button>
+                </div>
               </div>
             </div>
           </form>
@@ -467,11 +796,67 @@ function Field({
 }) {
   return (
     <label className="block text-sm">
-      <span className="mb-1 block text-xs text-muted-foreground">
+      <span className="mb-1 block text-xs font-medium text-muted-foreground">
         {label} {required && <span className="text-destructive">*</span>}
       </span>
       {children}
       {hint && <span className="mt-1 block text-[11px] text-muted-foreground">{hint}</span>}
     </label>
+  );
+}
+
+function MoneyInput({
+  value,
+  onChange,
+  required,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  required?: boolean;
+}) {
+  return (
+    <div className="relative">
+      <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+        R$
+      </span>
+      <input
+        required={required}
+        inputMode="decimal"
+        value={value}
+        onChange={(e) => {
+          const cleaned = e.target.value.replace(/[^0-9,.]/g, "");
+          onChange(cleaned);
+        }}
+        className="input pl-9"
+        placeholder="0,00"
+      />
+    </div>
+  );
+}
+
+function StatusBadge({ status }: { status: "draft" | "active" | "archived" }) {
+  const map = {
+    draft: { label: "Rascunho", cls: "bg-muted text-muted-foreground" },
+    active: { label: "Ativo", cls: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400" },
+    archived: { label: "Arquivado", cls: "bg-orange-500/15 text-orange-600 dark:text-orange-400" },
+  } as const;
+  const cfg = map[status];
+  return (
+    <span className={`rounded-full px-2 py-0.5 text-[11px] ${cfg.cls}`}>{cfg.label}</span>
+  );
+}
+
+function Check({ ok, children }: { ok: boolean; children: React.ReactNode }) {
+  return (
+    <li className="flex items-center gap-2">
+      <span
+        className={`inline-flex h-4 w-4 items-center justify-center rounded-full text-[10px] ${
+          ok ? "bg-emerald-500 text-white" : "bg-muted text-muted-foreground"
+        }`}
+      >
+        {ok ? "✓" : "•"}
+      </span>
+      <span className={ok ? "text-foreground" : ""}>{children}</span>
+    </li>
   );
 }
