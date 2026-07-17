@@ -115,6 +115,7 @@ function IntegrationCard({ integration }: { integration: Integration }) {
   const [open, setOpen] = useState(false);
   const [apiKey, setApiKey] = useState("");
   const [webhookToken, setWebhookToken] = useState("");
+  const [merchantKey, setMerchantKey] = useState("");
   const [mode, setMode] = useState(integration.mode);
   const [enabled, setEnabled] = useState(integration.enabled);
 
@@ -125,6 +126,7 @@ function IntegrationCard({ integration }: { integration: Integration }) {
       qc.invalidateQueries({ queryKey: ["integrations"] });
       setApiKey("");
       setWebhookToken("");
+      setMerchantKey("");
       setOpen(false);
     },
     onError: (e: Error) => toast.error(e.message),
@@ -139,10 +141,17 @@ function IntegrationCard({ integration }: { integration: Integration }) {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const webhookUrl =
-    integration.provider === "asaas"
-      ? `${typeof window !== "undefined" ? window.location.origin : ""}/api/public/webhooks/asaas`
-      : null;
+  const WEBHOOK_PATHS: Record<string, string> = {
+    asaas: "/api/public/webhooks/asaas",
+    nupay: "/api/public/webhooks/nupay",
+  };
+  const webhookUrl = WEBHOOK_PATHS[integration.provider]
+    ? `${typeof window !== "undefined" ? window.location.origin : ""}${WEBHOOK_PATHS[integration.provider]}`
+    : null;
+
+  const isNuPay = integration.provider === "nupay";
+  const currentMerchantKey =
+    (integration.config as { merchant_key?: string } | null)?.merchant_key ?? "";
 
   return (
     <div className="rounded-2xl border border-border bg-card p-5 shadow-soft">
