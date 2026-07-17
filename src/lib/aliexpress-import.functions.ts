@@ -182,7 +182,7 @@ async function scrapeViaFirecrawl(url: string): Promise<NormalizedProduct> {
       onlyMainContent: true,
       formats: [
         "markdown",
-        { type: "json", schema: jsonSchema, prompt: "Extract product title, full description, image URLs, current price (as a number in source currency), 3-letter currency code (default USD), SKU/product code, and shipping weight in grams if available." },
+        { type: "json", schema: jsonSchema, prompt: "Extract product title, full description, image URLs, current price (as a number in source currency), 3-letter currency code (default BRL), SKU/product code, and shipping weight in grams if available." },
       ],
     }),
   });
