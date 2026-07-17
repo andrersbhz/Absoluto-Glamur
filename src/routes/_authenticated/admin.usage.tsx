@@ -7,7 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { getUsageOverview } from "@/lib/admin-system.functions";
 
 export const Route = createFileRoute("/_authenticated/admin/usage")({
-  head: () => ({ meta: [{ title: "Uso do plano gratuito · Admin Bloom" }] }),
+  head: () => ({ meta: [{ title: "Uso do plano gratuito · Admin Absoluto Glamur" }] }),
   beforeLoad: async () => {
     const { data: userData } = await supabase.auth.getUser();
     if (!userData.user) throw redirect({ to: "/auth" });

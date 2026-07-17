@@ -21,7 +21,7 @@ import {
 } from "@/lib/aliexpress-import.functions";
 
 export const Route = createFileRoute("/_authenticated/admin/imports")({
-  head: () => ({ meta: [{ title: "Importador · Admin Bloom" }] }),
+  head: () => ({ meta: [{ title: "Importador · Admin Absoluto Glamur" }] }),
   beforeLoad: async () => {
     const { data: userData } = await supabase.auth.getUser();
     if (!userData.user) throw redirect({ to: "/auth" });

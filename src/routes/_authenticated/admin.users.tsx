@@ -10,7 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { listAdminUsers, updateAdminUserRoles, type AdminRole, type AdminUserRow } from "@/lib/admin-system.functions";
 
 export const Route = createFileRoute("/_authenticated/admin/users")({
-  head: () => ({ meta: [{ title: "Usuários e permissões · Admin Bloom" }] }),
+  head: () => ({ meta: [{ title: "Usuários e permissões · Admin Absoluto Glamur" }] }),
   beforeLoad: async () => {
     const { data: userData } = await supabase.auth.getUser();
     if (!userData.user) throw redirect({ to: "/auth" });

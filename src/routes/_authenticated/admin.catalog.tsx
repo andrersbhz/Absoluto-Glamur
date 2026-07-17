@@ -15,7 +15,7 @@ import {
 } from "@/lib/admin-catalog.functions";
 
 export const Route = createFileRoute("/_authenticated/admin/catalog")({
-  head: () => ({ meta: [{ title: "Catálogo · Admin Bloom" }] }),
+  head: () => ({ meta: [{ title: "Catálogo · Admin Absoluto Glamur" }] }),
   beforeLoad: async () => {
     const { data: userData } = await supabase.auth.getUser();
     if (!userData.user) throw redirect({ to: "/auth" });

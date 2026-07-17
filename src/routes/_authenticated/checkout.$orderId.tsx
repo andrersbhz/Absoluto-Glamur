@@ -8,7 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { formatBRL } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/checkout/$orderId")({
-  head: () => ({ meta: [{ title: "Pagamento PIX · Bloom" }] }),
+  head: () => ({ meta: [{ title: "Pagamento PIX · Absoluto Glamur" }] }),
   component: PixPage,
 });
 

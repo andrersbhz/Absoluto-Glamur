@@ -8,7 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { getComplianceOverview } from "@/lib/admin-system.functions";
 
 export const Route = createFileRoute("/_authenticated/admin/compliance")({
-  head: () => ({ meta: [{ title: "Conformidade · Admin Bloom" }] }),
+  head: () => ({ meta: [{ title: "Conformidade · Admin Absoluto Glamur" }] }),
   beforeLoad: async () => {
     const { data: userData } = await supabase.auth.getUser();
     if (!userData.user) throw redirect({ to: "/auth" });

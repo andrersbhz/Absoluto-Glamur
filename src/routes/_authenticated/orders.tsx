@@ -7,7 +7,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { Badge } from "@/components/ui/badge";
 
 export const Route = createFileRoute("/_authenticated/orders")({
-  head: () => ({ meta: [{ title: "Meus pedidos · Bloom" }] }),
+  head: () => ({ meta: [{ title: "Meus pedidos · Absoluto Glamur" }] }),
   component: OrdersPage,
 });
 

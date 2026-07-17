@@ -20,7 +20,7 @@ import {
 } from "@/lib/intelligence.functions";
 
 export const Route = createFileRoute("/_authenticated/admin/intelligence/$id")({
-  head: () => ({ meta: [{ title: "Análise · Admin Bloom" }] }),
+  head: () => ({ meta: [{ title: "Análise · Admin Absoluto Glamur" }] }),
   beforeLoad: async () => {
     const { data: userData } = await supabase.auth.getUser();
     if (!userData.user) throw redirect({ to: "/auth" });

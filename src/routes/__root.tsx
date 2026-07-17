@@ -77,13 +77,13 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Bloom · Cosméticos premium" },
+      { title: "Absoluto Glamur · Cosméticos premium" },
       {
         name: "description",
         content:
-          "Bloom — beleza, skincare e maquiagem selecionadas com curadoria. Loja online com envio para todo o Brasil.",
+          "Absoluto Glamur — beleza, skincare e maquiagem selecionadas com curadoria. Loja online com envio para todo o Brasil.",
       },
-      { property: "og:title", content: "Bloom · Cosméticos premium" },
+      { property: "og:title", content: "Absoluto Glamur · Cosméticos premium" },
       {
         property: "og:description",
         content: "Curadoria feminina de skincare, maquiagem e cabelos.",
@@ -107,7 +107,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         children: JSON.stringify({
           "@context": "https://schema.org",
           "@type": "Organization",
-          name: "Bloom",
+          name: "Absoluto Glamur",
           description: "Curadoria feminina de skincare, maquiagem e cabelos.",
           url: "/",
         }),
