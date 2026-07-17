@@ -75,7 +75,7 @@ function AuthPage() {
     <div className="flex min-h-screen items-center justify-center bg-background px-4 py-12">
       <div className="w-full max-w-md rounded-2xl border border-border bg-card p-8 shadow-elegant">
         <Link to="/" className="font-display text-2xl text-primary">
-          bloom<span className="text-plum">.</span>
+          absoluto glamur<span className="text-plum">.</span>
         </Link>
         <h1 className="mt-6 font-display text-2xl">Acesse sua conta</h1>
         <p className="mt-1 text-sm text-muted-foreground">Entre ou crie sua conta para continuar.</p>

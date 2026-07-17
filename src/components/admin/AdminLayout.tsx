@@ -45,7 +45,7 @@ export function AdminLayout({ children }: { children: ReactNode }) {
     <div className="admin-shell flex min-h-screen bg-background">
       <aside className="hidden w-56 shrink-0 border-r border-sidebar-border bg-sidebar p-3 md:block lg:w-64 lg:p-4">
         <Link to="/" className="block font-display text-2xl text-primary">
-          bloom<span className="text-plum">.</span>
+          absoluto glamur<span className="text-plum">.</span>
           <span className="ml-2 align-top text-xs font-sans text-muted-foreground">admin</span>
         </Link>
         <nav className="mt-8 space-y-1 text-sm">

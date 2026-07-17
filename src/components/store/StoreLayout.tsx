@@ -31,7 +31,7 @@ export function StoreLayout({ children }: { children: ReactNode }) {
       <header className="sticky top-0 z-40 border-b border-border/60 bg-background/85 backdrop-blur">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
           <Link to="/" className="font-display text-2xl tracking-tight text-primary">
-            bloom<span className="text-plum">.</span>
+            absoluto glamur<span className="text-plum">.</span>
           </Link>
           <nav className="hidden items-center gap-6 text-sm text-muted-foreground md:flex">
             {categories.slice(0, 5).map((c) => (
