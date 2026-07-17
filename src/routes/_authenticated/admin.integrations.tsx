@@ -269,16 +269,42 @@ function IntegrationCard({ integration }: { integration: Integration }) {
           </div>
           <label className="block text-sm">
             <span className="mb-1 block text-xs text-muted-foreground">
-              Chave da API {integration.has_api_key && "(deixe vazio para manter a atual)"}
+              {isNuPay ? "X-Merchant-Token" : "Chave da API"}{" "}
+              {integration.has_api_key && "(deixe vazio para manter a atual)"}
             </span>
             <input
               type="password"
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
-              placeholder={integration.provider === "asaas" ? "$aact_YT..." : "chave da API"}
+              placeholder={
+                integration.provider === "asaas"
+                  ? "$aact_YT..."
+                  : integration.provider === "stripe"
+                    ? "sk_live_..."
+                    : isNuPay
+                      ? "token secreto NuPay"
+                      : "chave da API"
+              }
               className="w-full rounded-lg border border-border bg-background px-3 py-2 font-mono text-sm"
             />
           </label>
+          {isNuPay && (
+            <label className="block text-sm">
+              <span className="mb-1 block text-xs text-muted-foreground">
+                X-Merchant-Key {currentMerchantKey && "(preenchida — deixe vazio para manter)"}
+              </span>
+              <input
+                type="password"
+                value={merchantKey}
+                onChange={(e) => setMerchantKey(e.target.value)}
+                placeholder="chave pública do merchant NuPay"
+                className="w-full rounded-lg border border-border bg-background px-3 py-2 font-mono text-sm"
+              />
+              <span className="mt-1 block text-[11px] text-muted-foreground">
+                Encontre em NuPay Business → Configurações → Credenciais. Envie a Merchant Key aqui e o Merchant Token no campo acima.
+              </span>
+            </label>
+          )}
           {webhookUrl && (
             <label className="block text-sm">
               <span className="mb-1 block text-xs text-muted-foreground">
