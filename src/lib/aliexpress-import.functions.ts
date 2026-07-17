@@ -182,7 +182,7 @@ async function scrapeViaFirecrawl(url: string): Promise<NormalizedProduct> {
       onlyMainContent: true,
       formats: [
         "markdown",
-        { type: "json", schema: jsonSchema, prompt: "Extract product title, full description, image URLs, current price (as a number in source currency), 3-letter currency code (default USD), SKU/product code, and shipping weight in grams if available." },
+        { type: "json", schema: jsonSchema, prompt: "Extract product title, full description, image URLs, current price (as a number in source currency), 3-letter currency code (default BRL), SKU/product code, and shipping weight in grams if available." },
       ],
     }),
   });
@@ -202,7 +202,7 @@ async function scrapeViaFirecrawl(url: string): Promise<NormalizedProduct> {
     description: j.description || md.slice(0, 4000) || null,
     images: Array.isArray(j.images) ? j.images.filter((s: unknown) => typeof s === "string").slice(0, 10) : [],
     price_original: typeof j.price === "number" ? j.price : null,
-    currency: typeof j.currency === "string" ? j.currency : "USD",
+    currency: typeof j.currency === "string" ? j.currency : "BRL",
     sku: typeof j.sku === "string" ? j.sku : null,
     weight_grams: typeof j.weight_grams === "number" ? Math.round(j.weight_grams) : null,
     source_url: url,
@@ -285,7 +285,7 @@ export const scrapeUrlPreview = createServerFn({ method: "POST" })
 
     // Convert price to BRL
     let priceBrl: number | null = raw.price_original;
-    const srcCurrency = (raw.currency ?? "USD").toUpperCase();
+    const srcCurrency = (raw.currency ?? "BRL").toUpperCase();
     if (raw.price_original != null && srcCurrency !== "BRL") {
       const live = await fetchFxToBrl(srcCurrency);
       const rate = live ?? settings.fx_rate;
