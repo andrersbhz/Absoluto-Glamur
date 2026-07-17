@@ -210,12 +210,95 @@ async function scrapeViaFirecrawl(url: string): Promise<NormalizedProduct> {
   };
 }
 
+// -------------------- Translation + FX --------------------
+
+async function translateToPtBr(input: { title: string; description: string | null }): Promise<{
+  title: string;
+  description: string | null;
+}> {
+  const key = process.env.LOVABLE_API_KEY;
+  if (!key) return input; // silently skip if not configured
+  try {
+    const gateway = createLovableAiGatewayProvider(key);
+    const model = gateway("google/gemini-2.5-flash");
+    const payload = JSON.stringify({
+      title: input.title,
+      description: input.description ?? "",
+    });
+    const { text } = await generateText({
+      model,
+      system:
+        "Você traduz descrições de produtos de cosméticos para português do Brasil, mantendo tom elegante, claro e comercial. Preserve unidades, especificações e nomes próprios de ingredientes. Não invente informações. Responda APENAS com JSON válido no formato {\"title\":\"...\",\"description\":\"...\"} sem comentários nem markdown.",
+      prompt: `Traduza para pt-BR o conteúdo abaixo. Reescreva de forma natural, sem estrangeirismos desnecessários.\n\n${payload}`,
+    });
+    const cleaned = text.trim().replace(/^```(?:json)?/i, "").replace(/```$/i, "").trim();
+    const parsed = JSON.parse(cleaned);
+    return {
+      title: typeof parsed.title === "string" && parsed.title.trim() ? parsed.title.trim() : input.title,
+      description:
+        typeof parsed.description === "string" && parsed.description.trim()
+          ? parsed.description.trim()
+          : input.description,
+    };
+  } catch {
+    return input;
+  }
+}
+
+const FX_FALLBACK: Record<string, number> = { USD: 5.5, EUR: 6.0, BRL: 1, CNY: 0.76, GBP: 7.0 };
+
+async function fetchFxToBrl(from: string): Promise<number | null> {
+  const code = from.toUpperCase();
+  if (code === "BRL") return 1;
+  try {
+    const r = await fetch(`https://economia.awesomeapi.com.br/json/last/${code}-BRL`);
+    if (!r.ok) throw new Error("fx http");
+    const j = (await r.json()) as Record<string, { bid?: string }>;
+    const rec = j[`${code}BRL`];
+    const bid = rec?.bid ? parseFloat(rec.bid) : NaN;
+    if (Number.isFinite(bid) && bid > 0) return bid;
+  } catch {
+    // fallthrough
+  }
+  return FX_FALLBACK[code] ?? null;
+}
+
 export const scrapeUrlPreview = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((v: unknown) => z.object({ url: z.string().url() }).parse(v))
   .handler(async ({ data, context }): Promise<NormalizedProduct> => {
     await assertCatalog(context);
-    return scrapeViaFirecrawl(data.url);
+    const raw = await scrapeViaFirecrawl(data.url);
+
+    // Load user-configured fx_rate as override
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: cfg } = await supabaseAdmin
+      .from("integrations")
+      .select("config")
+      .eq("provider", "aliexpress_import")
+      .maybeSingle();
+    const settingsParsed = SettingsSchema.safeParse(cfg?.config);
+    const settings: ImportSettings = settingsParsed.success ? settingsParsed.data : DEFAULT_SETTINGS;
+
+    // Translate to pt-BR
+    const translated = await translateToPtBr({ title: raw.title, description: raw.description });
+
+    // Convert price to BRL
+    let priceBrl: number | null = raw.price_original;
+    const srcCurrency = (raw.currency ?? "USD").toUpperCase();
+    if (raw.price_original != null && srcCurrency !== "BRL") {
+      const live = await fetchFxToBrl(srcCurrency);
+      const rate = live ?? settings.fx_rate;
+      priceBrl = Math.round(raw.price_original * rate * 100) / 100;
+    }
+
+    return {
+      ...raw,
+      title: translated.title,
+      description: translated.description,
+      price_original: priceBrl,
+      currency: "BRL",
+    };
   });
 
 // -------------------- Draft CRUD --------------------
