@@ -1,15 +1,16 @@
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { ShoppingBag } from "lucide-react";
+import { ShoppingBag, QrCode, CreditCard, Barcode, Wallet } from "lucide-react";
 import { StoreLayout } from "@/components/store/StoreLayout";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { cartTotals, useCart } from "@/lib/cart-store";
 import { formatBRL } from "@/lib/format";
-import { createPixCheckout, type CheckoutInput } from "@/lib/checkout.functions";
+import { createCheckout, type CheckoutInput } from "@/lib/checkout.functions";
+import { listCheckoutMethods, type PaymentMethodKey } from "@/lib/payment-routing.functions";
 
 export const Route = createFileRoute("/_authenticated/checkout")({
   head: () => ({ meta: [{ title: "Checkout · Bloom" }] }),
@@ -71,11 +72,29 @@ function CheckoutPage() {
     })();
   }, [user]);
 
-  const createFn = useServerFn(createPixCheckout);
+  const createFn = useServerFn(createCheckout);
+  const methodsFn = useServerFn(listCheckoutMethods);
+  const methodsQ = useQuery({ queryKey: ["checkout-methods"], queryFn: () => methodsFn() });
+  const methods = methodsQ.data ?? [];
+  const [method, setMethod] = useState<PaymentMethodKey>("pix");
+
+  // Seleciona o primeiro método habilitado assim que a lista carrega
+  useEffect(() => {
+    if (methods.length && !methods.find((m) => m.method === method)) {
+      setMethod(methods[0].method);
+    }
+  }, [methods, method]);
+
   const mut = useMutation({
     mutationFn: (payload: CheckoutInput) => createFn({ data: payload }),
     onSuccess: (r) => {
       clear();
+      // Fluxo redirect (NuPay/Stripe/boleto) → mandar direto para o gateway
+      const redirect = (r as { redirectUrl?: string | null }).redirectUrl;
+      if (redirect) {
+        window.location.href = redirect;
+        return;
+      }
       navigate({ to: "/checkout/$orderId", params: { orderId: r.orderId } });
     },
     onError: (e: Error) => toast.error(e.message),
@@ -148,6 +167,8 @@ function CheckoutPage() {
       },
       saveAddress: form.saveAddress,
       notes: form.notes.trim() || null,
+      method,
+      returnUrl: `${window.location.origin}/checkout/pending`,
     });
   }
 
@@ -156,7 +177,7 @@ function CheckoutPage() {
       <div className="mx-auto max-w-5xl px-4 py-12 sm:px-6 lg:px-8">
         <h1 className="font-display text-4xl">Finalizar pedido</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Pagamento via PIX. O QR Code aparece na próxima etapa.
+          Escolha o método de pagamento e finalize sem sair da loja.
         </p>
 
         <form onSubmit={onSubmit} className="mt-8 grid gap-8 lg:grid-cols-[1fr_340px]">
@@ -204,6 +225,51 @@ function CheckoutPage() {
                 />
                 Salvar este endereço na minha conta
               </label>
+            </fieldset>
+
+            <fieldset className="rounded-2xl border border-border bg-card p-6 shadow-soft">
+              <legend className="px-2 font-display text-lg">Forma de pagamento</legend>
+              {methodsQ.isLoading && (
+                <p className="text-xs text-muted-foreground">Carregando métodos…</p>
+              )}
+              {!methodsQ.isLoading && methods.length === 0 && (
+                <p className="text-xs text-destructive">
+                  Nenhum método de pagamento habilitado. Peça ao administrador para ativar em Admin → Integrações.
+                </p>
+              )}
+              <div className="grid gap-3 sm:grid-cols-2">
+                {methods.map((m) => {
+                  const active = method === m.method;
+                  const Icon =
+                    m.method === "pix"
+                      ? QrCode
+                      : m.method === "credit_card"
+                        ? CreditCard
+                        : m.method === "boleto"
+                          ? Barcode
+                          : Wallet;
+                  return (
+                    <button
+                      type="button"
+                      key={m.method}
+                      onClick={() => setMethod(m.method)}
+                      className={`flex items-start gap-3 rounded-xl border p-4 text-left transition ${
+                        active
+                          ? "border-primary bg-primary/5 ring-2 ring-primary/30"
+                          : "border-border hover:border-primary/40"
+                      }`}
+                    >
+                      <Icon className="h-5 w-5 shrink-0 text-primary" />
+                      <div>
+                        <p className="text-sm font-medium">{m.label}</p>
+                        <p className="text-[11px] uppercase tracking-widest text-muted-foreground">
+                          via {m.provider}
+                        </p>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
             </fieldset>
 
             <fieldset className="rounded-2xl border border-border bg-card p-6 shadow-soft">
@@ -258,7 +324,15 @@ function CheckoutPage() {
               disabled={mut.isPending}
               className="mt-6 w-full rounded-lg bg-primary px-5 py-3 text-sm font-medium text-primary-foreground shadow-soft disabled:opacity-60"
             >
-              {mut.isPending ? "Gerando PIX…" : "Gerar PIX"}
+              {mut.isPending
+                ? "Processando…"
+                : method === "pix"
+                  ? "Gerar PIX"
+                  : method === "boleto"
+                    ? "Gerar boleto"
+                    : method === "nubank_redirect"
+                      ? "Pagar com Nubank"
+                      : "Finalizar pagamento"}
             </button>
             <p className="mt-3 text-center text-[11px] text-muted-foreground">
               Você continua no site — QR Code e código copia-e-cola exibidos aqui mesmo.

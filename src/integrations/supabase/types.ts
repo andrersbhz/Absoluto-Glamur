@@ -565,9 +565,46 @@ export type Database = {
         }
         Relationships: []
       }
+      payment_method_routing: {
+        Row: {
+          created_at: string
+          display_label: string | null
+          enabled: boolean
+          id: string
+          method: Database["public"]["Enums"]["payment_method"]
+          provider: string
+          sort_order: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          display_label?: string | null
+          enabled?: boolean
+          id?: string
+          method: Database["public"]["Enums"]["payment_method"]
+          provider: string
+          sort_order?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          display_label?: string | null
+          enabled?: boolean
+          id?: string
+          method?: Database["public"]["Enums"]["payment_method"]
+          provider?: string
+          sort_order?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       payments: {
         Row: {
           amount_cents: number
+          approval_code: string | null
           created_at: string
           external_customer_id: string | null
           external_id: string | null
@@ -581,11 +618,15 @@ export type Database = {
           pix_qr_code: string | null
           provider: string
           raw: Json | null
+          redirect_url: string | null
+          return_url: string | null
+          session_id: string | null
           status: Database["public"]["Enums"]["payment_status"]
           updated_at: string
         }
         Insert: {
           amount_cents: number
+          approval_code?: string | null
           created_at?: string
           external_customer_id?: string | null
           external_id?: string | null
@@ -599,11 +640,15 @@ export type Database = {
           pix_qr_code?: string | null
           provider?: string
           raw?: Json | null
+          redirect_url?: string | null
+          return_url?: string | null
+          session_id?: string | null
           status?: Database["public"]["Enums"]["payment_status"]
           updated_at?: string
         }
         Update: {
           amount_cents?: number
+          approval_code?: string | null
           created_at?: string
           external_customer_id?: string | null
           external_id?: string | null
@@ -617,6 +662,9 @@ export type Database = {
           pix_qr_code?: string | null
           provider?: string
           raw?: Json | null
+          redirect_url?: string | null
+          return_url?: string | null
+          session_id?: string | null
           status?: Database["public"]["Enums"]["payment_status"]
           updated_at?: string
         }
@@ -1548,7 +1596,7 @@ export type Database = {
         | "cancelled"
         | "refunded"
         | "failed"
-      payment_method: "pix" | "credit_card" | "boleto"
+      payment_method: "pix" | "credit_card" | "boleto" | "nubank_redirect"
       payment_status:
         | "pending"
         | "confirmed"
@@ -1709,7 +1757,7 @@ export const Constants = {
         "refunded",
         "failed",
       ],
-      payment_method: ["pix", "credit_card", "boleto"],
+      payment_method: ["pix", "credit_card", "boleto", "nubank_redirect"],
       payment_status: [
         "pending",
         "confirmed",

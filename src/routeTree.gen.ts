@@ -37,6 +37,7 @@ import { Route as AuthenticatedAdminDashboardRouteImport } from './routes/_authe
 import { Route as AuthenticatedAdminComplianceRouteImport } from './routes/_authenticated/admin.compliance'
 import { Route as AuthenticatedAdminCatalogRouteImport } from './routes/_authenticated/admin.catalog'
 import { Route as AuthenticatedAdminAiRouteImport } from './routes/_authenticated/admin.ai'
+import { Route as ApiPublicWebhooksNupayRouteImport } from './routes/api/public/webhooks/nupay'
 import { Route as ApiPublicWebhooksAsaasRouteImport } from './routes/api/public/webhooks/asaas'
 import { Route as AuthenticatedAdminIntelligenceIdRouteImport } from './routes/_authenticated/admin.intelligence.$id'
 import { Route as AuthenticatedAdminImportsIdRouteImport } from './routes/_authenticated/admin.imports.$id'
@@ -191,6 +192,11 @@ const AuthenticatedAdminAiRoute = AuthenticatedAdminAiRouteImport.update({
   path: '/ai',
   getParentRoute: () => AuthenticatedAdminRoute,
 } as any)
+const ApiPublicWebhooksNupayRoute = ApiPublicWebhooksNupayRouteImport.update({
+  id: '/api/public/webhooks/nupay',
+  path: '/api/public/webhooks/nupay',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicWebhooksAsaasRoute = ApiPublicWebhooksAsaasRouteImport.update({
   id: '/api/public/webhooks/asaas',
   path: '/api/public/webhooks/asaas',
@@ -247,6 +253,7 @@ export interface FileRoutesByFullPath {
   '/admin/imports/$id': typeof AuthenticatedAdminImportsIdRoute
   '/admin/intelligence/$id': typeof AuthenticatedAdminIntelligenceIdRoute
   '/api/public/webhooks/asaas': typeof ApiPublicWebhooksAsaasRoute
+  '/api/public/webhooks/nupay': typeof ApiPublicWebhooksNupayRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -279,6 +286,7 @@ export interface FileRoutesByTo {
   '/admin/imports/$id': typeof AuthenticatedAdminImportsIdRoute
   '/admin/intelligence/$id': typeof AuthenticatedAdminIntelligenceIdRoute
   '/api/public/webhooks/asaas': typeof ApiPublicWebhooksAsaasRoute
+  '/api/public/webhooks/nupay': typeof ApiPublicWebhooksNupayRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -314,6 +322,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/imports/$id': typeof AuthenticatedAdminImportsIdRoute
   '/_authenticated/admin/intelligence/$id': typeof AuthenticatedAdminIntelligenceIdRoute
   '/api/public/webhooks/asaas': typeof ApiPublicWebhooksAsaasRoute
+  '/api/public/webhooks/nupay': typeof ApiPublicWebhooksNupayRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -349,6 +358,7 @@ export interface FileRouteTypes {
     | '/admin/imports/$id'
     | '/admin/intelligence/$id'
     | '/api/public/webhooks/asaas'
+    | '/api/public/webhooks/nupay'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -381,6 +391,7 @@ export interface FileRouteTypes {
     | '/admin/imports/$id'
     | '/admin/intelligence/$id'
     | '/api/public/webhooks/asaas'
+    | '/api/public/webhooks/nupay'
   id:
     | '__root__'
     | '/'
@@ -415,6 +426,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/imports/$id'
     | '/_authenticated/admin/intelligence/$id'
     | '/api/public/webhooks/asaas'
+    | '/api/public/webhooks/nupay'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -425,6 +437,7 @@ export interface RootRouteChildren {
   ProductsRoute: typeof ProductsRouteWithChildren
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   ApiPublicWebhooksAsaasRoute: typeof ApiPublicWebhooksAsaasRoute
+  ApiPublicWebhooksNupayRoute: typeof ApiPublicWebhooksNupayRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -625,6 +638,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminAiRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/api/public/webhooks/nupay': {
+      id: '/api/public/webhooks/nupay'
+      path: '/api/public/webhooks/nupay'
+      fullPath: '/api/public/webhooks/nupay'
+      preLoaderRoute: typeof ApiPublicWebhooksNupayRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/webhooks/asaas': {
       id: '/api/public/webhooks/asaas'
       path: '/api/public/webhooks/asaas'
@@ -799,17 +819,8 @@ const rootRouteChildren: RootRouteChildren = {
   ProductsRoute: ProductsRouteWithChildren,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   ApiPublicWebhooksAsaasRoute: ApiPublicWebhooksAsaasRoute,
+  ApiPublicWebhooksNupayRoute: ApiPublicWebhooksNupayRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
