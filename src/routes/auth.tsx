@@ -25,6 +25,28 @@ function AuthPage() {
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(false);
 
+  async function resolveDestination(): Promise<string> {
+    if (next && next.startsWith("/")) return next;
+    try {
+      const { data: userData } = await supabase.auth.getUser();
+      const uid = userData.user?.id;
+      if (uid) {
+        const { data: rolesData } = await supabase
+          .from("user_roles")
+          .select("role")
+          .eq("user_id", uid);
+        const roles = (rolesData ?? []).map((r) => r.role as string);
+        const adminRoles = ["superadmin", "admin", "catalog", "marketing", "finance", "support", "logistics", "analyst", "compliance"];
+        if (roles.some((r) => adminRoles.includes(r))) {
+          return roles.includes("admin") || roles.includes("superadmin") ? "/admin/dashboard" : "/admin";
+        }
+      }
+    } catch {
+      // ignore, fallback
+    }
+    return "/account";
+  }
+
   async function handleEmail(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
@@ -45,7 +67,7 @@ function AuthPage() {
         if (error) throw error;
         toast.success("Bem-vinda de volta.");
       }
-      const dest = next && next.startsWith("/") ? next : "/account";
+      const dest = await resolveDestination();
       navigate({ to: dest });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Não foi possível autenticar");
@@ -62,7 +84,7 @@ function AuthPage() {
       });
       if (result.error) throw result.error;
       if (result.redirected) return;
-      const dest = next && next.startsWith("/") ? next : "/account";
+      const dest = await resolveDestination();
       navigate({ to: dest });
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Falha no login com Google");
