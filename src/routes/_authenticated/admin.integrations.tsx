@@ -149,9 +149,57 @@ function IntegrationCard({ integration }: { integration: Integration }) {
     ? `${typeof window !== "undefined" ? window.location.origin : ""}${WEBHOOK_PATHS[integration.provider]}`
     : null;
 
+  const PROVIDER_DOCS: Record<
+    string,
+    { keyUrl?: string; keyLabel?: string; docsUrl?: string; instructions?: string }
+  > = {
+    asaas: {
+      keyUrl: "https://www.asaas.com/config/index#/api",
+      keyLabel: "Gerar chave no Asaas",
+      docsUrl: "https://docs.asaas.com/reference/comece-por-aqui",
+      instructions:
+        "Entre em Asaas → Integrações → API Access Key. Gere uma chave para o ambiente correspondente (sandbox ou produção).",
+    },
+    nupay: {
+      keyUrl: "https://parceiros.nupaybusiness.com.br/",
+      keyLabel: "Portal do parceiro NuPay",
+      docsUrl: "https://docs.nupaybusiness.com.br/checkout/docs/openapi/index.html",
+      instructions:
+        "No portal NuPay Business → Configurações → Credenciais, copie a Merchant Key e o Merchant Token. Cadastre a URL do webhook abaixo em Configurações → Webhooks.",
+    },
+    stripe: {
+      keyUrl: "https://dashboard.stripe.com/apikeys",
+      keyLabel: "Chaves no Stripe Dashboard",
+      docsUrl: "https://stripe.com/docs/keys",
+      instructions:
+        "Copie a Secret key (sk_live_… para produção, sk_test_… para sandbox). Nunca use a Publishable key aqui.",
+    },
+    mercadopago: {
+      keyUrl: "https://www.mercadopago.com.br/developers/panel/app",
+      keyLabel: "Painel de desenvolvedor Mercado Pago",
+      docsUrl: "https://www.mercadopago.com.br/developers/pt/docs",
+      instructions:
+        "Crie uma aplicação e copie o Access Token de produção ou teste. Configure notificações IPN/webhook apontando para a URL abaixo.",
+    },
+    firecrawl: {
+      keyUrl: "https://www.firecrawl.dev/app/api-keys",
+      keyLabel: "Chaves Firecrawl",
+      docsUrl: "https://docs.firecrawl.dev/",
+    },
+    aliexpress: {
+      keyUrl: "https://openservice.aliexpress.com/app/manager.htm",
+      keyLabel: "Console AliExpress Open",
+      docsUrl: "https://openservice.aliexpress.com/doc/doc.htm",
+      instructions:
+        "Cadastre um app no AliExpress Open Platform para obter App Key, App Secret e Refresh Token.",
+    },
+  };
+  const docs = PROVIDER_DOCS[integration.provider];
+
   const isNuPay = integration.provider === "nupay";
   const currentMerchantKey =
     (integration.config as { merchant_key?: string } | null)?.merchant_key ?? "";
+
 
   return (
     <div className="rounded-2xl border border-border bg-card p-5 shadow-soft">
