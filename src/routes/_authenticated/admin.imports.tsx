@@ -141,10 +141,11 @@ function UrlTab() {
         },
       }),
     onSuccess: () => {
-      toast.success("Rascunho salvo — veja no Histórico");
+      toast.success("Rascunho criado no Catálogo — abra em Catálogo para revisar e publicar");
       setPreview(null);
       setUrl("");
       qc.invalidateQueries({ queryKey: ["imports"] });
+      qc.invalidateQueries({ queryKey: ["admin-products"] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -322,8 +323,9 @@ function JsonTab() {
       return bulk({ data: { items } });
     },
     onSuccess: (r) => {
-      toast.success(`${r.count} rascunho(s) criado(s). Veja no Histórico.`);
+      toast.success(`${r.count} rascunho(s) criado(s) no Catálogo.`);
       qc.invalidateQueries({ queryKey: ["imports"] });
+      qc.invalidateQueries({ queryKey: ["admin-products"] });
     },
     onError: (e: Error) => toast.error("Erro: " + e.message),
   });

@@ -318,6 +318,105 @@ const DraftSchema = z.object({
   }),
 });
 
+// Shared helper: load settings from integrations table
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function loadSettings(admin: any): Promise<ImportSettings> {
+  const { data } = await admin
+    .from("integrations")
+    .select("config")
+    .eq("provider", "aliexpress_import")
+    .maybeSingle();
+  const parsed = SettingsSchema.safeParse(data?.config);
+  return parsed.success ? parsed.data : DEFAULT_SETTINGS;
+}
+
+// Shared helper: create real product from an import row
+async function commitImportRow(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  admin: any,
+  importId: string,
+  norm: NormalizedProduct,
+  settings: ImportSettings,
+  opts: {
+    status: "draft" | "active";
+    category_id: string | null;
+    brand_id: string | null;
+    stock: number;
+    markup_override_percent?: number | null;
+    sale_price_cents_override?: number | null;
+  },
+): Promise<{ productId: string; priceCents: number }> {
+  const effective: ImportSettings =
+    opts.markup_override_percent != null
+      ? { ...settings, markup_percent: opts.markup_override_percent }
+      : settings;
+  const priceCents =
+    opts.sale_price_cents_override ??
+    computeSalePriceCents(norm.price_original, norm.currency, effective);
+
+  const slug = slugify(norm.title) + "-" + (norm.source_id ?? Math.random().toString(36).slice(2, 8));
+  const sku = norm.sku || (norm.source_id ? `AE-${norm.source_id}` : `IMP-${Date.now()}`);
+
+  const { data: created, error: pe } = await admin
+    .from("products")
+    .insert({
+      slug,
+      name: norm.title,
+      short_description: norm.description?.slice(0, 200) ?? null,
+      description: norm.description ?? null,
+      status: opts.status,
+      is_featured: false,
+      brand_id: opts.brand_id,
+      category_id: opts.category_id,
+      tags: ["importado"],
+    })
+    .select("id")
+    .single();
+  if (pe) throw new Error(pe.message);
+  const productId = created.id;
+
+  const { data: nv, error: ve } = await admin
+    .from("product_variants")
+    .insert({ product_id: productId, sku, is_default: true, weight_grams: norm.weight_grams ?? null })
+    .select("id")
+    .single();
+  if (ve) throw new Error(ve.message);
+  const variantId = nv.id;
+
+  const { error: prErr } = await admin.from("product_prices").insert({
+    variant_id: variantId,
+    list_price_cents: priceCents,
+    sale_price_cents: null,
+    is_active: true,
+  });
+  if (prErr) throw new Error(prErr.message);
+
+  const { error: invErr } = await admin
+    .from("product_inventory")
+    .upsert({ variant_id: variantId, stock: opts.stock }, { onConflict: "variant_id" });
+  if (invErr) throw new Error(invErr.message);
+
+  if (norm.images.length > 0) {
+    const { error: me } = await admin.from("product_media").insert(
+      norm.images.map((url, i) => ({
+        product_id: productId,
+        url,
+        alt: norm.title,
+        position: i,
+        kind: "image" as const,
+      })),
+    );
+    if (me) throw new Error(me.message);
+  }
+
+  await admin
+    .from("product_imports")
+    .update({ status: "imported", product_id: productId, error: null })
+    .eq("id", importId);
+
+  return { productId, priceCents };
+}
+
 export const saveImportDraft = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((v: unknown) => DraftSchema.parse(v))
@@ -349,7 +448,22 @@ export const saveImportDraft = createServerFn({ method: "POST" })
       .select("id")
       .single();
     if (error) throw new Error(error.message);
-    return { id: created.id };
+
+    // Auto-create draft product in catalog so it appears immediately
+    const settings = await loadSettings(supabaseAdmin);
+    try {
+      const { productId } = await commitImportRow(supabaseAdmin, created.id, norm, settings, {
+        status: "draft",
+        category_id: settings.default_category_id ?? null,
+        brand_id: settings.default_brand_id ?? null,
+        stock: 10,
+      });
+      return { id: created.id, product_id: productId };
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      await supabaseAdmin.from("product_imports").update({ error: msg }).eq("id", created.id);
+      return { id: created.id, product_id: null };
+    }
   });
 
 export const bulkImportJson = createServerFn({ method: "POST" })
@@ -358,9 +472,10 @@ export const bulkImportJson = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await assertCatalog(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const rows = data.items.map((n) => ({
-      source: "json",
-      normalized_data: {
+    const settings = await loadSettings(supabaseAdmin);
+    let count = 0;
+    for (const n of data.items) {
+      const norm: NormalizedProduct = {
         title: n.title,
         description: n.description ?? null,
         images: n.images ?? [],
@@ -370,14 +485,33 @@ export const bulkImportJson = createServerFn({ method: "POST" })
         weight_grams: n.weight_grams ?? null,
         source_url: null,
         source_id: null,
-      } satisfies NormalizedProduct,
-      raw_data: {},
-      status: "draft" as const,
-      imported_by: context.userId,
-    }));
-    const { data: inserted, error } = await supabaseAdmin.from("product_imports").insert(rows).select("id");
-    if (error) throw new Error(error.message);
-    return { count: inserted?.length ?? 0 };
+      };
+      const { data: row, error } = await supabaseAdmin
+        .from("product_imports")
+        .insert({
+          source: "json",
+          normalized_data: norm,
+          raw_data: {},
+          status: "draft",
+          imported_by: context.userId,
+        })
+        .select("id")
+        .single();
+      if (error) continue;
+      try {
+        await commitImportRow(supabaseAdmin, row.id, norm, settings, {
+          status: "draft",
+          category_id: settings.default_category_id ?? null,
+          brand_id: settings.default_brand_id ?? null,
+          stock: 10,
+        });
+        count++;
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        await supabaseAdmin.from("product_imports").update({ error: msg }).eq("id", row.id);
+      }
+    }
+    return { count };
   });
 
 export const listImports = createServerFn({ method: "GET" })
@@ -495,7 +629,7 @@ export const commitImport = createServerFn({ method: "POST" })
 
     const { data: imp, error: ie } = await supabaseAdmin
       .from("product_imports")
-      .select("id, normalized_data, status")
+      .select("id, normalized_data, status, product_id")
       .eq("id", data.id)
       .maybeSingle();
     if (ie) throw new Error(ie.message);
@@ -517,6 +651,54 @@ export const commitImport = createServerFn({ method: "POST" })
     const priceCents =
       data.sale_price_cents_override ??
       computeSalePriceCents(norm.price_original, norm.currency, effective);
+
+    // If a product was already auto-created for this import, update it instead of creating a duplicate
+    if (imp.product_id) {
+      const { error: upErr } = await supabaseAdmin
+        .from("products")
+        .update({
+          name: norm.title,
+          short_description: norm.description?.slice(0, 200) ?? null,
+          description: norm.description ?? null,
+          status: data.status,
+          brand_id: data.brand_id ?? settings.default_brand_id ?? null,
+          category_id: data.category_id ?? settings.default_category_id ?? null,
+        })
+        .eq("id", imp.product_id);
+      if (upErr) throw new Error(upErr.message);
+
+      const { data: vrow } = await supabaseAdmin
+        .from("product_variants")
+        .select("id")
+        .eq("product_id", imp.product_id)
+        .eq("is_default", true)
+        .maybeSingle();
+      if (vrow?.id) {
+        await supabaseAdmin
+          .from("product_prices")
+          .update({ is_active: false })
+          .eq("variant_id", vrow.id);
+        await supabaseAdmin.from("product_prices").insert({
+          variant_id: vrow.id,
+          list_price_cents: priceCents,
+          sale_price_cents: null,
+          is_active: true,
+        });
+        await supabaseAdmin
+          .from("product_inventory")
+          .upsert({ variant_id: vrow.id, stock: data.stock }, { onConflict: "variant_id" });
+      }
+      await supabaseAdmin
+        .from("product_imports")
+        .update({ status: "imported", error: null })
+        .eq("id", data.id);
+      const { data: p } = await supabaseAdmin
+        .from("products")
+        .select("slug")
+        .eq("id", imp.product_id)
+        .maybeSingle();
+      return { id: imp.product_id, slug: p?.slug ?? "", price_cents: priceCents };
+    }
 
     const slug =
       slugify(norm.title) + "-" + (norm.source_id ?? Math.random().toString(36).slice(2, 8));
