@@ -652,6 +652,54 @@ export const commitImport = createServerFn({ method: "POST" })
       data.sale_price_cents_override ??
       computeSalePriceCents(norm.price_original, norm.currency, effective);
 
+    // If a product was already auto-created for this import, update it instead of creating a duplicate
+    if (imp.product_id) {
+      const { error: upErr } = await supabaseAdmin
+        .from("products")
+        .update({
+          name: norm.title,
+          short_description: norm.description?.slice(0, 200) ?? null,
+          description: norm.description ?? null,
+          status: data.status,
+          brand_id: data.brand_id ?? settings.default_brand_id ?? null,
+          category_id: data.category_id ?? settings.default_category_id ?? null,
+        })
+        .eq("id", imp.product_id);
+      if (upErr) throw new Error(upErr.message);
+
+      const { data: vrow } = await supabaseAdmin
+        .from("product_variants")
+        .select("id")
+        .eq("product_id", imp.product_id)
+        .eq("is_default", true)
+        .maybeSingle();
+      if (vrow?.id) {
+        await supabaseAdmin
+          .from("product_prices")
+          .update({ is_active: false })
+          .eq("variant_id", vrow.id);
+        await supabaseAdmin.from("product_prices").insert({
+          variant_id: vrow.id,
+          list_price_cents: priceCents,
+          sale_price_cents: null,
+          is_active: true,
+        });
+        await supabaseAdmin
+          .from("product_inventory")
+          .upsert({ variant_id: vrow.id, stock: data.stock }, { onConflict: "variant_id" });
+      }
+      await supabaseAdmin
+        .from("product_imports")
+        .update({ status: "imported", error: null })
+        .eq("id", data.id);
+      const { data: p } = await supabaseAdmin
+        .from("products")
+        .select("slug")
+        .eq("id", imp.product_id)
+        .maybeSingle();
+      return { id: imp.product_id, slug: p?.slug ?? "", price_cents: priceCents };
+    }
+
     const slug =
       slugify(norm.title) + "-" + (norm.source_id ?? Math.random().toString(36).slice(2, 8));
     const sku = norm.sku || (norm.source_id ? `AE-${norm.source_id}` : `IMP-${Date.now()}`);
