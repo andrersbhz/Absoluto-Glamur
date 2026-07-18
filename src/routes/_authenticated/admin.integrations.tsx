@@ -212,6 +212,12 @@ function IntegrationCard({ integration }: { integration: Integration }) {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <StatusLight
+            connected={integration.last_status === "ok" && integration.enabled}
+            errored={integration.last_status === "error"}
+            hasKey={integration.has_api_key}
+            errorMessage={integration.last_error}
+          />
           {integration.enabled ? (
             <Badge className="bg-success text-white">Ativa</Badge>
           ) : (
@@ -222,18 +228,9 @@ function IntegrationCard({ integration }: { integration: Integration }) {
           ) : (
             <Badge variant="secondary">Sandbox</Badge>
           )}
-          {integration.last_status === "ok" && (
-            <span title="Verificada" className="text-success">
-              <CheckCircle2 className="h-4 w-4" />
-            </span>
-          )}
-          {integration.last_status === "error" && (
-            <span title={integration.last_error ?? "erro"} className="text-destructive">
-              <AlertCircle className="h-4 w-4" />
-            </span>
-          )}
         </div>
       </div>
+
 
       <div className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
         <div>
