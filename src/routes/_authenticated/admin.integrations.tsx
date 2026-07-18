@@ -144,6 +144,7 @@ function IntegrationCard({ integration }: { integration: Integration }) {
   const WEBHOOK_PATHS: Record<string, string> = {
     asaas: "/api/public/webhooks/asaas",
     nupay: "/api/public/webhooks/nupay",
+    "17track": "/api/public/webhooks/17track",
   };
   const webhookUrl = WEBHOOK_PATHS[integration.provider]
     ? `${typeof window !== "undefined" ? window.location.origin : ""}${WEBHOOK_PATHS[integration.provider]}`
@@ -192,6 +193,13 @@ function IntegrationCard({ integration }: { integration: Integration }) {
       docsUrl: "https://openservice.aliexpress.com/doc/doc.htm",
       instructions:
         "Cadastre um app no AliExpress Open Platform para obter App Key, App Secret e Refresh Token.",
+    },
+    "17track": {
+      keyUrl: "https://features.17track.net/en/api",
+      keyLabel: "Obter API Key 17TRACK",
+      docsUrl: "https://api.17track.net/en/doc",
+      instructions:
+        "1) Crie conta gratuita em 17track.net e ative o plano API (2.000 rastreios/mês grátis). 2) Acesse Painel → API → 'Access Key' e copie o token de 32 caracteres. 3) Cole no campo 'API Key' abaixo e salve. 4) Opcional: cadastre a URL do webhook abaixo em Painel → API → Push (Webhook) para receber atualizações em tempo real.",
     },
   };
   const docs = PROVIDER_DOCS[integration.provider];
