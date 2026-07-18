@@ -344,13 +344,14 @@ export const upsertAdminProduct = createServerFn({ method: "POST" })
     // Media: replace all
     await supabaseAdmin.from("product_media").delete().eq("product_id", productId);
     if (data.media.length > 0) {
+      const { isVideoUrl } = await import("@/lib/media-kind");
       const { error } = await supabaseAdmin.from("product_media").insert(
         data.media.map((m, i) => ({
           product_id: productId,
           url: m.url,
           alt: m.alt ?? null,
           position: i,
-          kind: "image" as const,
+          kind: (isVideoUrl(m.url) ? "video" : "image") as "video" | "image",
         })),
       );
       if (error) throw new Error(error.message);
