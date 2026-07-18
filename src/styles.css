@@ -199,7 +199,57 @@
     background-color: var(--color-popover);
     color: var(--color-popover-foreground);
   }
+
+  /* ------------------------------------------------------------
+   * Botões — contraste garantido:
+   *   fundo escuro  → texto branco
+   *   fundo claro   → texto escuro
+   * Aplica-se a <button>, [role=button] e <a> com classe de fundo,
+   * SEM sobrescrever quando o componente já define text-*.
+   * ------------------------------------------------------------ */
+
+  /* Fundos ESCUROS → texto claro */
+  :where(button, [role="button"], a).bg-primary,
+  :where(button, [role="button"], a).bg-destructive,
+  :where(button, [role="button"], a).bg-foreground,
+  :where(button, [role="button"], a).bg-black,
+  :where(button, [role="button"], a).bg-neutral-800,
+  :where(button, [role="button"], a).bg-neutral-900,
+  :where(button, [role="button"], a).bg-slate-800,
+  :where(button, [role="button"], a).bg-slate-900,
+  :where(button, [role="button"], a).bg-zinc-800,
+  :where(button, [role="button"], a).bg-zinc-900,
+  :where(button, [role="button"], a).bg-gray-800,
+  :where(button, [role="button"], a).bg-gray-900 {
+    color: #ffffff;
+  }
+  :where(button, [role="button"], a).bg-success {
+    color: oklch(0.15 0 0);
+  }
+
+  /* Fundos CLAROS → texto escuro */
+  :where(button, [role="button"], a).bg-white,
+  :where(button, [role="button"], a).bg-neutral-50,
+  :where(button, [role="button"], a).bg-neutral-100,
+  :where(button, [role="button"], a).bg-neutral-200,
+  :where(button, [role="button"], a).bg-slate-50,
+  :where(button, [role="button"], a).bg-slate-100,
+  :where(button, [role="button"], a).bg-gray-50,
+  :where(button, [role="button"], a).bg-gray-100,
+  :where(button, [role="button"], a).bg-zinc-50,
+  :where(button, [role="button"], a).bg-zinc-100 {
+    color: oklch(0.15 0 0);
+  }
+
+  /* Tokens semânticos: usam o foreground pareado do tema (light/dark automático) */
+  :where(button, [role="button"], a).bg-background { color: var(--color-foreground); }
+  :where(button, [role="button"], a).bg-card       { color: var(--color-card-foreground); }
+  :where(button, [role="button"], a).bg-popover    { color: var(--color-popover-foreground); }
+  :where(button, [role="button"], a).bg-muted      { color: var(--color-muted-foreground); }
+  :where(button, [role="button"], a).bg-secondary  { color: var(--color-secondary-foreground); }
+  :where(button, [role="button"], a).bg-accent     { color: var(--color-accent-foreground); }
 }
+
 
 
 /* ============================================================
