@@ -593,7 +593,8 @@ function CatalogEditor() {
                             </button>
                           </div>
                         </div>
-                      ))}
+                        );
+                      })}
                       <button
                         type="button"
                         onClick={() =>
