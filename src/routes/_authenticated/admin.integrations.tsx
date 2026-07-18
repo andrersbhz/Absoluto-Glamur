@@ -193,7 +193,7 @@ function IntegrationCard({ integration }: { integration: Integration }) {
       keyLabel: "Console AliExpress Open",
       docsUrl: "https://openservice.aliexpress.com/doc/doc.htm",
       instructions:
-        "Cadastre um app no AliExpress Open Platform para obter App Key, App Secret e Refresh Token.",
+        "1) Em openservice.aliexpress.com → Console → seu app, cole a URL de Callback exibida abaixo no campo 'Callback URL'. 2) Copie App Key e App Secret e cole nos campos 'API Key' (App Key) e 'Webhook Token' (App Secret). Salve. 3) Clique em 'Autorizar AliExpress' (link abaixo) — você será redirecionado para autorizar e o sistema troca o code por access/refresh token automaticamente.",
     },
     "17track": {
       keyUrl: "https://features.17track.net/en/api",
