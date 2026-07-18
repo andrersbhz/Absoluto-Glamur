@@ -64,7 +64,7 @@ function ProductCard({
           </Badge>
         )}
       </div>
-      <div className="flex flex-1 flex-col gap-2 p-3">
+      <div className="flex flex-1 flex-col gap-2 p-[15px]">
         <h3 className="line-clamp-2 min-h-[2.5rem] text-sm font-medium leading-snug text-foreground">
           {product.title}
         </h3>
