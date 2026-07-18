@@ -2,7 +2,7 @@ import { createFileRoute, redirect, Link } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
-import { AlertCircle, CheckCircle2, Copy, ExternalLink, Plug, RefreshCw, Route as RouteIcon, Save, TestTube } from "lucide-react";
+import { Copy, ExternalLink, Plug, RefreshCw, Route as RouteIcon, Save, TestTube } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { AdminLayout } from "@/components/admin/AdminLayout";
@@ -212,6 +212,12 @@ function IntegrationCard({ integration }: { integration: Integration }) {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <StatusLight
+            connected={integration.last_status === "ok" && integration.enabled}
+            errored={integration.last_status === "error"}
+            hasKey={integration.has_api_key}
+            errorMessage={integration.last_error}
+          />
           {integration.enabled ? (
             <Badge className="bg-success text-white">Ativa</Badge>
           ) : (
@@ -222,18 +228,9 @@ function IntegrationCard({ integration }: { integration: Integration }) {
           ) : (
             <Badge variant="secondary">Sandbox</Badge>
           )}
-          {integration.last_status === "ok" && (
-            <span title="Verificada" className="text-success">
-              <CheckCircle2 className="h-4 w-4" />
-            </span>
-          )}
-          {integration.last_status === "error" && (
-            <span title={integration.last_error ?? "erro"} className="text-destructive">
-              <AlertCircle className="h-4 w-4" />
-            </span>
-          )}
         </div>
       </div>
+
 
       <div className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
         <div>
@@ -269,16 +266,15 @@ function IntegrationCard({ integration }: { integration: Integration }) {
         >
           {open ? "Fechar" : "Configurar"}
         </button>
-        {integration.has_api_key && (
-          <button
-            onClick={() => testMut.mutate()}
-            disabled={testMut.isPending}
-            className="inline-flex items-center gap-1 rounded-lg border border-border px-3 py-1.5 text-xs hover:bg-secondary disabled:opacity-60"
-          >
-            <TestTube className="h-3.5 w-3.5" />
-            {testMut.isPending ? "Testando…" : "Testar conexão"}
-          </button>
-        )}
+        <button
+          onClick={() => testMut.mutate()}
+          disabled={testMut.isPending || !integration.has_api_key}
+          title={!integration.has_api_key ? "Configure a chave antes de testar" : "Testar conexão com o provedor"}
+          className="inline-flex items-center gap-1 rounded-lg border border-border px-3 py-1.5 text-xs hover:bg-secondary disabled:opacity-60"
+        >
+          <TestTube className="h-3.5 w-3.5" />
+          {testMut.isPending ? "Testando…" : "Testar conexão"}
+        </button>
         <button
           onClick={() =>
             saveMut.mutate({ provider: integration.provider, enabled: !integration.enabled })
@@ -531,3 +527,46 @@ function RoutingPanel() {
     </section>
   );
 }
+
+function StatusLight({
+  connected,
+  errored,
+  hasKey,
+  errorMessage,
+}: {
+  connected: boolean;
+  errored: boolean;
+  hasKey: boolean;
+  errorMessage?: string | null;
+}) {
+  const { color, label, pulse, title } = connected
+    ? { color: "bg-success", label: "Conectado", pulse: true, title: "Provedor testado e ativo" }
+    : errored
+      ? { color: "bg-destructive", label: "Erro", pulse: false, title: errorMessage ?? "Falha na última verificação" }
+      : hasKey
+        ? { color: "bg-warning", label: "Aguardando teste", pulse: false, title: "Chave configurada — clique em 'Testar conexão'" }
+        : { color: "bg-muted-foreground/50", label: "Não configurado", pulse: false, title: "Adicione uma chave de API" };
+
+  return (
+    <span
+      title={title}
+      className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-2 py-0.5 text-[11px] font-medium"
+    >
+      <span className="relative flex h-2.5 w-2.5">
+        {pulse && (
+          <span className={`absolute inline-flex h-full w-full animate-ping rounded-full ${color} opacity-75`} />
+        )}
+        <span
+          className={`relative inline-flex h-2.5 w-2.5 rounded-full ${color}`}
+          style={
+            connected
+              ? { boxShadow: "0 0 10px oklch(0.58 0.12 160 / 0.9), 0 0 4px oklch(0.58 0.12 160 / 0.6)" }
+              : undefined
+          }
+        />
+      </span>
+      <span>{label}</span>
+    </span>
+  );
+}
+

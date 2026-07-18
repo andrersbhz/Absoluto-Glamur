@@ -2,7 +2,7 @@ import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
-import { Plus, Search, Trash2, Package, ExternalLink } from "lucide-react";
+import { Plus, Search, Trash2, Package, ExternalLink, Download } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { AdminLayout } from "@/components/admin/AdminLayout";
@@ -11,6 +11,7 @@ import { formatBRL } from "@/lib/format";
 import {
   listAdminProducts,
   deleteAdminProduct,
+  exportAdminProductsCsv,
   type AdminProductRow,
 } from "@/lib/admin-catalog.functions";
 
@@ -35,9 +36,11 @@ type StatusFilter = "all" | "draft" | "active" | "archived";
 function CatalogList() {
   const list = useServerFn(listAdminProducts);
   const del = useServerFn(deleteAdminProduct);
+  const exportCsv = useServerFn(exportAdminProductsCsv);
   const qc = useQueryClient();
   const [q, setQ] = useState("");
   const [status, setStatus] = useState<StatusFilter>("all");
+  const [exporting, setExporting] = useState(false);
 
   const query = useQuery({
     queryKey: ["admin-products", { q, status }],
@@ -53,6 +56,25 @@ function CatalogList() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  async function handleExport() {
+    try {
+      setExporting(true);
+      const { csv, count } = await exportCsv({ data: { q, status } });
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `produtos-${new Date().toISOString().slice(0, 10)}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success(`${count} produto(s) exportado(s) em PT-BR`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Falha ao exportar");
+    } finally {
+      setExporting(false);
+    }
+  }
+
   return (
     <AdminLayout>
       <div className="mx-auto max-w-6xl">
@@ -63,14 +85,26 @@ function CatalogList() {
               Crie, edite e publique produtos. Preços e estoque ficam na aba do produto.
             </p>
           </div>
-          <Link
-            to="/admin/catalog/$id"
-            params={{ id: "new" }}
-            className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm text-primary-foreground shadow-soft hover:opacity-90"
-          >
-            <Plus className="h-4 w-4" /> Novo produto
-          </Link>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              onClick={handleExport}
+              disabled={exporting}
+              className="inline-flex items-center gap-2 rounded-lg border border-border bg-background px-4 py-2 text-sm hover:bg-secondary disabled:opacity-60"
+              title="Baixar todos os produtos filtrados em CSV (PT-BR, UTF-8)"
+            >
+              <Download className="h-4 w-4" />
+              {exporting ? "Exportando…" : "Exportar CSV (PT-BR)"}
+            </button>
+            <Link
+              to="/admin/catalog/$id"
+              params={{ id: "new" }}
+              className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm text-primary-foreground shadow-soft hover:opacity-90"
+            >
+              <Plus className="h-4 w-4" /> Novo produto
+            </Link>
+          </div>
         </div>
+
 
         <div className="mt-6 flex flex-wrap gap-3">
           <div className="relative min-w-[240px] flex-1">
