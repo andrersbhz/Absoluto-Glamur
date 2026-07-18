@@ -102,9 +102,11 @@ function ProductPage() {
   const addToCart = useCart((s) => s.add);
   const { isFavorite, toggle, canFavorite } = useFavorites();
 
+  const media = useMemo(() => [...(product?.media ?? [])], [product]);
+  const [activeIdx, setActiveIdx] = useState(0);
   if (!product) return null;
-  const media = [...(product.media ?? [])];
-  const cover = media[0]?.url;
+  const active = media[activeIdx] ?? media[0];
+  const activeUrl = active?.url;
   const fav = isFavorite(product.id);
 
   return (
@@ -116,8 +118,21 @@ function ProductPage() {
         <div className="grid gap-10 lg:grid-cols-2">
           <div className="space-y-3">
             <div className="aspect-square overflow-hidden rounded-3xl bg-secondary/40">
-              {cover ? (
-                <img src={cover} alt={media[0]?.alt ?? product.name} className="h-full w-full object-cover" />
+              {activeUrl ? (
+                isVideoUrl(activeUrl) ? (
+                  <video
+                    key={activeUrl}
+                    src={activeUrl}
+                    className="h-full w-full object-cover"
+                    controls
+                    playsInline
+                    loop
+                    autoPlay
+                    muted
+                  />
+                ) : (
+                  <img src={activeUrl} alt={active?.alt ?? product.name} className="h-full w-full object-cover" />
+                )
               ) : (
                 <div className="flex h-full items-center justify-center bg-gradient-to-br from-primary/40 to-plum">
                   <span className="font-display text-6xl text-primary-foreground/40">absoluto glamur.</span>
@@ -126,11 +141,31 @@ function ProductPage() {
             </div>
             {media.length > 1 && (
               <div className="grid grid-cols-5 gap-2">
-                {media.slice(0, 5).map((m, i) => (
-                  <div key={i} className="aspect-square overflow-hidden rounded-lg bg-secondary/40">
-                    <img src={m.url} alt={m.alt ?? ""} className="h-full w-full object-cover" />
-                  </div>
-                ))}
+                {media.slice(0, 5).map((m, i) => {
+                  const video = isVideoUrl(m.url);
+                  return (
+                    <button
+                      type="button"
+                      key={i}
+                      onClick={() => setActiveIdx(i)}
+                      className={`relative aspect-square overflow-hidden rounded-lg bg-secondary/40 ring-2 transition ${
+                        i === activeIdx ? "ring-primary" : "ring-transparent hover:ring-border"
+                      }`}
+                      aria-label={`Ver mídia ${i + 1}`}
+                    >
+                      {video ? (
+                        <>
+                          <video src={m.url} className="h-full w-full object-cover" muted playsInline preload="metadata" />
+                          <span className="absolute bottom-1 right-1 rounded bg-black/60 px-1 py-0.5 text-[9px] font-medium uppercase text-white">
+                            Vídeo
+                          </span>
+                        </>
+                      ) : (
+                        <img src={m.url} alt={m.alt ?? ""} className="h-full w-full object-cover" />
+                      )}
+                    </button>
+                  );
+                })}
               </div>
             )}
           </div>
