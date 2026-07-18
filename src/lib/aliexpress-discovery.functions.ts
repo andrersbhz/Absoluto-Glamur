@@ -1,0 +1,529 @@
+import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod";
+import { createHmac } from "crypto";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import {
+  computeSalePriceCents,
+  type NormalizedProduct,
+} from "./aliexpress-import.functions";
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
+async function assertCatalog(context: any) {
+  const { data: adm } = await context.supabase.rpc("is_admin", { _user_id: context.userId });
+  if (adm) return;
+  const { data: hasCat } = await context.supabase.rpc("has_role", {
+    _user_id: context.userId,
+    _role: "catalog",
+  });
+  if (!hasCat) throw new Error("Acesso restrito a administradores ou equipe de catálogo");
+}
+
+function slugify(v: string): string {
+  return v
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)+/g, "")
+    .slice(0, 80);
+}
+
+// -------------------- AliExpress API signing (HMAC-SHA256) --------------------
+// Docs: https://openservice.aliexpress.com/doc/doc.htm — TOP protocol.
+// System params: method, app_key, sign_method=sha256, timestamp (yyyy-MM-dd HH:mm:ss GMT+8),
+// format=json, v=2.0, access_token. Sort all params, concat key+value, HMAC-SHA256 with app_secret,
+// hex uppercase, put in `sign`.
+
+function gmt8Timestamp(): string {
+  const now = new Date(Date.now() + 8 * 3600 * 1000);
+  const pad = (n: number) => n.toString().padStart(2, "0");
+  return `${now.getUTCFullYear()}-${pad(now.getUTCMonth() + 1)}-${pad(now.getUTCDate())} ${pad(now.getUTCHours())}:${pad(now.getUTCMinutes())}:${pad(now.getUTCSeconds())}`;
+}
+
+function sign(params: Record<string, string>, secret: string): string {
+  const keys = Object.keys(params).sort();
+  const base = keys.map((k) => `${k}${params[k]}`).join("");
+  return createHmac("sha256", secret).update(base, "utf8").digest("hex").toUpperCase();
+}
+
+async function loadAliCreds() {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data } = await supabaseAdmin
+    .from("integrations")
+    .select("config, api_key, last_status")
+    .eq("provider", "aliexpress")
+    .maybeSingle();
+  const cfg = (data?.config ?? {}) as any;
+  const appKey: string = cfg.app_key ?? data?.api_key ?? "";
+  const appSecret: string = cfg.app_secret ?? "";
+  const accessToken: string = cfg.access_token ?? "";
+  if (!appKey || !appSecret) {
+    throw new Error("Configure App Key e App Secret do AliExpress em /admin/integrations.");
+  }
+  if (!accessToken) {
+    throw new Error("AliExpress não autorizado. Clique em 'Autorizar AliExpress' em /admin/integrations.");
+  }
+  return { appKey, appSecret, accessToken };
+}
+
+async function callAli<T = any>(
+  method: string,
+  bizParams: Record<string, string | number | boolean | undefined | null>,
+): Promise<T> {
+  const { appKey, appSecret, accessToken } = await loadAliCreds();
+  const params: Record<string, string> = {
+    method,
+    app_key: appKey,
+    sign_method: "sha256",
+    timestamp: gmt8Timestamp(),
+    format: "json",
+    v: "2.0",
+    access_token: accessToken,
+  };
+  for (const [k, v] of Object.entries(bizParams)) {
+    if (v === undefined || v === null || v === "") continue;
+    params[k] = String(v);
+  }
+  params.sign = sign(params, appSecret);
+
+  const body = new URLSearchParams(params).toString();
+  const res = await fetch("https://api-sg.aliexpress.com/sync", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body,
+  });
+  const text = await res.text();
+  let json: any;
+  try {
+    json = JSON.parse(text);
+  } catch {
+    throw new Error(`Resposta inválida do AliExpress: ${text.slice(0, 300)}`);
+  }
+  if (json.error_response) {
+    const er = json.error_response;
+    throw new Error(
+      `AliExpress ${er.code ?? ""}: ${er.msg ?? er.sub_msg ?? "erro desconhecido"}${er.sub_msg ? ` — ${er.sub_msg}` : ""}`,
+    );
+  }
+  return json as T;
+}
+
+// -------------------- Search --------------------
+
+export type DiscoveryProduct = {
+  product_id: string;
+  title: string;
+  image: string | null;
+  images: string[];
+  price_original: number | null;
+  currency: string | null;
+  price_brl_estimate_cents: number | null;
+  evaluate_rate: number | null; // product rating 0..5
+  lastest_volume: number | null;
+  shop_id: string | null;
+  shop_title: string | null;
+  shop_rating: number | null;
+  product_url: string | null;
+};
+
+function firstNumber(...vals: unknown[]): number | null {
+  for (const v of vals) {
+    if (typeof v === "number" && Number.isFinite(v)) return v;
+    if (typeof v === "string") {
+      const s = v.replace(/[^\d.,-]/g, "").replace(",", ".");
+      const n = parseFloat(s);
+      if (Number.isFinite(n)) return n;
+    }
+  }
+  return null;
+}
+
+function parseRate(v: unknown): number | null {
+  if (v == null) return null;
+  const s = String(v).replace("%", "").trim();
+  const n = parseFloat(s);
+  if (!Number.isFinite(n)) return null;
+  // If ~0-100, treat as percent → 0..5
+  if (n > 5 && n <= 100) return Math.round((n / 20) * 100) / 100;
+  return Math.round(n * 100) / 100;
+}
+
+function extractImages(p: any): string[] {
+  const list: string[] = [];
+  const push = (u: unknown) => {
+    if (typeof u === "string" && /^https?:\/\//.test(u) && !list.includes(u)) list.push(u);
+  };
+  push(p.product_main_image_url);
+  push(p.main_image_url);
+  const small = p.product_small_image_urls ?? p.small_image_urls;
+  if (small) {
+    if (typeof small === "string") small.split(/[,;\s]+/).forEach(push);
+    else if (Array.isArray(small?.string)) small.string.forEach(push);
+    else if (Array.isArray(small)) small.forEach(push);
+  }
+  return list.slice(0, 12);
+}
+
+function normalizeSearchProduct(p: any): DiscoveryProduct {
+  const images = extractImages(p);
+  const price = firstNumber(p.target_sale_price, p.sale_price, p.app_sale_price, p.original_price);
+  const currency: string =
+    p.target_sale_price_currency ??
+    p.sale_price_currency ??
+    p.app_sale_price_currency ??
+    "USD";
+  return {
+    product_id: String(p.product_id ?? p.item_id ?? ""),
+    title: String(p.product_title ?? p.subject ?? p.title ?? "Produto AliExpress"),
+    image: images[0] ?? null,
+    images,
+    price_original: price,
+    currency,
+    price_brl_estimate_cents: null,
+    evaluate_rate: parseRate(p.evaluate_rate ?? p.average_star ?? p.avg_evaluation_rating),
+    lastest_volume: firstNumber(p.lastest_volume, p.sale_volume, p.orders) as number | null,
+    shop_id: p.shop_id ? String(p.shop_id) : null,
+    shop_title: p.shop_title ?? p.store_name ?? null,
+    shop_rating: parseRate(p.shop_rating ?? p.store_rating ?? p.positive_rate),
+    product_url: p.product_detail_url ?? p.promotion_link ?? (p.product_id ? `https://www.aliexpress.com/item/${p.product_id}.html` : null),
+  };
+}
+
+const FX_FALLBACK: Record<string, number> = { USD: 5.5, EUR: 6.0, BRL: 1, CNY: 0.76, GBP: 7.0 };
+async function fxToBrl(from: string): Promise<number> {
+  const code = (from || "USD").toUpperCase();
+  if (code === "BRL") return 1;
+  try {
+    const r = await fetch(`https://economia.awesomeapi.com.br/json/last/${code}-BRL`);
+    if (r.ok) {
+      const j = (await r.json()) as Record<string, { bid?: string }>;
+      const bid = parseFloat(j[`${code}BRL`]?.bid ?? "");
+      if (Number.isFinite(bid) && bid > 0) return bid;
+    }
+  } catch { /* ignore */ }
+  return FX_FALLBACK[code] ?? 5.5;
+}
+
+export const discoverAliexpressProducts = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((v: unknown) =>
+    z
+      .object({
+        keyword: z.string().trim().max(120).optional(),
+        page: z.number().int().min(1).max(20).default(1),
+        page_size: z.number().int().min(1).max(50).default(24),
+        min_rating: z.number().min(0).max(5).nullable().optional(),
+        sort: z.string().max(40).optional(),
+      })
+      .parse(v),
+  )
+  .handler(async ({ data, context }): Promise<{ items: DiscoveryProduct[]; total?: number }> => {
+    await assertCatalog(context);
+
+    const bizParams: Record<string, string | number> = {
+      target_currency: "USD",
+      target_language: "PT",
+      ship_to_country: "BR",
+      page_no: data.page,
+      page_size: data.page_size,
+    };
+    if (data.sort) bizParams.sort = data.sort;
+
+    let json: any;
+    if (data.keyword && data.keyword.trim()) {
+      bizParams.keywords = data.keyword.trim();
+      json = await callAli("aliexpress.ds.text.search", bizParams);
+    } else {
+      bizParams.feed_name = "DS bestseller";
+      json = await callAli("aliexpress.ds.recommend.feed.get", bizParams);
+    }
+
+    // Response shape: aliexpress_ds_text_search_response.data.products.selection_search_product
+    // or ...recommend_feed_get_response.result.products.traffic_product_d_t_o
+    const root =
+      json.aliexpress_ds_text_search_response ??
+      json.aliexpress_ds_recommend_feed_get_response ??
+      json;
+    const container = root.data ?? root.result ?? root;
+    const productsField =
+      container.products ??
+      container.recommend_products ??
+      container.product ??
+      container.result_list ??
+      [];
+    const rawList: any[] = Array.isArray(productsField)
+      ? productsField
+      : Array.isArray(productsField?.selection_search_product)
+        ? productsField.selection_search_product
+        : Array.isArray(productsField?.traffic_product_d_t_o)
+          ? productsField.traffic_product_d_t_o
+          : Array.isArray(productsField?.product)
+            ? productsField.product
+            : [];
+
+    const items = rawList.map(normalizeSearchProduct);
+
+    // Enrich with BRL estimate using live FX for the first currency seen.
+    const currencies = Array.from(new Set(items.map((i) => (i.currency ?? "USD").toUpperCase())));
+    const rates: Record<string, number> = {};
+    await Promise.all(currencies.map(async (c) => { rates[c] = await fxToBrl(c); }));
+    for (const it of items) {
+      if (it.price_original != null) {
+        const rate = rates[(it.currency ?? "USD").toUpperCase()] ?? 5.5;
+        it.price_brl_estimate_cents = Math.round(it.price_original * rate * 100);
+      }
+    }
+
+    const filtered = data.min_rating
+      ? items.filter((i) => (i.evaluate_rate ?? 0) >= data.min_rating!)
+      : items;
+
+    const total = firstNumber(container.total_record_count, container.total_count) as number | null;
+    return { items: filtered, total: total ?? undefined };
+  });
+
+// -------------------- Import selected product to store --------------------
+
+const SettingsSchema = z.object({
+  markup_percent: z.number().min(0).max(1000).default(150),
+  markup_fixed_cents: z.number().int().min(0).default(0),
+  round_to_99: z.boolean().default(true),
+  default_status: z.enum(["draft", "active"]).default("draft"),
+  default_category_id: z.string().uuid().nullable().optional(),
+  default_brand_id: z.string().uuid().nullable().optional(),
+  fx_rate: z.number().positive().default(5.5),
+});
+
+async function loadSettings(admin: any) {
+  const { data } = await admin
+    .from("integrations")
+    .select("config")
+    .eq("provider", "aliexpress_import")
+    .maybeSingle();
+  const parsed = SettingsSchema.safeParse(data?.config);
+  return parsed.success
+    ? parsed.data
+    : {
+        markup_percent: 150,
+        markup_fixed_cents: 0,
+        round_to_99: true,
+        default_status: "draft" as const,
+        default_category_id: null,
+        default_brand_id: null,
+        fx_rate: 5.5,
+      };
+}
+
+async function translateToPtBr(input: { title: string; description: string | null }): Promise<{
+  title: string;
+  description: string | null;
+}> {
+  const key = process.env.LOVABLE_API_KEY;
+  if (!key) return input;
+  try {
+    const { generateText } = await import("ai");
+    const { createLovableAiGatewayProvider } = await import("./ai-gateway.server");
+    const gateway = createLovableAiGatewayProvider(key);
+    const model = gateway("google/gemini-2.5-flash");
+    const payload = JSON.stringify({ title: input.title, description: input.description ?? "" });
+    const { text } = await generateText({
+      model,
+      system:
+        "Você traduz descrições de produtos de cosméticos para português do Brasil, com tom elegante, claro e comercial. Preserve unidades, especificações e nomes próprios de ingredientes. Não invente informações. Responda APENAS com JSON válido no formato {\"title\":\"...\",\"description\":\"...\"}.",
+      prompt: `Traduza para pt-BR:\n\n${payload}`,
+    });
+    const cleaned = text.trim().replace(/^```(?:json)?/i, "").replace(/```$/i, "").trim();
+    const parsed = JSON.parse(cleaned);
+    return {
+      title: typeof parsed.title === "string" && parsed.title.trim() ? parsed.title.trim() : input.title,
+      description:
+        typeof parsed.description === "string" && parsed.description.trim()
+          ? parsed.description.trim()
+          : input.description,
+    };
+  } catch {
+    return input;
+  }
+}
+
+function stripHtml(html: string): string {
+  return html
+    .replace(/<script[\s\S]*?<\/script>/gi, "")
+    .replace(/<style[\s\S]*?<\/style>/gi, "")
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/p>/gi, "\n\n")
+    .replace(/<[^>]+>/g, "")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+export const importAliexpressProductToStore = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((v: unknown) =>
+    z
+      .object({
+        product_id: z.string().min(3),
+        status: z.enum(["draft", "active"]).default("draft"),
+        stock: z.number().int().min(0).default(10),
+      })
+      .parse(v),
+  )
+  .handler(async ({ data, context }) => {
+    await assertCatalog(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    // Fetch full product details
+    const json = await callAli("aliexpress.ds.product.get", {
+      product_id: data.product_id,
+      target_currency: "USD",
+      target_language: "PT",
+      ship_to_country: "BR",
+      remove_personal_benefit: "false",
+    });
+    const root =
+      (json as any).aliexpress_ds_product_get_response ??
+      (json as any).aliexpress_ds_productdetail_get_response ??
+      json;
+    const result = (root as any).result ?? root;
+
+    const base = result.ae_item_base_info_dto ?? result.base_info ?? result;
+    const props = result.ae_item_properties ?? {};
+    const mediaBlock = result.ae_multimedia_info_dto ?? result.multimedia ?? {};
+    const skusBlock = result.ae_item_sku_info_dtos ?? result.skus ?? {};
+    const shopBlock = result.ae_store_info ?? result.store_info ?? {};
+
+    const title: string = base.subject ?? base.product_title ?? "Produto AliExpress";
+    const descHtml: string =
+      base.detail ?? result.package_info_dto?.package_detail ?? "";
+    const description = descHtml ? stripHtml(descHtml).slice(0, 6000) : null;
+
+    // Images
+    const images: string[] = [];
+    const pushImg = (u: unknown) => {
+      if (typeof u === "string" && /^https?:\/\//.test(u) && !images.includes(u)) images.push(u);
+    };
+    const imgUrls = mediaBlock.image_urls ?? mediaBlock.image_url_list;
+    if (typeof imgUrls === "string") imgUrls.split(/[,;\s]+/).forEach(pushImg);
+    else if (Array.isArray(imgUrls)) imgUrls.forEach(pushImg);
+    if (Array.isArray(mediaBlock.ae_video_dtos?.ae_video_d_t_o)) {
+      for (const v of mediaBlock.ae_video_dtos.ae_video_d_t_o) pushImg(v.media_url);
+    }
+
+    // Price from first SKU
+    const skus: any[] = Array.isArray(skusBlock?.ae_item_sku_info_d_t_o)
+      ? skusBlock.ae_item_sku_info_d_t_o
+      : Array.isArray(skusBlock)
+        ? skusBlock
+        : [];
+    const firstSku = skus[0] ?? {};
+    const priceRaw =
+      firstNumber(firstSku.offer_sale_price, firstSku.sku_price, firstSku.offer_bulk_sale_price) ??
+      firstNumber(result.app_sale_price, base.sale_price);
+    const currency: string =
+      firstSku.currency_code ?? base.currency_code ?? "USD";
+    const sku = firstSku.sku_code ?? firstSku.sku_id ?? `AE-${data.product_id}`;
+    const weight = firstNumber(props.package_weight, firstSku.package_weight);
+
+    // Translate
+    const translated = await translateToPtBr({ title, description });
+
+    // Convert to BRL
+    let priceBrl: number | null = priceRaw;
+    const srcCurrency = currency.toUpperCase();
+    if (priceRaw != null && srcCurrency !== "BRL") {
+      const rate = await fxToBrl(srcCurrency);
+      priceBrl = Math.round(priceRaw * rate * 100) / 100;
+    }
+
+    const norm: NormalizedProduct = {
+      title: translated.title,
+      description: translated.description,
+      images,
+      price_original: priceBrl,
+      currency: "BRL",
+      sku: String(sku),
+      weight_grams: weight ? Math.round(weight * 1000) : null,
+      source_url: `https://www.aliexpress.com/item/${data.product_id}.html`,
+      source_id: String(data.product_id),
+    };
+
+    // Register import row
+    const { data: imp, error: impErr } = await supabaseAdmin
+      .from("product_imports")
+      .insert({
+        source: "aliexpress_api",
+        source_url: norm.source_url,
+        source_id: norm.source_id,
+        status: "draft",
+        raw_data: { shop: shopBlock },
+        normalized_data: norm,
+        imported_by: context.userId,
+      })
+      .select("id")
+      .single();
+    if (impErr) throw new Error(impErr.message);
+
+    // Build product
+    const settings = await loadSettings(supabaseAdmin);
+    const priceCents = computeSalePriceCents(norm.price_original, norm.currency, settings);
+    const slug = slugify(norm.title) + "-" + (norm.source_id ?? Math.random().toString(36).slice(2, 8));
+
+    const { data: created, error: pe } = await supabaseAdmin
+      .from("products")
+      .insert({
+        slug,
+        name: norm.title,
+        short_description: norm.description?.slice(0, 200) ?? null,
+        description: norm.description ?? null,
+        status: data.status,
+        is_featured: false,
+        brand_id: settings.default_brand_id ?? null,
+        category_id: settings.default_category_id ?? null,
+        tags: ["importado", "aliexpress"],
+      })
+      .select("id")
+      .single();
+    if (pe) throw new Error(pe.message);
+    const productId = created.id;
+
+    const { data: nv, error: ve } = await supabaseAdmin
+      .from("product_variants")
+      .insert({
+        product_id: productId,
+        sku: norm.sku ?? `AE-${data.product_id}`,
+        is_default: true,
+        weight_grams: norm.weight_grams ?? null,
+      })
+      .select("id")
+      .single();
+    if (ve) throw new Error(ve.message);
+
+    await supabaseAdmin.from("product_prices").insert({
+      variant_id: nv.id,
+      list_price_cents: priceCents,
+      sale_price_cents: null,
+      is_active: true,
+    });
+    await supabaseAdmin
+      .from("product_inventory")
+      .upsert({ variant_id: nv.id, stock: data.stock }, { onConflict: "variant_id" });
+
+    if (norm.images.length > 0) {
+      await supabaseAdmin.from("product_media").insert(
+        norm.images.map((url, i) => ({
+          product_id: productId,
+          url,
+          alt: norm.title,
+          position: i,
+          kind: /\.(mp4|webm|mov|m4v)(\?|#|$)/i.test(url) ? ("video" as const) : ("image" as const),
+        })),
+      );
+    }
+
+    await supabaseAdmin
+      .from("product_imports")
+      .update({ status: "imported", product_id: productId, error: null })
+      .eq("id", imp.id);
+
+    return { product_id: productId, price_cents: priceCents };
+  });
