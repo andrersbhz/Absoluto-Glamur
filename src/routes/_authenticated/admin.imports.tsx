@@ -323,8 +323,9 @@ function JsonTab() {
       return bulk({ data: { items } });
     },
     onSuccess: (r) => {
-      toast.success(`${r.count} rascunho(s) criado(s). Veja no Histórico.`);
+      toast.success(`${r.count} rascunho(s) criado(s) no Catálogo.`);
       qc.invalidateQueries({ queryKey: ["imports"] });
+      qc.invalidateQueries({ queryKey: ["admin-products"] });
     },
     onError: (e: Error) => toast.error("Erro: " + e.message),
   });
