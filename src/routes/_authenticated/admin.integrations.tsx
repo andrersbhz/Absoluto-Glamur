@@ -2,7 +2,7 @@ import { createFileRoute, redirect, Link } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
-import { Copy, ExternalLink, Plug, RefreshCw, Route as RouteIcon, Save, TestTube } from "lucide-react";
+import { Copy, ExternalLink, Plug, PlugZap, RefreshCw, Route as RouteIcon, Save, TestTube } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { AdminLayout } from "@/components/admin/AdminLayout";
