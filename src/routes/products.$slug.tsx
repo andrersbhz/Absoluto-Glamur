@@ -8,6 +8,7 @@ import { pickActivePrice, productDetailQuery } from "@/lib/catalog";
 import { effectivePrice, formatBRL } from "@/lib/format";
 import { useCart } from "@/lib/cart-store";
 import { useFavorites } from "@/lib/favorites";
+import { isVideoUrl } from "@/lib/media-kind";
 
 export const Route = createFileRoute("/products/$slug")({
   loader: async ({ params, context }) => {
