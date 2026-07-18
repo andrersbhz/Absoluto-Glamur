@@ -419,19 +419,37 @@ function IntegrationCard({ integration }: { integration: Integration }) {
           {webhookUrl && (
             <label className="block text-sm">
               <span className="mb-1 block text-xs text-muted-foreground">
-                Token do webhook {integration.has_webhook_token && "(deixe vazio para manter)"}
+                {isAliexpress ? "App Secret" : "Token do webhook"}{" "}
+                {integration.has_webhook_token && "(deixe vazio para manter)"}
               </span>
               <input
                 type="password"
                 value={webhookToken}
                 onChange={(e) => setWebhookToken(e.target.value)}
-                placeholder="qualquer string secreta (você define aqui e no painel do provedor)"
+                placeholder={
+                  isAliexpress
+                    ? "App Secret do console AliExpress"
+                    : "qualquer string secreta (você define aqui e no painel do provedor)"
+                }
                 className="w-full rounded-lg border border-border bg-background px-3 py-2 font-mono text-sm"
               />
               <span className="mt-1 block text-[11px] text-muted-foreground">
-                Cadastre a URL acima e este token no painel do provedor ({integration.provider}).
+                {isAliexpress
+                  ? "Cole aqui o App Secret gerado no console AliExpress Open (mesmo app onde a Callback URL foi cadastrada)."
+                  : `Cadastre a URL acima e este token no painel do provedor (${integration.provider}).`}
               </span>
             </label>
+          )}
+          {isAliexpress && (
+            <a
+              href="/api/public/aliexpress/start"
+              target="_blank"
+              rel="noreferrer noopener"
+              className="inline-flex items-center gap-2 rounded-lg border border-primary/40 bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary/20"
+            >
+              <ExternalLink className="h-3.5 w-3.5" />
+              Autorizar AliExpress (após salvar App Key + App Secret)
+            </a>
           )}
           <div className="flex justify-end gap-2">
             <button
