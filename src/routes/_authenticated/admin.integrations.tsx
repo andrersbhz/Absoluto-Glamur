@@ -266,16 +266,15 @@ function IntegrationCard({ integration }: { integration: Integration }) {
         >
           {open ? "Fechar" : "Configurar"}
         </button>
-        {integration.has_api_key && (
-          <button
-            onClick={() => testMut.mutate()}
-            disabled={testMut.isPending}
-            className="inline-flex items-center gap-1 rounded-lg border border-border px-3 py-1.5 text-xs hover:bg-secondary disabled:opacity-60"
-          >
-            <TestTube className="h-3.5 w-3.5" />
-            {testMut.isPending ? "Testando…" : "Testar conexão"}
-          </button>
-        )}
+        <button
+          onClick={() => testMut.mutate()}
+          disabled={testMut.isPending || !integration.has_api_key}
+          title={!integration.has_api_key ? "Configure a chave antes de testar" : "Testar conexão com o provedor"}
+          className="inline-flex items-center gap-1 rounded-lg border border-border px-3 py-1.5 text-xs hover:bg-secondary disabled:opacity-60"
+        >
+          <TestTube className="h-3.5 w-3.5" />
+          {testMut.isPending ? "Testando…" : "Testar conexão"}
+        </button>
         <button
           onClick={() =>
             saveMut.mutate({ provider: integration.provider, enabled: !integration.enabled })
