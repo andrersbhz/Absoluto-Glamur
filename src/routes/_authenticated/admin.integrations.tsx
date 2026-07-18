@@ -206,6 +206,7 @@ function IntegrationCard({ integration }: { integration: Integration }) {
   const docs = PROVIDER_DOCS[integration.provider];
 
   const isNuPay = integration.provider === "nupay";
+  const isAliexpress = integration.provider === "aliexpress";
   const currentMerchantKey =
     (integration.config as { merchant_key?: string } | null)?.merchant_key ?? "";
 
