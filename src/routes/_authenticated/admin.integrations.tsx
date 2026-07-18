@@ -527,3 +527,46 @@ function RoutingPanel() {
     </section>
   );
 }
+
+function StatusLight({
+  connected,
+  errored,
+  hasKey,
+  errorMessage,
+}: {
+  connected: boolean;
+  errored: boolean;
+  hasKey: boolean;
+  errorMessage?: string | null;
+}) {
+  const { color, label, pulse, title } = connected
+    ? { color: "bg-success", label: "Conectado", pulse: true, title: "Provedor testado e ativo" }
+    : errored
+      ? { color: "bg-destructive", label: "Erro", pulse: false, title: errorMessage ?? "Falha na última verificação" }
+      : hasKey
+        ? { color: "bg-warning", label: "Aguardando teste", pulse: false, title: "Chave configurada — clique em 'Testar conexão'" }
+        : { color: "bg-muted-foreground/50", label: "Não configurado", pulse: false, title: "Adicione uma chave de API" };
+
+  return (
+    <span
+      title={title}
+      className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-2 py-0.5 text-[11px] font-medium"
+    >
+      <span className="relative flex h-2.5 w-2.5">
+        {pulse && (
+          <span className={`absolute inline-flex h-full w-full animate-ping rounded-full ${color} opacity-75`} />
+        )}
+        <span
+          className={`relative inline-flex h-2.5 w-2.5 rounded-full ${color}`}
+          style={
+            connected
+              ? { boxShadow: "0 0 10px oklch(0.58 0.12 160 / 0.9), 0 0 4px oklch(0.58 0.12 160 / 0.6)" }
+              : undefined
+          }
+        />
+      </span>
+      <span>{label}</span>
+    </span>
+  );
+}
+
