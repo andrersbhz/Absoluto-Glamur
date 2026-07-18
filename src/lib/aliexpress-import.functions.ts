@@ -629,7 +629,7 @@ export const commitImport = createServerFn({ method: "POST" })
 
     const { data: imp, error: ie } = await supabaseAdmin
       .from("product_imports")
-      .select("id, normalized_data, status")
+      .select("id, normalized_data, status, product_id")
       .eq("id", data.id)
       .maybeSingle();
     if (ie) throw new Error(ie.message);
