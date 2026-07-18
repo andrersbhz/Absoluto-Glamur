@@ -489,12 +489,23 @@ export const bulkImportJson = createServerFn({ method: "POST" })
     const settings = await loadSettings(supabaseAdmin);
     let count = 0;
     for (const n of data.items) {
-      const norm: NormalizedProduct = {
+      const translated = await translateToPtBr({
         title: n.title,
         description: n.description ?? null,
+      });
+      let priceBrl: number | null = n.price_original ?? null;
+      const srcCurrency = (n.currency ?? "BRL").toUpperCase();
+      if (priceBrl != null && srcCurrency !== "BRL") {
+        const live = await fetchFxToBrl(srcCurrency);
+        const rate = live ?? settings.fx_rate;
+        priceBrl = Math.round(priceBrl * rate * 100) / 100;
+      }
+      const norm: NormalizedProduct = {
+        title: translated.title,
+        description: translated.description,
         images: n.images ?? [],
-        price_original: n.price_original ?? null,
-        currency: n.currency ?? null,
+        price_original: priceBrl,
+        currency: "BRL",
         sku: n.sku ?? null,
         weight_grams: n.weight_grams ?? null,
         source_url: null,
