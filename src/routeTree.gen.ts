@@ -41,6 +41,7 @@ import { Route as AuthenticatedAdminCatalogIndexRouteImport } from './routes/_au
 import { Route as ApiPublicWebhooksNupayRouteImport } from './routes/api/public/webhooks/nupay'
 import { Route as ApiPublicWebhooksAsaasRouteImport } from './routes/api/public/webhooks/asaas'
 import { Route as ApiPublicWebhooksAliexpressRouteImport } from './routes/api/public/webhooks/aliexpress'
+import { Route as ApiPublicAliexpressStartRouteImport } from './routes/api/public/aliexpress.start'
 import { Route as AuthenticatedAdminIntelligenceIdRouteImport } from './routes/_authenticated/admin.intelligence.$id'
 import { Route as AuthenticatedAdminImportsIdRouteImport } from './routes/_authenticated/admin.imports.$id'
 import { Route as AuthenticatedAdminCatalogIdRouteImport } from './routes/_authenticated/admin.catalog.$id'
@@ -216,6 +217,12 @@ const ApiPublicWebhooksAliexpressRoute =
     path: '/api/public/webhooks/aliexpress',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicAliexpressStartRoute =
+  ApiPublicAliexpressStartRouteImport.update({
+    id: '/api/public/aliexpress/start',
+    path: '/api/public/aliexpress/start',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const AuthenticatedAdminIntelligenceIdRoute =
   AuthenticatedAdminIntelligenceIdRouteImport.update({
     id: '/$id',
@@ -266,6 +273,7 @@ export interface FileRoutesByFullPath {
   '/admin/catalog/$id': typeof AuthenticatedAdminCatalogIdRoute
   '/admin/imports/$id': typeof AuthenticatedAdminImportsIdRoute
   '/admin/intelligence/$id': typeof AuthenticatedAdminIntelligenceIdRoute
+  '/api/public/aliexpress/start': typeof ApiPublicAliexpressStartRoute
   '/api/public/webhooks/aliexpress': typeof ApiPublicWebhooksAliexpressRoute
   '/api/public/webhooks/asaas': typeof ApiPublicWebhooksAsaasRoute
   '/api/public/webhooks/nupay': typeof ApiPublicWebhooksNupayRoute
@@ -301,6 +309,7 @@ export interface FileRoutesByTo {
   '/admin/catalog/$id': typeof AuthenticatedAdminCatalogIdRoute
   '/admin/imports/$id': typeof AuthenticatedAdminImportsIdRoute
   '/admin/intelligence/$id': typeof AuthenticatedAdminIntelligenceIdRoute
+  '/api/public/aliexpress/start': typeof ApiPublicAliexpressStartRoute
   '/api/public/webhooks/aliexpress': typeof ApiPublicWebhooksAliexpressRoute
   '/api/public/webhooks/asaas': typeof ApiPublicWebhooksAsaasRoute
   '/api/public/webhooks/nupay': typeof ApiPublicWebhooksNupayRoute
@@ -339,6 +348,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/catalog/$id': typeof AuthenticatedAdminCatalogIdRoute
   '/_authenticated/admin/imports/$id': typeof AuthenticatedAdminImportsIdRoute
   '/_authenticated/admin/intelligence/$id': typeof AuthenticatedAdminIntelligenceIdRoute
+  '/api/public/aliexpress/start': typeof ApiPublicAliexpressStartRoute
   '/api/public/webhooks/aliexpress': typeof ApiPublicWebhooksAliexpressRoute
   '/api/public/webhooks/asaas': typeof ApiPublicWebhooksAsaasRoute
   '/api/public/webhooks/nupay': typeof ApiPublicWebhooksNupayRoute
@@ -377,6 +387,7 @@ export interface FileRouteTypes {
     | '/admin/catalog/$id'
     | '/admin/imports/$id'
     | '/admin/intelligence/$id'
+    | '/api/public/aliexpress/start'
     | '/api/public/webhooks/aliexpress'
     | '/api/public/webhooks/asaas'
     | '/api/public/webhooks/nupay'
@@ -412,6 +423,7 @@ export interface FileRouteTypes {
     | '/admin/catalog/$id'
     | '/admin/imports/$id'
     | '/admin/intelligence/$id'
+    | '/api/public/aliexpress/start'
     | '/api/public/webhooks/aliexpress'
     | '/api/public/webhooks/asaas'
     | '/api/public/webhooks/nupay'
@@ -449,6 +461,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/catalog/$id'
     | '/_authenticated/admin/imports/$id'
     | '/_authenticated/admin/intelligence/$id'
+    | '/api/public/aliexpress/start'
     | '/api/public/webhooks/aliexpress'
     | '/api/public/webhooks/asaas'
     | '/api/public/webhooks/nupay'
@@ -462,6 +475,7 @@ export interface RootRouteChildren {
   CartRoute: typeof CartRoute
   ProductsRoute: typeof ProductsRouteWithChildren
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
+  ApiPublicAliexpressStartRoute: typeof ApiPublicAliexpressStartRoute
   ApiPublicWebhooksAliexpressRoute: typeof ApiPublicWebhooksAliexpressRoute
   ApiPublicWebhooksAsaasRoute: typeof ApiPublicWebhooksAsaasRoute
   ApiPublicWebhooksNupayRoute: typeof ApiPublicWebhooksNupayRoute
@@ -693,6 +707,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicWebhooksAliexpressRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/aliexpress/start': {
+      id: '/api/public/aliexpress/start'
+      path: '/api/public/aliexpress/start'
+      fullPath: '/api/public/aliexpress/start'
+      preLoaderRoute: typeof ApiPublicAliexpressStartRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated/admin/intelligence/$id': {
       id: '/_authenticated/admin/intelligence/$id'
       path: '/$id'
@@ -849,6 +870,7 @@ const rootRouteChildren: RootRouteChildren = {
   CartRoute: CartRoute,
   ProductsRoute: ProductsRouteWithChildren,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
+  ApiPublicAliexpressStartRoute: ApiPublicAliexpressStartRoute,
   ApiPublicWebhooksAliexpressRoute: ApiPublicWebhooksAliexpressRoute,
   ApiPublicWebhooksAsaasRoute: ApiPublicWebhooksAsaasRoute,
   ApiPublicWebhooksNupayRoute: ApiPublicWebhooksNupayRoute,
