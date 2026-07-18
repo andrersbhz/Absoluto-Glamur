@@ -2,7 +2,7 @@ import { createFileRoute, redirect, Link } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
-import { AlertCircle, CheckCircle2, Copy, Plug, RefreshCw, Route as RouteIcon, Save, TestTube } from "lucide-react";
+import { AlertCircle, CheckCircle2, Copy, ExternalLink, Plug, RefreshCw, Route as RouteIcon, Save, TestTube } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { AdminLayout } from "@/components/admin/AdminLayout";
@@ -149,9 +149,57 @@ function IntegrationCard({ integration }: { integration: Integration }) {
     ? `${typeof window !== "undefined" ? window.location.origin : ""}${WEBHOOK_PATHS[integration.provider]}`
     : null;
 
+  const PROVIDER_DOCS: Record<
+    string,
+    { keyUrl?: string; keyLabel?: string; docsUrl?: string; instructions?: string }
+  > = {
+    asaas: {
+      keyUrl: "https://www.asaas.com/config/index#/api",
+      keyLabel: "Gerar chave no Asaas",
+      docsUrl: "https://docs.asaas.com/reference/comece-por-aqui",
+      instructions:
+        "Entre em Asaas → Integrações → API Access Key. Gere uma chave para o ambiente correspondente (sandbox ou produção).",
+    },
+    nupay: {
+      keyUrl: "https://parceiros.nupaybusiness.com.br/",
+      keyLabel: "Portal do parceiro NuPay",
+      docsUrl: "https://docs.nupaybusiness.com.br/checkout/docs/openapi/index.html",
+      instructions:
+        "No portal NuPay Business → Configurações → Credenciais, copie a Merchant Key e o Merchant Token. Cadastre a URL do webhook abaixo em Configurações → Webhooks.",
+    },
+    stripe: {
+      keyUrl: "https://dashboard.stripe.com/apikeys",
+      keyLabel: "Chaves no Stripe Dashboard",
+      docsUrl: "https://stripe.com/docs/keys",
+      instructions:
+        "Copie a Secret key (sk_live_… para produção, sk_test_… para sandbox). Nunca use a Publishable key aqui.",
+    },
+    mercadopago: {
+      keyUrl: "https://www.mercadopago.com.br/developers/panel/app",
+      keyLabel: "Painel de desenvolvedor Mercado Pago",
+      docsUrl: "https://www.mercadopago.com.br/developers/pt/docs",
+      instructions:
+        "Crie uma aplicação e copie o Access Token de produção ou teste. Configure notificações IPN/webhook apontando para a URL abaixo.",
+    },
+    firecrawl: {
+      keyUrl: "https://www.firecrawl.dev/app/api-keys",
+      keyLabel: "Chaves Firecrawl",
+      docsUrl: "https://docs.firecrawl.dev/",
+    },
+    aliexpress: {
+      keyUrl: "https://openservice.aliexpress.com/app/manager.htm",
+      keyLabel: "Console AliExpress Open",
+      docsUrl: "https://openservice.aliexpress.com/doc/doc.htm",
+      instructions:
+        "Cadastre um app no AliExpress Open Platform para obter App Key, App Secret e Refresh Token.",
+    },
+  };
+  const docs = PROVIDER_DOCS[integration.provider];
+
   const isNuPay = integration.provider === "nupay";
   const currentMerchantKey =
     (integration.config as { merchant_key?: string } | null)?.merchant_key ?? "";
+
 
   return (
     <div className="rounded-2xl border border-border bg-card p-5 shadow-soft">
@@ -245,7 +293,39 @@ function IntegrationCard({ integration }: { integration: Integration }) {
 
       {open && (
         <div className="mt-5 space-y-3 border-t border-border pt-5">
+          {docs && (
+            <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 text-xs">
+              <div className="flex flex-wrap items-center gap-2">
+                {docs.keyUrl && (
+                  <a
+                    href={docs.keyUrl}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                    className="inline-flex items-center gap-1 rounded-md bg-primary px-2.5 py-1 font-medium text-primary-foreground hover:opacity-90"
+                  >
+                    <ExternalLink className="h-3 w-3" />
+                    {docs.keyLabel ?? "Obter chave"}
+                  </a>
+                )}
+                {docs.docsUrl && (
+                  <a
+                    href={docs.docsUrl}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                    className="inline-flex items-center gap-1 rounded-md border border-border bg-background px-2.5 py-1 hover:bg-secondary"
+                  >
+                    <ExternalLink className="h-3 w-3" />
+                    Documentação
+                  </a>
+                )}
+              </div>
+              {docs.instructions && (
+                <p className="mt-2 text-muted-foreground">{docs.instructions}</p>
+              )}
+            </div>
+          )}
           <div className="grid gap-3 sm:grid-cols-2">
+
             <label className="text-sm">
               <span className="mb-1 block text-xs text-muted-foreground">Ambiente</span>
               <select

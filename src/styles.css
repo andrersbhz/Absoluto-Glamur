@@ -162,6 +162,13 @@
 }
 
 @layer base {
+  :root {
+    color-scheme: light;
+  }
+  .dark {
+    color-scheme: dark;
+  }
+
   * {
     border-color: var(--color-border);
   }
@@ -181,7 +188,19 @@
     font-weight: 500;
     letter-spacing: -0.01em;
   }
+
+  /* Native <select> dropdown lists: garante contraste em light/dark */
+  select {
+    background-color: var(--color-background);
+    color: var(--color-foreground);
+  }
+  select option,
+  select optgroup {
+    background-color: var(--color-popover);
+    color: var(--color-popover-foreground);
+  }
 }
+
 
 /* ============================================================
  * Admin Panel — Neon Pink Theme (aplica apenas no dark mode)
