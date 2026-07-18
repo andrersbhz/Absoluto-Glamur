@@ -33,6 +33,7 @@ import { Route as AuthenticatedAdminMarketingRouteImport } from './routes/_authe
 import { Route as AuthenticatedAdminIntelligenceRouteImport } from './routes/_authenticated/admin.intelligence'
 import { Route as AuthenticatedAdminIntegrationsRouteImport } from './routes/_authenticated/admin.integrations'
 import { Route as AuthenticatedAdminImportsRouteImport } from './routes/_authenticated/admin.imports'
+import { Route as AuthenticatedAdminDiscoverRouteImport } from './routes/_authenticated/admin.discover'
 import { Route as AuthenticatedAdminDashboardRouteImport } from './routes/_authenticated/admin.dashboard'
 import { Route as AuthenticatedAdminComplianceRouteImport } from './routes/_authenticated/admin.compliance'
 import { Route as AuthenticatedAdminAiRouteImport } from './routes/_authenticated/admin.ai'
@@ -170,6 +171,12 @@ const AuthenticatedAdminImportsRoute =
     path: '/imports',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
+const AuthenticatedAdminDiscoverRoute =
+  AuthenticatedAdminDiscoverRouteImport.update({
+    id: '/discover',
+    path: '/discover',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
 const AuthenticatedAdminDashboardRoute =
   AuthenticatedAdminDashboardRouteImport.update({
     id: '/dashboard',
@@ -245,6 +252,7 @@ export interface FileRoutesByFullPath {
   '/admin/ai': typeof AuthenticatedAdminAiRoute
   '/admin/compliance': typeof AuthenticatedAdminComplianceRoute
   '/admin/dashboard': typeof AuthenticatedAdminDashboardRoute
+  '/admin/discover': typeof AuthenticatedAdminDiscoverRoute
   '/admin/imports': typeof AuthenticatedAdminImportsRouteWithChildren
   '/admin/integrations': typeof AuthenticatedAdminIntegrationsRoute
   '/admin/intelligence': typeof AuthenticatedAdminIntelligenceRouteWithChildren
@@ -279,6 +287,7 @@ export interface FileRoutesByTo {
   '/admin/ai': typeof AuthenticatedAdminAiRoute
   '/admin/compliance': typeof AuthenticatedAdminComplianceRoute
   '/admin/dashboard': typeof AuthenticatedAdminDashboardRoute
+  '/admin/discover': typeof AuthenticatedAdminDiscoverRoute
   '/admin/imports': typeof AuthenticatedAdminImportsRouteWithChildren
   '/admin/integrations': typeof AuthenticatedAdminIntegrationsRoute
   '/admin/intelligence': typeof AuthenticatedAdminIntelligenceRouteWithChildren
@@ -316,6 +325,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/ai': typeof AuthenticatedAdminAiRoute
   '/_authenticated/admin/compliance': typeof AuthenticatedAdminComplianceRoute
   '/_authenticated/admin/dashboard': typeof AuthenticatedAdminDashboardRoute
+  '/_authenticated/admin/discover': typeof AuthenticatedAdminDiscoverRoute
   '/_authenticated/admin/imports': typeof AuthenticatedAdminImportsRouteWithChildren
   '/_authenticated/admin/integrations': typeof AuthenticatedAdminIntegrationsRoute
   '/_authenticated/admin/intelligence': typeof AuthenticatedAdminIntelligenceRouteWithChildren
@@ -353,6 +363,7 @@ export interface FileRouteTypes {
     | '/admin/ai'
     | '/admin/compliance'
     | '/admin/dashboard'
+    | '/admin/discover'
     | '/admin/imports'
     | '/admin/integrations'
     | '/admin/intelligence'
@@ -387,6 +398,7 @@ export interface FileRouteTypes {
     | '/admin/ai'
     | '/admin/compliance'
     | '/admin/dashboard'
+    | '/admin/discover'
     | '/admin/imports'
     | '/admin/integrations'
     | '/admin/intelligence'
@@ -423,6 +435,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/ai'
     | '/_authenticated/admin/compliance'
     | '/_authenticated/admin/dashboard'
+    | '/_authenticated/admin/discover'
     | '/_authenticated/admin/imports'
     | '/_authenticated/admin/integrations'
     | '/_authenticated/admin/intelligence'
@@ -624,6 +637,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminImportsRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/_authenticated/admin/discover': {
+      id: '/_authenticated/admin/discover'
+      path: '/discover'
+      fullPath: '/admin/discover'
+      preLoaderRoute: typeof AuthenticatedAdminDiscoverRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
     '/_authenticated/admin/dashboard': {
       id: '/_authenticated/admin/dashboard'
       path: '/dashboard'
@@ -730,6 +750,7 @@ interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminAiRoute: typeof AuthenticatedAdminAiRoute
   AuthenticatedAdminComplianceRoute: typeof AuthenticatedAdminComplianceRoute
   AuthenticatedAdminDashboardRoute: typeof AuthenticatedAdminDashboardRoute
+  AuthenticatedAdminDiscoverRoute: typeof AuthenticatedAdminDiscoverRoute
   AuthenticatedAdminImportsRoute: typeof AuthenticatedAdminImportsRouteWithChildren
   AuthenticatedAdminIntegrationsRoute: typeof AuthenticatedAdminIntegrationsRoute
   AuthenticatedAdminIntelligenceRoute: typeof AuthenticatedAdminIntelligenceRouteWithChildren
@@ -747,6 +768,7 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminAiRoute: AuthenticatedAdminAiRoute,
   AuthenticatedAdminComplianceRoute: AuthenticatedAdminComplianceRoute,
   AuthenticatedAdminDashboardRoute: AuthenticatedAdminDashboardRoute,
+  AuthenticatedAdminDiscoverRoute: AuthenticatedAdminDiscoverRoute,
   AuthenticatedAdminImportsRoute: AuthenticatedAdminImportsRouteWithChildren,
   AuthenticatedAdminIntegrationsRoute: AuthenticatedAdminIntegrationsRoute,
   AuthenticatedAdminIntelligenceRoute:
