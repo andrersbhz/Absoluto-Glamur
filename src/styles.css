@@ -313,6 +313,12 @@
 .admin-shell .admin-card {
   transition: box-shadow 0.25s ease, border-color 0.25s ease, transform 0.25s ease;
 }
+
+/* Padding base 15px nos boxes do admin (sem sobrescrever utilitários p-* explícitos) */
+:where(.admin-shell main [data-slot="card"], .admin-shell main .admin-card, .admin-shell main section.rounded-xl, .admin-shell main section.rounded-2xl, .admin-shell main article.rounded-xl, .admin-shell main article.rounded-2xl) {
+  padding: 15px;
+}
+
 .admin-shell main .rounded-2xl:hover,
 .admin-shell main .rounded-xl:hover,
 .admin-shell [data-slot="card"]:hover,
