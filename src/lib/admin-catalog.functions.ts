@@ -383,3 +383,126 @@ export const deleteAdminProduct = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
+// Exporta produtos em CSV com cabeçalhos em PT-BR (UTF-8 com BOM para abrir bem no Excel).
+export const exportAdminProductsCsv = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((v: unknown) =>
+    z
+      .object({
+        q: z.string().optional(),
+        status: z.enum(["all", "draft", "active", "archived"]).optional(),
+      })
+      .parse(v ?? {}),
+  )
+  .handler(async ({ data, context }) => {
+    await assertCatalog(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    let q = supabaseAdmin
+      .from("products")
+      .select(
+        `id, slug, name, description, short_description, status, is_featured, updated_at, created_at,
+         brand:brands(name), category:categories(name),
+         seo:product_seo(meta_title, meta_description, keywords),
+         media:product_media(url, kind, is_cover, position),
+         variants:product_variants(id, sku, is_default,
+           prices:product_prices(list_price_cents, sale_price_cents, is_active, currency),
+           inventory:product_inventory(stock)
+         )`,
+      )
+      .order("updated_at", { ascending: false })
+      .limit(2000);
+    if (data.status && data.status !== "all") q = q.eq("status", data.status);
+    if (data.q) q = q.ilike("name", `%${data.q}%`);
+    const { data: rows, error } = await q;
+    if (error) throw new Error(error.message);
+
+    const STATUS_PT: Record<string, string> = {
+      draft: "Rascunho",
+      active: "Ativo",
+      archived: "Arquivado",
+    };
+
+    const header = [
+      "ID",
+      "Slug",
+      "Nome",
+      "Marca",
+      "Categoria",
+      "Status",
+      "Destaque",
+      "Descrição curta",
+      "Descrição completa",
+      "SKU padrão",
+      "Preço de tabela (R$)",
+      "Preço promocional (R$)",
+      "Moeda",
+      "Estoque",
+      "Qtd. variantes",
+      "Qtd. mídias",
+      "Capa (URL)",
+      "SEO título",
+      "SEO descrição",
+      "SEO palavras-chave",
+      "Criado em",
+      "Atualizado em",
+    ];
+
+    const formatCents = (c: unknown) =>
+      typeof c === "number" ? (c / 100).toFixed(2).replace(".", ",") : "";
+    const fmtDate = (v: string | null) =>
+      v ? new Date(v).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" }) : "";
+
+    const lines = ((rows ?? []) as unknown as Array<Record<string, unknown>>).map((r) => {
+      const variants = (r.variants as Array<Record<string, unknown>> | null) ?? [];
+      const def = variants.find((v) => v.is_default) ?? variants[0] ?? null;
+      const prices = (def?.prices as Array<Record<string, unknown>> | null) ?? [];
+      const price = prices.find((p) => p.is_active) ?? prices[0];
+      const inventory = (def?.inventory as Array<Record<string, number>> | null) ?? [];
+      const media = ((r.media as Array<Record<string, unknown>> | null) ?? [])
+        .slice()
+        .sort((a, b) => Number(a.position ?? 0) - Number(b.position ?? 0));
+      const cover = media.find((m) => m.is_cover) ?? media[0];
+      const seo = (r.seo as Array<Record<string, unknown>> | null)?.[0];
+      const keywords = Array.isArray(seo?.keywords)
+        ? (seo?.keywords as string[]).join("; ")
+        : "";
+
+      const values: (string | number | null | undefined)[] = [
+        r.id as string,
+        r.slug as string,
+        r.name as string,
+        (r.brand as { name?: string } | null)?.name ?? "",
+        (r.category as { name?: string } | null)?.name ?? "",
+        STATUS_PT[(r.status as string) ?? ""] ?? (r.status as string) ?? "",
+        r.is_featured ? "Sim" : "Não",
+        (r.short_description as string) ?? "",
+        (r.description as string) ?? "",
+        (def?.sku as string) ?? "",
+        formatCents(price?.list_price_cents),
+        formatCents(price?.sale_price_cents),
+        (price?.currency as string) ?? "BRL",
+        inventory[0]?.stock ?? "",
+        variants.length,
+        media.length,
+        (cover?.url as string) ?? "",
+        (seo?.meta_title as string) ?? "",
+        (seo?.meta_description as string) ?? "",
+        keywords,
+        fmtDate((r.created_at as string) ?? null),
+        fmtDate((r.updated_at as string) ?? null),
+      ];
+
+      return values
+        .map((v) => {
+          if (v == null) return "";
+          const s = String(v).replace(/"/g, '""');
+          return /[";\n\r]/.test(s) ? `"${s}"` : s;
+        })
+        .join(";");
+    });
+
+    // BOM UTF-8 + separador ";" para compatibilidade nativa com Excel PT-BR.
+    const csv = "\uFEFF" + [header.join(";"), ...lines].join("\r\n");
+    return { csv, count: lines.length };
+  });
