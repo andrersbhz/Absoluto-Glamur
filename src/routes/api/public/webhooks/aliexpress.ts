@@ -1,4 +1,18 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { createHmac } from "crypto";
+
+function gmt8Ts(): string {
+  const now = new Date(Date.now() + 8 * 3600 * 1000);
+  const p = (n: number) => n.toString().padStart(2, "0");
+  return `${now.getUTCFullYear()}-${p(now.getUTCMonth() + 1)}-${p(now.getUTCDate())} ${p(now.getUTCHours())}:${p(now.getUTCMinutes())}:${p(now.getUTCSeconds())}`;
+}
+
+function signRest(apiPath: string, params: Record<string, string>, appSecret: string): string {
+  const keys = Object.keys(params).sort();
+  const base = apiPath + keys.map((k) => `${k}${params[k]}`).join("");
+  return createHmac("sha256", appSecret).update(base, "utf8").digest("hex").toUpperCase();
+}
+
 
 /**
  * Callback OAuth do AliExpress Open Platform.
