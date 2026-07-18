@@ -145,6 +145,7 @@ function IntegrationCard({ integration }: { integration: Integration }) {
     asaas: "/api/public/webhooks/asaas",
     nupay: "/api/public/webhooks/nupay",
     "17track": "/api/public/webhooks/17track",
+    aliexpress: "/api/public/webhooks/aliexpress",
   };
   const webhookUrl = WEBHOOK_PATHS[integration.provider]
     ? `${typeof window !== "undefined" ? window.location.origin : ""}${WEBHOOK_PATHS[integration.provider]}`
