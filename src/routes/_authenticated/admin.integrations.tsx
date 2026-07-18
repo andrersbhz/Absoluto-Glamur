@@ -374,7 +374,11 @@ function IntegrationCard({ integration }: { integration: Integration }) {
           </div>
           <label className="block text-sm">
             <span className="mb-1 block text-xs text-muted-foreground">
-              {isNuPay ? "X-Merchant-Token" : "Chave da API"}{" "}
+              {isNuPay
+                ? "X-Merchant-Token"
+                : isAliexpress
+                  ? "App Key"
+                  : "Chave da API"}{" "}
               {integration.has_api_key && "(deixe vazio para manter a atual)"}
             </span>
             <input
@@ -388,7 +392,9 @@ function IntegrationCard({ integration }: { integration: Integration }) {
                     ? "sk_live_..."
                     : isNuPay
                       ? "token secreto NuPay"
-                      : "chave da API"
+                      : isAliexpress
+                        ? "App Key do console AliExpress"
+                        : "chave da API"
               }
               className="w-full rounded-lg border border-border bg-background px-3 py-2 font-mono text-sm"
             />
