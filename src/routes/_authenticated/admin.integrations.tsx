@@ -144,6 +144,7 @@ function IntegrationCard({ integration }: { integration: Integration }) {
   const WEBHOOK_PATHS: Record<string, string> = {
     asaas: "/api/public/webhooks/asaas",
     nupay: "/api/public/webhooks/nupay",
+    "17track": "/api/public/webhooks/17track",
   };
   const webhookUrl = WEBHOOK_PATHS[integration.provider]
     ? `${typeof window !== "undefined" ? window.location.origin : ""}${WEBHOOK_PATHS[integration.provider]}`
