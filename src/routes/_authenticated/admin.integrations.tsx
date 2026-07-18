@@ -293,7 +293,39 @@ function IntegrationCard({ integration }: { integration: Integration }) {
 
       {open && (
         <div className="mt-5 space-y-3 border-t border-border pt-5">
+          {docs && (
+            <div className="rounded-lg border border-primary/30 bg-primary/5 p-3 text-xs">
+              <div className="flex flex-wrap items-center gap-2">
+                {docs.keyUrl && (
+                  <a
+                    href={docs.keyUrl}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                    className="inline-flex items-center gap-1 rounded-md bg-primary px-2.5 py-1 font-medium text-primary-foreground hover:opacity-90"
+                  >
+                    <ExternalLink className="h-3 w-3" />
+                    {docs.keyLabel ?? "Obter chave"}
+                  </a>
+                )}
+                {docs.docsUrl && (
+                  <a
+                    href={docs.docsUrl}
+                    target="_blank"
+                    rel="noreferrer noopener"
+                    className="inline-flex items-center gap-1 rounded-md border border-border bg-background px-2.5 py-1 hover:bg-secondary"
+                  >
+                    <ExternalLink className="h-3 w-3" />
+                    Documentação
+                  </a>
+                )}
+              </div>
+              {docs.instructions && (
+                <p className="mt-2 text-muted-foreground">{docs.instructions}</p>
+              )}
+            </div>
+          )}
           <div className="grid gap-3 sm:grid-cols-2">
+
             <label className="text-sm">
               <span className="mb-1 block text-xs text-muted-foreground">Ambiente</span>
               <select
