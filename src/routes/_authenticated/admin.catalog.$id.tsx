@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { isVideoUrl } from "@/lib/media-kind";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import {
   getAdminProduct,
@@ -486,27 +487,40 @@ function CatalogEditor() {
                 )}
 
                 {tab === "media" && (
-                  <Section title="Imagens do produto">
+                  <Section title="Mídias do produto">
                     <p className="text-xs text-muted-foreground">
-                      A primeira imagem é a capa. Cole URLs de imagens (ex: CDN Unsplash, Cloudinary
-                      ou seu bucket).
+                      A primeira mídia é a capa. Cole URLs de imagens (JPG, PNG, WEBP, GIF) ou
+                      vídeos (MP4, WEBM, MOV). GIFs animados e vídeos curtos ajudam na conversão.
                     </p>
                     <div className="space-y-3">
-                      {form.media.map((m, i) => (
+                      {form.media.map((m, i) => {
+                        const isVideo = isVideoUrl(m.url);
+                        return (
                         <div
                           key={i}
                           className="grid gap-3 rounded-xl border border-border bg-card p-3 sm:grid-cols-[72px_1fr_auto]"
                         >
                           <div className="flex h-[72px] w-[72px] items-center justify-center overflow-hidden rounded-lg border border-border bg-secondary">
                             {m.url ? (
-                              <img
-                                src={m.url}
-                                alt={m.alt || ""}
-                                className="h-full w-full object-cover"
-                                onError={(e) => {
-                                  (e.currentTarget as HTMLImageElement).style.display = "none";
-                                }}
-                              />
+                              isVideo ? (
+                                <video
+                                  src={m.url}
+                                  className="h-full w-full object-cover"
+                                  muted
+                                  playsInline
+                                  loop
+                                  autoPlay
+                                />
+                              ) : (
+                                <img
+                                  src={m.url}
+                                  alt={m.alt || ""}
+                                  className="h-full w-full object-cover"
+                                  onError={(e) => {
+                                    (e.currentTarget as HTMLImageElement).style.display = "none";
+                                  }}
+                                />
+                              )
                             ) : (
                               <ImageIcon className="h-6 w-6 text-muted-foreground" />
                             )}
@@ -521,6 +535,11 @@ function CatalogEditor() {
                               <span className="text-[11px] text-muted-foreground">
                                 Posição {i + 1}
                               </span>
+                              {m.url && (
+                                <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
+                                  {isVideo ? "Vídeo" : /\.gif(\?|#|$)/i.test(m.url) ? "GIF" : "Imagem"}
+                                </span>
+                              )}
                             </div>
                             <input
                               value={m.url}
@@ -529,7 +548,7 @@ function CatalogEditor() {
                                 media[i] = { ...media[i], url: e.target.value };
                                 setForm({ ...form, media });
                               }}
-                              placeholder="https://…"
+                              placeholder="https://… (imagem, gif ou vídeo)"
                               className="input font-mono text-xs"
                             />
                             <input
@@ -539,7 +558,7 @@ function CatalogEditor() {
                                 media[i] = { ...media[i], alt: e.target.value };
                                 setForm({ ...form, media });
                               }}
-                              placeholder="Descrição da imagem (acessibilidade)"
+                              placeholder="Descrição da mídia (acessibilidade)"
                               className="input text-xs"
                             />
                           </div>
@@ -574,7 +593,8 @@ function CatalogEditor() {
                             </button>
                           </div>
                         </div>
-                      ))}
+                        );
+                      })}
                       <button
                         type="button"
                         onClick={() =>
