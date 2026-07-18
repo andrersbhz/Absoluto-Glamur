@@ -235,7 +235,7 @@ function ProductPage() {
                     slug: product.slug,
                     name: product.name,
                     variantName: selectedVariant.name ?? null,
-                    imageUrl: cover ?? null,
+                    imageUrl: media.find((m) => !isVideoUrl(m.url))?.url ?? null,
                     unitCents: price.price,
                   });
                   toast.success("Adicionado ao carrinho");
