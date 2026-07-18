@@ -294,6 +294,25 @@ function IntegrationCard({ integration }: { integration: Integration }) {
         >
           {integration.enabled ? "Desativar" : "Ativar"}
         </button>
+        {(integration.has_api_key || integration.has_webhook_token || integration.enabled) && (
+          <button
+            onClick={() => {
+              if (!confirm(`Desconectar ${integration.display_name}? Isso remove a chave da API, o token do webhook e desativa a integração.`)) return;
+              saveMut.mutate({
+                provider: integration.provider,
+                enabled: false,
+                api_key: null,
+                webhook_token: null,
+                config: {},
+              });
+            }}
+            disabled={saveMut.isPending}
+            className="inline-flex items-center gap-1 rounded-lg border border-destructive/40 px-3 py-1.5 text-xs text-destructive hover:bg-destructive/10 disabled:opacity-60"
+          >
+            <PlugZap className="h-3.5 w-3.5" />
+            Desconectar
+          </button>
+        )}
       </div>
 
       {open && (
