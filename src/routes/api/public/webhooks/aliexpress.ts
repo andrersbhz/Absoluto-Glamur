@@ -43,14 +43,14 @@ export const Route = createFileRoute("/api/public/webhooks/aliexpress")({
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
         const { data: integ } = await supabaseAdmin
           .from("integrations")
-          .select("config, api_key")
+          .select("config, api_key, webhook_token")
           .eq("provider", "aliexpress")
           .maybeSingle();
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const cfg = (integ?.config as any) ?? {};
         const appKey = cfg.app_key ?? integ?.api_key ?? "";
-        const appSecret = cfg.app_secret ?? "";
+        const appSecret = cfg.app_secret ?? integ?.webhook_token ?? "";
 
         if (!appKey || !appSecret) {
           await supabaseAdmin
@@ -63,25 +63,28 @@ export const Route = createFileRoute("/api/public/webhooks/aliexpress")({
             .eq("provider", "aliexpress");
           return htmlResponse(
             `<h1>Code recebido, mas faltam credenciais</h1>
-             <p>Cadastre App Key e App Secret em /admin/integrations e refaça a autorização.</p>
+             <p>Cadastre App Key (em "API Key") e App Secret (em "Webhook Token") em /admin/integrations e refaça a autorização.</p>
              <p><code>code=${escapeHtml(code)}</code></p>`,
             200,
           );
         }
 
         try {
+          const signParams: Record<string, string> = {
+            app_key: appKey,
+            code,
+            sign_method: "sha256",
+            timestamp: gmt8Ts(),
+          };
+          const signature = signRest("/auth/token/create", signParams, appSecret);
+          const body = new URLSearchParams({ ...signParams, sign: signature }).toString();
           const tokenRes = await fetch("https://api-sg.aliexpress.com/rest/auth/token/create", {
             method: "POST",
             headers: { "Content-Type": "application/x-www-form-urlencoded" },
-            body: new URLSearchParams({
-              app_key: appKey,
-              app_secret: appSecret,
-              code,
-              // sp_api genérica; alguns apps exigem parâmetros de assinatura MD5/HMAC.
-              // Se o app for do tipo "system interface" com assinatura, ajuste aqui.
-            }).toString(),
+            body,
           });
-          const tokenJson = (await tokenRes.json()) as {
+          const tokenText = await tokenRes.text();
+          let tokenJson: {
             access_token?: string;
             refresh_token?: string;
             expires_in?: number;
@@ -90,14 +93,21 @@ export const Route = createFileRoute("/api/public/webhooks/aliexpress")({
             error?: string;
             error_description?: string;
             message?: string;
-          };
+            code?: string;
+            msg?: string;
+          } = {};
+          try { tokenJson = JSON.parse(tokenText); } catch { /* keep empty */ }
 
           if (!tokenRes.ok || tokenJson.error || !tokenJson.access_token) {
             const msg =
               tokenJson.error_description ??
+              tokenJson.msg ??
               tokenJson.message ??
               tokenJson.error ??
+              tokenJson.code ??
+              tokenText.slice(0, 300) ??
               `HTTP ${tokenRes.status}`;
+
             await supabaseAdmin
               .from("integrations")
               .update({
