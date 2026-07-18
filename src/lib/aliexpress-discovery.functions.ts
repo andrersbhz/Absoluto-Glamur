@@ -50,21 +50,22 @@ async function loadAliCreds() {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const { data } = await supabaseAdmin
     .from("integrations")
-    .select("config, api_key, last_status")
+    .select("config, api_key, webhook_token, last_status")
     .eq("provider", "aliexpress")
     .maybeSingle();
   const cfg = (data?.config ?? {}) as any;
   const appKey: string = cfg.app_key ?? data?.api_key ?? "";
-  const appSecret: string = cfg.app_secret ?? "";
+  const appSecret: string = cfg.app_secret ?? data?.webhook_token ?? "";
   const accessToken: string = cfg.access_token ?? "";
   if (!appKey || !appSecret) {
-    throw new Error("Configure App Key e App Secret do AliExpress em /admin/integrations.");
+    throw new Error("Configure App Key (API Key) e App Secret (Webhook Token) do AliExpress em /admin/integrations.");
   }
   if (!accessToken) {
-    throw new Error("AliExpress não autorizado. Clique em 'Autorizar AliExpress' em /admin/integrations.");
+    throw new Error("AliExpress não autorizado. Vá em /admin/integrations e clique em 'Autorizar AliExpress' para completar o OAuth (troca do code por access_token).");
   }
   return { appKey, appSecret, accessToken };
 }
+
 
 async function callAli<T = any>(
   method: string,
