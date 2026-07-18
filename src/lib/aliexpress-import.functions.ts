@@ -423,12 +423,26 @@ export const saveImportDraft = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await assertCatalog(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const norm: NormalizedProduct = {
+    const translated = await translateToPtBr({
       title: data.normalized.title,
       description: data.normalized.description ?? null,
+    });
+    let priceBrl: number | null = data.normalized.price_original ?? null;
+    const srcCurrency = (data.normalized.currency ?? "BRL").toUpperCase();
+    if (priceBrl != null && srcCurrency !== "BRL") {
+      const live = await fetchFxToBrl(srcCurrency);
+      const cfgForFx = await loadSettings(
+        (await import("@/integrations/supabase/client.server")).supabaseAdmin,
+      );
+      const rate = live ?? cfgForFx.fx_rate;
+      priceBrl = Math.round(priceBrl * rate * 100) / 100;
+    }
+    const norm: NormalizedProduct = {
+      title: translated.title,
+      description: translated.description,
       images: data.normalized.images ?? [],
-      price_original: data.normalized.price_original ?? null,
-      currency: data.normalized.currency ?? null,
+      price_original: priceBrl,
+      currency: "BRL",
       sku: data.normalized.sku ?? null,
       weight_grams: data.normalized.weight_grams ?? null,
       source_url: data.source_url ?? null,
@@ -475,12 +489,23 @@ export const bulkImportJson = createServerFn({ method: "POST" })
     const settings = await loadSettings(supabaseAdmin);
     let count = 0;
     for (const n of data.items) {
-      const norm: NormalizedProduct = {
+      const translated = await translateToPtBr({
         title: n.title,
         description: n.description ?? null,
+      });
+      let priceBrl: number | null = n.price_original ?? null;
+      const srcCurrency = (n.currency ?? "BRL").toUpperCase();
+      if (priceBrl != null && srcCurrency !== "BRL") {
+        const live = await fetchFxToBrl(srcCurrency);
+        const rate = live ?? settings.fx_rate;
+        priceBrl = Math.round(priceBrl * rate * 100) / 100;
+      }
+      const norm: NormalizedProduct = {
+        title: translated.title,
+        description: translated.description,
         images: n.images ?? [],
-        price_original: n.price_original ?? null,
-        currency: n.currency ?? null,
+        price_original: priceBrl,
+        currency: "BRL",
         sku: n.sku ?? null,
         weight_grams: n.weight_grams ?? null,
         source_url: null,
