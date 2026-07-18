@@ -29,12 +29,24 @@ export function ProductCard({ product }: { product: ProductListItem }) {
         className="block aspect-square overflow-hidden bg-secondary/40"
       >
         {cover ? (
-          <img
-            src={cover}
-            alt={media[0]?.alt ?? product.name}
-            loading="lazy"
-            className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
-          />
+          isVideoUrl(cover) ? (
+            <video
+              src={cover}
+              className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+              muted
+              playsInline
+              loop
+              autoPlay
+              preload="metadata"
+            />
+          ) : (
+            <img
+              src={cover}
+              alt={media[0]?.alt ?? product.name}
+              loading="lazy"
+              className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+            />
+          )
         ) : (
           <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-primary/30 to-plum text-primary-foreground/60">
             <span className="font-display text-4xl opacity-40">absoluto glamur.</span>
