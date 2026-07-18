@@ -141,10 +141,11 @@ function UrlTab() {
         },
       }),
     onSuccess: () => {
-      toast.success("Rascunho salvo — veja no Histórico");
+      toast.success("Rascunho criado no Catálogo — abra em Catálogo para revisar e publicar");
       setPreview(null);
       setUrl("");
       qc.invalidateQueries({ queryKey: ["imports"] });
+      qc.invalidateQueries({ queryKey: ["admin-products"] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
