@@ -69,7 +69,7 @@ export function ProductCard({ product }: { product: ProductListItem }) {
         <Heart className={`h-4 w-4 ${fav ? "fill-primary text-primary" : ""}`} />
       </button>
 
-      <div className="flex flex-col gap-2 p-4">
+      <div className="flex flex-col gap-2 p-[15px]">
         {product.brand && (
           <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">{product.brand.name}</p>
         )}
