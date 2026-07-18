@@ -5,6 +5,7 @@ import { effectivePrice, formatBRL } from "@/lib/format";
 import { useFavorites } from "@/lib/favorites";
 import { useCart } from "@/lib/cart-store";
 import { toast } from "sonner";
+import { isVideoUrl } from "@/lib/media-kind";
 
 export function ProductCard({ product }: { product: ProductListItem }) {
   const variant = pickDefaultVariant(product);
