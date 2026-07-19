@@ -15,6 +15,8 @@ function Index() {
   const { data: newArrivals = [] } = useQuery(featuredProductsQuery("lancamentos"));
   const { data: categories = [] } = useQuery(categoriesQuery());
   const { data: blocks = [] } = useQuery(homepageBlocksQuery());
+  const { data: collections = [] } = useQuery(collectionsQuery());
+  const featuredCollections = collections.filter((c) => c.is_featured);
 
   return (
     <StoreLayout>
