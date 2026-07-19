@@ -206,6 +206,19 @@ function CustomBlock({ block }: { block: HomepageBlock }) {
   return null;
 }
 
+function FeaturedCollectionSection({ slug, name, description }: { slug: string; name: string; description: string | null }) {
+  const { data: products = [] } = useQuery(featuredProductsQuery(slug));
+  if (products.length === 0) return null;
+  return (
+    <FeaturedSection
+      title={name}
+      subtitle={description ?? "Coleção em destaque"}
+      link={{ label: "Ver todos", search: { collection: slug } }}
+      products={products}
+    />
+  );
+}
+
 function FeaturedSection({
   title,
   subtitle,
