@@ -26,8 +26,10 @@ export function ProductCard({ product }: { product: ProductListItem }) {
       <Link
         to="/products/$slug"
         params={{ slug: product.slug }}
-        className="block aspect-square overflow-hidden bg-secondary/40"
-      >
+        aria-label={product.name}
+        className="absolute inset-0 z-10"
+      />
+      <div className="relative block aspect-square overflow-hidden bg-secondary/40">
         {cover ? (
           isVideoUrl(cover) ? (
             <video
@@ -52,30 +54,30 @@ export function ProductCard({ product }: { product: ProductListItem }) {
             <span className="font-display text-4xl opacity-40">absoluto glamur.</span>
           </div>
         )}
-      </Link>
+      </div>
 
       <button
         type="button"
         aria-label={fav ? "Remover dos favoritos" : "Favoritar"}
-        onClick={() => {
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
           if (!canFavorite) {
             toast.info("Entre para salvar seus favoritos.");
             return;
           }
           toggle(product.id);
         }}
-        className="absolute right-3 top-3 rounded-full bg-background/80 p-2 text-foreground backdrop-blur transition hover:bg-background"
+        className="absolute right-3 top-3 z-20 rounded-full bg-background/80 p-2 text-foreground backdrop-blur transition hover:bg-background"
       >
         <Heart className={`h-4 w-4 ${fav ? "fill-primary text-primary" : ""}`} />
       </button>
 
-      <div className="flex flex-col gap-2 p-[15px]">
+      <div className="relative flex flex-col gap-2 p-[15px]">
         {product.brand && (
           <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">{product.brand.name}</p>
         )}
-        <Link to="/products/$slug" params={{ slug: product.slug }} className="font-display text-base leading-snug text-foreground">
-          {product.name}
-        </Link>
+        <h3 className="font-display text-base leading-snug text-foreground">{product.name}</h3>
         <div className="flex items-center gap-1 text-xs text-muted-foreground">
           <Star className="h-3.5 w-3.5 fill-champagne text-champagne" />
           <span>{product.rating_avg?.toFixed(1) ?? "0.0"}</span>
@@ -98,7 +100,9 @@ export function ProductCard({ product }: { product: ProductListItem }) {
         <button
           type="button"
           disabled={!variant || !price}
-          onClick={() => {
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
             if (!variant || !price) return;
             addToCart({
               productId: product.id,
@@ -111,7 +115,7 @@ export function ProductCard({ product }: { product: ProductListItem }) {
             });
             toast.success("Adicionado ao carrinho");
           }}
-          className="mt-2 inline-flex items-center justify-center rounded-lg bg-primary px-3 py-2 text-xs font-medium text-primary-foreground shadow-soft transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+          className="relative z-20 mt-2 inline-flex items-center justify-center rounded-lg bg-primary px-3 py-2 text-xs font-medium text-primary-foreground shadow-soft transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
         >
           Adicionar
         </button>
