@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Sparkles, ShieldCheck, Truck } from "lucide-react";
 import { StoreLayout } from "@/components/store/StoreLayout";
 import { ProductCard } from "@/components/store/ProductCard";
-import { categoriesQuery, featuredProductsQuery } from "@/lib/catalog";
+import { categoriesQuery, collectionsQuery, featuredProductsQuery } from "@/lib/catalog";
 import { homepageBlocksQuery, type HomepageBlock } from "@/lib/marketing";
 
 export const Route = createFileRoute("/")({
