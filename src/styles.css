@@ -381,10 +381,10 @@
   border-color: var(--color-border) !important;
 }
 
-/* Scrollbar da sidebar do admin — rosa claro do sistema */
+/* Scrollbar da sidebar do admin — verde limão neon */
 .admin-shell aside,
 .admin-shell aside * {
-  scrollbar-color: oklch(0.82 0.09 15) transparent;
+  scrollbar-color: oklch(0.88 0.22 130) transparent;
   scrollbar-width: thin;
 }
 .admin-shell aside ::-webkit-scrollbar,
@@ -398,12 +398,13 @@
 }
 .admin-shell aside ::-webkit-scrollbar-thumb,
 .admin-shell aside::-webkit-scrollbar-thumb {
-  background-color: oklch(0.82 0.09 15);
+  background-color: oklch(0.88 0.22 130);
   border-radius: 999px;
+  box-shadow: 0 0 8px oklch(0.88 0.22 130 / 60%);
 }
 .admin-shell aside ::-webkit-scrollbar-thumb:hover,
 .admin-shell aside::-webkit-scrollbar-thumb:hover {
-  background-color: oklch(0.72 0.15 10);
+  background-color: oklch(0.92 0.24 130);
 }
 
 /* Light mode: menu hover/ativo também mais claros com toque rosa suave */
