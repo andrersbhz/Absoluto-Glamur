@@ -99,6 +99,163 @@ async function callAli<T = any>(
   return json as T;
 }
 
+type FirecrawlSearchResult = {
+  url?: string;
+  title?: string;
+  description?: string;
+  imageUrl?: string;
+};
+
+async function searchAliExpressWeb(keyword: string, limit: number): Promise<DiscoveryProduct[]> {
+  const firecrawlKey = process.env.FIRECRAWL_API_KEY;
+  const lovableKey = process.env.LOVABLE_API_KEY;
+  if (!firecrawlKey) throw new Error("Firecrawl não conectado para a busca de produtos");
+
+  const isGateway = firecrawlKey.startsWith("lovc_");
+  const endpoint = isGateway
+    ? "https://connector-gateway.lovable.dev/firecrawl/v2/search"
+    : "https://api.firecrawl.dev/v2/search";
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    Authorization: `Bearer ${isGateway ? lovableKey ?? "" : firecrawlKey}`,
+  };
+  if (isGateway) {
+    if (!lovableKey) throw new Error("Conexão Firecrawl indisponível no servidor");
+    headers["X-Connection-Api-Key"] = firecrawlKey;
+  }
+
+  const res = await fetch(endpoint, {
+    method: "POST",
+    headers,
+    body: JSON.stringify({
+      query: `site:aliexpress.com/item ${keyword}`,
+      limit: Math.min(limit, 50),
+      lang: "pt",
+      country: "br",
+      sources: ["web", "images"],
+    }),
+  });
+  const payload = (await res.json().catch(() => null)) as
+    | { success?: boolean; data?: { web?: FirecrawlSearchResult[]; images?: FirecrawlSearchResult[] }; error?: string }
+    | null;
+  if (!res.ok || !payload?.success) {
+    throw new Error(payload?.error ?? `Busca do catálogo falhou [${res.status}]`);
+  }
+
+  const web = payload.data?.web ?? [];
+  const images = payload.data?.images ?? [];
+  const imageByProduct = new Map<string, string>();
+  for (const image of images) {
+    const id = image.url?.match(/\/item\/(\d+)\.html/i)?.[1];
+    if (id && image.imageUrl) imageByProduct.set(id, image.imageUrl);
+  }
+
+  const combined = [...images, ...web];
+  const seen = new Set<string>();
+  const products: DiscoveryProduct[] = [];
+  for (const item of combined) {
+      const productId = item.url?.match(/\/item\/(\d+)\.html/i)?.[1] ?? "";
+      if (!productId || seen.has(productId)) continue;
+      seen.add(productId);
+      const description = item.description ?? "";
+      const price = firstNumber(
+        description.match(/(?:R\$|BRL)\s*([\d.,]+)/i)?.[1],
+        description.match(/(?:US\s*\$|USD)\s*([\d.,]+)/i)?.[1],
+      );
+      const isBrl = /(?:R\$|BRL)/i.test(description);
+      const image = item.imageUrl ?? imageByProduct.get(productId) ?? null;
+      products.push({
+        product_id: productId,
+        title: item.title?.replace(/\s*-\s*AliExpress.*$/i, "").trim() || "Produto AliExpress",
+        image,
+        images: image ? [image] : [],
+        price_original: price,
+        currency: price == null ? null : isBrl ? "BRL" : "USD",
+        price_brl_estimate_cents: null,
+        evaluate_rate: parseRate(description.match(/\b([0-5](?:[.,]\d)?)\s*[౹|]\s*\d+\s*(?:sold|vendidos)/i)?.[1]),
+        lastest_volume: firstNumber(description.match(/([\d.,]+)\s*(?:sold|vendidos)/i)?.[1]),
+        shop_id: null,
+        shop_title: null,
+        shop_rating: null,
+        product_url: item.url ?? `https://www.aliexpress.com/item/${productId}.html`,
+      });
+      if (products.length >= limit) break;
+  }
+  return products;
+}
+
+async function enrichWebResultsWithAliDetails(items: DiscoveryProduct[]): Promise<DiscoveryProduct[]> {
+  const enriched = [...items];
+  let cursor = 0;
+  const workers = Array.from({ length: Math.min(4, items.length) }, async () => {
+    while (cursor < items.length) {
+      const index = cursor++;
+      const item = items[index];
+      try {
+        const json = await callAli("aliexpress.ds.product.get", {
+          product_id: item.product_id,
+          ship_to_country: "BR",
+          target_currency: "BRL",
+          target_language: "PT",
+        });
+        const root = json.aliexpress_ds_product_get_response ?? json;
+        const result = root.result ?? root;
+        const base = result.ae_item_base_info_dto ?? result.base_info ?? {};
+        const media = result.ae_multimedia_info_dto ?? result.multimedia ?? {};
+        const store = result.ae_store_info ?? result.store_info ?? {};
+        const skuBlock = result.ae_item_sku_info_dtos ?? result.skus ?? [];
+        const skus: any[] = Array.isArray(skuBlock?.ae_item_sku_info_d_t_o)
+          ? skuBlock.ae_item_sku_info_d_t_o
+          : Array.isArray(skuBlock)
+            ? skuBlock
+            : [];
+        const firstSku = skus[0] ?? {};
+        const detailImages: string[] = [];
+        const addImage = (url: unknown) => {
+          if (typeof url === "string" && /^https?:\/\//.test(url) && !detailImages.includes(url)) {
+            detailImages.push(url);
+          }
+        };
+        const imageUrls = media.image_urls ?? media.image_url_list;
+        if (typeof imageUrls === "string") imageUrls.split(/[,;\s]+/).forEach(addImage);
+        else if (Array.isArray(imageUrls)) imageUrls.forEach(addImage);
+        if (item.image) addImage(item.image);
+
+        const price = firstNumber(
+          firstSku.offer_sale_price,
+          firstSku.sku_price,
+          firstSku.offer_bulk_sale_price,
+          result.app_sale_price,
+          base.sale_price,
+        );
+        const storeRates = [
+          firstNumber(store.item_as_described_rating),
+          firstNumber(store.communication_rating),
+          firstNumber(store.shipping_speed_rating),
+        ].filter((rate): rate is number => rate !== null);
+        enriched[index] = {
+          ...item,
+          title: String(base.subject ?? base.product_title ?? item.title),
+          image: detailImages[0] ?? item.image,
+          images: detailImages.length ? detailImages.slice(0, 12) : item.images,
+          price_original: price ?? item.price_original,
+          currency: String(firstSku.currency_code ?? base.currency_code ?? item.currency ?? "BRL"),
+          evaluate_rate: parseRate(base.avg_evaluation_rating) ?? item.evaluate_rate,
+          shop_id: store.store_id ? String(store.store_id) : item.shop_id,
+          shop_title: store.store_name ?? item.shop_title,
+          shop_rating: storeRates.length
+            ? Math.round((storeRates.reduce((sum, rate) => sum + rate, 0) / storeRates.length) * 100) / 100
+            : item.shop_rating,
+        };
+      } catch {
+        // Keep the search result when a specific product is unavailable to this account.
+      }
+    }
+  });
+  await Promise.all(workers);
+  return enriched;
+}
+
 // -------------------- Search --------------------
 
 export type DiscoveryProduct = {
@@ -221,11 +378,21 @@ export const discoverAliexpressProducts = createServerFn({ method: "POST" })
     if (data.sort) bizParams.sort = data.sort;
 
     let json: any;
+    let items: DiscoveryProduct[] = [];
+    let total: number | undefined;
     if (data.keyword && data.keyword.trim()) {
       bizParams.keywords = data.keyword.trim();
       // There is no `aliexpress.ds.text.search` method in the Open Platform.
       // Keyword discovery is provided by the official Affiliate product query.
-      json = await callAli("aliexpress.affiliate.product.query", bizParams);
+      try {
+        json = await callAli("aliexpress.affiliate.product.query", bizParams);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        if (!/InsufficientPermission|does not have permission/i.test(message)) throw error;
+        items = await searchAliExpressWeb(data.keyword.trim(), data.page_size);
+        items = await enrichWebResultsWithAliDetails(items);
+        json = null;
+      }
     } else {
       delete bizParams.ship_to_country;
       bizParams.country = "BR";
@@ -233,30 +400,30 @@ export const discoverAliexpressProducts = createServerFn({ method: "POST" })
       json = await callAli("aliexpress.ds.recommend.feed.get", bizParams);
     }
 
-    // Response shape: aliexpress_ds_text_search_response.data.products.selection_search_product
-    // or ...recommend_feed_get_response.result.products.traffic_product_d_t_o
-    const root =
-      json.aliexpress_affiliate_product_query_response ??
-      json.aliexpress_ds_recommend_feed_get_response ??
-      json;
-    const container = root.resp_result?.result ?? root.data ?? root.result ?? root;
-    const productsField =
-      container.products ??
-      container.recommend_products ??
-      container.product ??
-      container.result_list ??
-      [];
-    const rawList: any[] = Array.isArray(productsField)
-      ? productsField
-      : Array.isArray(productsField?.selection_search_product)
-        ? productsField.selection_search_product
-        : Array.isArray(productsField?.traffic_product_d_t_o)
-          ? productsField.traffic_product_d_t_o
-          : Array.isArray(productsField?.product)
-            ? productsField.product
-            : [];
-
-    const items = rawList.map(normalizeSearchProduct);
+    if (json) {
+      const root =
+        json.aliexpress_affiliate_product_query_response ??
+        json.aliexpress_ds_recommend_feed_get_response ??
+        json;
+      const container = root.resp_result?.result ?? root.data ?? root.result ?? root;
+      const productsField =
+        container.products ??
+        container.recommend_products ??
+        container.product ??
+        container.result_list ??
+        [];
+      const rawList: any[] = Array.isArray(productsField)
+        ? productsField
+        : Array.isArray(productsField?.selection_search_product)
+          ? productsField.selection_search_product
+          : Array.isArray(productsField?.traffic_product_d_t_o)
+            ? productsField.traffic_product_d_t_o
+            : Array.isArray(productsField?.product)
+              ? productsField.product
+              : [];
+      items = rawList.map(normalizeSearchProduct);
+      total = firstNumber(container.total_record_count, container.total_count) ?? undefined;
+    }
 
     // Enrich with BRL estimate using live FX for the first currency seen.
     const currencies = Array.from(new Set(items.map((i) => (i.currency ?? "USD").toUpperCase())));
@@ -273,8 +440,7 @@ export const discoverAliexpressProducts = createServerFn({ method: "POST" })
       ? items.filter((i) => (i.evaluate_rate ?? 0) >= data.min_rating!)
       : items;
 
-    const total = firstNumber(container.total_record_count, container.total_count) as number | null;
-    return { items: filtered, total: total ?? undefined };
+    return { items: filtered, total };
   });
 
 // -------------------- Import selected product to store --------------------
@@ -399,8 +565,11 @@ export const importAliexpressProductToStore = createServerFn({ method: "POST" })
     const imgUrls = mediaBlock.image_urls ?? mediaBlock.image_url_list;
     if (typeof imgUrls === "string") imgUrls.split(/[,;\s]+/).forEach(pushImg);
     else if (Array.isArray(imgUrls)) imgUrls.forEach(pushImg);
-    if (Array.isArray(mediaBlock.ae_video_dtos?.ae_video_d_t_o)) {
-      for (const v of mediaBlock.ae_video_dtos.ae_video_d_t_o) pushImg(v.media_url);
+    const videos = mediaBlock.ae_video_dtos;
+    if (Array.isArray(videos?.ae_video_d_t_o)) {
+      for (const v of videos.ae_video_d_t_o) pushImg(v.media_url ?? v.poster_url);
+    } else if (Array.isArray(videos)) {
+      for (const v of videos) pushImg(v.media_url ?? v.poster_url);
     }
 
     // Price from first SKU
