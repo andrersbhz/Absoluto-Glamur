@@ -22,6 +22,13 @@ export const Route = createFileRoute("/_authenticated/admin/discover")({
   }),
 });
 
+// Default markup 150% with .99 rounding — same defaults as the AliExpress importer.
+function suggestedSalePriceCents(costCents: number): number {
+  const withMarkup = Math.round(costCents * 2.5);
+  const reais = Math.floor(withMarkup / 100);
+  return reais * 100 + 99;
+}
+
 function Rating({ value, label }: { value: number | null; label: string }) {
   if (value == null) return null;
   return (
