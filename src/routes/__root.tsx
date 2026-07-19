@@ -74,7 +74,7 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
 }
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
-  head: () => ({
+  head: ({ loaderData }) => ({
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
@@ -116,8 +116,16 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
           url: "/",
         }),
       },
+      ...(loaderData?.gtmId
+        ? [
+            {
+              children: `(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src='https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);})(window,document,'script','dataLayer','${loaderData.gtmId}');`,
+            },
+          ]
+        : []),
     ],
   }),
+  loader: async () => ({ gtmId: await getGtmContainerId() }),
   shellComponent: RootShell,
   component: RootComponent,
   notFoundComponent: NotFoundComponent,
@@ -125,12 +133,23 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 });
 
 function RootShell({ children }: { children: ReactNode }) {
+  const { gtmId } = Route.useLoaderData();
   return (
     <html lang="pt-BR">
       <head>
         <HeadContent />
       </head>
       <body>
+        {gtmId ? (
+          <noscript>
+            <iframe
+              src={`https://www.googletagmanager.com/ns.html?id=${gtmId}`}
+              height="0"
+              width="0"
+              style={{ display: "none", visibility: "hidden" }}
+            />
+          </noscript>
+        ) : null}
         {children}
         <Scripts />
       </body>
@@ -150,34 +169,6 @@ function RootComponent() {
     });
     return () => data.subscription.unsubscribe();
   }, [router, queryClient]);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const w = window as any;
-    if (w.__gtmLoaded) return;
-    getGtmContainerId()
-      .then((id) => {
-        if (!id || w.__gtmLoaded) return;
-        w.__gtmLoaded = true;
-        w.dataLayer = w.dataLayer || [];
-        w.dataLayer.push({ "gtm.start": Date.now(), event: "gtm.js" });
-        const s = document.createElement("script");
-        s.async = true;
-        s.src = `https://www.googletagmanager.com/gtm.js?id=${encodeURIComponent(id)}`;
-        document.head.appendChild(s);
-        const ns = document.createElement("noscript");
-        const iframe = document.createElement("iframe");
-        iframe.src = `https://www.googletagmanager.com/ns.html?id=${encodeURIComponent(id)}`;
-        iframe.height = "0";
-        iframe.width = "0";
-        iframe.style.display = "none";
-        iframe.style.visibility = "hidden";
-        ns.appendChild(iframe);
-        document.body.insertBefore(ns, document.body.firstChild);
-      })
-      .catch(() => {});
-  }, []);
 
   return (
     <QueryClientProvider client={queryClient}>
