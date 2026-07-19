@@ -77,6 +77,11 @@ function Index() {
         <CustomBlock key={b.id} block={b} />
       ))}
 
+      {featuredCollections.map((c) => (
+        <FeaturedCollectionSection key={c.id} slug={c.slug} name={c.name} description={c.description} />
+      ))}
+
+
 
       {newArrivals.length > 0 && (
         <FeaturedSection
