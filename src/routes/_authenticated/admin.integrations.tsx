@@ -207,11 +207,19 @@ function IntegrationCard({ integration }: { integration: Integration }) {
       instructions:
         "1) Crie conta gratuita em 17track.net e ative o plano API (2.000 rastreios/mês grátis). 2) Acesse Painel → API → 'Access Key' e copie o token de 32 caracteres. 3) Cole no campo 'API Key' abaixo e salve. 4) Opcional: cadastre a URL do webhook abaixo em Painel → API → Push (Webhook) para receber atualizações em tempo real.",
     },
+    google_tag_manager: {
+      keyUrl: "https://tagmanager.google.com/",
+      keyLabel: "Abrir Google Tag Manager",
+      docsUrl: "https://support.google.com/tagmanager/answer/6103696",
+      instructions:
+        "1) Acesse tagmanager.google.com e crie (ou selecione) um container do tipo Web. 2) Copie o ID do container no formato GTM-XXXXXX. 3) Cole no campo abaixo, salve e ative — o snippet do GTM será injetado automaticamente em todas as páginas da loja.",
+    },
   };
   const docs = PROVIDER_DOCS[integration.provider];
 
   const isNuPay = integration.provider === "nupay";
   const isAliexpress = integration.provider === "aliexpress";
+  const isGtm = integration.provider === "google_tag_manager";
   const currentMerchantKey =
     (integration.config as { merchant_key?: string } | null)?.merchant_key ?? "";
 
@@ -383,11 +391,13 @@ function IntegrationCard({ integration }: { integration: Integration }) {
                 ? "X-Merchant-Token"
                 : isAliexpress
                   ? "App Key"
-                  : "Chave da API"}{" "}
+                  : isGtm
+                    ? "ID do container GTM (formato GTM-XXXXXX)"
+                    : "Chave da API"}{" "}
               {integration.has_api_key && "(deixe vazio para manter a atual)"}
             </span>
             <input
-              type="password"
+              type={isGtm ? "text" : "password"}
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
               placeholder={
@@ -399,10 +409,17 @@ function IntegrationCard({ integration }: { integration: Integration }) {
                       ? "token secreto NuPay"
                       : isAliexpress
                         ? "App Key do console AliExpress"
-                        : "chave da API"
+                        : isGtm
+                          ? "GTM-XXXXXX"
+                          : "chave da API"
               }
               className="w-full rounded-lg border border-border bg-background px-3 py-2 font-mono text-sm"
             />
+            {isGtm && (
+              <span className="mt-1 block text-[11px] text-muted-foreground">
+                Ative a integração após salvar. O snippet do GTM é carregado automaticamente em todas as páginas públicas da loja.
+              </span>
+            )}
           </label>
           {isNuPay && (
             <label className="block text-sm">
