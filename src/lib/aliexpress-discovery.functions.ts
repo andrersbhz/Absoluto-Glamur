@@ -184,6 +184,78 @@ async function searchAliExpressWeb(keyword: string, limit: number): Promise<Disc
   return products;
 }
 
+async function enrichWebResultsWithAliDetails(items: DiscoveryProduct[]): Promise<DiscoveryProduct[]> {
+  const enriched = [...items];
+  let cursor = 0;
+  const workers = Array.from({ length: Math.min(4, items.length) }, async () => {
+    while (cursor < items.length) {
+      const index = cursor++;
+      const item = items[index];
+      try {
+        const json = await callAli("aliexpress.ds.product.get", {
+          product_id: item.product_id,
+          ship_to_country: "BR",
+          target_currency: "BRL",
+          target_language: "PT",
+        });
+        const root = json.aliexpress_ds_product_get_response ?? json;
+        const result = root.result ?? root;
+        const base = result.ae_item_base_info_dto ?? result.base_info ?? {};
+        const media = result.ae_multimedia_info_dto ?? result.multimedia ?? {};
+        const store = result.ae_store_info ?? result.store_info ?? {};
+        const skuBlock = result.ae_item_sku_info_dtos ?? result.skus ?? [];
+        const skus: any[] = Array.isArray(skuBlock?.ae_item_sku_info_d_t_o)
+          ? skuBlock.ae_item_sku_info_d_t_o
+          : Array.isArray(skuBlock)
+            ? skuBlock
+            : [];
+        const firstSku = skus[0] ?? {};
+        const detailImages: string[] = [];
+        const addImage = (url: unknown) => {
+          if (typeof url === "string" && /^https?:\/\//.test(url) && !detailImages.includes(url)) {
+            detailImages.push(url);
+          }
+        };
+        const imageUrls = media.image_urls ?? media.image_url_list;
+        if (typeof imageUrls === "string") imageUrls.split(/[,;\s]+/).forEach(addImage);
+        else if (Array.isArray(imageUrls)) imageUrls.forEach(addImage);
+        if (item.image) addImage(item.image);
+
+        const price = firstNumber(
+          firstSku.offer_sale_price,
+          firstSku.sku_price,
+          firstSku.offer_bulk_sale_price,
+          result.app_sale_price,
+          base.sale_price,
+        );
+        const storeRates = [
+          firstNumber(store.item_as_described_rating),
+          firstNumber(store.communication_rating),
+          firstNumber(store.shipping_speed_rating),
+        ].filter((rate): rate is number => rate !== null);
+        enriched[index] = {
+          ...item,
+          title: String(base.subject ?? base.product_title ?? item.title),
+          image: detailImages[0] ?? item.image,
+          images: detailImages.length ? detailImages.slice(0, 12) : item.images,
+          price_original: price ?? item.price_original,
+          currency: String(firstSku.currency_code ?? base.currency_code ?? item.currency ?? "BRL"),
+          evaluate_rate: parseRate(base.avg_evaluation_rating) ?? item.evaluate_rate,
+          shop_id: store.store_id ? String(store.store_id) : item.shop_id,
+          shop_title: store.store_name ?? item.shop_title,
+          shop_rating: storeRates.length
+            ? Math.round((storeRates.reduce((sum, rate) => sum + rate, 0) / storeRates.length) * 100) / 100
+            : item.shop_rating,
+        };
+      } catch {
+        // Keep the search result when a specific product is unavailable to this account.
+      }
+    }
+  });
+  await Promise.all(workers);
+  return enriched;
+}
+
 // -------------------- Search --------------------
 
 export type DiscoveryProduct = {
@@ -318,6 +390,7 @@ export const discoverAliexpressProducts = createServerFn({ method: "POST" })
         const message = error instanceof Error ? error.message : String(error);
         if (!/InsufficientPermission|does not have permission/i.test(message)) throw error;
         items = await searchAliExpressWeb(data.keyword.trim(), data.page_size);
+        items = await enrichWebResultsWithAliDetails(items);
         json = null;
       }
     } else {
@@ -492,8 +565,11 @@ export const importAliexpressProductToStore = createServerFn({ method: "POST" })
     const imgUrls = mediaBlock.image_urls ?? mediaBlock.image_url_list;
     if (typeof imgUrls === "string") imgUrls.split(/[,;\s]+/).forEach(pushImg);
     else if (Array.isArray(imgUrls)) imgUrls.forEach(pushImg);
-    if (Array.isArray(mediaBlock.ae_video_dtos?.ae_video_d_t_o)) {
-      for (const v of mediaBlock.ae_video_dtos.ae_video_d_t_o) pushImg(v.media_url);
+    const videos = mediaBlock.ae_video_dtos;
+    if (Array.isArray(videos?.ae_video_d_t_o)) {
+      for (const v of videos.ae_video_d_t_o) pushImg(v.media_url ?? v.poster_url);
+    } else if (Array.isArray(videos)) {
+      for (const v of videos) pushImg(v.media_url ?? v.poster_url);
     }
 
     // Price from first SKU
