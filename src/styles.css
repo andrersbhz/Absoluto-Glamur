@@ -354,6 +354,57 @@
   color: var(--success) !important;
 }
 
+/* Página com muitos cards (ex: Integrações): remove hover/transitions caros
+ * que causavam repaints e travavam a rolagem. Mantém visual base. */
+.admin-plain [data-slot="card"],
+.admin-plain .admin-card,
+.admin-plain section.rounded-xl,
+.admin-plain section.rounded-2xl,
+.admin-plain article.rounded-xl,
+.admin-plain article.rounded-2xl,
+.admin-plain .rounded-xl,
+.admin-plain .rounded-2xl {
+  transition: none !important;
+  transform: none !important;
+}
+.admin-plain [data-slot="card"]:hover,
+.admin-plain .admin-card:hover,
+.admin-plain section.rounded-xl:hover,
+.admin-plain section.rounded-2xl:hover,
+.admin-plain article.rounded-xl:hover,
+.admin-plain article.rounded-2xl:hover,
+.admin-plain .rounded-xl:hover,
+.admin-plain .rounded-2xl:hover {
+  transform: none !important;
+  box-shadow: 0 1px 2px oklch(0.3 0.05 0 / 0.06) !important;
+  border-color: var(--color-border) !important;
+}
+
+/* Scrollbar da sidebar do admin — rosa claro do sistema */
+.admin-shell aside,
+.admin-shell aside * {
+  scrollbar-color: oklch(0.82 0.09 15) transparent;
+  scrollbar-width: thin;
+}
+.admin-shell aside ::-webkit-scrollbar,
+.admin-shell aside::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.admin-shell aside ::-webkit-scrollbar-track,
+.admin-shell aside::-webkit-scrollbar-track {
+  background: transparent;
+}
+.admin-shell aside ::-webkit-scrollbar-thumb,
+.admin-shell aside::-webkit-scrollbar-thumb {
+  background-color: oklch(0.82 0.09 15);
+  border-radius: 999px;
+}
+.admin-shell aside ::-webkit-scrollbar-thumb:hover,
+.admin-shell aside::-webkit-scrollbar-thumb:hover {
+  background-color: oklch(0.72 0.15 10);
+}
+
 /* Light mode: menu hover/ativo também mais claros com toque rosa suave */
 .admin-shell .admin-nav-link:hover {
   background-color: oklch(0.97 0.02 355);
