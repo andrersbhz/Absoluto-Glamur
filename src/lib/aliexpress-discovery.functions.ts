@@ -225,6 +225,10 @@ export const discoverAliexpressProducts = createServerFn({ method: "POST" })
       target_currency: "USD",
       target_language: "PT",
       ship_to_country: "BR",
+      country_code: "BR",
+      countryCode: "BR",
+      country: "BR",
+      local_country: "BR",
       page_no: data.page,
       page_size: data.page_size,
     };
