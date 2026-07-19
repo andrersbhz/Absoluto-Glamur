@@ -147,9 +147,14 @@ function IntegrationCard({ integration }: { integration: Integration }) {
     "17track": "/api/public/webhooks/17track",
     aliexpress: "/api/public/webhooks/aliexpress",
   };
+  const configuredRedirect =
+    (integration.config as { redirect_uri?: string } | null)?.redirect_uri ?? "";
   const webhookUrl = WEBHOOK_PATHS[integration.provider]
-    ? `${typeof window !== "undefined" ? window.location.origin : ""}${WEBHOOK_PATHS[integration.provider]}`
+    ? integration.provider === "aliexpress" && configuredRedirect
+      ? configuredRedirect
+      : `${typeof window !== "undefined" ? window.location.origin : ""}${WEBHOOK_PATHS[integration.provider]}`
     : null;
+  const [redirectUri, setRedirectUri] = useState(configuredRedirect);
 
   const PROVIDER_DOCS: Record<
     string,
