@@ -292,29 +292,19 @@
   box-shadow: 0 0 0 1px var(--neon-pink), 0 0 18px oklch(0.72 0.28 5 / 75%);
 }
 
-/* Efeito neon rosa nos boxes/cards do admin */
+/* Efeito neon rosa nos boxes/cards do admin (apenas cards reais, não wrappers) */
 .dark .admin-shell [data-slot="card"],
-.dark .admin-shell .admin-card,
-.dark .admin-shell main section,
-.dark .admin-shell main article,
-.dark .admin-shell main .rounded-2xl,
-.dark .admin-shell main .rounded-xl {
+.dark .admin-shell .admin-card {
   border-color: oklch(0.72 0.28 5 / 40%);
   box-shadow:
-    0 0 0 1px oklch(0.72 0.28 5 / 25%),
     0 0 22px oklch(0.72 0.28 5 / 18%),
     0 10px 30px -12px oklch(0 0 0 / 60%);
   transition: box-shadow 0.25s ease, border-color 0.25s ease, transform 0.25s ease;
 }
 .dark .admin-shell [data-slot="card"]:hover,
-.dark .admin-shell .admin-card:hover,
-.dark .admin-shell main section:hover,
-.dark .admin-shell main article:hover,
-.dark .admin-shell main .rounded-2xl:hover,
-.dark .admin-shell main .rounded-xl:hover {
+.dark .admin-shell .admin-card:hover {
   border-color: var(--neon-pink);
   box-shadow:
-    0 0 0 1px var(--neon-pink),
     0 0 42px oklch(0.72 0.28 5 / 65%),
     0 0 80px oklch(0.88 0.22 130 / 28%),
     0 12px 36px -12px oklch(0 0 0 / 70%);
@@ -322,30 +312,26 @@
 }
 
 /* Light mode: neon hover suave (rosa + verde limão) */
-.admin-shell main .rounded-2xl,
-.admin-shell main .rounded-xl,
 .admin-shell [data-slot="card"],
 .admin-shell .admin-card {
   transition: box-shadow 0.25s ease, border-color 0.25s ease, transform 0.25s ease;
 }
 
 /* Padding base 15px nos boxes do admin (sem sobrescrever utilitários p-* explícitos) */
-:where(.admin-shell main [data-slot="card"], .admin-shell main .admin-card, .admin-shell main section.rounded-xl, .admin-shell main section.rounded-2xl, .admin-shell main article.rounded-xl, .admin-shell main article.rounded-2xl) {
+:where(.admin-shell main [data-slot="card"], .admin-shell main .admin-card) {
   padding: 15px;
 }
 
-.admin-shell main .rounded-2xl:hover,
-.admin-shell main .rounded-xl:hover,
 .admin-shell [data-slot="card"]:hover,
 .admin-shell .admin-card:hover {
   border-color: oklch(0.72 0.28 5 / 70%);
   box-shadow:
-    0 0 0 1px oklch(0.72 0.28 5 / 55%),
     0 0 28px oklch(0.72 0.28 5 / 35%),
     0 0 60px oklch(0.88 0.22 130 / 20%),
     0 10px 30px -12px oklch(0 0 0 / 20%);
   transform: translateY(-2px);
 }
+
 
 /* Header do admin ganha assinatura neon */
 .dark .admin-shell > div > header {
