@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Sparkles, ShieldCheck, Truck } from "lucide-react";
 import { StoreLayout } from "@/components/store/StoreLayout";
 import { ProductCard } from "@/components/store/ProductCard";
-import { categoriesQuery, featuredProductsQuery } from "@/lib/catalog";
+import { categoriesQuery, collectionsQuery, featuredProductsQuery } from "@/lib/catalog";
 import { homepageBlocksQuery, type HomepageBlock } from "@/lib/marketing";
 
 export const Route = createFileRoute("/")({
@@ -15,6 +15,8 @@ function Index() {
   const { data: newArrivals = [] } = useQuery(featuredProductsQuery("lancamentos"));
   const { data: categories = [] } = useQuery(categoriesQuery());
   const { data: blocks = [] } = useQuery(homepageBlocksQuery());
+  const { data: collections = [] } = useQuery(collectionsQuery());
+  const featuredCollections = collections.filter((c) => c.is_featured);
 
   return (
     <StoreLayout>
@@ -74,6 +76,11 @@ function Index() {
       {blocks.map((b) => (
         <CustomBlock key={b.id} block={b} />
       ))}
+
+      {featuredCollections.map((c) => (
+        <FeaturedCollectionSection key={c.id} slug={c.slug} name={c.name} description={c.description} />
+      ))}
+
 
 
       {newArrivals.length > 0 && (
@@ -197,6 +204,19 @@ function CustomBlock({ block }: { block: HomepageBlock }) {
   }
 
   return null;
+}
+
+function FeaturedCollectionSection({ slug, name, description }: { slug: string; name: string; description: string | null }) {
+  const { data: products = [] } = useQuery(featuredProductsQuery(slug));
+  if (products.length === 0) return null;
+  return (
+    <FeaturedSection
+      title={name}
+      subtitle={description ?? "Coleção em destaque"}
+      link={{ label: "Ver todos", search: { collection: slug } }}
+      products={products}
+    />
+  );
 }
 
 function FeaturedSection({
