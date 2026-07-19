@@ -391,11 +391,13 @@ function IntegrationCard({ integration }: { integration: Integration }) {
                 ? "X-Merchant-Token"
                 : isAliexpress
                   ? "App Key"
-                  : "Chave da API"}{" "}
+                  : isGtm
+                    ? "ID do container GTM (formato GTM-XXXXXX)"
+                    : "Chave da API"}{" "}
               {integration.has_api_key && "(deixe vazio para manter a atual)"}
             </span>
             <input
-              type="password"
+              type={isGtm ? "text" : "password"}
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
               placeholder={
@@ -407,10 +409,17 @@ function IntegrationCard({ integration }: { integration: Integration }) {
                       ? "token secreto NuPay"
                       : isAliexpress
                         ? "App Key do console AliExpress"
-                        : "chave da API"
+                        : isGtm
+                          ? "GTM-XXXXXX"
+                          : "chave da API"
               }
               className="w-full rounded-lg border border-border bg-background px-3 py-2 font-mono text-sm"
             />
+            {isGtm && (
+              <span className="mt-1 block text-[11px] text-muted-foreground">
+                Ative a integração após salvar. O snippet do GTM é carregado automaticamente em todas as páginas públicas da loja.
+              </span>
+            )}
           </label>
           {isNuPay && (
             <label className="block text-sm">
