@@ -25,7 +25,12 @@ export const Route = createFileRoute("/api/public/aliexpress/start")({
           );
         }
         const origin = new URL(request.url).origin;
-        const redirect = `${origin}/api/public/webhooks/aliexpress`;
+        // Priority: explicit cfg.redirect_uri (must match EXACTLY the Callback URL registered in AliExpress console)
+        // → falls back to current origin (useful in preview). If they mismatch, AliExpress returns
+        //   "Redirect uri does not match the callback url of the APP".
+        const redirect =
+          (typeof cfg.redirect_uri === "string" && cfg.redirect_uri.trim()) ||
+          `${origin}/api/public/webhooks/aliexpress`;
         const authUrl = `https://api-sg.aliexpress.com/oauth/authorize?response_type=code&client_id=${encodeURIComponent(
           appKey,
         )}&redirect_uri=${encodeURIComponent(redirect)}&sp=ae&force_auth=true`;
