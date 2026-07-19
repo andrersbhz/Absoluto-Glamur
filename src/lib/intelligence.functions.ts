@@ -185,38 +185,64 @@ export const getProductIntelligence = createServerFn({ method: "GET" })
     await assertCatalog(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    const [{ data: product }, { data: score }, { data: costs }, { data: rules }, { data: calcs }] =
-      await Promise.all([
-        supabaseAdmin
-          .from("products")
-          .select(
-            `id, name, slug, status, category_id, brand_id,
-             variants:product_variants(id, is_default,
-               prices:product_prices(id, list_price_cents, sale_price_cents, is_active)
-             )`,
-          )
-          .eq("id", data.product_id)
-          .maybeSingle(),
-        supabaseAdmin
-          .from("product_scores")
-          .select("*, components:product_score_components(*)")
-          .eq("product_id", data.product_id)
-          .maybeSingle(),
-        supabaseAdmin
-          .from("pricing_cost_components")
-          .select("*")
-          .eq("product_id", data.product_id)
-          .order("created_at", { ascending: true }),
-        supabaseAdmin.from("pricing_rules").select("*").eq("is_active", true).order("priority"),
-        supabaseAdmin
-          .from("pricing_calculations")
-          .select("*")
-          .eq("product_id", data.product_id)
-          .order("computed_at", { ascending: false })
-          .limit(20),
-      ]);
+    const [prodRes, scoreRes, costsRes, rulesRes, calcsRes] = await Promise.all([
+      supabaseAdmin
+        .from("products")
+        .select(
+          `id, name, slug, status, category_id, brand_id,
+           variants:product_variants(id, is_default,
+             prices:product_prices(id, list_price_cents, sale_price_cents, is_active)
+           )`,
+        )
+        .eq("id", data.product_id)
+        .maybeSingle(),
+      supabaseAdmin
+        .from("product_scores")
+        .select("*, components:product_score_components(*)")
+        .eq("product_id", data.product_id)
+        .maybeSingle(),
+      supabaseAdmin
+        .from("pricing_cost_components")
+        .select("*")
+        .eq("product_id", data.product_id)
+        .order("created_at", { ascending: true }),
+      supabaseAdmin.from("pricing_rules").select("*").eq("is_active", true).order("priority"),
+      supabaseAdmin
+        .from("pricing_calculations")
+        .select("*")
+        .eq("product_id", data.product_id)
+        .order("computed_at", { ascending: false })
+        .limit(20),
+    ]);
 
-    return { product, score, costs: costs ?? [], rules: rules ?? [], calculations: calcs ?? [] };
+    let product = prodRes.data as any;
+    if (!product) {
+      // Fallback: nested-relation errors can null out the row silently. Retry minimal.
+      const basic = await supabaseAdmin
+        .from("products")
+        .select("id, name, slug, status, category_id, brand_id")
+        .eq("id", data.product_id)
+        .maybeSingle();
+      if (basic.error) {
+        throw new Error(`Falha ao carregar produto: ${basic.error.message}`);
+      }
+      if (!basic.data) {
+        throw new Error(
+          `Produto ${data.product_id} não encontrado${
+            prodRes.error ? ` (${prodRes.error.message})` : ""
+          }`,
+        );
+      }
+      product = { ...basic.data, variants: [] };
+    }
+
+    return {
+      product,
+      score: scoreRes.data,
+      costs: costsRes.data ?? [],
+      rules: rulesRes.data ?? [],
+      calculations: calcsRes.data ?? [],
+    };
   });
 
 // ============ COST COMPONENTS ============
