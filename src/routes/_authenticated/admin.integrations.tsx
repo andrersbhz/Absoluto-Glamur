@@ -446,28 +446,63 @@ function IntegrationCard({ integration }: { integration: Integration }) {
             </label>
           )}
           {isAliexpress && (
-            <a
-              href="/api/public/aliexpress/start"
-              target="_blank"
-              rel="noreferrer noopener"
-              className="inline-flex items-center gap-2 rounded-lg border border-primary/40 bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary/20"
-            >
-              <ExternalLink className="h-3.5 w-3.5" />
-              Autorizar AliExpress (após salvar App Key + App Secret)
-            </a>
+            <>
+              <label className="block text-sm">
+                <span className="mb-1 block text-xs text-muted-foreground">
+                  Callback URL (deve ser IDÊNTICA à cadastrada no console AliExpress)
+                </span>
+                <div className="flex gap-2">
+                  <input
+                    type="url"
+                    value={redirectUri}
+                    onChange={(e) => setRedirectUri(e.target.value)}
+                    placeholder="https://www.absolutoglamur.com.br/api/public/webhooks/aliexpress"
+                    className="w-full rounded-lg border border-border bg-background px-3 py-2 font-mono text-xs"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigator.clipboard.writeText(redirectUri);
+                      toast.success("URL copiada");
+                    }}
+                    className="rounded-lg border border-border px-2 hover:bg-secondary"
+                    aria-label="Copiar"
+                  >
+                    <Copy className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+                <span className="mt-1 block text-[11px] text-muted-foreground">
+                  Erro "Redirect uri does not match the callback url of the APP" = esta URL
+                  diverge da registrada no AliExpress. Cole exatamente a mesma string dos dois lados
+                  (com/sem www, http/https, sem barra final).
+                </span>
+              </label>
+              <a
+                href="/api/public/aliexpress/start"
+                target="_blank"
+                rel="noreferrer noopener"
+                className="inline-flex items-center gap-2 rounded-lg border border-primary/40 bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary/20"
+              >
+                <ExternalLink className="h-3.5 w-3.5" />
+                Autorizar AliExpress (após salvar App Key + App Secret + Callback URL)
+              </a>
+            </>
           )}
           <div className="flex justify-end gap-2">
             <button
-              onClick={() =>
+              onClick={() => {
+                const cfg: Record<string, unknown> = {};
+                if (isNuPay && merchantKey) cfg.merchant_key = merchantKey;
+                if (isAliexpress) cfg.redirect_uri = redirectUri.trim() || null;
                 saveMut.mutate({
                   provider: integration.provider,
                   mode,
                   enabled,
                   api_key: apiKey ? apiKey : undefined,
                   webhook_token: webhookToken ? webhookToken : undefined,
-                  config: isNuPay && merchantKey ? { merchant_key: merchantKey } : undefined,
-                })
-              }
+                  config: Object.keys(cfg).length ? cfg : undefined,
+                });
+              }}
               disabled={saveMut.isPending}
               className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm text-primary-foreground shadow-soft disabled:opacity-60"
             >
