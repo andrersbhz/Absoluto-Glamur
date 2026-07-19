@@ -73,7 +73,7 @@ export const Route = createFileRoute("/api/public/webhooks/aliexpress")({
             app_key: appKey,
             code,
             sign_method: "sha256",
-            timestamp: gmt8Ts(),
+            timestamp: restTs(),
           };
           const signature = signRest("/auth/token/create", signParams, appSecret);
           const body = new URLSearchParams({ ...signParams, sign: signature }).toString();
