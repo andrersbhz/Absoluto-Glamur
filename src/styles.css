@@ -175,12 +175,27 @@
 
   html {
     font-family: var(--font-sans);
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
   }
 
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    overscroll-behavior-y: none;
+  }
+
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: smooth;
   }
 
   h1, h2, h3, .font-display {
