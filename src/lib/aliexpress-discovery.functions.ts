@@ -223,7 +223,9 @@ export const discoverAliexpressProducts = createServerFn({ method: "POST" })
 
     const bizParams: Record<string, string | number> = {
       target_currency: "USD",
+      currency: "USD",
       target_language: "PT",
+      language: "PT",
       ship_to_country: "BR",
       country_code: "BR",
       countryCode: "BR",
