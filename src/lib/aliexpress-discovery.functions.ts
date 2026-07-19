@@ -152,10 +152,10 @@ async function searchAliExpressWeb(keyword: string, limit: number): Promise<Disc
 
   const combined = [...images, ...web];
   const seen = new Set<string>();
-  return combined
-    .map((item) => {
+  const products: DiscoveryProduct[] = [];
+  for (const item of combined) {
       const productId = item.url?.match(/\/item\/(\d+)\.html/i)?.[1] ?? "";
-      if (!productId || seen.has(productId)) return null;
+      if (!productId || seen.has(productId)) continue;
       seen.add(productId);
       const description = item.description ?? "";
       const price = firstNumber(
@@ -164,7 +164,7 @@ async function searchAliExpressWeb(keyword: string, limit: number): Promise<Disc
       );
       const isBrl = /(?:R\$|BRL)/i.test(description);
       const image = item.imageUrl ?? imageByProduct.get(productId) ?? null;
-      return {
+      products.push({
         product_id: productId,
         title: item.title?.replace(/\s*-\s*AliExpress.*$/i, "").trim() || "Produto AliExpress",
         image,
@@ -178,10 +178,10 @@ async function searchAliExpressWeb(keyword: string, limit: number): Promise<Disc
         shop_title: null,
         shop_rating: null,
         product_url: item.url ?? `https://www.aliexpress.com/item/${productId}.html`,
-      } satisfies DiscoveryProduct;
-    })
-    .filter((item): item is DiscoveryProduct => item !== null)
-    .slice(0, limit);
+      });
+      if (products.length >= limit) break;
+  }
+  return products;
 }
 
 // -------------------- Search --------------------
@@ -306,7 +306,7 @@ export const discoverAliexpressProducts = createServerFn({ method: "POST" })
     if (data.sort) bizParams.sort = data.sort;
 
     let json: any;
-    let items: DiscoveryProduct[];
+    let items: DiscoveryProduct[] = [];
     let total: number | undefined;
     if (data.keyword && data.keyword.trim()) {
       bizParams.keywords = data.keyword.trim();
