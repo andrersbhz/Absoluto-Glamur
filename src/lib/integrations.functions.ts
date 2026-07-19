@@ -87,7 +87,26 @@ export const saveIntegration = createServerFn({ method: "POST" })
     if (data.mode) update.mode = data.mode;
     if (data.api_key !== undefined) update.api_key = data.api_key || null;
     if (data.webhook_token !== undefined) update.webhook_token = data.webhook_token || null;
-    if (data.config) update.config = data.config;
+    if (data.config) {
+      // Merge (não sobrescreve) — preserva access_token/refresh_token já gravados
+      const { data: existing } = await supabaseAdmin
+        .from("integrations")
+        .select("config")
+        .eq("provider", data.provider)
+        .maybeSingle();
+      const prev = (existing?.config as Record<string, unknown> | null) ?? {};
+      const merged: Record<string, unknown> = { ...prev, ...data.config };
+      // valores explícitos null removem a chave
+      for (const [k, v] of Object.entries(data.config)) {
+        if (v === null) delete merged[k];
+      }
+      // Se o usuário limpou tudo (Desconectar envia config:{}), preservar comportamento anterior de reset
+      if (Object.keys(data.config).length === 0) {
+        update.config = {};
+      } else {
+        update.config = merged;
+      }
+    }
     const { error } = await supabaseAdmin
       .from("integrations")
       .update(update)
