@@ -54,7 +54,7 @@ function IntegrationsPage() {
 
   return (
     <AdminLayout>
-      <div className="mx-auto max-w-5xl">
+      <div className="mx-auto max-w-5xl admin-plain">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="font-display text-3xl">Integrações</h1>
