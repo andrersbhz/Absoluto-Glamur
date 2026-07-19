@@ -383,7 +383,9 @@ export const importAliexpressProductToStore = createServerFn({ method: "POST" })
     const json = await callAli("aliexpress.ds.product.get", {
       product_id: data.product_id,
       target_currency: "BRL",
+      currency: "BRL",
       target_language: "PT",
+      language: "PT",
       ship_to_country: "BR",
       country_code: "BR",
       countryCode: "BR",
