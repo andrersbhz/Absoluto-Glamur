@@ -30,15 +30,9 @@ function slugify(v: string): string {
 
 // -------------------- AliExpress API signing (HMAC-SHA256) --------------------
 // Docs: https://openservice.aliexpress.com/doc/doc.htm — TOP protocol.
-// System params: method, app_key, sign_method=sha256, timestamp (yyyy-MM-dd HH:mm:ss GMT+8),
-// format=json, v=2.0, access_token. Sort all params, concat key+value, HMAC-SHA256 with app_secret,
-// hex uppercase, put in `sign`.
-
-function gmt8Timestamp(): string {
-  const now = new Date(Date.now() + 8 * 3600 * 1000);
-  const pad = (n: number) => n.toString().padStart(2, "0");
-  return `${now.getUTCFullYear()}-${pad(now.getUTCMonth() + 1)}-${pad(now.getUTCDate())} ${pad(now.getUTCHours())}:${pad(now.getUTCMinutes())}:${pad(now.getUTCSeconds())}`;
-}
+// The current AliExpress TOP gateway expects the OAuth token in `session` and
+// a Unix timestamp in milliseconds. Business parameters remain flat and are
+// included in the signature together with the public parameters.
 
 function sign(params: Record<string, string>, secret: string): string {
   const keys = Object.keys(params).sort();
@@ -75,11 +69,10 @@ async function callAli<T = any>(
   const params: Record<string, string> = {
     method,
     app_key: appKey,
+    session: accessToken,
     sign_method: "sha256",
-    timestamp: gmt8Timestamp(),
-    format: "json",
-    v: "2.0",
-    access_token: accessToken,
+    timestamp: Date.now().toString(),
+    simplify: "true",
   };
   for (const [k, v] of Object.entries(bizParams)) {
     if (v === undefined || v === null || v === "") continue;
@@ -87,11 +80,9 @@ async function callAli<T = any>(
   }
   params.sign = sign(params, appSecret);
 
-  const body = new URLSearchParams(params).toString();
-  const res = await fetch("https://api-sg.aliexpress.com/sync", {
+  const query = new URLSearchParams(params).toString();
+  const res = await fetch(`https://api-sg.aliexpress.com/sync?${query}`, {
     method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body,
   });
   const text = await res.text();
   let json: any;
@@ -102,9 +93,8 @@ async function callAli<T = any>(
   }
   if (json.error_response) {
     const er = json.error_response;
-    throw new Error(
-      `AliExpress ${er.code ?? ""}: ${er.msg ?? er.sub_msg ?? "erro desconhecido"}${er.sub_msg ? ` — ${er.sub_msg}` : ""}`,
-    );
+    const detail = er.sub_msg ?? er.msg ?? "erro desconhecido";
+    throw new Error(`AliExpress ${er.code ?? er.sub_code ?? ""}: ${detail}`);
   }
   return json as T;
 }
@@ -222,15 +212,9 @@ export const discoverAliexpressProducts = createServerFn({ method: "POST" })
     await assertCatalog(context);
 
     const bizParams: Record<string, string | number> = {
-      target_currency: "USD",
-      currency: "USD",
+      target_currency: "BRL",
       target_language: "PT",
-      language: "PT",
       ship_to_country: "BR",
-      country_code: "BR",
-      countryCode: "BR",
-      country: "BR",
-      local_country: "BR",
       page_no: data.page,
       page_size: data.page_size,
     };
@@ -239,8 +223,12 @@ export const discoverAliexpressProducts = createServerFn({ method: "POST" })
     let json: any;
     if (data.keyword && data.keyword.trim()) {
       bizParams.keywords = data.keyword.trim();
-      json = await callAli("aliexpress.ds.text.search", bizParams);
+      // There is no `aliexpress.ds.text.search` method in the Open Platform.
+      // Keyword discovery is provided by the official Affiliate product query.
+      json = await callAli("aliexpress.affiliate.product.query", bizParams);
     } else {
+      delete bizParams.ship_to_country;
+      bizParams.country = "BR";
       bizParams.feed_name = "DS bestseller";
       json = await callAli("aliexpress.ds.recommend.feed.get", bizParams);
     }
@@ -248,10 +236,10 @@ export const discoverAliexpressProducts = createServerFn({ method: "POST" })
     // Response shape: aliexpress_ds_text_search_response.data.products.selection_search_product
     // or ...recommend_feed_get_response.result.products.traffic_product_d_t_o
     const root =
-      json.aliexpress_ds_text_search_response ??
+      json.aliexpress_affiliate_product_query_response ??
       json.aliexpress_ds_recommend_feed_get_response ??
       json;
-    const container = root.data ?? root.result ?? root;
+    const container = root.resp_result?.result ?? root.data ?? root.result ?? root;
     const productsField =
       container.products ??
       container.recommend_products ??
@@ -383,15 +371,8 @@ export const importAliexpressProductToStore = createServerFn({ method: "POST" })
     const json = await callAli("aliexpress.ds.product.get", {
       product_id: data.product_id,
       target_currency: "BRL",
-      currency: "BRL",
       target_language: "PT",
-      language: "PT",
       ship_to_country: "BR",
-      country_code: "BR",
-      countryCode: "BR",
-      country: "BR",
-      local_country: "BR",
-      remove_personal_benefit: "false",
     });
     const root =
       (json as any).aliexpress_ds_product_get_response ??
