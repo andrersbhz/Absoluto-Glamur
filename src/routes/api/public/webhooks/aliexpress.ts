@@ -108,19 +108,40 @@ export const Route = createFileRoute("/api/public/webhooks/aliexpress")({
               tokenText.slice(0, 300) ??
               `HTTP ${tokenRes.status}`;
 
+            // Debug info to help diagnose signature mismatches
+            const keysSorted = Object.keys(signParams).sort();
+            const baseString = "/auth/token/create" + keysSorted.map((k) => `${k}${signParams[k]}`).join("");
+            const debug = {
+              app_key_len: appKey.length,
+              app_key_head: appKey.slice(0, 4),
+              app_key_tail: appKey.slice(-2),
+              app_secret_len: appSecret.length,
+              app_secret_head: appSecret.slice(0, 2),
+              app_secret_tail: appSecret.slice(-2),
+              base_string: baseString,
+              signature,
+              response: tokenText.slice(0, 500),
+            };
+
             await supabaseAdmin
               .from("integrations")
               .update({
                 last_status: "error",
                 last_error: `Troca do code falhou: ${msg}`,
                 last_verified_at: new Date().toISOString(),
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                config: { ...cfg, last_oauth_debug: debug } as any,
               })
               .eq("provider", "aliexpress");
             return htmlResponse(
-              `<h1>Falha ao trocar code por token</h1><pre>${escapeHtml(msg)}</pre>`,
+              `<h1>Falha ao trocar code por token</h1>
+               <pre>${escapeHtml(msg)}</pre>
+               <details><summary>Debug (não compartilhe publicamente)</summary>
+               <pre>${escapeHtml(JSON.stringify(debug, null, 2))}</pre></details>`,
               400,
             );
           }
+
 
           await supabaseAdmin
             .from("integrations")
