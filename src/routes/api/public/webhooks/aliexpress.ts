@@ -1,10 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { createHmac } from "crypto";
 
-function gmt8Ts(): string {
-  const now = new Date(Date.now() + 8 * 3600 * 1000);
-  const p = (n: number) => n.toString().padStart(2, "0");
-  return `${now.getUTCFullYear()}-${p(now.getUTCMonth() + 1)}-${p(now.getUTCDate())} ${p(now.getUTCHours())}:${p(now.getUTCMinutes())}:${p(now.getUTCSeconds())}`;
+function restTs(): string {
+  // AliExpress /rest/* usa timestamp em milissegundos Unix (13 dígitos).
+  return Date.now().toString();
 }
 
 function signRest(apiPath: string, params: Record<string, string>, appSecret: string): string {
@@ -74,7 +73,7 @@ export const Route = createFileRoute("/api/public/webhooks/aliexpress")({
             app_key: appKey,
             code,
             sign_method: "sha256",
-            timestamp: gmt8Ts(),
+            timestamp: restTs(),
           };
           const signature = signRest("/auth/token/create", signParams, appSecret);
           const body = new URLSearchParams({ ...signParams, sign: signature }).toString();
