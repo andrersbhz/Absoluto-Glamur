@@ -77,34 +77,48 @@ function ProductCard({
             <Store className="h-3 w-3" /> {product.shop_title}
           </p>
         )}
-        <div className="mt-auto flex items-end justify-between pt-2">
-          <div>
-            {product.price_brl_estimate_cents != null ? (
-              <p className="text-lg font-semibold text-primary">
-                {formatBRL(product.price_brl_estimate_cents)}
-              </p>
-            ) : product.price_original != null ? (
-              <p className="text-lg font-semibold text-primary">
-                {product.currency} {product.price_original.toFixed(2)}
-              </p>
-            ) : (
-              <p className="text-xs text-muted-foreground">preço indisponível</p>
-            )}
-            {product.price_original != null && product.currency !== "BRL" && (
-              <p className="text-[10px] text-muted-foreground">
-                origem: {product.currency} {product.price_original.toFixed(2)}
-              </p>
-            )}
-          </div>
+        <div className="mt-auto flex flex-col gap-1 pt-2">
+          {product.lastest_volume != null && product.lastest_volume > 0 && (
+            <p className="flex items-center gap-1 text-xs text-muted-foreground">
+              <TrendingUp className="h-3 w-3" />
+              {product.lastest_volume.toLocaleString("pt-BR")} vendas
+            </p>
+          )}
+          {product.price_brl_estimate_cents != null ? (
+            <>
+              <div className="flex items-baseline justify-between">
+                <span className="text-xs text-muted-foreground">Custo</span>
+                <span className="text-sm font-medium text-foreground">
+                  {formatBRL(product.price_brl_estimate_cents)}
+                </span>
+              </div>
+              <div className="flex items-baseline justify-between">
+                <span className="text-xs text-muted-foreground">Venda sugerida</span>
+                <span className="text-base font-semibold text-primary">
+                  {formatBRL(suggestedSalePriceCents(product.price_brl_estimate_cents))}
+                </span>
+              </div>
+              {product.price_original != null && product.currency && product.currency !== "BRL" && (
+                <p className="text-[10px] text-muted-foreground">
+                  origem: {product.currency} {product.price_original.toFixed(2)}
+                </p>
+              )}
+            </>
+          ) : product.price_original != null ? (
+            <p className="text-sm font-semibold text-primary">
+              {product.currency} {product.price_original.toFixed(2)}
+            </p>
+          ) : (
+            <p className="text-xs text-muted-foreground">preço indisponível</p>
+          )}
           {product.product_url && (
             <a
               href={product.product_url}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-muted-foreground transition hover:text-foreground"
-              title="Abrir no AliExpress"
+              className="mt-1 inline-flex items-center gap-1 text-[11px] text-muted-foreground transition hover:text-foreground"
             >
-              <ExternalLink className="h-4 w-4" />
+              <ExternalLink className="h-3 w-3" /> ver no AliExpress
             </a>
           )}
         </div>
