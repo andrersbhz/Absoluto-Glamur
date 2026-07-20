@@ -10,6 +10,7 @@ import { useCart } from "@/lib/cart-store";
 import { useFavorites } from "@/lib/favorites";
 import { useAuth } from "@/hooks/use-auth";
 import { isVideoUrl } from "@/lib/media-kind";
+import { ProductReviews } from "@/components/store/ProductReviews";
 
 export const Route = createFileRoute("/$categoria/$produto")({
   loader: async ({ params, context }) => {
@@ -276,6 +277,8 @@ function ProductPage() {
             )}
           </div>
         </div>
+
+        <ProductReviews productId={product.id} />
       </div>
     </StoreLayout>
   );
