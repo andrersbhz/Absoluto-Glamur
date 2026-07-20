@@ -4,6 +4,7 @@ import { createHmac } from "crypto";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import {
   computeSalePriceCents,
+  stripBrandMentions,
   type NormalizedProduct,
 } from "./aliexpress-import.functions";
 
