@@ -207,17 +207,24 @@ export const getProductIntelligence = createServerFn({ method: "GET" })
     await assertCatalog(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    const [prodRes, scoreRes, costsRes, rulesRes, calcsRes] = await Promise.all([
+    // Load basics first — an embed failure must not blank the product.
+    const { data: basic, error: basicErr } = await supabaseAdmin
+      .from("products")
+      .select("id, name, slug, status, category_id, brand_id")
+      .eq("id", data.product_id)
+      .maybeSingle();
+
+    if (basicErr) throw new Error(`Falha ao carregar produto: ${basicErr.message}`);
+    if (!basic) throw new Error(`Produto ${data.product_id} não encontrado`);
+
+    const [variantsRes, scoreRes, costsRes, rulesRes, calcsRes] = await Promise.all([
       supabaseAdmin
-        .from("products")
+        .from("product_variants")
         .select(
-          `id, name, slug, status, category_id, brand_id,
-           variants:product_variants(id, is_default,
-             prices:product_prices(id, list_price_cents, sale_price_cents, is_active)
-           )`,
+          `id, is_default,
+           prices:product_prices(id, list_price_cents, sale_price_cents, is_active)`,
         )
-        .eq("id", data.product_id)
-        .maybeSingle(),
+        .eq("product_id", data.product_id),
       supabaseAdmin
         .from("product_scores")
         .select("*, components:product_score_components(*)")
@@ -237,29 +244,8 @@ export const getProductIntelligence = createServerFn({ method: "GET" })
         .limit(20),
     ]);
 
-    let product = prodRes.data as any;
-    if (!product) {
-      // Fallback: nested-relation errors can null out the row silently. Retry minimal.
-      const basic = await supabaseAdmin
-        .from("products")
-        .select("id, name, slug, status, category_id, brand_id")
-        .eq("id", data.product_id)
-        .maybeSingle();
-      if (basic.error) {
-        throw new Error(`Falha ao carregar produto: ${basic.error.message}`);
-      }
-      if (!basic.data) {
-        throw new Error(
-          `Produto ${data.product_id} não encontrado${
-            prodRes.error ? ` (${prodRes.error.message})` : ""
-          }`,
-        );
-      }
-      product = { ...basic.data, variants: [] };
-    }
-
     return {
-      product,
+      product: { ...basic, variants: variantsRes.data ?? [] },
       score: scoreRes.data,
       costs: costsRes.data ?? [],
       rules: rulesRes.data ?? [],
