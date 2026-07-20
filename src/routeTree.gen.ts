@@ -23,6 +23,7 @@ import { Route as AuthenticatedFavoritesRouteImport } from './routes/_authentica
 import { Route as AuthenticatedCheckoutRouteImport } from './routes/_authenticated/checkout'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as AuthenticatedAccountRouteImport } from './routes/_authenticated/account'
+import { Route as CategoriaProdutoRouteImport } from './routes/$categoria.$produto'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin.index'
 import { Route as AuthenticatedCheckoutOrderIdRouteImport } from './routes/_authenticated/checkout.$orderId'
 import { Route as AuthenticatedAdminUsersRouteImport } from './routes/_authenticated/admin.users'
@@ -114,6 +115,11 @@ const AuthenticatedAccountRoute = AuthenticatedAccountRouteImport.update({
   id: '/account',
   path: '/account',
   getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const CategoriaProdutoRoute = CategoriaProdutoRouteImport.update({
+  id: '/$categoria/$produto',
+  path: '/$categoria/$produto',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedAdminIndexRoute = AuthenticatedAdminIndexRouteImport.update({
   id: '/',
@@ -248,6 +254,7 @@ export interface FileRoutesByFullPath {
   '/cart': typeof CartRoute
   '/products': typeof ProductsRouteWithChildren
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/$categoria/$produto': typeof CategoriaProdutoRoute
   '/account': typeof AuthenticatedAccountRoute
   '/admin': typeof AuthenticatedAdminRouteWithChildren
   '/checkout': typeof AuthenticatedCheckoutRouteWithChildren
@@ -285,6 +292,7 @@ export interface FileRoutesByTo {
   '/cart': typeof CartRoute
   '/products': typeof ProductsRouteWithChildren
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/$categoria/$produto': typeof CategoriaProdutoRoute
   '/account': typeof AuthenticatedAccountRoute
   '/checkout': typeof AuthenticatedCheckoutRouteWithChildren
   '/favorites': typeof AuthenticatedFavoritesRoute
@@ -323,6 +331,7 @@ export interface FileRoutesById {
   '/cart': typeof CartRoute
   '/products': typeof ProductsRouteWithChildren
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/$categoria/$produto': typeof CategoriaProdutoRoute
   '/_authenticated/account': typeof AuthenticatedAccountRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRouteWithChildren
   '/_authenticated/checkout': typeof AuthenticatedCheckoutRouteWithChildren
@@ -362,6 +371,7 @@ export interface FileRouteTypes {
     | '/cart'
     | '/products'
     | '/sitemap.xml'
+    | '/$categoria/$produto'
     | '/account'
     | '/admin'
     | '/checkout'
@@ -399,6 +409,7 @@ export interface FileRouteTypes {
     | '/cart'
     | '/products'
     | '/sitemap.xml'
+    | '/$categoria/$produto'
     | '/account'
     | '/checkout'
     | '/favorites'
@@ -436,6 +447,7 @@ export interface FileRouteTypes {
     | '/cart'
     | '/products'
     | '/sitemap.xml'
+    | '/$categoria/$produto'
     | '/_authenticated/account'
     | '/_authenticated/admin'
     | '/_authenticated/checkout'
@@ -475,6 +487,7 @@ export interface RootRouteChildren {
   CartRoute: typeof CartRoute
   ProductsRoute: typeof ProductsRouteWithChildren
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
+  CategoriaProdutoRoute: typeof CategoriaProdutoRoute
   ApiPublicAliexpressStartRoute: typeof ApiPublicAliexpressStartRoute
   ApiPublicWebhooksAliexpressRoute: typeof ApiPublicWebhooksAliexpressRoute
   ApiPublicWebhooksAsaasRoute: typeof ApiPublicWebhooksAsaasRoute
@@ -580,6 +593,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/account'
       preLoaderRoute: typeof AuthenticatedAccountRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/$categoria/$produto': {
+      id: '/$categoria/$produto'
+      path: '/$categoria/$produto'
+      fullPath: '/$categoria/$produto'
+      preLoaderRoute: typeof CategoriaProdutoRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/_authenticated/admin/': {
       id: '/_authenticated/admin/'
@@ -857,6 +877,7 @@ const rootRouteChildren: RootRouteChildren = {
   CartRoute: CartRoute,
   ProductsRoute: ProductsRouteWithChildren,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
+  CategoriaProdutoRoute: CategoriaProdutoRoute,
   ApiPublicAliexpressStartRoute: ApiPublicAliexpressStartRoute,
   ApiPublicWebhooksAliexpressRoute: ApiPublicWebhooksAliexpressRoute,
   ApiPublicWebhooksAsaasRoute: ApiPublicWebhooksAsaasRoute,

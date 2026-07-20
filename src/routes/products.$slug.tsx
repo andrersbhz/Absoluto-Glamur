@@ -14,7 +14,12 @@ export const Route = createFileRoute("/products/$slug")({
   loader: async ({ params, context }) => {
     const product = await context.queryClient.ensureQueryData(productDetailQuery(params.slug));
     if (!product) throw notFound();
-    return { product };
+    // Redirect to friendly URL /{categoria}/{produto}
+    throw redirect({
+      to: "/$categoria/$produto",
+      params: { categoria: product.category?.slug ?? "produto", produto: product.slug },
+      replace: true,
+    });
   },
   head: ({ loaderData, params }) => {
     if (!loaderData) return { meta: [{ title: "Produto não encontrado · Absoluto Glamur" }, { name: "robots", content: "noindex" }] };
