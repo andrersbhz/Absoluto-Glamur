@@ -236,6 +236,8 @@ function CatalogList() {
                   onDelete={() => {
                     if (confirm(`Excluir "${p.name}"? Essa ação é permanente.`)) delMut.mutate(p.id);
                   }}
+                  onOptimize={() => handleOptimize(p.id, p.name)}
+                  optimizing={aiTarget?.id === p.id && aiLoading !== "idle"}
                 />
               ))}
             </tbody>
