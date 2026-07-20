@@ -212,6 +212,19 @@ async function scrapeViaFirecrawl(url: string): Promise<NormalizedProduct> {
 
 // -------------------- Translation + FX --------------------
 
+// Remove menções à marca AliExpress (e variações) do conteúdo importado, para
+// que descrições, títulos e tags não exponham a origem do produto na loja.
+export function stripBrandMentions(input: string | null | undefined): string | null {
+  if (!input) return input ?? null;
+  let out = String(input);
+  // remove "aliexpress", "ali express", "ali-express", "ali_express" (case-insensitive)
+  out = out.replace(/ali[\s\-_]?express/gi, "");
+  // colapsa espaços/pontuação órfã deixados pela remoção
+  out = out.replace(/[ \t]{2,}/g, " ").replace(/\s+([.,;:!?])/g, "$1");
+  out = out.replace(/^[\s\-–—·•|,.:;]+|[\s\-–—·•|,.:;]+$/g, "");
+  return out.trim() || null;
+}
+
 async function translateToPtBr(input: { title: string; description: string | null }): Promise<{
   title: string;
   description: string | null;
