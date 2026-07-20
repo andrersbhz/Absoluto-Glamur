@@ -85,6 +85,52 @@ export function featuredProductsQuery(collectionSlug: string) {
   return productListQuery({ collection: collectionSlug, limit: 8 });
 }
 
+export type CategoryShowcase = {
+  category: { id: string; slug: string; name: string };
+  products: ProductListItem[];
+};
+
+export function productsByCategoryQuery(perCategory = 4) {
+  return queryOptions({
+    queryKey: ["products-by-category", perCategory],
+    queryFn: async (): Promise<CategoryShowcase[]> => {
+      const { data: cats } = await supabase
+        .from("categories")
+        .select("id, slug, name, position")
+        .order("position");
+      if (!cats || cats.length === 0) return [];
+
+      const { data: col } = await supabase
+        .from("collections")
+        .select("id, product_collections(product_id)")
+        .eq("slug", "mais-vendidos")
+        .maybeSingle();
+      const bestIds = new Set<string>(
+        (col?.product_collections ?? []).map((p: { product_id: string }) => p.product_id),
+      );
+
+      const results = await Promise.all(
+        cats.map(async (cat) => {
+          const { data } = await supabase
+            .from("products")
+            .select(PRODUCT_SELECT)
+            .eq("status", "active")
+            .eq("category_id", cat.id)
+            .order("created_at", { ascending: false })
+            .limit(20);
+          const list = ((data ?? []) as unknown as ProductListItem[])
+            .slice()
+            .sort((a, b) => Number(bestIds.has(b.id)) - Number(bestIds.has(a.id)))
+            .slice(0, perCategory);
+          return { category: { id: cat.id, slug: cat.slug, name: cat.name }, products: list };
+        }),
+      );
+      return results.filter((r) => r.products.length > 0);
+    },
+    staleTime: 30_000,
+  });
+}
+
 export type ProductDetail = Omit<ProductListItem, "variants"> & {
   description: string | null;
   tags: string[];
