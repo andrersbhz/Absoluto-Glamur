@@ -29,7 +29,7 @@ async function fetchDynamic(): Promise<Entry[]> {
   ]);
 
   const out: Entry[] = [];
-  for (const p of (products.data ?? []) as Array<{ slug: string; updated_at: string; category: { slug: string } | null }>) {
+  for (const p of (products.data ?? []) as unknown as Array<{ slug: string; updated_at: string; category: { slug: string } | null }>) {
     const cat = p.category?.slug ?? "produto";
     out.push({ path: `/${cat}/${p.slug}`, lastmod: p.updated_at, changefreq: "weekly", priority: "0.8" });
   }
