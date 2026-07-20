@@ -246,15 +246,20 @@ async function translateToPtBr(input: { title: string; description: string | nul
     });
     const cleaned = text.trim().replace(/^```(?:json)?/i, "").replace(/```$/i, "").trim();
     const parsed = JSON.parse(cleaned);
+    const rawTitle = typeof parsed.title === "string" && parsed.title.trim() ? parsed.title.trim() : input.title;
+    const rawDesc =
+      typeof parsed.description === "string" && parsed.description.trim()
+        ? parsed.description.trim()
+        : input.description;
     return {
-      title: typeof parsed.title === "string" && parsed.title.trim() ? parsed.title.trim() : input.title,
-      description:
-        typeof parsed.description === "string" && parsed.description.trim()
-          ? parsed.description.trim()
-          : input.description,
+      title: stripBrandMentions(rawTitle) ?? rawTitle,
+      description: stripBrandMentions(rawDesc),
     };
   } catch {
-    return input;
+    return {
+      title: stripBrandMentions(input.title) ?? input.title,
+      description: stripBrandMentions(input.description),
+    };
   }
 }
 
