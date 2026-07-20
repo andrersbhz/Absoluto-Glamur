@@ -31,6 +31,12 @@ import {
   type NormalizedProduct,
   type ImportSettings,
 } from "@/lib/aliexpress-import.functions";
+import {
+  discoverAliexpressProducts,
+  importAliexpressProductToStore,
+  type DiscoveryProduct,
+} from "@/lib/aliexpress-discovery.functions";
+import { suggestNicheKeywords } from "@/lib/ai-suggest-keywords.functions";
 
 
 export const Route = createFileRoute("/_authenticated/admin/imports")({
@@ -373,27 +379,298 @@ function JsonTab() {
   );
 }
 
-// ============== API OFICIAL (placeholder) ==============
+// ============== API OFICIAL — Sync IA best-sellers ==============
 
 function ApiTab() {
+  const [niche, setNiche] = useState("cosméticos e beleza");
+  const [productType, setProductType] = useState("");
+  const [minRating, setMinRating] = useState(4.5);
+  const [perKeyword, setPerKeyword] = useState(8);
+  const [keywords, setKeywords] = useState<string[]>([]);
+  const [items, setItems] = useState<DiscoveryProduct[]>([]);
+  const [progress, setProgress] = useState<{ current: number; total: number; label: string } | null>(null);
+  const [addingId, setAddingId] = useState<string | null>(null);
+
+  const suggestFn = useServerFn(suggestNicheKeywords);
+  const discoverFn = useServerFn(discoverAliexpressProducts);
+  const importFn = useServerFn(importAliexpressProductToStore);
+  const qc = useQueryClient();
+
+  const syncMut = useMutation({
+    mutationFn: async () => {
+      setItems([]);
+      setKeywords([]);
+      setProgress({ current: 0, total: 1, label: "Consultando IA para termos best-sellers..." });
+      const { keywords: kws } = await suggestFn({
+        data: { niche, product_type: productType, count: 6 },
+      });
+      setKeywords(kws);
+      if (kws.length === 0) throw new Error("A IA não retornou palavras-chave. Ajuste o nicho.");
+
+      const map = new Map<string, DiscoveryProduct>();
+      for (let i = 0; i < kws.length; i++) {
+        const kw = kws[i];
+        setProgress({ current: i + 1, total: kws.length, label: `Buscando: "${kw}"` });
+        try {
+          const res = await discoverFn({
+            data: {
+              keyword: kw,
+              page: 1,
+              page_size: perKeyword,
+              sort: "SALE_PRICE_ASC",
+              min_rating: minRating,
+            },
+          });
+          for (const it of res.items) {
+            if (!it.product_id || map.has(it.product_id)) continue;
+            if (it.evaluate_rate != null && it.evaluate_rate < minRating) continue;
+            map.set(it.product_id, it);
+          }
+        } catch (e) {
+          console.warn("discover falhou para keyword", kw, e);
+        }
+      }
+      // sort by (rating * log(sales))
+      const sorted = Array.from(map.values()).sort((a, b) => {
+        const sa = Math.log((a.lastest_volume ?? 0) + 1) * (a.evaluate_rate ?? 0);
+        const sb = Math.log((b.lastest_volume ?? 0) + 1) * (b.evaluate_rate ?? 0);
+        return sb - sa;
+      });
+      return sorted.slice(0, 60);
+    },
+    onSuccess: (arr) => {
+      setItems(arr);
+      setProgress(null);
+      toast.success(`${arr.length} produto(s) best-seller encontrados`);
+    },
+    onError: (e: Error) => {
+      setProgress(null);
+      toast.error(e.message);
+    },
+  });
+
+  const addToStore = async (productId: string) => {
+    setAddingId(productId);
+    try {
+      await importFn({ data: { product_id: productId, status: "draft", stock: 10 } });
+      toast.success("Adicionado ao Catálogo como rascunho");
+      qc.invalidateQueries({ queryKey: ["admin-products"] });
+      qc.invalidateQueries({ queryKey: ["imports"] });
+      setItems((prev) => prev.filter((p) => p.product_id !== productId));
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : String(e));
+    } finally {
+      setAddingId(null);
+    }
+  };
+
   return (
-    <div className="rounded-xl border border-dashed border-border bg-card p-8 text-center">
-      <Sparkles className="mx-auto mb-3 h-8 w-8 text-muted-foreground" />
-      <h3 className="mb-2 font-display text-xl">API oficial AliExpress</h3>
-      <p className="mx-auto max-w-md text-sm text-muted-foreground">
-        Requer aprovação como parceiro/afiliado (AliExpress Open Platform). Após obter{" "}
-        <code>AppKey</code> e <code>AppSecret</code>, cadastre em{" "}
-        <Link to="/admin/integrations" className="text-primary underline">
-          Integrações
-        </Link>{" "}
-        (provedor <code>aliexpress_api</code>) e este painel habilitará busca por ID de produto.
-      </p>
-      <p className="mt-4 text-xs text-muted-foreground">
-        Enquanto isso, use <strong>URL (Firecrawl)</strong> ou <strong>JSON/CSV</strong>.
-      </p>
+    <div className="space-y-6">
+      <div className="rounded-xl border border-border bg-card p-6">
+        <div className="mb-4 flex items-start gap-3">
+          <Sparkles className="mt-1 h-5 w-5 text-primary" />
+          <div>
+            <h3 className="font-display text-xl">Sincronizar best-sellers via IA</h3>
+            <p className="text-sm text-muted-foreground">
+              A IA (Gemini via Lovable AI Gateway) gera palavras-chave estratégicas para o seu nicho e
+              busca automaticamente os produtos mais vendidos e melhor avaliados na API oficial do AliExpress.
+            </p>
+          </div>
+        </div>
+
+        <div className="grid gap-4 md:grid-cols-2">
+          <Field label="Nicho da loja">
+            <input
+              value={niche}
+              onChange={(e) => setNiche(e.target.value)}
+              placeholder="cosméticos e beleza"
+              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
+            />
+          </Field>
+          <Field label="Tipo / categoria de produto (opcional)">
+            <input
+              value={productType}
+              onChange={(e) => setProductType(e.target.value)}
+              placeholder="ex.: sérum facial, batom líquido, máscara capilar"
+              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
+            />
+          </Field>
+          <Field label="Nota mínima do produto">
+            <input
+              type="number"
+              step="0.1"
+              min="0"
+              max="5"
+              value={minRating}
+              onChange={(e) => setMinRating(Number(e.target.value))}
+              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
+            />
+          </Field>
+          <Field label="Produtos por palavra-chave">
+            <input
+              type="number"
+              min="3"
+              max="30"
+              value={perKeyword}
+              onChange={(e) => setPerKeyword(Number(e.target.value))}
+              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
+            />
+          </Field>
+        </div>
+
+        <div className="mt-6 flex items-center justify-between gap-3">
+          <div className="text-xs text-muted-foreground">
+            Requer a integração <strong>AliExpress</strong> conectada em{" "}
+            <Link to="/admin/integrations" className="text-primary underline">
+              Integrações
+            </Link>
+            .
+          </div>
+          <button
+            onClick={() => syncMut.mutate()}
+            disabled={syncMut.isPending || !niche.trim()}
+            className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50"
+          >
+            <Sparkles className="h-4 w-4" />
+            {syncMut.isPending ? "Sincronizando..." : "Sincronizar com IA"}
+          </button>
+        </div>
+
+        {progress && (
+          <div className="mt-4 rounded-lg border border-border bg-muted/40 p-3 text-xs">
+            <div className="mb-2 flex justify-between">
+              <span>{progress.label}</span>
+              <span>
+                {progress.current}/{progress.total}
+              </span>
+            </div>
+            <div className="h-1.5 w-full overflow-hidden rounded-full bg-border">
+              <div
+                className="h-full bg-primary transition-all"
+                style={{ width: `${(progress.current / progress.total) * 100}%` }}
+              />
+            </div>
+          </div>
+        )}
+
+        {keywords.length > 0 && (
+          <div className="mt-4 flex flex-wrap gap-2">
+            {keywords.map((k) => (
+              <Badge key={k} variant="outline" className="text-xs">
+                {k}
+              </Badge>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {items.length > 0 && (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {items.map((p) => (
+            <DiscoveryCard
+              key={p.product_id}
+              product={p}
+              adding={addingId === p.product_id}
+              onAdd={() => addToStore(p.product_id)}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
+
+function DiscoveryCard({
+  product,
+  adding,
+  onAdd,
+}: {
+  product: DiscoveryProduct;
+  adding: boolean;
+  onAdd: () => void;
+}) {
+  const priceLabel =
+    product.price_original != null
+      ? `${(product.currency ?? "USD").toUpperCase()} ${product.price_original.toFixed(2)}`
+      : "—";
+  const brlEstimate =
+    product.price_brl_estimate_cents != null
+      ? formatBRL(product.price_brl_estimate_cents)
+      : null;
+  const suggested =
+    product.price_brl_estimate_cents != null
+      ? formatBRL(Math.floor((product.price_brl_estimate_cents * 2.5) / 100) * 100 + 99)
+      : null;
+
+  return (
+    <div className="flex flex-col overflow-hidden rounded-xl border border-border bg-card">
+      <div className="relative aspect-square bg-muted">
+        {product.image ? (
+          <img
+            src={product.image}
+            alt={product.title}
+            loading="lazy"
+            className="h-full w-full object-cover"
+          />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center text-muted-foreground">
+            <ImageOff className="h-8 w-8" />
+          </div>
+        )}
+        {product.evaluate_rate != null && (
+          <div className="absolute left-2 top-2 rounded-full bg-black/70 px-2 py-0.5 text-xs font-medium text-white">
+            ★ {product.evaluate_rate.toFixed(1)}
+          </div>
+        )}
+        {product.lastest_volume != null && product.lastest_volume > 0 && (
+          <div className="absolute right-2 top-2 rounded-full bg-primary/90 px-2 py-0.5 text-xs font-medium text-primary-foreground">
+            {product.lastest_volume}+ vendas
+          </div>
+        )}
+      </div>
+      <div className="flex flex-1 flex-col gap-2 p-3">
+        <h4 className="line-clamp-2 text-sm font-medium leading-snug">{product.title}</h4>
+        <div className="text-xs text-muted-foreground">
+          {product.shop_title ?? "Loja AliExpress"}
+          {product.shop_rating != null && ` · ★ ${product.shop_rating.toFixed(1)}`}
+        </div>
+        <div className="mt-auto space-y-1 pt-2 text-xs">
+          <div className="flex justify-between text-muted-foreground">
+            <span>Custo</span>
+            <span>{priceLabel}{brlEstimate ? ` (~${brlEstimate})` : ""}</span>
+          </div>
+          {suggested && (
+            <div className="flex justify-between font-medium text-primary">
+              <span>Sugerido</span>
+              <span>{suggested}</span>
+            </div>
+          )}
+        </div>
+        <div className="mt-2 flex gap-2">
+          {product.product_url && (
+            <a
+              href={product.product_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 rounded-lg border border-border px-2 py-1.5 text-xs text-muted-foreground hover:text-foreground"
+            >
+              <ExternalLink className="h-3 w-3" />
+              Ver
+            </a>
+          )}
+          <button
+            onClick={onAdd}
+            disabled={adding}
+            className="flex-1 rounded-lg bg-primary px-2 py-1.5 text-xs font-medium text-primary-foreground disabled:opacity-50"
+          >
+            {adding ? "Adicionando..." : "Adicionar à loja"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 
 // ============== HISTORY ==============
 
