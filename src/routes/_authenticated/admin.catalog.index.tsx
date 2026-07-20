@@ -250,11 +250,96 @@ function CatalogList() {
           </Link>
         </div>
       </div>
+
+      <Dialog open={!!aiTarget} onOpenChange={(o) => { if (!o) { setAiTarget(null); setAiPreview(null); } }}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-primary" />
+              Inteligência de produtos · {aiTarget?.name}
+            </DialogTitle>
+          </DialogHeader>
+          {aiLoading === "generating" && (
+            <div className="flex flex-col items-center justify-center gap-3 py-12 text-sm text-muted-foreground">
+              <Loader2 className="h-6 w-6 animate-spin text-primary" />
+              A IA está analisando o produto e reescrevendo com gatilhos mentais focados em beleza…
+            </div>
+          )}
+          {aiPreview && (
+            <div className="max-h-[60vh] space-y-4 overflow-y-auto pr-2 text-sm">
+              <div>
+                <p className="text-xs uppercase tracking-wider text-muted-foreground">Novo título</p>
+                <p className="mt-1 font-display text-lg">{aiPreview.name}</p>
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-wider text-muted-foreground">Resumo curto</p>
+                <p className="mt-1">{aiPreview.short_description}</p>
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-wider text-muted-foreground">Descrição persuasiva</p>
+                <div
+                  className="prose prose-sm mt-1 max-w-none dark:prose-invert"
+                  dangerouslySetInnerHTML={{ __html: aiPreview.description_html }}
+                />
+              </div>
+              <div className="grid gap-3 rounded-lg border border-border bg-secondary/40 p-3 md:grid-cols-2">
+                <div>
+                  <p className="text-xs uppercase tracking-wider text-muted-foreground">SEO title</p>
+                  <p className="mt-1">{aiPreview.seo_title}</p>
+                </div>
+                <div>
+                  <p className="text-xs uppercase tracking-wider text-muted-foreground">SEO description</p>
+                  <p className="mt-1">{aiPreview.seo_description}</p>
+                </div>
+                {aiPreview.keywords.length > 0 && (
+                  <div className="md:col-span-2">
+                    <p className="text-xs uppercase tracking-wider text-muted-foreground">Palavras-chave</p>
+                    <div className="mt-1 flex flex-wrap gap-1.5">
+                      {aiPreview.keywords.map((k) => (
+                        <Badge key={k} variant="outline">{k}</Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              onClick={() => aiTarget && handleOptimize(aiTarget.id, aiTarget.name)}
+              disabled={aiLoading !== "idle"}
+            >
+              <RefreshCw className="mr-1 h-3 w-3" /> Regenerar
+            </Button>
+            <Button
+              onClick={handleApplyOptimization}
+              disabled={!aiPreview || aiLoading !== "idle"}
+            >
+              {aiLoading === "applying" ? (
+                <><Loader2 className="mr-1 h-3 w-3 animate-spin" /> Aplicando…</>
+              ) : (
+                <><Sparkles className="mr-1 h-3 w-3" /> Aplicar ao produto</>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AdminLayout>
   );
 }
 
-function ProductRow({ row, onDelete }: { row: AdminProductRow; onDelete: () => void }) {
+function ProductRow({
+  row,
+  onDelete,
+  onOptimize,
+  optimizing,
+}: {
+  row: AdminProductRow;
+  onDelete: () => void;
+  onOptimize: () => void;
+  optimizing: boolean;
+}) {
   const statusBadge =
     row.status === "active" ? (
       <Badge className="bg-success text-white">Ativo</Badge>
