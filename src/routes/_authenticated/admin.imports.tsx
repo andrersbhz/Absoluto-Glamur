@@ -31,6 +31,12 @@ import {
   type NormalizedProduct,
   type ImportSettings,
 } from "@/lib/aliexpress-import.functions";
+import {
+  discoverAliexpressProducts,
+  importAliexpressProductToStore,
+  type DiscoveryProduct,
+} from "@/lib/aliexpress-discovery.functions";
+import { suggestNicheKeywords } from "@/lib/ai-suggest-keywords.functions";
 
 
 export const Route = createFileRoute("/_authenticated/admin/imports")({
