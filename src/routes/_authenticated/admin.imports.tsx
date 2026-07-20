@@ -397,13 +397,41 @@ function ApiTab() {
 
 // ============== HISTORY ==============
 
+function suggestedSaleCents(priceOriginal: number | null, currency: string | null, s: ImportSettings | null) {
+  if (priceOriginal == null || !s) return null;
+  const inBrl = (currency ?? "BRL").toUpperCase() === "BRL" ? priceOriginal : priceOriginal * s.fx_rate;
+  const baseCents = Math.round(inBrl * 100);
+  const withMarkup = Math.round(baseCents * (1 + s.markup_percent / 100)) + s.markup_fixed_cents;
+  if (!s.round_to_99) return withMarkup;
+  const reais = Math.floor(withMarkup / 100);
+  return reais * 100 + 99;
+}
+
+function statusVariant(status: ImportRow["status"]): "default" | "destructive" | "secondary" | "outline" {
+  if (status === "imported") return "default";
+  if (status === "failed") return "destructive";
+  if (status === "archived") return "outline";
+  return "secondary";
+}
+
+function sourceLabel(source: string) {
+  if (source.startsWith("aliexpress")) return "AliExpress";
+  if (source === "json") return "JSON/CSV";
+  return source;
+}
+
 function HistoryTab() {
   const list = useServerFn(listImports);
   const del = useServerFn(deleteImport);
+  const getSettings = useServerFn(getImportSettings);
   const qc = useQueryClient();
   const { data, isLoading } = useQuery({
     queryKey: ["imports"],
     queryFn: () => list({ data: {} }),
+  });
+  const { data: settings } = useQuery({
+    queryKey: ["import-settings"],
+    queryFn: () => getSettings(),
   });
   const delMut = useMutation({
     mutationFn: (id: string) => del({ data: { id } }),
@@ -429,54 +457,94 @@ function HistoryTab() {
             <th className="px-4 py-3">Produto</th>
             <th className="px-4 py-3">Fonte</th>
             <th className="px-4 py-3">Status</th>
-            <th className="px-4 py-3">Preço orig.</th>
+            <th className="px-4 py-3 text-right">Preço original</th>
+            <th className="px-4 py-3 text-right">Venda sugerida</th>
+            <th className="px-4 py-3 text-center">AliExpress</th>
             <th className="px-4 py-3"></th>
           </tr>
         </thead>
         <tbody>
-          {data.map((r: ImportRow) => (
-            <tr key={r.id} className="border-t border-border">
-              <td className="px-4 py-3">
-                <Link
-                  to="/admin/imports/$id"
-                  params={{ id: r.id }}
-                  className="font-medium text-foreground hover:text-primary"
-                >
-                  {r.normalized_data.title}
-                </Link>
-              </td>
-              <td className="px-4 py-3 text-xs text-muted-foreground">{r.source}</td>
-              <td className="px-4 py-3">
-                <Badge
-                  variant={
-                    r.status === "imported" ? "default" : r.status === "failed" ? "destructive" : "secondary"
-                  }
-                >
-                  {r.status}
-                </Badge>
-              </td>
-              <td className="px-4 py-3 text-xs">
-                {r.normalized_data.price_original
-                  ? `${r.normalized_data.price_original} ${r.normalized_data.currency ?? ""}`
-                  : "—"}
-              </td>
-              <td className="px-4 py-3 text-right">
-                <button
-                  onClick={() => {
-                    if (confirm("Remover esta importação?")) delMut.mutate(r.id);
-                  }}
-                  className="text-muted-foreground hover:text-destructive"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
-              </td>
-            </tr>
-          ))}
+          {data.map((r: ImportRow) => {
+            const norm = r.normalized_data;
+            const thumb = norm.images?.[0] ?? null;
+            const currency = (norm.currency ?? "BRL").toUpperCase();
+            const originalLabel =
+              norm.price_original == null
+                ? "—"
+                : currency === "BRL"
+                  ? formatBRL(Math.round(norm.price_original * 100))
+                  : `${currency} ${norm.price_original.toFixed(2)}`;
+            const sale = suggestedSaleCents(norm.price_original, norm.currency, settings ?? null);
+            return (
+              <tr key={r.id} className="border-t border-border">
+                <td className="px-4 py-3">
+                  <div className="flex items-center gap-3">
+                    <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-md border border-border bg-muted">
+                      {thumb ? (
+                        <img
+                          src={thumb}
+                          alt={norm.title}
+                          loading="lazy"
+                          className="h-full w-full object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center text-muted-foreground">
+                          <ImageOff className="h-4 w-4" />
+                        </div>
+                      )}
+                    </div>
+                    <Link
+                      to="/admin/imports/$id"
+                      params={{ id: r.id }}
+                      className="line-clamp-2 font-medium text-foreground hover:text-primary"
+                    >
+                      {norm.title}
+                    </Link>
+                  </div>
+                </td>
+                <td className="px-4 py-3 text-xs text-muted-foreground">{sourceLabel(r.source)}</td>
+                <td className="px-4 py-3">
+                  <Badge variant={statusVariant(r.status)}>{r.status}</Badge>
+                </td>
+                <td className="px-4 py-3 text-right text-xs">{originalLabel}</td>
+                <td className="px-4 py-3 text-right text-xs font-medium text-primary">
+                  {sale != null ? formatBRL(sale) : "—"}
+                </td>
+                <td className="px-4 py-3 text-center">
+                  {r.source_url ? (
+                    <a
+                      href={r.source_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title="Ver no AliExpress"
+                      className="inline-flex items-center justify-center text-muted-foreground transition hover:text-primary"
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                    </a>
+                  ) : (
+                    <span className="text-muted-foreground">—</span>
+                  )}
+                </td>
+                <td className="px-4 py-3 text-right">
+                  <button
+                    onClick={() => {
+                      if (confirm("Remover esta importação?")) delMut.mutate(r.id);
+                    }}
+                    className="text-muted-foreground hover:text-destructive"
+                    title="Remover"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>
   );
 }
+
 
 // ============== SETTINGS ==============
 
