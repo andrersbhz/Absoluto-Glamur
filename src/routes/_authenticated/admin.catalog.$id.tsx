@@ -24,6 +24,8 @@ import {
   upsertAdminProduct,
   type AdminProductInput,
 } from "@/lib/admin-catalog.functions";
+import { syncAliexpressStock } from "@/lib/aliexpress-stock.functions";
+import { RefreshCw } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/admin/catalog/$id")({
   head: () => ({ meta: [{ title: "Editar produto · Admin Absoluto Glamur" }] }),
