@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Sparkles, ShieldCheck, Truck } from "lucide-react";
 import { StoreLayout } from "@/components/store/StoreLayout";
 import { ProductCard } from "@/components/store/ProductCard";
-import { categoriesQuery, collectionsQuery, featuredProductsQuery } from "@/lib/catalog";
+import { categoriesQuery, collectionsQuery, featuredProductsQuery, productsByCategoryQuery } from "@/lib/catalog";
 import { homepageBlocksQuery, type HomepageBlock } from "@/lib/marketing";
 
 export const Route = createFileRoute("/")({
@@ -16,6 +16,7 @@ function Index() {
   const { data: categories = [] } = useQuery(categoriesQuery());
   const { data: blocks = [] } = useQuery(homepageBlocksQuery());
   const { data: collections = [] } = useQuery(collectionsQuery());
+  const { data: byCategory = [] } = useQuery(productsByCategoryQuery(4));
   const featuredCollections = collections.filter((c) => c.is_featured);
 
   return (
@@ -79,6 +80,16 @@ function Index() {
 
       {featuredCollections.map((c) => (
         <FeaturedCollectionSection key={c.id} slug={c.slug} name={c.name} description={c.description} />
+      ))}
+
+      {byCategory.map((row) => (
+        <FeaturedSection
+          key={row.category.id}
+          title={row.category.name}
+          subtitle="Novidades e mais vendidos"
+          link={{ label: "Ver todos", search: { category: row.category.slug } }}
+          products={row.products}
+        />
       ))}
 
 
