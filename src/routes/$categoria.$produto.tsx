@@ -1,6 +1,6 @@
 import { createFileRoute, Link, notFound, redirect } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { Heart, Star, ShoppingBag, ChevronLeft } from "lucide-react";
+import { Heart, Star, ShoppingBag, ChevronLeft, Pencil } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { StoreLayout } from "@/components/store/StoreLayout";
@@ -8,6 +8,7 @@ import { pickActivePrice, productDetailQuery } from "@/lib/catalog";
 import { effectivePrice, formatBRL } from "@/lib/format";
 import { useCart } from "@/lib/cart-store";
 import { useFavorites } from "@/lib/favorites";
+import { useAuth } from "@/hooks/use-auth";
 import { isVideoUrl } from "@/lib/media-kind";
 
 export const Route = createFileRoute("/$categoria/$produto")({
