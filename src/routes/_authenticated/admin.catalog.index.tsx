@@ -2,11 +2,13 @@ import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
-import { Plus, Search, Trash2, Package, ExternalLink, Download, RefreshCw } from "lucide-react";
+import { Plus, Search, Trash2, Package, ExternalLink, Download, RefreshCw, Sparkles, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 import { formatBRL } from "@/lib/format";
 import {
   listAdminProducts,
@@ -14,6 +16,7 @@ import {
   exportAdminProductsCsv,
   type AdminProductRow,
 } from "@/lib/admin-catalog.functions";
+import { optimizeProductCopy } from "@/lib/ai-product-optimize.functions";
 import { syncAllAliexpressStock } from "@/lib/aliexpress-stock.functions";
 
 export const Route = createFileRoute("/_authenticated/admin/catalog/")({
@@ -39,10 +42,21 @@ function CatalogList() {
   const del = useServerFn(deleteAdminProduct);
   const exportCsv = useServerFn(exportAdminProductsCsv);
   const syncAll = useServerFn(syncAllAliexpressStock);
+  const optimize = useServerFn(optimizeProductCopy);
   const qc = useQueryClient();
   const [q, setQ] = useState("");
   const [status, setStatus] = useState<StatusFilter>("all");
   const [exporting, setExporting] = useState(false);
+  const [aiTarget, setAiTarget] = useState<{ id: string; name: string } | null>(null);
+  const [aiPreview, setAiPreview] = useState<{
+    name: string;
+    short_description: string;
+    description_html: string;
+    seo_title: string;
+    seo_description: string;
+    keywords: string[];
+  } | null>(null);
+  const [aiLoading, setAiLoading] = useState<"idle" | "generating" | "applying">("idle");
 
   const bulkSync = useMutation({
     mutationFn: () => syncAll({ data: { limit: 200 } }),
@@ -85,6 +99,44 @@ function CatalogList() {
       toast.error(e instanceof Error ? e.message : "Falha ao exportar");
     } finally {
       setExporting(false);
+    }
+  }
+
+  async function handleOptimize(id: string, name: string) {
+    setAiTarget({ id, name });
+    setAiPreview(null);
+    setAiLoading("generating");
+    try {
+      const r = await optimize({ data: { product_id: id, apply: false } });
+      setAiPreview({
+        name: r.name,
+        short_description: r.short_description,
+        description_html: r.description_html,
+        seo_title: r.seo_title,
+        seo_description: r.seo_description,
+        keywords: r.keywords,
+      });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Falha na IA");
+      setAiTarget(null);
+    } finally {
+      setAiLoading("idle");
+    }
+  }
+
+  async function handleApplyOptimization() {
+    if (!aiTarget) return;
+    setAiLoading("applying");
+    try {
+      await optimize({ data: { product_id: aiTarget.id, apply: true } });
+      toast.success("Copy otimizado aplicado ao produto");
+      qc.invalidateQueries({ queryKey: ["admin-products"] });
+      setAiTarget(null);
+      setAiPreview(null);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Falha ao aplicar");
+    } finally {
+      setAiLoading("idle");
     }
   }
 
@@ -184,6 +236,8 @@ function CatalogList() {
                   onDelete={() => {
                     if (confirm(`Excluir "${p.name}"? Essa ação é permanente.`)) delMut.mutate(p.id);
                   }}
+                  onOptimize={() => handleOptimize(p.id, p.name)}
+                  optimizing={aiTarget?.id === p.id && aiLoading !== "idle"}
                 />
               ))}
             </tbody>
@@ -196,11 +250,96 @@ function CatalogList() {
           </Link>
         </div>
       </div>
+
+      <Dialog open={!!aiTarget} onOpenChange={(o) => { if (!o) { setAiTarget(null); setAiPreview(null); } }}>
+        <DialogContent className="max-w-3xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-primary" />
+              Inteligência de produtos · {aiTarget?.name}
+            </DialogTitle>
+          </DialogHeader>
+          {aiLoading === "generating" && (
+            <div className="flex flex-col items-center justify-center gap-3 py-12 text-sm text-muted-foreground">
+              <Loader2 className="h-6 w-6 animate-spin text-primary" />
+              A IA está analisando o produto e reescrevendo com gatilhos mentais focados em beleza…
+            </div>
+          )}
+          {aiPreview && (
+            <div className="max-h-[60vh] space-y-4 overflow-y-auto pr-2 text-sm">
+              <div>
+                <p className="text-xs uppercase tracking-wider text-muted-foreground">Novo título</p>
+                <p className="mt-1 font-display text-lg">{aiPreview.name}</p>
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-wider text-muted-foreground">Resumo curto</p>
+                <p className="mt-1">{aiPreview.short_description}</p>
+              </div>
+              <div>
+                <p className="text-xs uppercase tracking-wider text-muted-foreground">Descrição persuasiva</p>
+                <div
+                  className="prose prose-sm mt-1 max-w-none dark:prose-invert"
+                  dangerouslySetInnerHTML={{ __html: aiPreview.description_html }}
+                />
+              </div>
+              <div className="grid gap-3 rounded-lg border border-border bg-secondary/40 p-3 md:grid-cols-2">
+                <div>
+                  <p className="text-xs uppercase tracking-wider text-muted-foreground">SEO title</p>
+                  <p className="mt-1">{aiPreview.seo_title}</p>
+                </div>
+                <div>
+                  <p className="text-xs uppercase tracking-wider text-muted-foreground">SEO description</p>
+                  <p className="mt-1">{aiPreview.seo_description}</p>
+                </div>
+                {aiPreview.keywords.length > 0 && (
+                  <div className="md:col-span-2">
+                    <p className="text-xs uppercase tracking-wider text-muted-foreground">Palavras-chave</p>
+                    <div className="mt-1 flex flex-wrap gap-1.5">
+                      {aiPreview.keywords.map((k) => (
+                        <Badge key={k} variant="outline">{k}</Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              onClick={() => aiTarget && handleOptimize(aiTarget.id, aiTarget.name)}
+              disabled={aiLoading !== "idle"}
+            >
+              <RefreshCw className="mr-1 h-3 w-3" /> Regenerar
+            </Button>
+            <Button
+              onClick={handleApplyOptimization}
+              disabled={!aiPreview || aiLoading !== "idle"}
+            >
+              {aiLoading === "applying" ? (
+                <><Loader2 className="mr-1 h-3 w-3 animate-spin" /> Aplicando…</>
+              ) : (
+                <><Sparkles className="mr-1 h-3 w-3" /> Aplicar ao produto</>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AdminLayout>
   );
 }
 
-function ProductRow({ row, onDelete }: { row: AdminProductRow; onDelete: () => void }) {
+function ProductRow({
+  row,
+  onDelete,
+  onOptimize,
+  optimizing,
+}: {
+  row: AdminProductRow;
+  onDelete: () => void;
+  onOptimize: () => void;
+  optimizing: boolean;
+}) {
   const statusBadge =
     row.status === "active" ? (
       <Badge className="bg-success text-white">Ativo</Badge>
@@ -255,6 +394,19 @@ function ProductRow({ row, onDelete }: { row: AdminProductRow; onDelete: () => v
               <ExternalLink className="h-3.5 w-3.5" />
             </Link>
           )}
+          <button
+            onClick={onOptimize}
+            disabled={optimizing}
+            title="Inteligência de produtos · reescrever com IA"
+            className="inline-flex items-center gap-1 rounded-lg border border-primary/40 bg-primary/10 px-2 py-1.5 text-xs text-primary hover:bg-primary/20 disabled:opacity-60"
+          >
+            {optimizing ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Sparkles className="h-3.5 w-3.5" />
+            )}
+            IA
+          </button>
           <Link
             to="/admin/catalog/$id"
             params={{ id: row.id }}
