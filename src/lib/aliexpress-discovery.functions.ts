@@ -5,6 +5,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import {
   computeSalePriceCents,
   stripBrandMentions,
+  toParagraphHtml,
   type NormalizedProduct,
 } from "./aliexpress-import.functions";
 
