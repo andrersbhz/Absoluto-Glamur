@@ -2,11 +2,13 @@ import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
-import { Plus, Search, Trash2, Package, ExternalLink, Download, RefreshCw } from "lucide-react";
+import { Plus, Search, Trash2, Package, ExternalLink, Download, RefreshCw, Sparkles, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
 import { formatBRL } from "@/lib/format";
 import {
   listAdminProducts,
@@ -14,6 +16,7 @@ import {
   exportAdminProductsCsv,
   type AdminProductRow,
 } from "@/lib/admin-catalog.functions";
+import { optimizeProductCopy } from "@/lib/ai-product-optimize.functions";
 import { syncAllAliexpressStock } from "@/lib/aliexpress-stock.functions";
 
 export const Route = createFileRoute("/_authenticated/admin/catalog/")({
