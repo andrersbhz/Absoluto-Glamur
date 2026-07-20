@@ -101,7 +101,7 @@ Regras finais:
 
     const key = process.env.LOVABLE_API_KEY;
     if (!key) throw new Error("LOVABLE_API_KEY ausente. Ative o Lovable AI.");
-    const modelId = data.model === "quality" ? "openai/gpt-5.4-mini" : "google/gemini-3.5-flash";
+    const modelId = data.model === "quality" ? "google/gemini-3.5-flash" : "google/gemini-3.1-flash-lite";
     const gateway = createLovableAiGatewayProvider(key);
     const model = gateway(modelId);
 
