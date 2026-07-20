@@ -2,7 +2,7 @@ import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
-import { Plus, Search, Trash2, Package, ExternalLink, Download } from "lucide-react";
+import { Plus, Search, Trash2, Package, ExternalLink, Download, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { AdminLayout } from "@/components/admin/AdminLayout";
@@ -14,6 +14,7 @@ import {
   exportAdminProductsCsv,
   type AdminProductRow,
 } from "@/lib/admin-catalog.functions";
+import { syncAllAliexpressStock } from "@/lib/aliexpress-stock.functions";
 
 export const Route = createFileRoute("/_authenticated/admin/catalog/")({
   head: () => ({ meta: [{ title: "Catálogo · Admin Absoluto Glamur" }] }),
