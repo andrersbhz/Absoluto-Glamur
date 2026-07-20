@@ -394,6 +394,19 @@ function ProductRow({
               <ExternalLink className="h-3.5 w-3.5" />
             </Link>
           )}
+          <button
+            onClick={onOptimize}
+            disabled={optimizing}
+            title="Inteligência de produtos · reescrever com IA"
+            className="inline-flex items-center gap-1 rounded-lg border border-primary/40 bg-primary/10 px-2 py-1.5 text-xs text-primary hover:bg-primary/20 disabled:opacity-60"
+          >
+            {optimizing ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Sparkles className="h-3.5 w-3.5" />
+            )}
+            IA
+          </button>
           <Link
             to="/admin/catalog/$id"
             params={{ id: row.id }}
