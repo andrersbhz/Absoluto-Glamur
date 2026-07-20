@@ -102,6 +102,44 @@ function CatalogList() {
     }
   }
 
+  async function handleOptimize(id: string, name: string) {
+    setAiTarget({ id, name });
+    setAiPreview(null);
+    setAiLoading("generating");
+    try {
+      const r = await optimize({ data: { product_id: id, apply: false } });
+      setAiPreview({
+        name: r.name,
+        short_description: r.short_description,
+        description_html: r.description_html,
+        seo_title: r.seo_title,
+        seo_description: r.seo_description,
+        keywords: r.keywords,
+      });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Falha na IA");
+      setAiTarget(null);
+    } finally {
+      setAiLoading("idle");
+    }
+  }
+
+  async function handleApplyOptimization() {
+    if (!aiTarget) return;
+    setAiLoading("applying");
+    try {
+      await optimize({ data: { product_id: aiTarget.id, apply: true } });
+      toast.success("Copy otimizado aplicado ao produto");
+      qc.invalidateQueries({ queryKey: ["admin-products"] });
+      setAiTarget(null);
+      setAiPreview(null);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Falha ao aplicar");
+    } finally {
+      setAiLoading("idle");
+    }
+  }
+
   return (
     <AdminLayout>
       <div className="mx-auto max-w-6xl">
