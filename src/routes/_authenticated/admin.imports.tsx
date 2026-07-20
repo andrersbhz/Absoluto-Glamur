@@ -3,10 +3,22 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
 import { toast } from "sonner";
-import { Boxes, Download, FileJson, Link2, Save, Settings2, Sparkles, Trash2 } from "lucide-react";
+import {
+  Boxes,
+  Download,
+  ExternalLink,
+  FileJson,
+  ImageOff,
+  Link2,
+  Save,
+  Settings2,
+  Sparkles,
+  Trash2,
+} from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { Badge } from "@/components/ui/badge";
+import { formatBRL } from "@/lib/format";
 import {
   listImports,
   scrapeUrlPreview,
@@ -19,6 +31,7 @@ import {
   type NormalizedProduct,
   type ImportSettings,
 } from "@/lib/aliexpress-import.functions";
+
 
 export const Route = createFileRoute("/_authenticated/admin/imports")({
   head: () => ({ meta: [{ title: "Importador · Admin Absoluto Glamur" }] }),
