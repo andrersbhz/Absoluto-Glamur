@@ -629,7 +629,7 @@ export const importAliexpressProductToStore = createServerFn({ method: "POST" })
     const skusBlock = result.ae_item_sku_info_dtos ?? result.skus ?? {};
     const shopBlock = result.ae_store_info ?? result.store_info ?? {};
 
-    const title: string = base.subject ?? base.product_title ?? "Produto AliExpress";
+    const title: string = base.subject ?? base.product_title ?? "Produto importado";
     const descHtml: string =
       base.detail ?? result.package_info_dto?.package_detail ?? "";
     const description = descHtml ? stripHtml(descHtml).slice(0, 6000) : null;
