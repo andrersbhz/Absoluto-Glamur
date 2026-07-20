@@ -107,6 +107,7 @@ function ProductPage() {
 
   const addToCart = useCart((s) => s.add);
   const { isFavorite, toggle, canFavorite } = useFavorites();
+  const { isAdmin } = useAuth();
 
   const media = useMemo(() => [...(product?.media ?? [])], [product]);
   const [activeIdx, setActiveIdx] = useState(0);
