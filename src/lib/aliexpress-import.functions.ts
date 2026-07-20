@@ -541,7 +541,7 @@ export const bulkImportJson = createServerFn({ method: "POST" })
       }
       const norm: NormalizedProduct = {
         title: translated.title,
-        description: translated.description,
+        description: toParagraphHtml(translated.description),
         images: n.images ?? [],
         price_original: priceBrl,
         currency: "BRL",
