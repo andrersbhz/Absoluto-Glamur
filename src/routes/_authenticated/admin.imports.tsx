@@ -387,21 +387,13 @@ function ApiTab() {
   const [minRating, setMinRating] = useState(4.5);
   const [perKeyword, setPerKeyword] = useState(8);
   const [keywords, setKeywords] = useState<string[]>([]);
-  const [items, setItems] = useState<import("@/lib/aliexpress-discovery.functions").DiscoveryProduct[]>([]);
+  const [items, setItems] = useState<DiscoveryProduct[]>([]);
   const [progress, setProgress] = useState<{ current: number; total: number; label: string } | null>(null);
   const [addingId, setAddingId] = useState<string | null>(null);
 
-  const suggestFn = useServerFn(
-    // dynamic import via require pattern — TanStack useServerFn needs static ref, so import at top
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    require("@/lib/ai-suggest-keywords.functions").suggestNicheKeywords,
-  );
-  const discoverFn = useServerFn(
-    require("@/lib/aliexpress-discovery.functions").discoverAliexpressProducts,
-  );
-  const importFn = useServerFn(
-    require("@/lib/aliexpress-discovery.functions").importAliexpressProductToStore,
-  );
+  const suggestFn = useServerFn(suggestNicheKeywords);
+  const discoverFn = useServerFn(discoverAliexpressProducts);
+  const importFn = useServerFn(importAliexpressProductToStore);
   const qc = useQueryClient();
 
   const syncMut = useMutation({
