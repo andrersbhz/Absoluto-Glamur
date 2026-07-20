@@ -100,6 +100,15 @@ function CatalogList() {
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <button
+              onClick={() => bulkSync.mutate()}
+              disabled={bulkSync.isPending}
+              className="inline-flex items-center gap-2 rounded-lg border border-primary/40 bg-primary/10 px-4 py-2 text-sm text-primary hover:bg-primary/20 disabled:opacity-60"
+              title="Sincronizar estoque de todos os produtos vinculados ao AliExpress"
+            >
+              <RefreshCw className={`h-4 w-4 ${bulkSync.isPending ? "animate-spin" : ""}`} />
+              {bulkSync.isPending ? "Sincronizando…" : "Sincronizar estoque AliExpress"}
+            </button>
+            <button
               onClick={handleExport}
               disabled={exporting}
               className="inline-flex items-center gap-2 rounded-lg border border-border bg-background px-4 py-2 text-sm hover:bg-secondary disabled:opacity-60"
