@@ -407,7 +407,7 @@ function ApiTab() {
       setKeywords(kws);
       if (kws.length === 0) throw new Error("A IA não retornou palavras-chave. Ajuste o nicho.");
 
-      const map = new Map<string, import("@/lib/aliexpress-discovery.functions").DiscoveryProduct>();
+      const map = new Map<string, DiscoveryProduct>();
       for (let i = 0; i < kws.length; i++) {
         const kw = kws[i];
         setProgress({ current: i + 1, total: kws.length, label: `Buscando: "${kw}"` });
@@ -585,7 +585,7 @@ function DiscoveryCard({
   adding,
   onAdd,
 }: {
-  product: import("@/lib/aliexpress-discovery.functions").DiscoveryProduct;
+  product: DiscoveryProduct;
   adding: boolean;
   onAdd: () => void;
 }) {
