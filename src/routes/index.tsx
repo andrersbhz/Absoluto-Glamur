@@ -82,6 +82,16 @@ function Index() {
         <FeaturedCollectionSection key={c.id} slug={c.slug} name={c.name} description={c.description} />
       ))}
 
+      {byCategory.map((row) => (
+        <FeaturedSection
+          key={row.category.id}
+          title={row.category.name}
+          subtitle="Novidades e mais vendidos"
+          link={{ label: "Ver todos", search: { category: row.category.slug } }}
+          products={row.products}
+        />
+      ))}
+
 
 
       {newArrivals.length > 0 && (
