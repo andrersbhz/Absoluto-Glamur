@@ -4,6 +4,8 @@ import { createHmac } from "crypto";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import {
   computeSalePriceCents,
+  stripBrandMentions,
+  toParagraphHtml,
   type NormalizedProduct,
 } from "./aliexpress-import.functions";
 
@@ -595,6 +597,7 @@ function stripHtml(html: string): string {
     .trim();
 }
 
+
 export const importAliexpressProductToStore = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((v: unknown) =>
@@ -676,8 +679,8 @@ export const importAliexpressProductToStore = createServerFn({ method: "POST" })
     }
 
     const norm: NormalizedProduct = {
-      title: translated.title,
-      description: translated.description,
+      title: stripBrandMentions(translated.title) ?? translated.title,
+      description: toParagraphHtml(stripBrandMentions(translated.description)),
       images,
       price_original: priceBrl,
       currency: "BRL",
