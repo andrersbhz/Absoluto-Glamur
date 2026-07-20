@@ -243,7 +243,7 @@ async function searchAliExpressWeb(keyword: string, limit: number): Promise<Disc
       const image = item.imageUrl ?? imageByProduct.get(productId) ?? null;
       products.push({
         product_id: productId,
-        title: item.title?.replace(/\s*-\s*AliExpress.*$/i, "").trim() || "Produto AliExpress",
+        title: item.title?.replace(/\s*-\s*AliExpress.*$/i, "").replace(/ali[\s\-_]?express/gi, "").replace(/\s{2,}/g, " ").trim() || "Produto importado",
         image,
         images: image ? [image] : [],
         price_original: price,
@@ -399,7 +399,7 @@ function normalizeSearchProduct(p: any): DiscoveryProduct {
     "USD";
   return {
     product_id: String(p.product_id ?? p.item_id ?? ""),
-    title: String(p.product_title ?? p.subject ?? p.title ?? "Produto AliExpress"),
+    title: String(p.product_title ?? p.subject ?? p.title ?? "Produto importado").replace(/ali[\s\-_]?express/gi, "").replace(/\s{2,}/g, " ").trim(),
     image: images[0] ?? null,
     images,
     price_original: price,
@@ -629,7 +629,7 @@ export const importAliexpressProductToStore = createServerFn({ method: "POST" })
     const skusBlock = result.ae_item_sku_info_dtos ?? result.skus ?? {};
     const shopBlock = result.ae_store_info ?? result.store_info ?? {};
 
-    const title: string = base.subject ?? base.product_title ?? "Produto AliExpress";
+    const title: string = base.subject ?? base.product_title ?? "Produto importado";
     const descHtml: string =
       base.detail ?? result.package_info_dto?.package_detail ?? "";
     const description = descHtml ? stripHtml(descHtml).slice(0, 6000) : null;
@@ -719,7 +719,7 @@ export const importAliexpressProductToStore = createServerFn({ method: "POST" })
         is_featured: false,
         brand_id: settings.default_brand_id ?? null,
         category_id: settings.default_category_id ?? null,
-        tags: ["importado", "aliexpress"],
+        tags: ["importado"],
       })
       .select("id")
       .single();

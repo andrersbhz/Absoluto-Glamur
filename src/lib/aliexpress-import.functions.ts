@@ -212,6 +212,19 @@ async function scrapeViaFirecrawl(url: string): Promise<NormalizedProduct> {
 
 // -------------------- Translation + FX --------------------
 
+// Remove menções à marca AliExpress (e variações) do conteúdo importado, para
+// que descrições, títulos e tags não exponham a origem do produto na loja.
+export function stripBrandMentions(input: string | null | undefined): string | null {
+  if (!input) return input ?? null;
+  let out = String(input);
+  // remove "aliexpress", "ali express", "ali-express", "ali_express" (case-insensitive)
+  out = out.replace(/ali[\s\-_]?express/gi, "");
+  // colapsa espaços/pontuação órfã deixados pela remoção
+  out = out.replace(/[ \t]{2,}/g, " ").replace(/\s+([.,;:!?])/g, "$1");
+  out = out.replace(/^[\s\-–—·•|,.:;]+|[\s\-–—·•|,.:;]+$/g, "");
+  return out.trim() || null;
+}
+
 async function translateToPtBr(input: { title: string; description: string | null }): Promise<{
   title: string;
   description: string | null;
@@ -233,15 +246,20 @@ async function translateToPtBr(input: { title: string; description: string | nul
     });
     const cleaned = text.trim().replace(/^```(?:json)?/i, "").replace(/```$/i, "").trim();
     const parsed = JSON.parse(cleaned);
+    const rawTitle = typeof parsed.title === "string" && parsed.title.trim() ? parsed.title.trim() : input.title;
+    const rawDesc =
+      typeof parsed.description === "string" && parsed.description.trim()
+        ? parsed.description.trim()
+        : input.description;
     return {
-      title: typeof parsed.title === "string" && parsed.title.trim() ? parsed.title.trim() : input.title,
-      description:
-        typeof parsed.description === "string" && parsed.description.trim()
-          ? parsed.description.trim()
-          : input.description,
+      title: stripBrandMentions(rawTitle) ?? rawTitle,
+      description: stripBrandMentions(rawDesc),
     };
   } catch {
-    return input;
+    return {
+      title: stripBrandMentions(input.title) ?? input.title,
+      description: stripBrandMentions(input.description),
+    };
   }
 }
 
