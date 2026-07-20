@@ -172,6 +172,17 @@ function CatalogEditor() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const syncStockFn = useServerFn(syncAliexpressStock);
+  const syncStock = useMutation({
+    mutationFn: () => syncStockFn({ data: { product_id: id } }),
+    onSuccess: (r) => {
+      setForm((f) => ({ ...f, stock: String(r.total_stock) }));
+      toast.success(`Estoque AliExpress: ${r.total_stock} unidades (${r.variants_updated} variantes)`);
+      prodQ.refetch();
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!form.name.trim()) {
