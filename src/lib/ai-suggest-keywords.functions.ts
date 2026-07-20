@@ -73,7 +73,7 @@ Priorize itens tendência de vendas atuais em 2025.`;
         model: modelId,
         provider: "lovable-ai",
         input: { niche: data.niche, product_type: data.product_type, count: data.count },
-        output: { keywords },
+        output: JSON.stringify({ keywords }),
         status: "success",
       });
     } catch { /* ignore logging errors */ }
