@@ -119,9 +119,20 @@ function ProductPage() {
   return (
     <StoreLayout>
       <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
-        <Link to="/products" search={{} as never} className="mb-6 inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
-          <ChevronLeft className="h-4 w-4" /> Voltar ao catálogo
-        </Link>
+        <div className="mb-6 flex items-center justify-between gap-3">
+          <Link to="/products" search={{} as never} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+            <ChevronLeft className="h-4 w-4" /> Voltar ao catálogo
+          </Link>
+          {isAdmin && (
+            <Link
+              to="/admin/catalog/$id"
+              params={{ id: product.id }}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-primary/40 bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary shadow-[0_0_12px_theme(colors.primary/25%)] transition hover:bg-primary/20"
+            >
+              <Pencil className="h-3.5 w-3.5" /> Editar produto
+            </Link>
+          )}
+        </div>
         <div className="grid gap-10 lg:grid-cols-2">
           <div className="space-y-3">
             <div className="aspect-square overflow-hidden rounded-3xl bg-secondary/40">
