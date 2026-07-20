@@ -399,7 +399,7 @@ function normalizeSearchProduct(p: any): DiscoveryProduct {
     "USD";
   return {
     product_id: String(p.product_id ?? p.item_id ?? ""),
-    title: String(p.product_title ?? p.subject ?? p.title ?? "Produto AliExpress"),
+    title: String(p.product_title ?? p.subject ?? p.title ?? "Produto importado").replace(/ali[\s\-_]?express/gi, "").replace(/\s{2,}/g, " ").trim(),
     image: images[0] ?? null,
     images,
     price_original: price,
