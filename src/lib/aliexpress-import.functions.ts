@@ -478,7 +478,7 @@ export const saveImportDraft = createServerFn({ method: "POST" })
     }
     const norm: NormalizedProduct = {
       title: translated.title,
-      description: translated.description,
+      description: toParagraphHtml(translated.description),
       images: data.normalized.images ?? [],
       price_original: priceBrl,
       currency: "BRL",
