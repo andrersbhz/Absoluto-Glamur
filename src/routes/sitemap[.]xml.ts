@@ -19,14 +19,19 @@ async function fetchDynamic(): Promise<Entry[]> {
   const client = createClient(url, key, { auth: { persistSession: false } });
 
   const [products, categories, collections] = await Promise.all([
-    client.from("products").select("slug, updated_at").eq("status", "active").limit(5000),
+    client
+      .from("products")
+      .select("slug, updated_at, category:categories(slug)")
+      .eq("status", "active")
+      .limit(5000),
     client.from("categories").select("slug, updated_at").limit(500),
     client.from("collections").select("slug, updated_at").eq("is_featured", true).limit(200),
   ]);
 
   const out: Entry[] = [];
-  for (const p of products.data ?? []) {
-    out.push({ path: `/products/${p.slug}`, lastmod: p.updated_at, changefreq: "weekly", priority: "0.8" });
+  for (const p of (products.data ?? []) as unknown as Array<{ slug: string; updated_at: string; category: { slug: string } | null }>) {
+    const cat = p.category?.slug ?? "produto";
+    out.push({ path: `/${cat}/${p.slug}`, lastmod: p.updated_at, changefreq: "weekly", priority: "0.8" });
   }
   for (const c of categories.data ?? []) {
     out.push({ path: `/products?category=${c.slug}`, lastmod: c.updated_at, changefreq: "weekly", priority: "0.6" });

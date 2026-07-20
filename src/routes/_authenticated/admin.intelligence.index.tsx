@@ -20,7 +20,7 @@ import {
   computeProductScore,
 } from "@/lib/intelligence.functions";
 
-export const Route = createFileRoute("/_authenticated/admin/intelligence")({
+export const Route = createFileRoute("/_authenticated/admin/intelligence/")({
   head: () => ({ meta: [{ title: "Inteligência de produtos · Admin Absoluto Glamur" }] }),
   beforeLoad: async () => {
     const { data: userData } = await supabase.auth.getUser();

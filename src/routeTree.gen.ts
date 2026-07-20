@@ -23,6 +23,7 @@ import { Route as AuthenticatedFavoritesRouteImport } from './routes/_authentica
 import { Route as AuthenticatedCheckoutRouteImport } from './routes/_authenticated/checkout'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as AuthenticatedAccountRouteImport } from './routes/_authenticated/account'
+import { Route as CategoriaProdutoRouteImport } from './routes/$categoria.$produto'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin.index'
 import { Route as AuthenticatedCheckoutOrderIdRouteImport } from './routes/_authenticated/checkout.$orderId'
 import { Route as AuthenticatedAdminUsersRouteImport } from './routes/_authenticated/admin.users'
@@ -30,13 +31,13 @@ import { Route as AuthenticatedAdminUsageRouteImport } from './routes/_authentic
 import { Route as AuthenticatedAdminSettingsRouteImport } from './routes/_authenticated/admin.settings'
 import { Route as AuthenticatedAdminOrdersRouteImport } from './routes/_authenticated/admin.orders'
 import { Route as AuthenticatedAdminMarketingRouteImport } from './routes/_authenticated/admin.marketing'
-import { Route as AuthenticatedAdminIntelligenceRouteImport } from './routes/_authenticated/admin.intelligence'
 import { Route as AuthenticatedAdminIntegrationsRouteImport } from './routes/_authenticated/admin.integrations'
 import { Route as AuthenticatedAdminImportsRouteImport } from './routes/_authenticated/admin.imports'
 import { Route as AuthenticatedAdminDiscoverRouteImport } from './routes/_authenticated/admin.discover'
 import { Route as AuthenticatedAdminDashboardRouteImport } from './routes/_authenticated/admin.dashboard'
 import { Route as AuthenticatedAdminComplianceRouteImport } from './routes/_authenticated/admin.compliance'
 import { Route as AuthenticatedAdminAiRouteImport } from './routes/_authenticated/admin.ai'
+import { Route as AuthenticatedAdminIntelligenceIndexRouteImport } from './routes/_authenticated/admin.intelligence.index'
 import { Route as AuthenticatedAdminCatalogIndexRouteImport } from './routes/_authenticated/admin.catalog.index'
 import { Route as ApiPublicWebhooksNupayRouteImport } from './routes/api/public/webhooks/nupay'
 import { Route as ApiPublicWebhooksAsaasRouteImport } from './routes/api/public/webhooks/asaas'
@@ -115,6 +116,11 @@ const AuthenticatedAccountRoute = AuthenticatedAccountRouteImport.update({
   path: '/account',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const CategoriaProdutoRoute = CategoriaProdutoRouteImport.update({
+  id: '/$categoria/$produto',
+  path: '/$categoria/$produto',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuthenticatedAdminIndexRoute = AuthenticatedAdminIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -154,12 +160,6 @@ const AuthenticatedAdminMarketingRoute =
     path: '/marketing',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
-const AuthenticatedAdminIntelligenceRoute =
-  AuthenticatedAdminIntelligenceRouteImport.update({
-    id: '/intelligence',
-    path: '/intelligence',
-    getParentRoute: () => AuthenticatedAdminRoute,
-  } as any)
 const AuthenticatedAdminIntegrationsRoute =
   AuthenticatedAdminIntegrationsRouteImport.update({
     id: '/integrations',
@@ -195,6 +195,12 @@ const AuthenticatedAdminAiRoute = AuthenticatedAdminAiRouteImport.update({
   path: '/ai',
   getParentRoute: () => AuthenticatedAdminRoute,
 } as any)
+const AuthenticatedAdminIntelligenceIndexRoute =
+  AuthenticatedAdminIntelligenceIndexRouteImport.update({
+    id: '/intelligence/',
+    path: '/intelligence/',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
 const AuthenticatedAdminCatalogIndexRoute =
   AuthenticatedAdminCatalogIndexRouteImport.update({
     id: '/catalog/',
@@ -225,9 +231,9 @@ const ApiPublicAliexpressStartRoute =
   } as any)
 const AuthenticatedAdminIntelligenceIdRoute =
   AuthenticatedAdminIntelligenceIdRouteImport.update({
-    id: '/$id',
-    path: '/$id',
-    getParentRoute: () => AuthenticatedAdminIntelligenceRoute,
+    id: '/intelligence/$id',
+    path: '/intelligence/$id',
+    getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
 const AuthenticatedAdminImportsIdRoute =
   AuthenticatedAdminImportsIdRouteImport.update({
@@ -248,6 +254,7 @@ export interface FileRoutesByFullPath {
   '/cart': typeof CartRoute
   '/products': typeof ProductsRouteWithChildren
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/$categoria/$produto': typeof CategoriaProdutoRoute
   '/account': typeof AuthenticatedAccountRoute
   '/admin': typeof AuthenticatedAdminRouteWithChildren
   '/checkout': typeof AuthenticatedCheckoutRouteWithChildren
@@ -262,7 +269,6 @@ export interface FileRoutesByFullPath {
   '/admin/discover': typeof AuthenticatedAdminDiscoverRoute
   '/admin/imports': typeof AuthenticatedAdminImportsRouteWithChildren
   '/admin/integrations': typeof AuthenticatedAdminIntegrationsRoute
-  '/admin/intelligence': typeof AuthenticatedAdminIntelligenceRouteWithChildren
   '/admin/marketing': typeof AuthenticatedAdminMarketingRoute
   '/admin/orders': typeof AuthenticatedAdminOrdersRoute
   '/admin/settings': typeof AuthenticatedAdminSettingsRoute
@@ -278,6 +284,7 @@ export interface FileRoutesByFullPath {
   '/api/public/webhooks/asaas': typeof ApiPublicWebhooksAsaasRoute
   '/api/public/webhooks/nupay': typeof ApiPublicWebhooksNupayRoute
   '/admin/catalog/': typeof AuthenticatedAdminCatalogIndexRoute
+  '/admin/intelligence/': typeof AuthenticatedAdminIntelligenceIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -285,6 +292,7 @@ export interface FileRoutesByTo {
   '/cart': typeof CartRoute
   '/products': typeof ProductsRouteWithChildren
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/$categoria/$produto': typeof CategoriaProdutoRoute
   '/account': typeof AuthenticatedAccountRoute
   '/checkout': typeof AuthenticatedCheckoutRouteWithChildren
   '/favorites': typeof AuthenticatedFavoritesRoute
@@ -298,7 +306,6 @@ export interface FileRoutesByTo {
   '/admin/discover': typeof AuthenticatedAdminDiscoverRoute
   '/admin/imports': typeof AuthenticatedAdminImportsRouteWithChildren
   '/admin/integrations': typeof AuthenticatedAdminIntegrationsRoute
-  '/admin/intelligence': typeof AuthenticatedAdminIntelligenceRouteWithChildren
   '/admin/marketing': typeof AuthenticatedAdminMarketingRoute
   '/admin/orders': typeof AuthenticatedAdminOrdersRoute
   '/admin/settings': typeof AuthenticatedAdminSettingsRoute
@@ -314,6 +321,7 @@ export interface FileRoutesByTo {
   '/api/public/webhooks/asaas': typeof ApiPublicWebhooksAsaasRoute
   '/api/public/webhooks/nupay': typeof ApiPublicWebhooksNupayRoute
   '/admin/catalog': typeof AuthenticatedAdminCatalogIndexRoute
+  '/admin/intelligence': typeof AuthenticatedAdminIntelligenceIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -323,6 +331,7 @@ export interface FileRoutesById {
   '/cart': typeof CartRoute
   '/products': typeof ProductsRouteWithChildren
   '/sitemap.xml': typeof SitemapDotxmlRoute
+  '/$categoria/$produto': typeof CategoriaProdutoRoute
   '/_authenticated/account': typeof AuthenticatedAccountRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRouteWithChildren
   '/_authenticated/checkout': typeof AuthenticatedCheckoutRouteWithChildren
@@ -337,7 +346,6 @@ export interface FileRoutesById {
   '/_authenticated/admin/discover': typeof AuthenticatedAdminDiscoverRoute
   '/_authenticated/admin/imports': typeof AuthenticatedAdminImportsRouteWithChildren
   '/_authenticated/admin/integrations': typeof AuthenticatedAdminIntegrationsRoute
-  '/_authenticated/admin/intelligence': typeof AuthenticatedAdminIntelligenceRouteWithChildren
   '/_authenticated/admin/marketing': typeof AuthenticatedAdminMarketingRoute
   '/_authenticated/admin/orders': typeof AuthenticatedAdminOrdersRoute
   '/_authenticated/admin/settings': typeof AuthenticatedAdminSettingsRoute
@@ -353,6 +361,7 @@ export interface FileRoutesById {
   '/api/public/webhooks/asaas': typeof ApiPublicWebhooksAsaasRoute
   '/api/public/webhooks/nupay': typeof ApiPublicWebhooksNupayRoute
   '/_authenticated/admin/catalog/': typeof AuthenticatedAdminCatalogIndexRoute
+  '/_authenticated/admin/intelligence/': typeof AuthenticatedAdminIntelligenceIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -362,6 +371,7 @@ export interface FileRouteTypes {
     | '/cart'
     | '/products'
     | '/sitemap.xml'
+    | '/$categoria/$produto'
     | '/account'
     | '/admin'
     | '/checkout'
@@ -376,7 +386,6 @@ export interface FileRouteTypes {
     | '/admin/discover'
     | '/admin/imports'
     | '/admin/integrations'
-    | '/admin/intelligence'
     | '/admin/marketing'
     | '/admin/orders'
     | '/admin/settings'
@@ -392,6 +401,7 @@ export interface FileRouteTypes {
     | '/api/public/webhooks/asaas'
     | '/api/public/webhooks/nupay'
     | '/admin/catalog/'
+    | '/admin/intelligence/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -399,6 +409,7 @@ export interface FileRouteTypes {
     | '/cart'
     | '/products'
     | '/sitemap.xml'
+    | '/$categoria/$produto'
     | '/account'
     | '/checkout'
     | '/favorites'
@@ -412,7 +423,6 @@ export interface FileRouteTypes {
     | '/admin/discover'
     | '/admin/imports'
     | '/admin/integrations'
-    | '/admin/intelligence'
     | '/admin/marketing'
     | '/admin/orders'
     | '/admin/settings'
@@ -428,6 +438,7 @@ export interface FileRouteTypes {
     | '/api/public/webhooks/asaas'
     | '/api/public/webhooks/nupay'
     | '/admin/catalog'
+    | '/admin/intelligence'
   id:
     | '__root__'
     | '/'
@@ -436,6 +447,7 @@ export interface FileRouteTypes {
     | '/cart'
     | '/products'
     | '/sitemap.xml'
+    | '/$categoria/$produto'
     | '/_authenticated/account'
     | '/_authenticated/admin'
     | '/_authenticated/checkout'
@@ -450,7 +462,6 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/discover'
     | '/_authenticated/admin/imports'
     | '/_authenticated/admin/integrations'
-    | '/_authenticated/admin/intelligence'
     | '/_authenticated/admin/marketing'
     | '/_authenticated/admin/orders'
     | '/_authenticated/admin/settings'
@@ -466,6 +477,7 @@ export interface FileRouteTypes {
     | '/api/public/webhooks/asaas'
     | '/api/public/webhooks/nupay'
     | '/_authenticated/admin/catalog/'
+    | '/_authenticated/admin/intelligence/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -475,6 +487,7 @@ export interface RootRouteChildren {
   CartRoute: typeof CartRoute
   ProductsRoute: typeof ProductsRouteWithChildren
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
+  CategoriaProdutoRoute: typeof CategoriaProdutoRoute
   ApiPublicAliexpressStartRoute: typeof ApiPublicAliexpressStartRoute
   ApiPublicWebhooksAliexpressRoute: typeof ApiPublicWebhooksAliexpressRoute
   ApiPublicWebhooksAsaasRoute: typeof ApiPublicWebhooksAsaasRoute
@@ -581,6 +594,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAccountRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/$categoria/$produto': {
+      id: '/$categoria/$produto'
+      path: '/$categoria/$produto'
+      fullPath: '/$categoria/$produto'
+      preLoaderRoute: typeof CategoriaProdutoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated/admin/': {
       id: '/_authenticated/admin/'
       path: '/'
@@ -630,13 +650,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminMarketingRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
-    '/_authenticated/admin/intelligence': {
-      id: '/_authenticated/admin/intelligence'
-      path: '/intelligence'
-      fullPath: '/admin/intelligence'
-      preLoaderRoute: typeof AuthenticatedAdminIntelligenceRouteImport
-      parentRoute: typeof AuthenticatedAdminRoute
-    }
     '/_authenticated/admin/integrations': {
       id: '/_authenticated/admin/integrations'
       path: '/integrations'
@@ -679,6 +692,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminAiRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/_authenticated/admin/intelligence/': {
+      id: '/_authenticated/admin/intelligence/'
+      path: '/intelligence'
+      fullPath: '/admin/intelligence/'
+      preLoaderRoute: typeof AuthenticatedAdminIntelligenceIndexRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
     '/_authenticated/admin/catalog/': {
       id: '/_authenticated/admin/catalog/'
       path: '/catalog'
@@ -716,10 +736,10 @@ declare module '@tanstack/react-router' {
     }
     '/_authenticated/admin/intelligence/$id': {
       id: '/_authenticated/admin/intelligence/$id'
-      path: '/$id'
+      path: '/intelligence/$id'
       fullPath: '/admin/intelligence/$id'
       preLoaderRoute: typeof AuthenticatedAdminIntelligenceIdRouteImport
-      parentRoute: typeof AuthenticatedAdminIntelligenceRoute
+      parentRoute: typeof AuthenticatedAdminRoute
     }
     '/_authenticated/admin/imports/$id': {
       id: '/_authenticated/admin/imports/$id'
@@ -752,21 +772,6 @@ const AuthenticatedAdminImportsRouteWithChildren =
     AuthenticatedAdminImportsRouteChildren,
   )
 
-interface AuthenticatedAdminIntelligenceRouteChildren {
-  AuthenticatedAdminIntelligenceIdRoute: typeof AuthenticatedAdminIntelligenceIdRoute
-}
-
-const AuthenticatedAdminIntelligenceRouteChildren: AuthenticatedAdminIntelligenceRouteChildren =
-  {
-    AuthenticatedAdminIntelligenceIdRoute:
-      AuthenticatedAdminIntelligenceIdRoute,
-  }
-
-const AuthenticatedAdminIntelligenceRouteWithChildren =
-  AuthenticatedAdminIntelligenceRoute._addFileChildren(
-    AuthenticatedAdminIntelligenceRouteChildren,
-  )
-
 interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminAiRoute: typeof AuthenticatedAdminAiRoute
   AuthenticatedAdminComplianceRoute: typeof AuthenticatedAdminComplianceRoute
@@ -774,7 +779,6 @@ interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminDiscoverRoute: typeof AuthenticatedAdminDiscoverRoute
   AuthenticatedAdminImportsRoute: typeof AuthenticatedAdminImportsRouteWithChildren
   AuthenticatedAdminIntegrationsRoute: typeof AuthenticatedAdminIntegrationsRoute
-  AuthenticatedAdminIntelligenceRoute: typeof AuthenticatedAdminIntelligenceRouteWithChildren
   AuthenticatedAdminMarketingRoute: typeof AuthenticatedAdminMarketingRoute
   AuthenticatedAdminOrdersRoute: typeof AuthenticatedAdminOrdersRoute
   AuthenticatedAdminSettingsRoute: typeof AuthenticatedAdminSettingsRoute
@@ -782,7 +786,9 @@ interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminUsersRoute: typeof AuthenticatedAdminUsersRoute
   AuthenticatedAdminIndexRoute: typeof AuthenticatedAdminIndexRoute
   AuthenticatedAdminCatalogIdRoute: typeof AuthenticatedAdminCatalogIdRoute
+  AuthenticatedAdminIntelligenceIdRoute: typeof AuthenticatedAdminIntelligenceIdRoute
   AuthenticatedAdminCatalogIndexRoute: typeof AuthenticatedAdminCatalogIndexRoute
+  AuthenticatedAdminIntelligenceIndexRoute: typeof AuthenticatedAdminIntelligenceIndexRoute
 }
 
 const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
@@ -792,8 +798,6 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminDiscoverRoute: AuthenticatedAdminDiscoverRoute,
   AuthenticatedAdminImportsRoute: AuthenticatedAdminImportsRouteWithChildren,
   AuthenticatedAdminIntegrationsRoute: AuthenticatedAdminIntegrationsRoute,
-  AuthenticatedAdminIntelligenceRoute:
-    AuthenticatedAdminIntelligenceRouteWithChildren,
   AuthenticatedAdminMarketingRoute: AuthenticatedAdminMarketingRoute,
   AuthenticatedAdminOrdersRoute: AuthenticatedAdminOrdersRoute,
   AuthenticatedAdminSettingsRoute: AuthenticatedAdminSettingsRoute,
@@ -801,7 +805,10 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminUsersRoute: AuthenticatedAdminUsersRoute,
   AuthenticatedAdminIndexRoute: AuthenticatedAdminIndexRoute,
   AuthenticatedAdminCatalogIdRoute: AuthenticatedAdminCatalogIdRoute,
+  AuthenticatedAdminIntelligenceIdRoute: AuthenticatedAdminIntelligenceIdRoute,
   AuthenticatedAdminCatalogIndexRoute: AuthenticatedAdminCatalogIndexRoute,
+  AuthenticatedAdminIntelligenceIndexRoute:
+    AuthenticatedAdminIntelligenceIndexRoute,
 }
 
 const AuthenticatedAdminRouteWithChildren =
@@ -870,6 +877,7 @@ const rootRouteChildren: RootRouteChildren = {
   CartRoute: CartRoute,
   ProductsRoute: ProductsRouteWithChildren,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
+  CategoriaProdutoRoute: CategoriaProdutoRoute,
   ApiPublicAliexpressStartRoute: ApiPublicAliexpressStartRoute,
   ApiPublicWebhooksAliexpressRoute: ApiPublicWebhooksAliexpressRoute,
   ApiPublicWebhooksAsaasRoute: ApiPublicWebhooksAsaasRoute,

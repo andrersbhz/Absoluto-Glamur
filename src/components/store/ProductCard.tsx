@@ -24,8 +24,8 @@ export function ProductCard({ product }: { product: ProductListItem }) {
   return (
     <div className="group relative overflow-hidden rounded-2xl border border-border bg-card shadow-soft transition hover:shadow-elegant">
       <Link
-        to="/products/$slug"
-        params={{ slug: product.slug }}
+        to="/$categoria/$produto"
+        params={{ categoria: product.category?.slug ?? "produto", produto: product.slug }}
         aria-label={product.name}
         className="absolute inset-0 z-10"
       />
