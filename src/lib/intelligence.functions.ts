@@ -36,46 +36,68 @@ export const computeProductScore = createServerFn({ method: "POST" })
     await assertCatalog(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    const { data: product } = await supabaseAdmin
+    // Load product basics first, then hydrate relations separately so that
+    // a failing embed (missing FK, missing table, RLS) doesn't null out the row.
+    const { data: productBasic, error: prodErr } = await supabaseAdmin
       .from("products")
-      .select(
-        `id, name, description, status, is_featured,
-         media:product_media(id),
-         variants:product_variants(id, is_default,
-           prices:product_prices(list_price_cents, sale_price_cents, is_active),
-           inventory:product_inventory(stock)
-         ),
-         reviews:product_reviews(rating),
-         seo:product_seo(title, description, keywords),
-         costs:pricing_cost_components(amount_cents)`,
-      )
+      .select("id, name, description, status, is_featured")
       .eq("id", data.product_id)
       .maybeSingle();
 
-    if (!product) throw new Error("Produto não encontrado");
+    if (prodErr) throw new Error(`Falha ao carregar produto: ${prodErr.message}`);
+    if (!productBasic) throw new Error(`Produto ${data.product_id} não encontrado`);
 
-    const p: any = product;
-    const mediaCount = p.media?.length ?? 0;
+    const [mediaRes, variantsRes, reviewsRes, seoRes, costsRes, favRes] = await Promise.all([
+      supabaseAdmin.from("product_media").select("id").eq("product_id", data.product_id),
+      supabaseAdmin
+        .from("product_variants")
+        .select(
+          `id, is_default,
+           prices:product_prices(list_price_cents, sale_price_cents, is_active),
+           inventory:product_inventory(stock)`,
+        )
+        .eq("product_id", data.product_id),
+      supabaseAdmin.from("product_reviews").select("rating").eq("product_id", data.product_id),
+      supabaseAdmin
+        .from("product_seo")
+        .select("title, description, keywords")
+        .eq("product_id", data.product_id)
+        .maybeSingle(),
+      supabaseAdmin
+        .from("pricing_cost_components")
+        .select("amount_cents")
+        .eq("product_id", data.product_id),
+      supabaseAdmin
+        .from("favorites")
+        .select("product_id", { count: "exact", head: true })
+        .eq("product_id", data.product_id),
+    ]);
+
+    const p: any = {
+      ...productBasic,
+      media: mediaRes.data ?? [],
+      variants: variantsRes.data ?? [],
+      reviews: reviewsRes.data ?? [],
+      seo: seoRes.data ?? null,
+      costs: costsRes.data ?? [],
+    };
+    const mediaCount = p.media.length;
     const descLen = (p.description ?? "").length;
-    const seoRow = Array.isArray(p.seo) ? p.seo[0] : p.seo;
-    const hasSEO = !!(seoRow?.title && seoRow?.description);
-    const reviews = p.reviews ?? [];
+    const hasSEO = !!(p.seo?.title && p.seo?.description);
+    const reviews = p.reviews;
     const avgRating = reviews.length
       ? reviews.reduce((s: number, r: any) => s + Number(r.rating ?? 0), 0) / reviews.length
       : 0;
 
-    const defVar = p.variants?.find((v: any) => v.is_default) ?? p.variants?.[0];
+    const defVar = p.variants.find((v: any) => v.is_default) ?? p.variants[0];
     const invRow = Array.isArray(defVar?.inventory) ? defVar.inventory[0] : defVar?.inventory;
     const stock = invRow?.stock ?? 0;
     const activePrice = defVar?.prices?.find((pr: any) => pr.is_active);
     const priceCents = activePrice?.sale_price_cents ?? activePrice?.list_price_cents ?? 0;
-    const costCents = (p.costs ?? []).reduce((s: number, c: any) => s + (c.amount_cents ?? 0), 0);
+    const costCents = p.costs.reduce((s: number, c: any) => s + (c.amount_cents ?? 0), 0);
     const marginPct = priceCents > 0 ? ((priceCents - costCents) / priceCents) * 100 : 0;
 
-    const { count: favCount } = await supabaseAdmin
-      .from("favorites")
-      .select("product_id", { count: "exact", head: true })
-      .eq("product_id", data.product_id);
+    const favCount = favRes.count ?? 0;
 
     // Components
     const comps: ScoreComponent[] = [];
@@ -185,17 +207,24 @@ export const getProductIntelligence = createServerFn({ method: "GET" })
     await assertCatalog(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    const [prodRes, scoreRes, costsRes, rulesRes, calcsRes] = await Promise.all([
+    // Load basics first — an embed failure must not blank the product.
+    const { data: basic, error: basicErr } = await supabaseAdmin
+      .from("products")
+      .select("id, name, slug, status, category_id, brand_id")
+      .eq("id", data.product_id)
+      .maybeSingle();
+
+    if (basicErr) throw new Error(`Falha ao carregar produto: ${basicErr.message}`);
+    if (!basic) throw new Error(`Produto ${data.product_id} não encontrado`);
+
+    const [variantsRes, scoreRes, costsRes, rulesRes, calcsRes] = await Promise.all([
       supabaseAdmin
-        .from("products")
+        .from("product_variants")
         .select(
-          `id, name, slug, status, category_id, brand_id,
-           variants:product_variants(id, is_default,
-             prices:product_prices(id, list_price_cents, sale_price_cents, is_active)
-           )`,
+          `id, is_default,
+           prices:product_prices(id, list_price_cents, sale_price_cents, is_active)`,
         )
-        .eq("id", data.product_id)
-        .maybeSingle(),
+        .eq("product_id", data.product_id),
       supabaseAdmin
         .from("product_scores")
         .select("*, components:product_score_components(*)")
@@ -215,29 +244,8 @@ export const getProductIntelligence = createServerFn({ method: "GET" })
         .limit(20),
     ]);
 
-    let product = prodRes.data as any;
-    if (!product) {
-      // Fallback: nested-relation errors can null out the row silently. Retry minimal.
-      const basic = await supabaseAdmin
-        .from("products")
-        .select("id, name, slug, status, category_id, brand_id")
-        .eq("id", data.product_id)
-        .maybeSingle();
-      if (basic.error) {
-        throw new Error(`Falha ao carregar produto: ${basic.error.message}`);
-      }
-      if (!basic.data) {
-        throw new Error(
-          `Produto ${data.product_id} não encontrado${
-            prodRes.error ? ` (${prodRes.error.message})` : ""
-          }`,
-        );
-      }
-      product = { ...basic.data, variants: [] };
-    }
-
     return {
-      product,
+      product: { ...basic, variants: variantsRes.data ?? [] },
       score: scoreRes.data,
       costs: costsRes.data ?? [],
       rules: rulesRes.data ?? [],
