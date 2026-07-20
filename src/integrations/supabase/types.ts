@@ -902,6 +902,65 @@ export type Database = {
           },
         ]
       }
+      product_external_reviews: {
+        Row: {
+          author_country: string | null
+          author_name: string | null
+          body: string | null
+          created_at: string
+          id: string
+          images: Json
+          is_visible: boolean
+          product_id: string
+          rating: number
+          reviewed_at: string | null
+          source: string
+          source_review_id: string | null
+          title: string | null
+          updated_at: string
+        }
+        Insert: {
+          author_country?: string | null
+          author_name?: string | null
+          body?: string | null
+          created_at?: string
+          id?: string
+          images?: Json
+          is_visible?: boolean
+          product_id: string
+          rating?: number
+          reviewed_at?: string | null
+          source?: string
+          source_review_id?: string | null
+          title?: string | null
+          updated_at?: string
+        }
+        Update: {
+          author_country?: string | null
+          author_name?: string | null
+          body?: string | null
+          created_at?: string
+          id?: string
+          images?: Json
+          is_visible?: boolean
+          product_id?: string
+          rating?: number
+          reviewed_at?: string | null
+          source?: string
+          source_review_id?: string | null
+          title?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_external_reviews_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       product_imports: {
         Row: {
           created_at: string
