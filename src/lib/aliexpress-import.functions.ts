@@ -225,6 +225,27 @@ export function stripBrandMentions(input: string | null | undefined): string | n
   return out.trim() || null;
 }
 
+// Converte texto/HTML em HTML com parágrafos <p>. Se o conteúdo já tiver tags
+// de bloco (<p>, <br>, <ul>, <h*>, <div>), sanitiza e devolve. Caso contrário,
+// quebra por linhas em branco e envolve cada bloco em <p>.
+export function toParagraphHtml(text: string | null | undefined): string | null {
+  if (!text) return null;
+  const raw = String(text).trim();
+  if (!raw) return null;
+  if (/<\/?(p|br|ul|ol|li|h[1-6]|div)\b/i.test(raw)) {
+    return raw
+      .replace(/<script[\s\S]*?<\/script>/gi, "")
+      .replace(/<style[\s\S]*?<\/style>/gi, "")
+      .trim();
+  }
+  const esc = (s: string) =>
+    s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const blocks = raw.split(/\n{2,}/).map((b) => b.trim()).filter(Boolean);
+  return blocks
+    .map((b) => `<p>${esc(b).replace(/\n/g, "<br />")}</p>`)
+    .join("\n");
+}
+
 async function translateToPtBr(input: { title: string; description: string | null }): Promise<{
   title: string;
   description: string | null;
