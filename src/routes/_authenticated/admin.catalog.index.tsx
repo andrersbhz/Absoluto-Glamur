@@ -38,10 +38,22 @@ function CatalogList() {
   const list = useServerFn(listAdminProducts);
   const del = useServerFn(deleteAdminProduct);
   const exportCsv = useServerFn(exportAdminProductsCsv);
+  const syncAll = useServerFn(syncAllAliexpressStock);
   const qc = useQueryClient();
   const [q, setQ] = useState("");
   const [status, setStatus] = useState<StatusFilter>("all");
   const [exporting, setExporting] = useState(false);
+
+  const bulkSync = useMutation({
+    mutationFn: () => syncAll({ data: { limit: 200 } }),
+    onSuccess: (r) => {
+      toast.success(
+        `Estoque sincronizado: ${r.updated}/${r.total} produtos${r.errors.length ? ` (${r.errors.length} falhas)` : ""}`,
+      );
+      qc.invalidateQueries({ queryKey: ["admin-products"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
 
   const query = useQuery({
     queryKey: ["admin-products", { q, status }],
