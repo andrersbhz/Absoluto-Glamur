@@ -61,7 +61,7 @@ async function loadAliCreds() {
 }
 
 
-async function callAli<T = any>(
+export async function callAli<T = any>(
   method: string,
   bizParams: Record<string, string | number | boolean | undefined | null>,
 ): Promise<T> {

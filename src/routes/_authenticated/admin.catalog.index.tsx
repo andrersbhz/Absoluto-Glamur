@@ -2,7 +2,7 @@ import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
-import { Plus, Search, Trash2, Package, ExternalLink, Download } from "lucide-react";
+import { Plus, Search, Trash2, Package, ExternalLink, Download, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { AdminLayout } from "@/components/admin/AdminLayout";
@@ -14,6 +14,7 @@ import {
   exportAdminProductsCsv,
   type AdminProductRow,
 } from "@/lib/admin-catalog.functions";
+import { syncAllAliexpressStock } from "@/lib/aliexpress-stock.functions";
 
 export const Route = createFileRoute("/_authenticated/admin/catalog/")({
   head: () => ({ meta: [{ title: "Catálogo · Admin Absoluto Glamur" }] }),
@@ -37,10 +38,22 @@ function CatalogList() {
   const list = useServerFn(listAdminProducts);
   const del = useServerFn(deleteAdminProduct);
   const exportCsv = useServerFn(exportAdminProductsCsv);
+  const syncAll = useServerFn(syncAllAliexpressStock);
   const qc = useQueryClient();
   const [q, setQ] = useState("");
   const [status, setStatus] = useState<StatusFilter>("all");
   const [exporting, setExporting] = useState(false);
+
+  const bulkSync = useMutation({
+    mutationFn: () => syncAll({ data: { limit: 200 } }),
+    onSuccess: (r) => {
+      toast.success(
+        `Estoque sincronizado: ${r.updated}/${r.total} produtos${r.errors.length ? ` (${r.errors.length} falhas)` : ""}`,
+      );
+      qc.invalidateQueries({ queryKey: ["admin-products"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
 
   const query = useQuery({
     queryKey: ["admin-products", { q, status }],
@@ -86,6 +99,15 @@ function CatalogList() {
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
+            <button
+              onClick={() => bulkSync.mutate()}
+              disabled={bulkSync.isPending}
+              className="inline-flex items-center gap-2 rounded-lg border border-primary/40 bg-primary/10 px-4 py-2 text-sm text-primary hover:bg-primary/20 disabled:opacity-60"
+              title="Sincronizar estoque de todos os produtos vinculados ao AliExpress"
+            >
+              <RefreshCw className={`h-4 w-4 ${bulkSync.isPending ? "animate-spin" : ""}`} />
+              {bulkSync.isPending ? "Sincronizando…" : "Sincronizar estoque AliExpress"}
+            </button>
             <button
               onClick={handleExport}
               disabled={exporting}

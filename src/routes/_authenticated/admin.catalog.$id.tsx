@@ -24,6 +24,8 @@ import {
   upsertAdminProduct,
   type AdminProductInput,
 } from "@/lib/admin-catalog.functions";
+import { syncAliexpressStock } from "@/lib/aliexpress-stock.functions";
+import { RefreshCw } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/admin/catalog/$id")({
   head: () => ({ meta: [{ title: "Editar produto · Admin Absoluto Glamur" }] }),
@@ -166,6 +168,17 @@ function CatalogEditor() {
     onSuccess: (r) => {
       toast.success("Produto salvo com sucesso");
       if (isNew) navigate({ to: "/admin/catalog/$id", params: { id: r.id! } });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const syncStockFn = useServerFn(syncAliexpressStock);
+  const syncStock = useMutation({
+    mutationFn: () => syncStockFn({ data: { product_id: id } }),
+    onSuccess: (r) => {
+      setForm((f) => ({ ...f, stock: String(r.total_stock) }));
+      toast.success(`Estoque AliExpress: ${r.total_stock} unidades (${r.variants_updated} variantes)`);
+      prodQ.refetch();
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -419,14 +432,28 @@ function CatalogEditor() {
                           placeholder="AG-SER-VITC-30"
                         />
                       </Field>
-                      <Field label="Estoque disponível">
-                        <input
-                          type="number"
-                          min={0}
-                          value={form.stock}
-                          onChange={(e) => setForm({ ...form, stock: e.target.value })}
-                          className="input"
-                        />
+                      <Field label="Estoque disponível" hint={isNew ? undefined : "Conecte ao AliExpress para sincronizar automaticamente."}>
+                        <div className="flex gap-2">
+                          <input
+                            type="number"
+                            min={0}
+                            value={form.stock}
+                            onChange={(e) => setForm({ ...form, stock: e.target.value })}
+                            className="input flex-1"
+                          />
+                          {!isNew && (
+                            <button
+                              type="button"
+                              onClick={() => syncStock.mutate()}
+                              disabled={syncStock.isPending}
+                              title="Sincronizar estoque com AliExpress"
+                              className="inline-flex items-center gap-1 rounded-lg border border-primary/40 bg-primary/10 px-3 text-xs font-medium text-primary transition hover:bg-primary/20 disabled:opacity-50"
+                            >
+                              <RefreshCw className={`h-3.5 w-3.5 ${syncStock.isPending ? "animate-spin" : ""}`} />
+                              AliExpress
+                            </button>
+                          )}
+                        </div>
                       </Field>
                     </div>
                     <div className="grid gap-4 sm:grid-cols-2">

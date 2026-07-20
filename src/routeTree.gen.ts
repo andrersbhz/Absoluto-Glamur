@@ -42,6 +42,7 @@ import { Route as AuthenticatedAdminCatalogIndexRouteImport } from './routes/_au
 import { Route as ApiPublicWebhooksNupayRouteImport } from './routes/api/public/webhooks/nupay'
 import { Route as ApiPublicWebhooksAsaasRouteImport } from './routes/api/public/webhooks/asaas'
 import { Route as ApiPublicWebhooksAliexpressRouteImport } from './routes/api/public/webhooks/aliexpress'
+import { Route as ApiPublicCronAliexpressStockRouteImport } from './routes/api/public/cron/aliexpress-stock'
 import { Route as ApiPublicAliexpressStartRouteImport } from './routes/api/public/aliexpress.start'
 import { Route as AuthenticatedAdminIntelligenceIdRouteImport } from './routes/_authenticated/admin.intelligence.$id'
 import { Route as AuthenticatedAdminImportsIdRouteImport } from './routes/_authenticated/admin.imports.$id'
@@ -223,6 +224,12 @@ const ApiPublicWebhooksAliexpressRoute =
     path: '/api/public/webhooks/aliexpress',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicCronAliexpressStockRoute =
+  ApiPublicCronAliexpressStockRouteImport.update({
+    id: '/api/public/cron/aliexpress-stock',
+    path: '/api/public/cron/aliexpress-stock',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicAliexpressStartRoute =
   ApiPublicAliexpressStartRouteImport.update({
     id: '/api/public/aliexpress/start',
@@ -280,6 +287,7 @@ export interface FileRoutesByFullPath {
   '/admin/imports/$id': typeof AuthenticatedAdminImportsIdRoute
   '/admin/intelligence/$id': typeof AuthenticatedAdminIntelligenceIdRoute
   '/api/public/aliexpress/start': typeof ApiPublicAliexpressStartRoute
+  '/api/public/cron/aliexpress-stock': typeof ApiPublicCronAliexpressStockRoute
   '/api/public/webhooks/aliexpress': typeof ApiPublicWebhooksAliexpressRoute
   '/api/public/webhooks/asaas': typeof ApiPublicWebhooksAsaasRoute
   '/api/public/webhooks/nupay': typeof ApiPublicWebhooksNupayRoute
@@ -317,6 +325,7 @@ export interface FileRoutesByTo {
   '/admin/imports/$id': typeof AuthenticatedAdminImportsIdRoute
   '/admin/intelligence/$id': typeof AuthenticatedAdminIntelligenceIdRoute
   '/api/public/aliexpress/start': typeof ApiPublicAliexpressStartRoute
+  '/api/public/cron/aliexpress-stock': typeof ApiPublicCronAliexpressStockRoute
   '/api/public/webhooks/aliexpress': typeof ApiPublicWebhooksAliexpressRoute
   '/api/public/webhooks/asaas': typeof ApiPublicWebhooksAsaasRoute
   '/api/public/webhooks/nupay': typeof ApiPublicWebhooksNupayRoute
@@ -357,6 +366,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/imports/$id': typeof AuthenticatedAdminImportsIdRoute
   '/_authenticated/admin/intelligence/$id': typeof AuthenticatedAdminIntelligenceIdRoute
   '/api/public/aliexpress/start': typeof ApiPublicAliexpressStartRoute
+  '/api/public/cron/aliexpress-stock': typeof ApiPublicCronAliexpressStockRoute
   '/api/public/webhooks/aliexpress': typeof ApiPublicWebhooksAliexpressRoute
   '/api/public/webhooks/asaas': typeof ApiPublicWebhooksAsaasRoute
   '/api/public/webhooks/nupay': typeof ApiPublicWebhooksNupayRoute
@@ -397,6 +407,7 @@ export interface FileRouteTypes {
     | '/admin/imports/$id'
     | '/admin/intelligence/$id'
     | '/api/public/aliexpress/start'
+    | '/api/public/cron/aliexpress-stock'
     | '/api/public/webhooks/aliexpress'
     | '/api/public/webhooks/asaas'
     | '/api/public/webhooks/nupay'
@@ -434,6 +445,7 @@ export interface FileRouteTypes {
     | '/admin/imports/$id'
     | '/admin/intelligence/$id'
     | '/api/public/aliexpress/start'
+    | '/api/public/cron/aliexpress-stock'
     | '/api/public/webhooks/aliexpress'
     | '/api/public/webhooks/asaas'
     | '/api/public/webhooks/nupay'
@@ -473,6 +485,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/imports/$id'
     | '/_authenticated/admin/intelligence/$id'
     | '/api/public/aliexpress/start'
+    | '/api/public/cron/aliexpress-stock'
     | '/api/public/webhooks/aliexpress'
     | '/api/public/webhooks/asaas'
     | '/api/public/webhooks/nupay'
@@ -489,6 +502,7 @@ export interface RootRouteChildren {
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   CategoriaProdutoRoute: typeof CategoriaProdutoRoute
   ApiPublicAliexpressStartRoute: typeof ApiPublicAliexpressStartRoute
+  ApiPublicCronAliexpressStockRoute: typeof ApiPublicCronAliexpressStockRoute
   ApiPublicWebhooksAliexpressRoute: typeof ApiPublicWebhooksAliexpressRoute
   ApiPublicWebhooksAsaasRoute: typeof ApiPublicWebhooksAsaasRoute
   ApiPublicWebhooksNupayRoute: typeof ApiPublicWebhooksNupayRoute
@@ -727,6 +741,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicWebhooksAliexpressRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/cron/aliexpress-stock': {
+      id: '/api/public/cron/aliexpress-stock'
+      path: '/api/public/cron/aliexpress-stock'
+      fullPath: '/api/public/cron/aliexpress-stock'
+      preLoaderRoute: typeof ApiPublicCronAliexpressStockRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/aliexpress/start': {
       id: '/api/public/aliexpress/start'
       path: '/api/public/aliexpress/start'
@@ -879,6 +900,7 @@ const rootRouteChildren: RootRouteChildren = {
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   CategoriaProdutoRoute: CategoriaProdutoRoute,
   ApiPublicAliexpressStartRoute: ApiPublicAliexpressStartRoute,
+  ApiPublicCronAliexpressStockRoute: ApiPublicCronAliexpressStockRoute,
   ApiPublicWebhooksAliexpressRoute: ApiPublicWebhooksAliexpressRoute,
   ApiPublicWebhooksAsaasRoute: ApiPublicWebhooksAsaasRoute,
   ApiPublicWebhooksNupayRoute: ApiPublicWebhooksNupayRoute,
