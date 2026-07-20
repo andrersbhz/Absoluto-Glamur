@@ -432,14 +432,28 @@ function CatalogEditor() {
                           placeholder="AG-SER-VITC-30"
                         />
                       </Field>
-                      <Field label="Estoque disponível">
-                        <input
-                          type="number"
-                          min={0}
-                          value={form.stock}
-                          onChange={(e) => setForm({ ...form, stock: e.target.value })}
-                          className="input"
-                        />
+                      <Field label="Estoque disponível" hint={isNew ? undefined : "Conecte ao AliExpress para sincronizar automaticamente."}>
+                        <div className="flex gap-2">
+                          <input
+                            type="number"
+                            min={0}
+                            value={form.stock}
+                            onChange={(e) => setForm({ ...form, stock: e.target.value })}
+                            className="input flex-1"
+                          />
+                          {!isNew && (
+                            <button
+                              type="button"
+                              onClick={() => syncStock.mutate()}
+                              disabled={syncStock.isPending}
+                              title="Sincronizar estoque com AliExpress"
+                              className="inline-flex items-center gap-1 rounded-lg border border-primary/40 bg-primary/10 px-3 text-xs font-medium text-primary transition hover:bg-primary/20 disabled:opacity-50"
+                            >
+                              <RefreshCw className={`h-3.5 w-3.5 ${syncStock.isPending ? "animate-spin" : ""}`} />
+                              AliExpress
+                            </button>
+                          )}
+                        </div>
                       </Field>
                     </div>
                     <div className="grid gap-4 sm:grid-cols-2">
