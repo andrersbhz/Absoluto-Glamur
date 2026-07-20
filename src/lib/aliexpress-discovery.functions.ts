@@ -51,21 +51,80 @@ async function loadAliCreds() {
   const appKey: string = cfg.app_key ?? data?.api_key ?? "";
   const appSecret: string = cfg.app_secret ?? data?.webhook_token ?? "";
   const accessToken: string = cfg.access_token ?? "";
+  const refreshToken: string = cfg.refresh_token ?? "";
   if (!appKey || !appSecret) {
     throw new Error("Configure App Key (API Key) e App Secret (Webhook Token) do AliExpress em /admin/integrations.");
   }
   if (!accessToken) {
     throw new Error("AliExpress não autorizado. Vá em /admin/integrations e clique em 'Autorizar AliExpress' para completar o OAuth (troca do code por access_token).");
   }
-  return { appKey, appSecret, accessToken };
+  return { appKey, appSecret, accessToken, refreshToken };
 }
 
+function signRestPath(apiPath: string, params: Record<string, string>, secret: string): string {
+  const keys = Object.keys(params).sort();
+  const base = apiPath + keys.map((k) => `${k}${params[k]}`).join("");
+  return createHmac("sha256", secret).update(base, "utf8").digest("hex").toUpperCase();
+}
 
-export async function callAli<T = any>(
+async function refreshAliToken(appKey: string, appSecret: string, refreshToken: string): Promise<string> {
+  if (!refreshToken) {
+    throw new Error("AliExpress access_token expirado e refresh_token indisponível — reautorize em /admin/integrations.");
+  }
+  const signParams: Record<string, string> = {
+    app_key: appKey,
+    refresh_token: refreshToken,
+    sign_method: "sha256",
+    timestamp: Date.now().toString(),
+  };
+  const signature = signRestPath("/auth/token/refresh", signParams, appSecret);
+  const body = new URLSearchParams({ ...signParams, sign: signature }).toString();
+  const res = await fetch("https://api-sg.aliexpress.com/rest/auth/token/refresh", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body,
+  });
+  const text = await res.text();
+  let json: any = {};
+  try { json = JSON.parse(text); } catch { /* keep */ }
+  if (!res.ok || json.error || !json.access_token) {
+    const msg = json.error_description ?? json.msg ?? json.message ?? json.error ?? text.slice(0, 300);
+    throw new Error(`Falha ao renovar token AliExpress: ${msg}. Reautorize em /admin/integrations.`);
+  }
+
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data: existing } = await supabaseAdmin
+    .from("integrations")
+    .select("config")
+    .eq("provider", "aliexpress")
+    .maybeSingle();
+  const prev = (existing?.config ?? {}) as any;
+  await supabaseAdmin
+    .from("integrations")
+    .update({
+      config: {
+        ...prev,
+        access_token: json.access_token,
+        refresh_token: json.refresh_token ?? prev.refresh_token,
+        expires_in: json.expires_in,
+        refresh_expires_in: json.refresh_expires_in ?? prev.refresh_expires_in,
+        refreshed_at: new Date().toISOString(),
+      },
+      last_status: "ok",
+      last_error: null,
+      last_verified_at: new Date().toISOString(),
+    })
+    .eq("provider", "aliexpress");
+  return json.access_token as string;
+}
+
+async function requestAli(
   method: string,
+  appKey: string,
+  appSecret: string,
+  accessToken: string,
   bizParams: Record<string, string | number | boolean | undefined | null>,
-): Promise<T> {
-  const { appKey, appSecret, accessToken } = await loadAliCreds();
+) {
   const params: Record<string, string> = {
     method,
     app_key: appKey,
@@ -79,18 +138,36 @@ export async function callAli<T = any>(
     params[k] = String(v);
   }
   params.sign = sign(params, appSecret);
-
   const query = new URLSearchParams(params).toString();
-  const res = await fetch(`https://api-sg.aliexpress.com/sync?${query}`, {
-    method: "POST",
-  });
+  const res = await fetch(`https://api-sg.aliexpress.com/sync?${query}`, { method: "POST" });
   const text = await res.text();
-  let json: any;
   try {
-    json = JSON.parse(text);
+    return JSON.parse(text);
   } catch {
     throw new Error(`Resposta inválida do AliExpress: ${text.slice(0, 300)}`);
   }
+}
+
+export async function callAli<T = any>(
+  method: string,
+  bizParams: Record<string, string | number | boolean | undefined | null>,
+): Promise<T> {
+  const { appKey, appSecret, accessToken, refreshToken } = await loadAliCreds();
+  let json = await requestAli(method, appKey, appSecret, accessToken, bizParams);
+
+  const isTokenErr = (j: any) => {
+    const er = j?.error_response;
+    if (!er) return false;
+    const code = String(er.code ?? er.sub_code ?? "");
+    const msg = String(er.msg ?? er.sub_msg ?? "");
+    return /IllegalAccessToken|InvalidAccessToken|AccessTokenExpired|access_token/i.test(`${code} ${msg}`);
+  };
+
+  if (isTokenErr(json)) {
+    const newToken = await refreshAliToken(appKey, appSecret, refreshToken);
+    json = await requestAli(method, appKey, appSecret, newToken, bizParams);
+  }
+
   if (json.error_response) {
     const er = json.error_response;
     const detail = er.sub_msg ?? er.msg ?? "erro desconhecido";
