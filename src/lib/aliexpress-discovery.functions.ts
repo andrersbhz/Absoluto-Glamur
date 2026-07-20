@@ -243,7 +243,7 @@ async function searchAliExpressWeb(keyword: string, limit: number): Promise<Disc
       const image = item.imageUrl ?? imageByProduct.get(productId) ?? null;
       products.push({
         product_id: productId,
-        title: item.title?.replace(/\s*-\s*AliExpress.*$/i, "").trim() || "Produto AliExpress",
+        title: item.title?.replace(/\s*-\s*AliExpress.*$/i, "").replace(/ali[\s\-_]?express/gi, "").replace(/\s{2,}/g, " ").trim() || "Produto importado",
         image,
         images: image ? [image] : [],
         price_original: price,
