@@ -596,26 +596,6 @@ function stripHtml(html: string): string {
     .trim();
 }
 
-// Converte texto simples em HTML com parágrafos <p>...</p> preservando
-// quebras de linha. Se o conteúdo já vier com <p> ou <br>, retorna como está
-// (apenas sanitiza scripts/estilos).
-export function toParagraphHtml(text: string | null | undefined): string | null {
-  if (!text) return null;
-  const raw = String(text).trim();
-  if (!raw) return null;
-  if (/<\/?(p|br|ul|ol|li|h[1-6]|div)\b/i.test(raw)) {
-    return raw
-      .replace(/<script[\s\S]*?<\/script>/gi, "")
-      .replace(/<style[\s\S]*?<\/style>/gi, "")
-      .trim();
-  }
-  const esc = (s: string) =>
-    s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-  const blocks = raw.split(/\n{2,}/).map((b) => b.trim()).filter(Boolean);
-  return blocks
-    .map((b) => `<p>${esc(b).replace(/\n/g, "<br />")}</p>`)
-    .join("\n");
-}
 
 export const importAliexpressProductToStore = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
