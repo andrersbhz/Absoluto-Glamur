@@ -71,7 +71,7 @@ export const listAdminProducts = createServerFn({ method: "GET" })
     type Row = {
       id: string; slug: string; name: string; status: string; is_featured: boolean; updated_at: string;
       brand: { name: string } | null; category: { name: string } | null;
-      media: { id: string; url: string; position: number; kind: string | null; is_cover: boolean | null }[] | null;
+      media: { id: string; url: string; position: number; kind: string | null }[] | null;
       pricing: { cost_cents: number | null; computed_at: string | null }[] | null;
       variants: {
         id: string; is_default: boolean;
