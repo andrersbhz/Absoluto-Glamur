@@ -9,7 +9,7 @@ import { effectivePrice, formatBRL } from "@/lib/format";
 import { useCart } from "@/lib/cart-store";
 import { useFavorites } from "@/lib/favorites";
 import { useAuth } from "@/hooks/use-auth";
-import { isVideoUrl } from "@/lib/media-kind";
+import { isVideoMedia } from "@/lib/media-kind";
 import { ProductReviews } from "@/components/store/ProductReviews";
 
 export const Route = createFileRoute("/$categoria/$produto")({
@@ -115,6 +115,7 @@ function ProductPage() {
   if (!product) return null;
   const active = media[activeIdx] ?? media[0];
   const activeUrl = active?.url;
+  const activeIsVideo = isVideoMedia(active);
   const fav = isFavorite(product.id);
 
   return (
@@ -138,9 +139,15 @@ function ProductPage() {
           <div className="space-y-3">
             <div className="aspect-square overflow-hidden rounded-3xl bg-secondary/40">
               {activeUrl ? (
-                isVideoUrl(activeUrl) ? (
+                isVideoMedia(active) ? (
                   <video key={activeUrl} src={activeUrl} className="h-full w-full object-cover" controls playsInline loop autoPlay muted />
                 ) : (
+                  // legacy branch marker (activeIsVideo reused below)
+                  <img src={activeUrl} alt={active?.alt ?? product.name} className="h-full w-full object-cover" />
+                )}
+              {false && activeIsVideo && null}
+              {null}
+            </div>
                   <img src={activeUrl} alt={active?.alt ?? product.name} className="h-full w-full object-cover" />
                 )
               ) : (
