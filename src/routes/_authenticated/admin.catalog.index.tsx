@@ -18,6 +18,8 @@ import {
 } from "@/lib/admin-catalog.functions";
 import { optimizeProductCopy } from "@/lib/ai-product-optimize.functions";
 import { syncAllAliexpressStock } from "@/lib/aliexpress-stock.functions";
+import { bulkSyncAliexpressReviews } from "@/lib/product-reviews.functions";
+import { Star } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/admin/catalog/")({
   head: () => ({ meta: [{ title: "Catálogo · Admin Absoluto Glamur" }] }),
