@@ -62,3 +62,46 @@ export function collectionsAdminQuery() {
     },
   });
 }
+
+export type HomeContent = {
+  announcement?: { enabled?: boolean; text?: string };
+  hero?: {
+    badge?: string;
+    title_line1?: string;
+    title_highlight?: string;
+    subtitle?: string;
+    cta_primary_label?: string;
+    cta_primary_href?: string;
+    cta_secondary_label?: string;
+    cta_secondary_href?: string;
+    monogram?: string;
+    seal_left?: string;
+    seal_right?: string;
+    image_url?: string;
+  };
+  trust_badges?: { label: string }[];
+  manifesto?: { enabled?: boolean; eyebrow?: string; body?: string; signature?: string };
+  pillars?: {
+    enabled?: boolean;
+    eyebrow?: string;
+    title?: string;
+    items?: { icon?: string; title?: string; body?: string }[];
+  };
+};
+
+export function homeContentQuery() {
+  return queryOptions({
+    queryKey: ["site-settings", "home_content"],
+    queryFn: async (): Promise<HomeContent> => {
+      const { data, error } = await supabase
+        .from("site_settings")
+        .select("value")
+        .eq("key", "home_content")
+        .maybeSingle();
+      if (error) throw error;
+      return (data?.value ?? {}) as HomeContent;
+    },
+    staleTime: 60_000,
+  });
+}
+

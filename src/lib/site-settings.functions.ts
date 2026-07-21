@@ -7,6 +7,7 @@ const SETTING_KEYS = [
   "social_links",
   "organization_jsonld",
   "import_defaults",
+  "home_content",
 ] as const;
 
 export type SettingKey = (typeof SETTING_KEYS)[number];
