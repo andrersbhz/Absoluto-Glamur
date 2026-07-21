@@ -175,6 +175,16 @@ function CatalogList() {
               {bulkSync.isPending ? "Sincronizando…" : "Sincronizar estoque AliExpress"}
             </button>
             <button
+              onClick={() => bulkReviewsMut.mutate()}
+              disabled={bulkReviewsMut.isPending}
+              className="inline-flex items-center gap-2 rounded-lg border border-primary/40 bg-primary/10 px-4 py-2 text-sm text-primary hover:bg-primary/20 disabled:opacity-60"
+              title="Buscar avaliações 4.5★+ do AliExpress para todos os produtos vinculados"
+            >
+              <Star className={`h-4 w-4 ${bulkReviewsMut.isPending ? "animate-pulse" : ""}`} />
+              {bulkReviewsMut.isPending ? "Buscando avaliações…" : "Sincronizar avaliações AliExpress"}
+            </button>
+
+            <button
               onClick={handleExport}
               disabled={exporting}
               className="inline-flex items-center gap-2 rounded-lg border border-border bg-background px-4 py-2 text-sm hover:bg-secondary disabled:opacity-60"
