@@ -44,6 +44,7 @@ function CatalogList() {
   const del = useServerFn(deleteAdminProduct);
   const exportCsv = useServerFn(exportAdminProductsCsv);
   const syncAll = useServerFn(syncAllAliexpressStock);
+  const bulkReviews = useServerFn(bulkSyncAliexpressReviews);
   const optimize = useServerFn(optimizeProductCopy);
   const qc = useQueryClient();
   const [q, setQ] = useState("");
