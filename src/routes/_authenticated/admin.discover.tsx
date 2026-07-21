@@ -159,21 +159,29 @@ function ProductCard({
 
 function DiscoverPage() {
   const [keyword, setKeyword] = useState("");
-  const [submitted, setSubmitted] = useState<{ keyword: string; page: number }>({
-    keyword: "",
-    page: 1,
-  });
+  const [suggestCategory, setSuggestCategory] = useState<string>("all");
+  const [submitted, setSubmitted] = useState<{
+    keyword: string;
+    page: number;
+    sort?: string;
+  }>({ keyword: "", page: 1 });
   const [importing, setImporting] = useState<string | null>(null);
   const qc = useQueryClient();
 
   const discover = useServerFn(discoverAliexpressProducts);
   const importFn = useServerFn(importAliexpressProductToStore);
+  const { data: categories = [] } = useQuery(categoriesQuery());
 
   const query = useQuery({
-    queryKey: ["ali-discover", submitted.keyword, submitted.page],
+    queryKey: ["ali-discover", submitted.keyword, submitted.page, submitted.sort],
     queryFn: () =>
       discover({
-        data: { keyword: submitted.keyword || undefined, page: submitted.page, page_size: 24 },
+        data: {
+          keyword: submitted.keyword || undefined,
+          page: submitted.page,
+          page_size: 24,
+          sort: submitted.sort,
+        },
       }),
     staleTime: 60_000,
   });
@@ -201,6 +209,15 @@ function DiscoverPage() {
     setSubmitted({ keyword: keyword.trim(), page: 1 });
   }
 
+  function showBestSellers() {
+    const catName =
+      suggestCategory === "all"
+        ? ""
+        : (categories.find((c) => c.slug === suggestCategory)?.name ?? "");
+    setKeyword(catName);
+    setSubmitted({ keyword: catName, page: 1, sort: "LAST_VOLUME_DESC" });
+  }
+
   const items = query.data?.items ?? [];
 
   return (
@@ -216,6 +233,38 @@ function DiscoverPage() {
             </p>
           </div>
         </header>
+
+        <div className="admin-neon-box flex flex-col gap-3 rounded-xl border border-border bg-card p-3 md:flex-row md:items-center">
+          <Select value={suggestCategory} onValueChange={setSuggestCategory}>
+            <SelectTrigger className="md:w-56">
+              <SelectValue placeholder="Categoria da loja" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas as categorias</SelectItem>
+              {categories.map((c) => (
+                <SelectItem key={c.id} value={c.slug}>
+                  {c.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button
+            type="button"
+            onClick={showBestSellers}
+            disabled={query.isFetching}
+            className="gap-1 bg-primary text-primary-foreground hover:bg-primary/90"
+          >
+            {query.isFetching ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Sparkles className="h-4 w-4" />
+            )}
+            Produtos sugeridos (campeões de vendas)
+          </Button>
+          <p className="text-xs text-muted-foreground md:ml-2">
+            Escolha uma categoria e veja os mais vendidos no AliExpress para esse nicho.
+          </p>
+        </div>
 
         <form onSubmit={submit} className="admin-neon-box flex gap-2 rounded-xl border border-border bg-card p-3">
           <div className="relative flex-1">
