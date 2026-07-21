@@ -9,7 +9,7 @@ import { effectivePrice, formatBRL } from "@/lib/format";
 import { useCart } from "@/lib/cart-store";
 import { useFavorites } from "@/lib/favorites";
 import { useAuth } from "@/hooks/use-auth";
-import { isVideoUrl } from "@/lib/media-kind";
+import { isVideoMedia } from "@/lib/media-kind";
 import { ProductReviews } from "@/components/store/ProductReviews";
 
 export const Route = createFileRoute("/$categoria/$produto")({
@@ -115,6 +115,7 @@ function ProductPage() {
   if (!product) return null;
   const active = media[activeIdx] ?? media[0];
   const activeUrl = active?.url;
+  const activeIsVideo = isVideoMedia(active);
   const fav = isFavorite(product.id);
 
   return (
@@ -138,7 +139,7 @@ function ProductPage() {
           <div className="space-y-3">
             <div className="aspect-square overflow-hidden rounded-3xl bg-secondary/40">
               {activeUrl ? (
-                isVideoUrl(activeUrl) ? (
+                activeIsVideo ? (
                   <video key={activeUrl} src={activeUrl} className="h-full w-full object-cover" controls playsInline loop autoPlay muted />
                 ) : (
                   <img src={activeUrl} alt={active?.alt ?? product.name} className="h-full w-full object-cover" />
@@ -151,8 +152,8 @@ function ProductPage() {
             </div>
             {media.length > 1 && (
               <div className="grid grid-cols-5 gap-2">
-                {media.slice(0, 5).map((m, i) => {
-                  const video = isVideoUrl(m.url);
+                {media.map((m, i) => {
+                  const video = isVideoMedia(m);
                   return (
                     <button
                       type="button"
@@ -245,7 +246,7 @@ function ProductPage() {
                     slug: product.slug,
                     name: product.name,
                     variantName: selectedVariant.name ?? null,
-                    imageUrl: media.find((m) => !isVideoUrl(m.url))?.url ?? null,
+                    imageUrl: media.find((m) => !isVideoMedia(m))?.url ?? null,
                     unitCents: price.price,
                   });
                   toast.success("Adicionado ao carrinho");

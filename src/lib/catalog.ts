@@ -10,7 +10,7 @@ export type ProductListItem = {
   rating_count: number;
   brand: { name: string; slug: string } | null;
   category: { name: string; slug: string } | null;
-  media: { url: string; alt: string | null }[];
+  media: { url: string; alt: string | null; kind: "image" | "video" | null }[];
   variants: {
     id: string;
     is_default: boolean;
@@ -22,7 +22,7 @@ const PRODUCT_SELECT = `
   id, slug, name, short_description, rating_avg, rating_count,
   brand:brands(name, slug),
   category:categories(name, slug),
-  media:product_media(url, alt, position),
+  media:product_media(url, alt, position, kind),
   variants:product_variants(
     id, is_default,
     prices:product_prices(list_price_cents, sale_price_cents, is_active)
@@ -158,7 +158,7 @@ export function productDetailQuery(slug: string) {
           id, slug, name, short_description, description, rating_avg, rating_count, tags, attributes,
           brand:brands(name, slug),
           category:categories(name, slug),
-          media:product_media(url, alt, position),
+          media:product_media(url, alt, position, kind),
           variants:product_variants(
             id, sku, name, options, is_default,
             prices:product_prices(list_price_cents, sale_price_cents, is_active),
