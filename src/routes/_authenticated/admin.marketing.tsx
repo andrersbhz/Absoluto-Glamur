@@ -55,11 +55,15 @@ function MarketingAdmin() {
         <Tabs defaultValue="homepage" className="mt-6">
           <TabsList>
             <TabsTrigger value="homepage">Homepage</TabsTrigger>
+            <TabsTrigger value="content">Conteúdo Home</TabsTrigger>
             <TabsTrigger value="collections">Coleções</TabsTrigger>
             <TabsTrigger value="seo">SEO</TabsTrigger>
           </TabsList>
           <TabsContent value="homepage" className="mt-6">
             <HomepageBlocksPanel />
+          </TabsContent>
+          <TabsContent value="content" className="mt-6">
+            <HomeContentPanel />
           </TabsContent>
           <TabsContent value="collections" className="mt-6">
             <CollectionsPanel />
@@ -70,6 +74,182 @@ function MarketingAdmin() {
         </Tabs>
       </div>
     </AdminLayout>
+  );
+}
+
+function HomeContentPanel() {
+  const qc = useQueryClient();
+  const { data: current } = useQuery(homeContentQuery());
+  const save = useServerFn(upsertSiteSetting);
+  const [draft, setDraft] = useState<HomeContent | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  const value: HomeContent = draft ?? current ?? {};
+  const patch = (fn: (v: HomeContent) => HomeContent) => setDraft(fn(value));
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await save({ data: { key: "home_content", value: value as Record<string, unknown> } });
+      toast.success("Conteúdo da home atualizado");
+      qc.invalidateQueries({ queryKey: ["site-settings", "home_content"] });
+      setDraft(null);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Erro ao salvar");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const hero = value.hero ?? {};
+  const manifesto = value.manifesto ?? {};
+  const pillars = value.pillars ?? {};
+  const pillarItems = pillars.items ?? [];
+  const badges = value.trust_badges ?? [];
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-muted-foreground">
+          Edite os textos e imagens editoriais da home. Ativo em tempo real após salvar.
+        </p>
+        <Button onClick={handleSave} disabled={saving || !draft}>
+          {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+          Salvar
+        </Button>
+      </div>
+
+      <section className="rounded-2xl border border-border bg-card p-5">
+        <h3 className="font-display text-lg">Barra de anúncio</h3>
+        <div className="mt-3 grid gap-3 sm:grid-cols-[auto_1fr] sm:items-center">
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={value.announcement?.enabled !== false}
+              onChange={(e) => patch((v) => ({ ...v, announcement: { ...v.announcement, enabled: e.target.checked } }))}
+            />
+            Ativa
+          </label>
+          <Input
+            placeholder="Frete grátis acima de R$ 299 · Embalagem assinatura"
+            value={value.announcement?.text ?? ""}
+            onChange={(e) => patch((v) => ({ ...v, announcement: { ...v.announcement, text: e.target.value } }))}
+          />
+        </div>
+      </section>
+
+      <section className="rounded-2xl border border-border bg-card p-5">
+        <h3 className="font-display text-lg">Hero</h3>
+        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+          <Input placeholder="Selo (badge)" value={hero.badge ?? ""} onChange={(e) => patch((v) => ({ ...v, hero: { ...v.hero, badge: e.target.value } }))} />
+          <Input placeholder="URL da imagem (opcional)" value={hero.image_url ?? ""} onChange={(e) => patch((v) => ({ ...v, hero: { ...v.hero, image_url: e.target.value } }))} />
+          <Input placeholder="Título linha 1" value={hero.title_line1 ?? ""} onChange={(e) => patch((v) => ({ ...v, hero: { ...v.hero, title_line1: e.target.value } }))} />
+          <Input placeholder="Título em destaque" value={hero.title_highlight ?? ""} onChange={(e) => patch((v) => ({ ...v, hero: { ...v.hero, title_highlight: e.target.value } }))} />
+          <Textarea className="sm:col-span-2" placeholder="Subtítulo" value={hero.subtitle ?? ""} onChange={(e) => patch((v) => ({ ...v, hero: { ...v.hero, subtitle: e.target.value } }))} />
+          <Input placeholder="CTA primário — texto" value={hero.cta_primary_label ?? ""} onChange={(e) => patch((v) => ({ ...v, hero: { ...v.hero, cta_primary_label: e.target.value } }))} />
+          <Input placeholder="CTA primário — link" value={hero.cta_primary_href ?? ""} onChange={(e) => patch((v) => ({ ...v, hero: { ...v.hero, cta_primary_href: e.target.value } }))} />
+          <Input placeholder="CTA secundário — texto" value={hero.cta_secondary_label ?? ""} onChange={(e) => patch((v) => ({ ...v, hero: { ...v.hero, cta_secondary_label: e.target.value } }))} />
+          <Input placeholder="CTA secundário — link" value={hero.cta_secondary_href ?? ""} onChange={(e) => patch((v) => ({ ...v, hero: { ...v.hero, cta_secondary_href: e.target.value } }))} />
+          <Input placeholder="Monograma (ex: A·G)" value={hero.monogram ?? ""} onChange={(e) => patch((v) => ({ ...v, hero: { ...v.hero, monogram: e.target.value } }))} />
+          <div className="grid grid-cols-2 gap-2">
+            <Input placeholder="Selo esquerda" value={hero.seal_left ?? ""} onChange={(e) => patch((v) => ({ ...v, hero: { ...v.hero, seal_left: e.target.value } }))} />
+            <Input placeholder="Selo direita" value={hero.seal_right ?? ""} onChange={(e) => patch((v) => ({ ...v, hero: { ...v.hero, seal_right: e.target.value } }))} />
+          </div>
+        </div>
+      </section>
+
+      <section className="rounded-2xl border border-border bg-card p-5">
+        <div className="flex items-center justify-between">
+          <h3 className="font-display text-lg">Selos de confiança</h3>
+          <Button size="sm" variant="outline" onClick={() => patch((v) => ({ ...v, trust_badges: [...(v.trust_badges ?? []), { label: "" }] }))}>
+            <Plus className="mr-1 h-4 w-4" /> Adicionar
+          </Button>
+        </div>
+        <div className="mt-3 space-y-2">
+          {badges.map((b, i) => (
+            <div key={i} className="flex items-center gap-2">
+              <Input
+                value={b.label}
+                onChange={(e) => patch((v) => {
+                  const arr = [...(v.trust_badges ?? [])];
+                  arr[i] = { label: e.target.value };
+                  return { ...v, trust_badges: arr };
+                })}
+              />
+              <Button size="icon" variant="ghost" onClick={() => patch((v) => ({ ...v, trust_badges: (v.trust_badges ?? []).filter((_, j) => j !== i) }))}>
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="rounded-2xl border border-border bg-card p-5">
+        <h3 className="font-display text-lg">Manifesto</h3>
+        <div className="mt-3 grid gap-3">
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={manifesto.enabled !== false}
+              onChange={(e) => patch((v) => ({ ...v, manifesto: { ...v.manifesto, enabled: e.target.checked } }))}
+            />
+            Exibir seção
+          </label>
+          <Input placeholder="Eyebrow (ex: Manifesto)" value={manifesto.eyebrow ?? ""} onChange={(e) => patch((v) => ({ ...v, manifesto: { ...v.manifesto, eyebrow: e.target.value } }))} />
+          <Textarea rows={4} placeholder="Corpo do manifesto" value={manifesto.body ?? ""} onChange={(e) => patch((v) => ({ ...v, manifesto: { ...v.manifesto, body: e.target.value } }))} />
+          <Input placeholder="Assinatura" value={manifesto.signature ?? ""} onChange={(e) => patch((v) => ({ ...v, manifesto: { ...v.manifesto, signature: e.target.value } }))} />
+        </div>
+      </section>
+
+      <section className="rounded-2xl border border-border bg-card p-5">
+        <div className="flex items-center justify-between">
+          <h3 className="font-display text-lg">Pilares</h3>
+          <Button size="sm" variant="outline" onClick={() => patch((v) => ({ ...v, pillars: { ...v.pillars, items: [...(v.pillars?.items ?? []), { icon: "sparkles", title: "", body: "" }] } }))}>
+            <Plus className="mr-1 h-4 w-4" /> Adicionar pilar
+          </Button>
+        </div>
+        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={pillars.enabled !== false}
+              onChange={(e) => patch((v) => ({ ...v, pillars: { ...v.pillars, enabled: e.target.checked } }))}
+            />
+            Exibir seção
+          </label>
+          <div />
+          <Input placeholder="Eyebrow" value={pillars.eyebrow ?? ""} onChange={(e) => patch((v) => ({ ...v, pillars: { ...v.pillars, eyebrow: e.target.value } }))} />
+          <Input placeholder="Título" value={pillars.title ?? ""} onChange={(e) => patch((v) => ({ ...v, pillars: { ...v.pillars, title: e.target.value } }))} />
+        </div>
+        <div className="mt-4 space-y-3">
+          {pillarItems.map((item, i) => (
+            <div key={i} className="grid gap-2 rounded-xl border border-border p-3 sm:grid-cols-[140px_1fr_2fr_auto]">
+              <Input placeholder="Ícone" value={item.icon ?? ""} onChange={(e) => patch((v) => {
+                const arr = [...(v.pillars?.items ?? [])];
+                arr[i] = { ...arr[i], icon: e.target.value };
+                return { ...v, pillars: { ...v.pillars, items: arr } };
+              })} />
+              <Input placeholder="Título" value={item.title ?? ""} onChange={(e) => patch((v) => {
+                const arr = [...(v.pillars?.items ?? [])];
+                arr[i] = { ...arr[i], title: e.target.value };
+                return { ...v, pillars: { ...v.pillars, items: arr } };
+              })} />
+              <Textarea rows={2} placeholder="Descrição" value={item.body ?? ""} onChange={(e) => patch((v) => {
+                const arr = [...(v.pillars?.items ?? [])];
+                arr[i] = { ...arr[i], body: e.target.value };
+                return { ...v, pillars: { ...v.pillars, items: arr } };
+              })} />
+              <Button size="icon" variant="ghost" onClick={() => patch((v) => ({ ...v, pillars: { ...v.pillars, items: (v.pillars?.items ?? []).filter((_, j) => j !== i) } }))}>
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
+          ))}
+        </div>
+        <p className="mt-3 text-xs text-muted-foreground">
+          Ícones disponíveis: sparkles, shield, truck, gem, crown, star, heart, award, leaf.
+        </p>
+      </section>
+    </div>
   );
 }
 
