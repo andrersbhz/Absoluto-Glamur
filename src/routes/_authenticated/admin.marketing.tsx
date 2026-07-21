@@ -408,3 +408,99 @@ function SeoPanel() {
     </div>
   );
 }
+
+function BannerUpload({
+  currentUrl,
+  onUploaded,
+  onClear,
+}: {
+  currentUrl: string | null;
+  onUploaded: (dataUri: string) => void;
+  onClear: () => void;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [busy, setBusy] = useState(false);
+  const [meta, setMeta] = useState<{ w: number; h: number; kb: number } | null>(null);
+
+  const handleFile = async (file: File | null) => {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast.error("Envie um arquivo de imagem (JPEG, PNG, WebP, AVIF, GIF).");
+      return;
+    }
+    setBusy(true);
+    try {
+      const { dataUri, width, height, sizeKb } = await imageFileToWebpDataUri(file, {
+        maxWidth: 1600,
+        quality: 0.82,
+      });
+      if (sizeKb > 900) {
+        toast.warning(
+          `Banner com ${sizeKb} KB — considere reduzir a resolução ou usar imagem mais simples.`,
+        );
+      }
+      setMeta({ w: width, h: height, kb: sizeKb });
+      onUploaded(dataUri);
+      toast.success(`Convertido para WebP · ${width}×${height} · ${sizeKb} KB`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Falha ao processar imagem");
+    } finally {
+      setBusy(false);
+      if (inputRef.current) inputRef.current.value = "";
+    }
+  };
+
+  return (
+    <div className="rounded-xl border border-dashed border-border bg-secondary/30 p-3">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          {currentUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={currentUrl}
+              alt="Preview do banner"
+              className="h-16 w-28 rounded-md border border-border object-cover"
+            />
+          ) : (
+            <div className="flex h-16 w-28 items-center justify-center rounded-md border border-border bg-background text-xs text-muted-foreground">
+              sem imagem
+            </div>
+          )}
+          <div className="text-xs text-muted-foreground">
+            <p className="font-medium text-foreground">Imagem do banner</p>
+            <p>Envie JPEG/PNG — convertemos para WebP otimizado (até 1600px).</p>
+            {meta && (
+              <p className="mt-0.5 text-[11px]">
+                Última: {meta.w}×{meta.h}px · {meta.kb} KB
+              </p>
+            )}
+          </div>
+        </div>
+        <div className="flex gap-2">
+          <input
+            ref={inputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => handleFile(e.target.files?.[0] ?? null)}
+          />
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => inputRef.current?.click()}
+            disabled={busy}
+          >
+            {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ImagePlus className="mr-2 h-4 w-4" />}
+            {currentUrl ? "Trocar" : "Enviar imagem"}
+          </Button>
+          {currentUrl && (
+            <Button type="button" variant="ghost" size="sm" onClick={onClear} disabled={busy}>
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
