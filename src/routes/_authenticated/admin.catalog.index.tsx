@@ -349,13 +349,32 @@ function ProductRow({
     ) : (
       <Badge variant="outline">Arquivado</Badge>
     );
+  const isVideoThumb = row.thumbnail_url ? /\.(mp4|webm|mov|m4v|ogv|mkv|avi|3gp|ts|mpeg|mpg|flv|wmv)(\?|#|$)/i.test(row.thumbnail_url) : false;
   return (
     <tr className="border-t border-border/60">
       <td className="px-4 py-3">
         <div className="flex items-center gap-3">
-          <div className="grid h-10 w-10 place-items-center rounded-lg bg-secondary">
-            <Package className="h-4 w-4 text-muted-foreground" />
-          </div>
+          {row.thumbnail_url ? (
+            isVideoThumb ? (
+              <video
+                src={row.thumbnail_url}
+                muted
+                playsInline
+                className="h-12 w-12 rounded-lg border border-border object-cover"
+              />
+            ) : (
+              <img
+                src={row.thumbnail_url}
+                alt={row.name}
+                loading="lazy"
+                className="h-12 w-12 rounded-lg border border-border object-cover"
+              />
+            )
+          ) : (
+            <div className="grid h-12 w-12 place-items-center rounded-lg border border-border bg-secondary">
+              <Package className="h-4 w-4 text-muted-foreground" />
+            </div>
+          )}
           <div>
             <p className="font-medium">{row.name}</p>
             <p className="text-xs text-muted-foreground">
@@ -370,6 +389,13 @@ function ProductRow({
           {statusBadge}
           {row.is_featured && <Badge className="bg-plum text-white">Destaque</Badge>}
         </div>
+      </td>
+      <td className="px-4 py-3">
+        {row.cost_cents != null ? (
+          <span className="text-muted-foreground">{formatBRL(row.cost_cents)}</span>
+        ) : (
+          <span className="text-muted-foreground">—</span>
+        )}
       </td>
       <td className="px-4 py-3">
         {row.price_cents != null ? formatBRL(row.price_cents) : <span className="text-muted-foreground">—</span>}
