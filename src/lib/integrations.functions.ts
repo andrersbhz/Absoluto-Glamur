@@ -168,7 +168,8 @@ export const testIntegration = createServerFn({ method: "POST" })
       try {
         await pagbankFetch<Record<string, unknown>>(
           { token: row.api_key, env: (row.mode as "sandbox" | "production") ?? "sandbox" },
-          "/public-keys/card",
+          "/public-keys",
+          { method: "POST", body: JSON.stringify({ type: "card" }) },
         );
         await supabaseAdmin
           .from("integrations")
