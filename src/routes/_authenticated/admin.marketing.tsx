@@ -6,7 +6,7 @@ import { Plus, Trash2, ArrowUp, ArrowDown, Save, ImagePlus, Loader2 } from "luci
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { supabase } from "@/integrations/supabase/client";
 import { homepageBlocksAdminQuery, collectionsAdminQuery, homeContentQuery, type HomeContent } from "@/lib/marketing";
-import { siteSettingsQuery, upsertSiteSetting } from "@/lib/site-settings.functions";
+import { upsertSiteSetting } from "@/lib/site-settings.functions";
 import { useServerFn } from "@tanstack/react-start";
 import { imageFileToWebpDataUri } from "@/lib/image-webp";
 import { Button } from "@/components/ui/button";
