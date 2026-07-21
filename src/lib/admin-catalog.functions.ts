@@ -89,7 +89,7 @@ export const listAdminProducts = createServerFn({ method: "GET" })
         : null;
       const stock = def?.inventory?.[0]?.stock ?? null;
       const mediaSorted = (r.media ?? []).slice().sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
-      const cover = mediaSorted.find((m) => m.is_cover) ?? mediaSorted.find((m) => m.kind !== "video") ?? mediaSorted[0];
+      const cover = mediaSorted.find((m) => m.kind !== "video") ?? mediaSorted[0];
       const latestPricing = (r.pricing ?? [])
         .slice()
         .sort((a, b) => new Date(b.computed_at ?? 0).getTime() - new Date(a.computed_at ?? 0).getTime())[0];
