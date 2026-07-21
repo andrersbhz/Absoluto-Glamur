@@ -144,6 +144,7 @@ function IntegrationCard({ integration }: { integration: Integration }) {
   const WEBHOOK_PATHS: Record<string, string> = {
     asaas: "/api/public/webhooks/asaas",
     nupay: "/api/public/webhooks/nupay",
+    pagbank: "/api/public/webhooks/pagbank",
     "17track": "/api/public/webhooks/17track",
     aliexpress: "/api/public/webhooks/aliexpress",
   };
@@ -180,6 +181,13 @@ function IntegrationCard({ integration }: { integration: Integration }) {
       docsUrl: "https://stripe.com/docs/keys",
       instructions:
         "Copie a Secret key (sk_live_… para produção, sk_test_… para sandbox). Nunca use a Publishable key aqui.",
+    },
+    pagbank: {
+      keyUrl: "https://minhaconta.pagbank.com.br/",
+      keyLabel: "Gerar token no PagBank",
+      docsUrl: "https://developer.pagbank.com.br/reference/criar-checkout",
+      instructions:
+        "1) Acesse Minha Conta PagBank → Vendas Online → Integrações → Gerar Token. 2) Copie o token e cole no campo 'Chave da API' abaixo (para sandbox, gere no ambiente de testes). 3) Cadastre a URL do webhook exibida abaixo no painel do PagBank em Notificações → Webhook. 4) (Opcional) Defina um 'x-authenticity-token' e cole o mesmo valor no campo Token do webhook para assinar as notificações.",
     },
     mercadopago: {
       keyUrl: "https://www.mercadopago.com.br/developers/panel/app",
@@ -536,6 +544,7 @@ function IntegrationCard({ integration }: { integration: Integration }) {
 const PROVIDER_OPTIONS: { id: string; label: string }[] = [
   { id: "asaas", label: "Asaas" },
   { id: "nupay", label: "NuPay (Nubank)" },
+  { id: "pagbank", label: "PagBank" },
   { id: "stripe", label: "Stripe" },
   { id: "mercadopago", label: "Mercado Pago" },
 ];
