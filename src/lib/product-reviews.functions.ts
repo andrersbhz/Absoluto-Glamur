@@ -149,9 +149,95 @@ function normalizeAliReview(raw: any): {
   };
 }
 
+async function fetchViaFirecrawl(productId: string, minRating: number): Promise<any[]> {
+  const key = process.env.FIRECRAWL_API_KEY;
+  const lovableKey = process.env.LOVABLE_API_KEY;
+  if (!key) return [];
+  const isGateway = key.startsWith("lovc_");
+  const endpoint = isGateway
+    ? "https://connector-gateway.lovable.dev/firecrawl/v2/scrape"
+    : "https://api.firecrawl.dev/v2/scrape";
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  if (isGateway) {
+    if (!lovableKey) return [];
+    headers.Authorization = `Bearer ${lovableKey}`;
+    headers["X-Connection-Api-Key"] = key;
+  } else {
+    headers.Authorization = `Bearer ${key}`;
+  }
+  const schema = {
+    type: "object",
+    properties: {
+      reviews: {
+        type: "array",
+        items: {
+          type: "object",
+          properties: {
+            author_name: { type: "string" },
+            author_country: { type: "string" },
+            rating: { type: "number" },
+            body: { type: "string" },
+            reviewed_at: { type: "string" },
+            images: { type: "array", items: { type: "string" } },
+          },
+        },
+      },
+    },
+    required: ["reviews"],
+  };
+  const urls = [
+    `https://www.aliexpress.com/item/${productId}.html`,
+    `https://feedback.aliexpress.com/display/productEvaluation.htm?productId=${productId}&filter=all&page=1`,
+  ];
+  const out: any[] = [];
+  for (const url of urls) {
+    try {
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          url,
+          onlyMainContent: true,
+          formats: [
+            {
+              type: "json",
+              schema,
+              prompt:
+                "Extract customer product reviews from this page. For each review, capture the author's display name, country, star rating (0-5), comment body in the original language, review date (YYYY-MM-DD if possible), and up to 4 image URLs uploaded by the buyer. Only include reviews visible on the page.",
+            },
+          ],
+        }),
+      });
+      if (!res.ok) continue;
+      const payload = await res.json();
+      const root = payload.data ?? payload;
+      const list = root?.json?.reviews;
+      if (!Array.isArray(list)) continue;
+      for (const r of list) {
+        const rating = toNum(r.rating);
+        if (rating < minRating) continue;
+        const reviewedAt = r.reviewed_at ? new Date(r.reviewed_at).toISOString() : null;
+        out.push({
+          source_review_id: null,
+          author_name: r.author_name ?? null,
+          author_country: r.author_country ?? null,
+          rating: Math.min(5, Math.max(0, rating)),
+          title: null,
+          body: r.body ?? null,
+          images: Array.isArray(r.images) ? r.images.filter(Boolean).map(String) : [],
+          reviewed_at: Number.isNaN(new Date(reviewedAt ?? "").getTime()) ? null : reviewedAt,
+        });
+      }
+      if (out.length > 0) break;
+    } catch {
+      // try next
+    }
+  }
+  return out;
+}
+
 async function fetchAliexpressReviews(productId: string, minRating = 4.5): Promise<any[]> {
-  // Best-effort: try DS feedback endpoint(s) — different partner accounts expose
-  // different methods; catch failures and return empty so the UI still works.
+  // 1) Official DS/solution feedback endpoints (varies by partner account)
   const methods = [
     "aliexpress.ds.feedback.query",
     "aliexpress.ds.product.feedback.query",
@@ -161,7 +247,7 @@ async function fetchAliexpressReviews(productId: string, minRating = 4.5): Promi
     product_id: productId,
     page_no: "1",
     page_size: "40",
-    filter: "5", // only 5-star when supported
+    filter: "5",
     language: "en_US",
     country: "BR",
   } as Record<string, string>;
@@ -179,16 +265,17 @@ async function fetchAliexpressReviews(productId: string, minRating = 4.5): Promi
         "products",
       ]);
       if (list.length > 0) {
-        return list
-          .map(normalizeAliReview)
-          .filter((r) => r.rating >= minRating);
+        const norm = list.map(normalizeAliReview).filter((r) => r.rating >= minRating);
+        if (norm.length > 0) return norm;
       }
     } catch {
       // try next
     }
   }
-  return [];
+  // 2) Firecrawl fallback (scrape product page)
+  return await fetchViaFirecrawl(productId, minRating);
 }
+
 
 export const syncAliexpressReviews = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -312,3 +399,76 @@ export const deleteReview = createServerFn({ method: "POST" })
     if (error) throw error;
     return { ok: true };
   });
+
+// -------- Bulk sync (all linked products) --------
+
+export const bulkSyncAliexpressReviews = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((v: unknown) =>
+    z
+      .object({
+        min_rating: z.number().min(0).max(5).default(4.5),
+        limit: z.number().int().min(1).max(200).default(50),
+      })
+      .parse(v ?? {}),
+  )
+  .handler(async ({ data, context }) => {
+    await assertCatalog(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const { data: linked } = await supabaseAdmin
+      .from("product_imports")
+      .select("product_id, source_id, created_at")
+      .in("source", ["aliexpress", "aliexpress_api"])
+      .not("product_id", "is", null)
+      .not("source_id", "is", null)
+      .order("created_at", { ascending: false })
+      .limit(data.limit);
+
+    const seen = new Set<string>();
+    const unique = (linked ?? []).filter((r) => {
+      const k = `${r.product_id}`;
+      if (seen.has(k)) return false;
+      seen.add(k);
+      return true;
+    });
+
+    let processed = 0;
+    let upserted = 0;
+    const failures: { product_id: string; error: string }[] = [];
+
+    for (const row of unique) {
+      try {
+        const reviews = await fetchAliexpressReviews(String(row.source_id), data.min_rating);
+        if (reviews.length > 0) {
+          const rows = reviews.map((r) => ({
+            product_id: row.product_id!,
+            source: "aliexpress",
+            source_review_id: r.source_review_id,
+            author_name: r.author_name,
+            author_country: r.author_country,
+            rating: r.rating,
+            title: r.title,
+            body: r.body,
+            images: r.images,
+            reviewed_at: r.reviewed_at,
+            is_visible: true,
+          }));
+          const { error } = await supabaseAdmin
+            .from("product_external_reviews")
+            .upsert(rows, { onConflict: "product_id,source,source_review_id" });
+          if (error) throw error;
+          upserted += rows.length;
+        }
+        processed++;
+      } catch (e) {
+        failures.push({
+          product_id: row.product_id!,
+          error: e instanceof Error ? e.message : String(e),
+        });
+      }
+    }
+
+    return { total: unique.length, processed, upserted, failures };
+  });
+

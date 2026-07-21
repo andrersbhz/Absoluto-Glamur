@@ -18,6 +18,8 @@ import {
 } from "@/lib/admin-catalog.functions";
 import { optimizeProductCopy } from "@/lib/ai-product-optimize.functions";
 import { syncAllAliexpressStock } from "@/lib/aliexpress-stock.functions";
+import { bulkSyncAliexpressReviews } from "@/lib/product-reviews.functions";
+import { Star } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/admin/catalog/")({
   head: () => ({ meta: [{ title: "Catálogo · Admin Absoluto Glamur" }] }),
@@ -42,6 +44,7 @@ function CatalogList() {
   const del = useServerFn(deleteAdminProduct);
   const exportCsv = useServerFn(exportAdminProductsCsv);
   const syncAll = useServerFn(syncAllAliexpressStock);
+  const bulkReviews = useServerFn(bulkSyncAliexpressReviews);
   const optimize = useServerFn(optimizeProductCopy);
   const qc = useQueryClient();
   const [q, setQ] = useState("");
@@ -68,6 +71,17 @@ function CatalogList() {
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
+  const bulkReviewsMut = useMutation({
+    mutationFn: () => bulkReviews({ data: { min_rating: 4.5, limit: 100 } }),
+    onSuccess: (r) => {
+      toast.success(
+        `Avaliações sincronizadas: ${r.upserted} importadas em ${r.processed}/${r.total} produtos${r.failures.length ? ` (${r.failures.length} falhas)` : ""}`,
+      );
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
 
   const query = useQuery({
     queryKey: ["admin-products", { q, status }],
@@ -160,6 +174,16 @@ function CatalogList() {
               <RefreshCw className={`h-4 w-4 ${bulkSync.isPending ? "animate-spin" : ""}`} />
               {bulkSync.isPending ? "Sincronizando…" : "Sincronizar estoque AliExpress"}
             </button>
+            <button
+              onClick={() => bulkReviewsMut.mutate()}
+              disabled={bulkReviewsMut.isPending}
+              className="inline-flex items-center gap-2 rounded-lg border border-primary/40 bg-primary/10 px-4 py-2 text-sm text-primary hover:bg-primary/20 disabled:opacity-60"
+              title="Buscar avaliações 4.5★+ do AliExpress para todos os produtos vinculados"
+            >
+              <Star className={`h-4 w-4 ${bulkReviewsMut.isPending ? "animate-pulse" : ""}`} />
+              {bulkReviewsMut.isPending ? "Buscando avaliações…" : "Sincronizar avaliações AliExpress"}
+            </button>
+
             <button
               onClick={handleExport}
               disabled={exporting}
