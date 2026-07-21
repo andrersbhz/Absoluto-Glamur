@@ -5,7 +5,7 @@ import { effectivePrice, formatBRL } from "@/lib/format";
 import { useFavorites } from "@/lib/favorites";
 import { useCart } from "@/lib/cart-store";
 import { toast } from "sonner";
-import { isVideoUrl } from "@/lib/media-kind";
+import { isVideoMedia } from "@/lib/media-kind";
 
 export function ProductCard({ product }: { product: ProductListItem }) {
   const variant = pickDefaultVariant(product);
@@ -15,7 +15,9 @@ export function ProductCard({ product }: { product: ProductListItem }) {
   const media = [...(product.media ?? [])].sort(
     (a, b) => (a as { position?: number }).position ?? 0 - ((b as { position?: number }).position ?? 0),
   );
-  const cover = media[0]?.url ?? null;
+  const coverMedia = media[0] ?? null;
+  const cover = coverMedia?.url ?? null;
+  const coverIsVideo = isVideoMedia(coverMedia);
 
   const { isFavorite, toggle, canFavorite } = useFavorites();
   const fav = isFavorite(product.id);
@@ -31,7 +33,7 @@ export function ProductCard({ product }: { product: ProductListItem }) {
       />
       <div className="relative block aspect-square overflow-hidden bg-secondary/40">
         {cover ? (
-          isVideoUrl(cover) ? (
+          coverIsVideo ? (
             <video
               src={cover}
               className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
