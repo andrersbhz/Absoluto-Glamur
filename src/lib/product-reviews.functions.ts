@@ -399,3 +399,76 @@ export const deleteReview = createServerFn({ method: "POST" })
     if (error) throw error;
     return { ok: true };
   });
+
+// -------- Bulk sync (all linked products) --------
+
+export const bulkSyncAliexpressReviews = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((v: unknown) =>
+    z
+      .object({
+        min_rating: z.number().min(0).max(5).default(4.5),
+        limit: z.number().int().min(1).max(200).default(50),
+      })
+      .parse(v ?? {}),
+  )
+  .handler(async ({ data, context }) => {
+    await assertCatalog(context);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const { data: linked } = await supabaseAdmin
+      .from("product_imports")
+      .select("product_id, source_id, created_at")
+      .in("source", ["aliexpress", "aliexpress_api"])
+      .not("product_id", "is", null)
+      .not("source_id", "is", null)
+      .order("created_at", { ascending: false })
+      .limit(data.limit);
+
+    const seen = new Set<string>();
+    const unique = (linked ?? []).filter((r) => {
+      const k = `${r.product_id}`;
+      if (seen.has(k)) return false;
+      seen.add(k);
+      return true;
+    });
+
+    let processed = 0;
+    let upserted = 0;
+    const failures: { product_id: string; error: string }[] = [];
+
+    for (const row of unique) {
+      try {
+        const reviews = await fetchAliexpressReviews(String(row.source_id), data.min_rating);
+        if (reviews.length > 0) {
+          const rows = reviews.map((r) => ({
+            product_id: row.product_id!,
+            source: "aliexpress",
+            source_review_id: r.source_review_id,
+            author_name: r.author_name,
+            author_country: r.author_country,
+            rating: r.rating,
+            title: r.title,
+            body: r.body,
+            images: r.images,
+            reviewed_at: r.reviewed_at,
+            is_visible: true,
+          }));
+          const { error } = await supabaseAdmin
+            .from("product_external_reviews")
+            .upsert(rows, { onConflict: "product_id,source,source_review_id" });
+          if (error) throw error;
+          upserted += rows.length;
+        }
+        processed++;
+      } catch (e) {
+        failures.push({
+          product_id: row.product_id!,
+          error: e instanceof Error ? e.message : String(e),
+        });
+      }
+    }
+
+    return { total: unique.length, processed, upserted, failures };
+  });
+
