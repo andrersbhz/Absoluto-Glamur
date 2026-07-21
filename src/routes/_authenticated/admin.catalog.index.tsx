@@ -72,6 +72,17 @@ function CatalogList() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const bulkReviewsMut = useMutation({
+    mutationFn: () => bulkReviews({ data: { min_rating: 4.5, limit: 100 } }),
+    onSuccess: (r) => {
+      toast.success(
+        `Avaliações sincronizadas: ${r.upserted} importadas em ${r.processed}/${r.total} produtos${r.failures.length ? ` (${r.failures.length} falhas)` : ""}`,
+      );
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+
   const query = useQuery({
     queryKey: ["admin-products", { q, status }],
     queryFn: () => list({ data: { q, status } }),
