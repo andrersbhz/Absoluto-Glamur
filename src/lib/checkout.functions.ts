@@ -206,6 +206,9 @@ export const createCheckout = createServerFn({ method: "POST" })
       if (provider === "nupay" && method === "nubank_redirect") {
         return await handleNuPayRedirect(ctx, integ);
       }
+      if (provider === "pagbank") {
+        return await handlePagBankCheckout(ctx, integ, method);
+      }
       throw new Error(
         `Combinação provedor="${provider}" + método="${method}" ainda não é suportada.`,
       );
@@ -390,6 +393,96 @@ async function handleNuPayRedirect(ctx: OrderContext, integ: any) {
     orderId: ctx.orderId,
     code: ctx.code,
     method: "nubank_redirect" as const,
+    redirectUrl: redirect,
+  };
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function handlePagBankCheckout(ctx: OrderContext, integ: any, method: string) {
+  const { pagbankFetch, pagbankMethodType } = await import("./pagbank.server");
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const cfg = {
+    token: integ.api_key as string,
+    env: (integ.mode as "sandbox" | "production") ?? "sandbox",
+  };
+
+  const origin =
+    (integ.config?.checkout_origin as string | undefined) ??
+    "https://www.absolutoglamur.com.br";
+  const returnUrl = ctx.data.returnUrl ?? `${origin}/checkout/${ctx.orderId}`;
+  const notificationUrl = `${origin}/api/public/webhooks/pagbank`;
+
+  const pmType = pagbankMethodType(method as "pix" | "credit_card" | "boleto");
+
+  // POST /checkouts — cria sessão de checkout hospedado.
+  // Docs: https://developer.pagbank.com.br/reference/criar-checkout
+  const session = await pagbankFetch<{
+    id: string;
+    checkout_url?: string;
+    payment_url?: string;
+    links?: { rel: string; href: string; media?: string }[];
+  }>(cfg, "/checkouts", {
+    method: "POST",
+    body: JSON.stringify({
+      reference_id: ctx.orderId,
+      expiration_date: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+      customer: {
+        name: ctx.data.customer.name,
+        email: ctx.data.customer.email,
+        tax_id: ctx.document,
+        phones: [
+          {
+            country: "55",
+            area: ctx.phone.slice(0, 2) || "11",
+            number: ctx.phone.slice(2) || ctx.phone,
+            type: "MOBILE",
+          },
+        ],
+      },
+      items: [
+        {
+          reference_id: ctx.code,
+          name: `Pedido ${ctx.code} · Absoluto Glamur`,
+          quantity: 1,
+          unit_amount: ctx.total,
+        },
+      ],
+      payment_methods: [{ type: pmType }],
+      redirect_url: returnUrl,
+      return_url: returnUrl,
+      notification_urls: [notificationUrl],
+      customer_modifiable: false,
+    }),
+  });
+
+  const redirect =
+    session.checkout_url ??
+    session.payment_url ??
+    session.links?.find((l) => l.rel === "PAY" || l.rel === "CHECKOUT")?.href ??
+    session.links?.[0]?.href ??
+    null;
+
+  const { error } = await supabaseAdmin.from("payments").insert({
+    order_id: ctx.orderId,
+    provider: "pagbank",
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    method: method as any,
+    status: "pending",
+    amount_cents: ctx.total,
+    external_id: session.id,
+    session_id: session.id,
+    redirect_url: redirect,
+    return_url: returnUrl,
+    invoice_url: redirect,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    raw: session as any,
+  });
+  if (error) throw new Error(error.message);
+
+  return {
+    orderId: ctx.orderId,
+    code: ctx.code,
+    method: method as "pix" | "credit_card" | "boleto",
     redirectUrl: redirect,
   };
 }
