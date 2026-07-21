@@ -34,7 +34,9 @@ export type AdminProductRow = {
   media_count: number;
   variant_count: number;
   price_cents: number | null;
+  cost_cents: number | null;
   stock: number | null;
+  thumbnail_url: string | null;
   updated_at: string;
 };
 
@@ -53,7 +55,8 @@ export const listAdminProducts = createServerFn({ method: "GET" })
       .select(
         `id, slug, name, status, is_featured, updated_at,
          brand:brands(name), category:categories(name),
-         media:product_media(id),
+         media:product_media(id, url, position, kind, is_cover),
+         pricing:pricing_calculations(cost_cents, computed_at),
          variants:product_variants(id, is_default,
            prices:product_prices(list_price_cents, sale_price_cents, is_active),
            inventory:product_inventory(stock)
@@ -68,7 +71,8 @@ export const listAdminProducts = createServerFn({ method: "GET" })
     type Row = {
       id: string; slug: string; name: string; status: string; is_featured: boolean; updated_at: string;
       brand: { name: string } | null; category: { name: string } | null;
-      media: { id: string }[] | null;
+      media: { id: string; url: string; position: number; kind: string | null; is_cover: boolean | null }[] | null;
+      pricing: { cost_cents: number | null; computed_at: string | null }[] | null;
       variants: {
         id: string; is_default: boolean;
         prices: { list_price_cents: number; sale_price_cents: number | null; is_active: boolean }[] | null;
@@ -84,6 +88,11 @@ export const listAdminProducts = createServerFn({ method: "GET" })
           : price.list_price_cents
         : null;
       const stock = def?.inventory?.[0]?.stock ?? null;
+      const mediaSorted = (r.media ?? []).slice().sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
+      const cover = mediaSorted.find((m) => m.is_cover) ?? mediaSorted.find((m) => m.kind !== "video") ?? mediaSorted[0];
+      const latestPricing = (r.pricing ?? [])
+        .slice()
+        .sort((a, b) => new Date(b.computed_at ?? 0).getTime() - new Date(a.computed_at ?? 0).getTime())[0];
       return {
         id: r.id,
         slug: r.slug,
@@ -95,7 +104,9 @@ export const listAdminProducts = createServerFn({ method: "GET" })
         media_count: r.media?.length ?? 0,
         variant_count: r.variants?.length ?? 0,
         price_cents: unit,
+        cost_cents: latestPricing?.cost_cents ?? null,
         stock,
+        thumbnail_url: cover?.url ?? null,
         updated_at: r.updated_at,
       };
     });
