@@ -179,7 +179,7 @@ function DiscoverPage() {
         data: {
           keyword: submitted.keyword || undefined,
           page: submitted.page,
-          page_size: 24,
+          page_size: 50,
           sort: submitted.sort,
         },
       }),
@@ -331,7 +331,7 @@ function DiscoverPage() {
               <span className="text-sm text-muted-foreground">Página {submitted.page}</span>
               <Button
                 variant="outline"
-                disabled={query.isFetching || items.length < 24}
+                disabled={query.isFetching || items.length < 50}
                 onClick={() => setSubmitted((s) => ({ ...s, page: s.page + 1 }))}
               >
                 Próxima
