@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { Sparkles, ShieldCheck, Truck } from "lucide-react";
+import { Sparkles, ShieldCheck, Truck, Gem, Crown } from "lucide-react";
 import { StoreLayout } from "@/components/store/StoreLayout";
 import { ProductCard } from "@/components/store/ProductCard";
 import { categoriesQuery, collectionsQuery, featuredProductsQuery, productsByCategoryQuery } from "@/lib/catalog";
@@ -9,6 +9,16 @@ import { homepageBlocksQuery, type HomepageBlock } from "@/lib/marketing";
 export const Route = createFileRoute("/")({
   component: Index,
 });
+
+function GoldRule() {
+  return (
+    <div className="mx-auto mt-4 flex items-center justify-center gap-3 text-champagne">
+      <span className="h-px w-12 bg-gradient-to-r from-transparent to-champagne" />
+      <Gem className="h-3 w-3" />
+      <span className="h-px w-12 bg-gradient-to-l from-transparent to-champagne" />
+    </div>
+  );
+}
 
 function Index() {
   const { data: bestsellers = [] } = useQuery(featuredProductsQuery("mais-vendidos"));
@@ -21,52 +31,98 @@ function Index() {
 
   return (
     <StoreLayout>
-      <section className="relative overflow-hidden">
-        <div className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_top,_var(--secondary)_0%,_var(--background)_60%)]" />
-        <div className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:flex lg:items-center lg:gap-12 lg:px-8 lg:py-28">
-          <div className="max-w-xl">
-            <p className="inline-flex items-center gap-2 rounded-full border border-border bg-background/60 px-3 py-1 text-xs text-muted-foreground backdrop-blur">
-              <Sparkles className="h-3.5 w-3.5 text-champagne" /> Curadoria feminina
+      {/* Announcement bar — sussurro de luxo */}
+      <div className="bg-plum text-primary-foreground">
+        <div className="mx-auto flex max-w-7xl items-center justify-center gap-3 px-4 py-2 text-[11px] uppercase tracking-[0.28em] sm:px-6 lg:px-8">
+          <Crown className="h-3 w-3 text-champagne" />
+          <span>Frete grátis acima de R$ 299 · Embalagem assinatura</span>
+          <Crown className="h-3 w-3 text-champagne" />
+        </div>
+      </div>
+
+      {/* HERO — editorial imponente */}
+      <section className="relative isolate overflow-hidden">
+        <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(1200px_600px_at_20%_-10%,var(--secondary),transparent_60%),radial-gradient(900px_500px_at_100%_10%,color-mix(in_oklab,var(--champagne)_35%,transparent),transparent_60%),linear-gradient(180deg,var(--background),var(--background))]" />
+        <div
+          className="pointer-events-none absolute inset-0 -z-10 opacity-[0.06] mix-blend-multiply"
+          style={{
+            backgroundImage:
+              "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/></filter><rect width='100%' height='100%' filter='url(%23n)' opacity='0.7'/></svg>\")",
+          }}
+        />
+
+        <div className="mx-auto grid max-w-7xl gap-14 px-4 py-24 sm:px-6 lg:grid-cols-12 lg:items-center lg:gap-16 lg:px-8 lg:py-32">
+          <div className="lg:col-span-7">
+            <p className="inline-flex items-center gap-2 rounded-full border border-champagne/40 bg-background/60 px-4 py-1.5 text-[11px] uppercase tracking-[0.32em] text-plum backdrop-blur">
+              <Sparkles className="h-3.5 w-3.5 text-champagne" /> Maison de Beleza
             </p>
-            <h1 className="mt-6 font-display text-5xl leading-[1.05] text-foreground sm:text-6xl">
-              Beleza que floresce{" "}
-              <span className="text-primary">com você.</span>
+            <h1 className="mt-8 font-display text-6xl leading-[0.98] tracking-tight text-foreground sm:text-7xl lg:text-[5.5rem]">
+              Beleza <em className="italic text-primary">rara</em>,
+              <br />
+              <span className="bg-gradient-to-r from-plum via-primary to-champagne bg-clip-text text-transparent">
+                assinatura sua.
+              </span>
             </h1>
-            <p className="mt-5 text-lg text-muted-foreground">
-              Skincare, maquiagem e cabelos com curadoria feminina. Descubra o que combina com o seu ritual.
+            <p className="mt-8 max-w-xl text-lg leading-relaxed text-muted-foreground">
+              Uma curadoria autoral de skincare, maquiagem e cabelos — selecionada como joias,
+              tratada como ritual. Cada frasco carrega uma promessa cumprida.
             </p>
-            <div className="mt-8 flex flex-wrap gap-3">
+            <div className="mt-10 flex flex-wrap items-center gap-6">
               <Link
                 to="/products"
                 search={{} as never}
-                className="inline-flex items-center justify-center rounded-lg bg-primary px-6 py-3 text-sm font-medium text-primary-foreground shadow-soft transition hover:opacity-90"
+                className="group relative inline-flex items-center justify-center overflow-hidden rounded-full bg-primary px-8 py-3.5 text-xs font-medium uppercase tracking-[0.28em] text-primary-foreground shadow-elegant transition hover:shadow-[0_20px_60px_-20px_var(--primary)]"
               >
-                Explorar catálogo
+                <span className="relative z-10">Explorar coleção</span>
+                <span className="absolute inset-0 -translate-x-[120%] bg-gradient-to-r from-transparent via-white/30 to-transparent transition-transform duration-700 group-hover:translate-x-[120%]" />
               </Link>
               <Link
                 to="/products"
                 search={{ collection: "promocoes" } as never}
-                className="inline-flex items-center justify-center rounded-lg border border-border bg-background px-6 py-3 text-sm font-medium text-foreground transition hover:bg-secondary"
+                className="inline-flex items-center gap-2 text-xs uppercase tracking-[0.32em] text-plum transition hover:text-primary"
               >
-                Ver ofertas
+                Edições limitadas <span aria-hidden>→</span>
               </Link>
             </div>
+
+            <div className="mt-14 flex flex-wrap items-center gap-x-10 gap-y-4 text-[11px] uppercase tracking-[0.28em] text-muted-foreground">
+              <span className="flex items-center gap-2"><Gem className="h-3 w-3 text-champagne" /> Ingredientes verificados</span>
+              <span className="flex items-center gap-2"><Gem className="h-3 w-3 text-champagne" /> Envio assinatura</span>
+              <span className="flex items-center gap-2"><Gem className="h-3 w-3 text-champagne" /> Atendimento private</span>
+            </div>
           </div>
-          <div className="mt-12 flex-1 lg:mt-0">
-            <div className="mx-auto aspect-[4/5] max-w-md rounded-3xl bg-gradient-to-br from-primary/80 via-berry to-plum shadow-elegant" />
+
+          {/* Vitrine */}
+          <div className="relative lg:col-span-5">
+            <div className="relative mx-auto aspect-[4/5] max-w-md">
+              <div className="absolute -inset-6 rounded-[2.5rem] bg-gradient-to-br from-champagne/60 via-champagne/10 to-transparent blur-2xl" />
+              <div className="relative h-full w-full overflow-hidden rounded-[2rem] bg-gradient-to-br from-primary via-berry to-plum shadow-elegant ring-1 ring-champagne/40">
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.35),transparent_45%)]" />
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_90%,color-mix(in_oklab,var(--champagne)_65%,transparent),transparent_50%)]" />
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <span className="font-display text-[9rem] leading-none text-white/15">A·G</span>
+                </div>
+                <div className="absolute bottom-6 left-6 right-6 flex items-center justify-between rounded-full border border-champagne/60 bg-black/25 px-5 py-2.5 text-[10px] uppercase tracking-[0.3em] text-white backdrop-blur">
+                  <span>Maison Absoluto</span>
+                  <span className="text-champagne">Est. 2025</span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
+      {/* Categorias */}
       {categories.length > 0 && (
-        <section className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-          <div className="flex flex-wrap gap-3">
+        <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+          <GoldRule />
+          <div className="mt-6 flex flex-wrap justify-center gap-3">
             {categories.map((c) => (
               <Link
                 key={c.id}
                 to="/products"
                 search={{ category: c.slug } as never}
-                className="rounded-full border border-border bg-card px-4 py-2 text-sm text-foreground shadow-soft transition hover:border-primary hover:text-primary"
+                className="rounded-full border border-border bg-card px-5 py-2 text-xs uppercase tracking-[0.22em] text-foreground shadow-soft transition hover:border-champagne hover:text-primary"
               >
                 {c.name}
               </Link>
@@ -92,8 +148,6 @@ function Index() {
         />
       ))}
 
-
-
       {newArrivals.length > 0 && (
         <FeaturedSection
           title="Lançamentos"
@@ -112,19 +166,45 @@ function Index() {
         />
       )}
 
-      <section className="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
+      {/* Manifesto */}
+      <section className="mx-auto my-10 max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-plum via-berry to-primary px-8 py-16 text-primary-foreground shadow-elegant sm:px-16 sm:py-24">
+          <div className="absolute inset-0 opacity-30 bg-[radial-gradient(circle_at_20%_10%,rgba(255,255,255,0.35),transparent_45%),radial-gradient(circle_at_90%_90%,color-mix(in_oklab,var(--champagne)_70%,transparent),transparent_50%)]" />
+          <div className="relative max-w-3xl">
+            <p className="text-[11px] uppercase tracking-[0.35em] text-champagne">Manifesto</p>
+            <p className="mt-6 font-display text-3xl leading-snug sm:text-4xl">
+              Beleza não é excesso — é escolha. Selecionamos cada produto como se escolhêssemos
+              uma joia: pelo brilho verdadeiro, pela permanência e pelo toque que fica.
+            </p>
+            <div className="mt-8 h-px w-24 bg-champagne" />
+            <p className="mt-6 text-xs uppercase tracking-[0.35em] text-champagne">Absoluto Glamur</p>
+          </div>
+        </div>
+      </section>
+
+      {/* Pilares */}
+      <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
+        <div className="mb-12 text-center">
+          <p className="text-[11px] uppercase tracking-[0.35em] text-muted-foreground">Uma experiência</p>
+          <h2 className="mt-3 font-display text-4xl text-foreground">O padrão Absoluto</h2>
+          <GoldRule />
+        </div>
         <div className="grid gap-6 sm:grid-cols-3">
           {[
-            { icon: Sparkles, title: "Curadoria autoral", body: "Seleção rigorosa de produtos com foco em resultado real." },
-            { icon: ShieldCheck, title: "Conformidade cosmética", body: "Fabricantes e ingredientes verificados antes de publicar." },
-            { icon: Truck, title: "Envio para todo o Brasil", body: "Frete rápido e rastreável em cada pedido." },
+            { icon: Sparkles, title: "Curadoria autoral", body: "Seleção rigorosa de produtos com foco em resultado real e sensorial refinado." },
+            { icon: ShieldCheck, title: "Conformidade cosmética", body: "Fabricantes e ingredientes verificados antes de qualquer publicação." },
+            { icon: Truck, title: "Envio assinatura", body: "Embalagem cuidada e rastreio em tempo real em cada entrega." },
           ].map(({ icon: Icon, title, body }) => (
-            <div key={title} className="rounded-2xl border border-border bg-card p-6 shadow-soft">
-              <div className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-secondary text-primary">
+            <div
+              key={title}
+              className="group relative overflow-hidden rounded-2xl border border-border bg-card p-8 shadow-soft transition hover:-translate-y-1 hover:border-champagne hover:shadow-elegant"
+            >
+              <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-gradient-to-br from-champagne/40 to-transparent blur-2xl transition group-hover:from-champagne/70" />
+              <div className="relative inline-flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-primary/15 to-champagne/25 text-primary ring-1 ring-champagne/40">
                 <Icon className="h-5 w-5" />
               </div>
-              <h3 className="mt-4 font-display text-xl">{title}</h3>
-              <p className="mt-2 text-sm text-muted-foreground">{body}</p>
+              <h3 className="relative mt-6 font-display text-2xl">{title}</h3>
+              <p className="relative mt-3 text-sm leading-relaxed text-muted-foreground">{body}</p>
             </div>
           ))}
         </div>
@@ -144,7 +224,7 @@ function CustomBlock({ block }: { block: HomepageBlock }) {
     return (
       <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
         <div
-          className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary/80 via-berry to-plum p-10 text-primary-foreground shadow-elegant"
+          className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-primary/80 via-berry to-plum p-10 text-primary-foreground shadow-elegant ring-1 ring-champagne/40"
           style={
             typeof data.image_url === "string"
               ? { backgroundImage: `url(${data.image_url})`, backgroundSize: "cover", backgroundPosition: "center" }
@@ -153,19 +233,19 @@ function CustomBlock({ block }: { block: HomepageBlock }) {
         >
           <div className="relative z-10 max-w-xl">
             {block.subtitle && (
-              <p className="text-xs uppercase tracking-[0.2em] opacity-90">{block.subtitle}</p>
+              <p className="text-[11px] uppercase tracking-[0.32em] text-champagne">{block.subtitle}</p>
             )}
             {block.title && <h2 className="mt-3 font-display text-4xl">{block.title}</h2>}
             {typeof data.cta_href === "string" && (
               <a
                 href={data.cta_href}
-                className="mt-6 inline-flex rounded-lg bg-background px-5 py-2.5 text-sm font-medium text-foreground shadow-soft hover:opacity-90"
+                className="mt-6 inline-flex rounded-full bg-background px-6 py-2.5 text-xs uppercase tracking-[0.28em] font-medium text-foreground shadow-soft hover:opacity-90"
               >
                 {typeof data.cta_label === "string" ? data.cta_label : "Ver mais"}
               </a>
             )}
           </div>
-          {typeof data.image_url === "string" && <div className="absolute inset-0 bg-black/20" />}
+          {typeof data.image_url === "string" && <div className="absolute inset-0 bg-black/25" />}
         </div>
       </section>
     );
@@ -242,16 +322,16 @@ function FeaturedSection({
   products: Parameters<typeof ProductCard>[0]["product"][];
 }) {
   return (
-    <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
-      <div className="mb-6 flex items-end justify-between gap-4">
+    <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+      <div className="mb-8 flex items-end justify-between gap-4 border-b border-champagne/30 pb-4">
         <div>
-          <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">{subtitle}</p>
-          <h2 className="font-display text-3xl text-foreground">{title}</h2>
+          <p className="text-[11px] uppercase tracking-[0.32em] text-champagne">{subtitle}</p>
+          <h2 className="mt-2 font-display text-4xl text-foreground">{title}</h2>
         </div>
         <Link
           to="/products"
           search={link.search as never}
-          className="text-sm text-primary hover:underline"
+          className="text-xs uppercase tracking-[0.28em] text-plum transition hover:text-primary"
         >
           {link.label} →
         </Link>
