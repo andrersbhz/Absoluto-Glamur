@@ -39,6 +39,7 @@ import { Route as AuthenticatedAdminComplianceRouteImport } from './routes/_auth
 import { Route as AuthenticatedAdminAiRouteImport } from './routes/_authenticated/admin.ai'
 import { Route as AuthenticatedAdminIntelligenceIndexRouteImport } from './routes/_authenticated/admin.intelligence.index'
 import { Route as AuthenticatedAdminCatalogIndexRouteImport } from './routes/_authenticated/admin.catalog.index'
+import { Route as ApiPublicWebhooksPagbankRouteImport } from './routes/api/public/webhooks/pagbank'
 import { Route as ApiPublicWebhooksNupayRouteImport } from './routes/api/public/webhooks/nupay'
 import { Route as ApiPublicWebhooksAsaasRouteImport } from './routes/api/public/webhooks/asaas'
 import { Route as ApiPublicWebhooksAliexpressRouteImport } from './routes/api/public/webhooks/aliexpress'
@@ -208,6 +209,12 @@ const AuthenticatedAdminCatalogIndexRoute =
     path: '/catalog/',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
+const ApiPublicWebhooksPagbankRoute =
+  ApiPublicWebhooksPagbankRouteImport.update({
+    id: '/api/public/webhooks/pagbank',
+    path: '/api/public/webhooks/pagbank',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicWebhooksNupayRoute = ApiPublicWebhooksNupayRouteImport.update({
   id: '/api/public/webhooks/nupay',
   path: '/api/public/webhooks/nupay',
@@ -291,6 +298,7 @@ export interface FileRoutesByFullPath {
   '/api/public/webhooks/aliexpress': typeof ApiPublicWebhooksAliexpressRoute
   '/api/public/webhooks/asaas': typeof ApiPublicWebhooksAsaasRoute
   '/api/public/webhooks/nupay': typeof ApiPublicWebhooksNupayRoute
+  '/api/public/webhooks/pagbank': typeof ApiPublicWebhooksPagbankRoute
   '/admin/catalog/': typeof AuthenticatedAdminCatalogIndexRoute
   '/admin/intelligence/': typeof AuthenticatedAdminIntelligenceIndexRoute
 }
@@ -329,6 +337,7 @@ export interface FileRoutesByTo {
   '/api/public/webhooks/aliexpress': typeof ApiPublicWebhooksAliexpressRoute
   '/api/public/webhooks/asaas': typeof ApiPublicWebhooksAsaasRoute
   '/api/public/webhooks/nupay': typeof ApiPublicWebhooksNupayRoute
+  '/api/public/webhooks/pagbank': typeof ApiPublicWebhooksPagbankRoute
   '/admin/catalog': typeof AuthenticatedAdminCatalogIndexRoute
   '/admin/intelligence': typeof AuthenticatedAdminIntelligenceIndexRoute
 }
@@ -370,6 +379,7 @@ export interface FileRoutesById {
   '/api/public/webhooks/aliexpress': typeof ApiPublicWebhooksAliexpressRoute
   '/api/public/webhooks/asaas': typeof ApiPublicWebhooksAsaasRoute
   '/api/public/webhooks/nupay': typeof ApiPublicWebhooksNupayRoute
+  '/api/public/webhooks/pagbank': typeof ApiPublicWebhooksPagbankRoute
   '/_authenticated/admin/catalog/': typeof AuthenticatedAdminCatalogIndexRoute
   '/_authenticated/admin/intelligence/': typeof AuthenticatedAdminIntelligenceIndexRoute
 }
@@ -411,6 +421,7 @@ export interface FileRouteTypes {
     | '/api/public/webhooks/aliexpress'
     | '/api/public/webhooks/asaas'
     | '/api/public/webhooks/nupay'
+    | '/api/public/webhooks/pagbank'
     | '/admin/catalog/'
     | '/admin/intelligence/'
   fileRoutesByTo: FileRoutesByTo
@@ -449,6 +460,7 @@ export interface FileRouteTypes {
     | '/api/public/webhooks/aliexpress'
     | '/api/public/webhooks/asaas'
     | '/api/public/webhooks/nupay'
+    | '/api/public/webhooks/pagbank'
     | '/admin/catalog'
     | '/admin/intelligence'
   id:
@@ -489,6 +501,7 @@ export interface FileRouteTypes {
     | '/api/public/webhooks/aliexpress'
     | '/api/public/webhooks/asaas'
     | '/api/public/webhooks/nupay'
+    | '/api/public/webhooks/pagbank'
     | '/_authenticated/admin/catalog/'
     | '/_authenticated/admin/intelligence/'
   fileRoutesById: FileRoutesById
@@ -506,6 +519,7 @@ export interface RootRouteChildren {
   ApiPublicWebhooksAliexpressRoute: typeof ApiPublicWebhooksAliexpressRoute
   ApiPublicWebhooksAsaasRoute: typeof ApiPublicWebhooksAsaasRoute
   ApiPublicWebhooksNupayRoute: typeof ApiPublicWebhooksNupayRoute
+  ApiPublicWebhooksPagbankRoute: typeof ApiPublicWebhooksPagbankRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -720,6 +734,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminCatalogIndexRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/api/public/webhooks/pagbank': {
+      id: '/api/public/webhooks/pagbank'
+      path: '/api/public/webhooks/pagbank'
+      fullPath: '/api/public/webhooks/pagbank'
+      preLoaderRoute: typeof ApiPublicWebhooksPagbankRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/webhooks/nupay': {
       id: '/api/public/webhooks/nupay'
       path: '/api/public/webhooks/nupay'
@@ -904,6 +925,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicWebhooksAliexpressRoute: ApiPublicWebhooksAliexpressRoute,
   ApiPublicWebhooksAsaasRoute: ApiPublicWebhooksAsaasRoute,
   ApiPublicWebhooksNupayRoute: ApiPublicWebhooksNupayRoute,
+  ApiPublicWebhooksPagbankRoute: ApiPublicWebhooksPagbankRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
