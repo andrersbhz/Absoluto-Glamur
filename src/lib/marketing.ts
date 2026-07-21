@@ -99,7 +99,7 @@ export function homeContentQuery() {
         .eq("key", "home_content")
         .maybeSingle();
       if (error) throw error;
-      return ((data?.value ?? {}) as HomeContent) ?? {};
+      return (data?.value ?? {}) as HomeContent;
     },
     staleTime: 60_000,
   });
