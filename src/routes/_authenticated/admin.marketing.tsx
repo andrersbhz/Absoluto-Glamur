@@ -1,11 +1,12 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { toast } from "sonner";
-import { Plus, Trash2, ArrowUp, ArrowDown, Save } from "lucide-react";
+import { Plus, Trash2, ArrowUp, ArrowDown, Save, ImagePlus, Loader2 } from "lucide-react";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { supabase } from "@/integrations/supabase/client";
 import { homepageBlocksAdminQuery, collectionsAdminQuery } from "@/lib/marketing";
+import { imageFileToWebpDataUri } from "@/lib/image-webp";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -194,6 +195,22 @@ function HomepageBlocksPanel() {
                 onBlur={(e) => updateBlock(block.id, { subtitle: e.target.value || null })}
               />
             </label>
+            {(block.kind === "hero" || block.kind === "banner") && (
+              <div className="sm:col-span-2">
+                <BannerUpload
+                  currentUrl={(block.data as { image_url?: string } | null)?.image_url ?? null}
+                  onUploaded={(dataUri) => {
+                    const next = { ...(block.data ?? {}), image_url: dataUri };
+                    updateBlock(block.id, { data: next });
+                  }}
+                  onClear={() => {
+                    const next = { ...(block.data ?? {}) } as Record<string, unknown>;
+                    delete next.image_url;
+                    updateBlock(block.id, { data: next });
+                  }}
+                />
+              </div>
+            )}
             <label className="text-sm sm:col-span-2">
               <span className="text-muted-foreground">
                 Dados (JSON) —{" "}
