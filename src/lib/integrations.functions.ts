@@ -162,6 +162,29 @@ export const testIntegration = createServerFn({ method: "POST" })
       }
     }
 
+    if (data.provider === "pagbank") {
+      if (!row.api_key) throw new Error("Preencha o token do PagBank");
+      const { pagbankFetch } = await import("./pagbank.server");
+      try {
+        await pagbankFetch<Record<string, unknown>>(
+          { token: row.api_key, env: (row.mode as "sandbox" | "production") ?? "sandbox" },
+          "/public-keys/card",
+        );
+        await supabaseAdmin
+          .from("integrations")
+          .update({ last_verified_at: new Date().toISOString(), last_status: "ok", last_error: null })
+          .eq("provider", "pagbank");
+        return { ok: true, info: { name: "PagBank", email: null } };
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        await supabaseAdmin
+          .from("integrations")
+          .update({ last_verified_at: new Date().toISOString(), last_status: "error", last_error: msg })
+          .eq("provider", "pagbank");
+        throw new Error(msg);
+      }
+    }
+
     return {
       ok: true,
       info: {
