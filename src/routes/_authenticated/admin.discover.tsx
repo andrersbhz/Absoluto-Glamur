@@ -6,12 +6,20 @@ import { AdminLayout } from "@/components/admin/AdminLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Star, Store, Search, Plus, ExternalLink, Loader2, TrendingUp } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Star, Store, Search, Plus, ExternalLink, Loader2, TrendingUp, Sparkles } from "lucide-react";
 import {
   discoverAliexpressProducts,
   importAliexpressProductToStore,
   type DiscoveryProduct,
 } from "@/lib/aliexpress-discovery.functions";
+import { categoriesQuery } from "@/lib/catalog";
 import { toast } from "sonner";
 import { formatBRL } from "@/lib/format";
 
