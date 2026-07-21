@@ -93,10 +93,10 @@ export const createCheckout = createServerFn({ method: "POST" })
     const { data: variants, error: varErr } = await supabaseAdmin
       .from("product_variants")
       .select(
-        `id, name, is_active,
-         product:products!inner(id, slug, name, is_active),
-         prices:product_prices(list_cents, sale_cents),
-         media:product_media(url, is_primary, sort_order)`,
+        `id, name,
+         product:products!inner(id, slug, name, status),
+         prices:product_prices(list_price_cents, sale_price_cents, is_active),
+         media:product_media(url, position, kind)`,
       )
       .in("id", variantIds);
     if (varErr) throw new Error(varErr.message);
@@ -104,30 +104,27 @@ export const createCheckout = createServerFn({ method: "POST" })
     type VariantRow = {
       id: string;
       name: string | null;
-      is_active: boolean;
-      product: { id: string; slug: string; name: string; is_active: boolean };
-      prices: { list_cents: number; sale_cents: number | null }[] | null;
-      media: { url: string; is_primary: boolean | null; sort_order: number | null }[] | null;
+      product: { id: string; slug: string; name: string; status: string };
+      prices: { list_price_cents: number; sale_price_cents: number | null; is_active: boolean }[] | null;
+      media: { url: string; position: number | null; kind: string | null }[] | null;
     };
     const vmap = new Map<string, VariantRow>();
     (variants as unknown as VariantRow[] | null)?.forEach((v) => vmap.set(v.id, v));
 
     const orderItems: OrderItemInsert[] = data.items.map((i) => {
       const v = vmap.get(i.variantId);
-      if (!v || !v.is_active || !v.product?.is_active) {
+      if (!v || v.product?.status !== "active") {
         throw new Error("Um dos produtos não está mais disponível.");
       }
-      const price = v.prices?.[0];
+      const price = (v.prices ?? []).find((p) => p.is_active) ?? v.prices?.[0];
       if (!price) throw new Error(`Preço não configurado para ${v.product.name}`);
       const unit =
-        price.sale_cents && price.sale_cents > 0 && price.sale_cents < price.list_cents
-          ? price.sale_cents
-          : price.list_cents;
-      const media = v.media ?? [];
+        price.sale_price_cents && price.sale_price_cents > 0 && price.sale_price_cents < price.list_price_cents
+          ? price.sale_price_cents
+          : price.list_price_cents;
+      const media = (v.media ?? []).filter((m) => m.kind !== "video");
       const image =
-        media.find((m) => m.is_primary)?.url ??
-        [...media].sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))[0]?.url ??
-        null;
+        [...media].sort((a, b) => (a.position ?? 0) - (b.position ?? 0))[0]?.url ?? null;
       return {
         product_id: v.product.id,
         variant_id: v.id,
