@@ -55,7 +55,7 @@ export const listAdminProducts = createServerFn({ method: "GET" })
       .select(
         `id, slug, name, status, is_featured, updated_at,
          brand:brands(name), category:categories(name),
-         media:product_media(id, url, position, kind, is_cover),
+         media:product_media(id, url, position, kind),
          pricing:pricing_calculations(cost_cents, computed_at),
          variants:product_variants(id, is_default,
            prices:product_prices(list_price_cents, sale_price_cents, is_active),
