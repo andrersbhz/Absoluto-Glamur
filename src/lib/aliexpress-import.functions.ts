@@ -453,6 +453,16 @@ async function commitImportRow(
     .update({ status: "imported", product_id: productId, error: null })
     .eq("id", importId);
 
+  // Best-effort: pull AliExpress reviews (rating >= 4.5) for the new product.
+  if (norm.source_id) {
+    try {
+      const { syncReviewsForProductInternal } = await import("./product-reviews.functions");
+      void syncReviewsForProductInternal(admin, productId, String(norm.source_id), 4.5);
+    } catch {
+      // ignore — reviews are non-critical
+    }
+  }
+
   return { productId, priceCents };
 }
 
