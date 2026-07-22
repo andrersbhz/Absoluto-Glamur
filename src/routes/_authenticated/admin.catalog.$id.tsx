@@ -451,7 +451,7 @@ function CatalogEditor() {
                           placeholder="AG-SER-VITC-30"
                         />
                       </Field>
-                      <Field label="Estoque disponível" hint={isNew ? undefined : "Conecte ao AliExpress para sincronizar automaticamente."}>
+                      <Field label="Estoque disponível" hint={isNew ? undefined : "Sincroniza automaticamente ao abrir. Use o botão para forçar atualização."}>
                         <div className="flex gap-2">
                           <input
                             type="number"
