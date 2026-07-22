@@ -1,54 +1,55 @@
 
-## Objetivo
+# Home estilo Nuvemshop — blocos editáveis com drag-and-drop
 
-Analisei a documentação da **NuPay for Business (Nubank)**: é uma API baseada em sessões — o comprador é redirecionado ao app do Nubank, aprova o pagamento, volta pra loja, e o status é atualizado em tempo real via **webhook** (`callbackUrl`) enviado pela NuPay a cada mudança da sessão/pagamento. Autenticação via headers `X-Merchant-Key` + `X-Merchant-Token`.
+Vou reestruturar a home e o painel de Marketing para replicar a experiência das lojas Nuvemshop de referência, mantendo tudo editável e reorganizável pelo admin.
 
-Vou adicionar NuPay ao painel de Integrações e refatorar o checkout para suportar **múltiplos gateways por método** (PIX, cartão, Nubank redirect), permitindo configuração híbrida — ex.: PIX pelo Asaas + cartão pela Stripe + botão "Pagar com Nubank" via NuPay.
+## Nova estrutura da home (todos os blocos administráveis)
 
-## Escopo
+1. **Barra de anúncio** (topo) — texto + link editáveis, ativa/desativa.
+2. **Hero banner full-width 100%** — imagem grande de fundo (upload), título, subtítulo, badge, CTA principal (link para produto ou coleção) e CTA secundário. Suporta versão desktop e mobile.
+3. **Barra de vantagens (ícones)** — Frete grátis para todo Brasil · Até 12x no cartão · Compra segura · 5% de desconto no PIX. Ícones e textos configuráveis; ícones da lucide-react selecionáveis.
+4. **Categorias em destaque** — grid de círculos/cards com imagem + nome + link.
+5. **Best Sellers** — grade horizontal de produtos mais vendidos (auto-populada com override manual).
+6. **Banner duplo (2 colunas)** — dois banners lado a lado (ex.: "Skincare" / "Maquiagem") com imagem + título + link.
+7. **Nossos Queridinhos** — carrossel de produtos favoritos escolhidos manualmente por SKU/slug.
+8. **Vantagens de comprar** — 3-4 blocos com ícone + título + texto (garantia, envio, atendimento, autenticidade).
+9. **Banner promocional full-width** — imagem 100% com CTA (segunda oportunidade de destaque).
+10. **Lançamentos / Novidades** — grade dos produtos mais recentes.
+11. **Manifesto / Sobre a marca** — bloco editorial já existente, mantido.
+12. **Newsletter** — captura de e-mail (opcional, ativa/desativa).
+13. **Instagram / Selos de confiança** — grid de imagens com link (opcional).
 
-### 1. Banco de dados (migration)
-- Adicionar novas linhas em `integrations`: `nupay` (categoria `payments`), `stripe`, `mercadopago` (placeholders — ativados quando o admin colar as chaves).
-- Nova tabela `payment_method_routing` — mapeia cada método (`pix`, `credit_card`, `boleto`, `nubank_redirect`) ao provedor ativo escolhido pelo admin. Uma linha por método, com `provider` e `enabled`. Isso é o coração da configuração híbrida.
-- Estender `payments`: coluna `session_id` (para NuPay), `approval_code`, `redirect_url`. Estender enum de métodos com `nubank_redirect` e `credit_card`.
-- GRANTs + RLS (leitura só admin, escrita só admin/superadmin).
+## Painel administrativo (`/admin/marketing`)
 
-### 2. Backend — server functions e rotas
-- `src/lib/nupay.server.ts` — cliente HTTP para `sandbox-api.spinpay.com.br` / `api.spinpay.com.br` com os headers de auth.
-- `src/lib/checkout.functions.ts` — refatorar `createPixCheckout` em `createCheckout({ method })` que:
-  1. Lê `payment_method_routing` pra descobrir o provedor daquele método.
-  2. Cria o pedido no banco (lógica atual).
-  3. Delega ao adaptador do provedor (Asaas PIX, NuPay session, Stripe intent…).
-  4. Retorna `{ orderId, code, redirectUrl?, pixQrCode? }` — a página de checkout já sabe renderizar QR ou redirecionar.
-- `src/routes/api/public/webhooks/nupay.ts` — nova rota pública que valida o `webhook_token` da integração, mapeia `status` NuPay (`approved`/`completed`/`canceled`/`expired`) pro status interno do pedido em tempo real e grava evento em `payment_events`.
-- `src/routes/_authenticated/checkout.return.tsx` — landing de retorno do app Nubank (`returnUrl`): lê `sessionId` da query, chama `GET /sessions/{id}`, cria o pagamento via `POST /payments` e redireciona pra `/checkout/{orderId}`.
-- `listIntegrations`/`testIntegration` — adicionar caso `nupay` (chama `/v1/checkouts/sessions/by-reference/health-check` só pra validar auth).
+- **Editor de blocos com drag-and-drop** (biblioteca `@dnd-kit/sortable`) — arrastar cards para reordenar; toggle "ativo"; botão "duplicar" e "remover".
+- **Botão "Adicionar bloco"** com catálogo dos tipos acima; cada tipo abre um formulário específico (upload de imagem, campos de texto, seletor de produtos/coleções, seletor de ícone).
+- **Preview lateral** ao vivo mostrando como fica na home.
+- **Upload de imagens** via Supabase Storage (bucket público `homepage-media`) com conversão automática para WebP (já temos `image-webp.ts`).
 
-### 3. Frontend
-- **Admin › Integrações**: cards novos pra NuPay/Stripe/Mercado Pago aparecem automaticamente (já é dinâmico). NuPay ganha campo extra pra `X-Merchant-Token` (além da API key). URL de webhook exibida pra copiar.
-- **Admin › Integrações › aba "Roteamento de métodos"**: nova seção com uma linha por método de pagamento e um `<select>` do provedor ativo pra aquele método. É onde se monta o setup híbrido.
-- **Loja › Checkout** (`src/routes/_authenticated/checkout.tsx`): 
-  - Novo passo "Forma de pagamento" que consulta os métodos habilitados no roteamento e mostra as opções (PIX, Cartão, Nubank).
-  - Submit chama `createCheckout({ method })`; se voltar `redirectUrl`, faz `window.location = redirectUrl`; senão exibe QR (fluxo atual).
-- **Loja › `/checkout/return`**: tela intermediária mostrando "Confirmando com Nubank…" enquanto o backend cria o payment.
+## Backend / dados
 
-### 4. Segurança
-- Webhook NuPay valida `webhook_token` da integração no header customizado + timing-safe compare.
-- Chaves nunca no cliente — todas as chamadas passam pelos server functions com service role, igual ao padrão atual.
-- RLS: `payment_method_routing` só leitura/escrita por admin.
+- Reaproveitar a tabela `homepage_blocks` (já existe). Cada bloco tem `kind`, `position`, `data (jsonb)`, `is_active`.
+- Novos `kind`: `announcement_bar`, `hero_fullwidth`, `benefits_bar`, `category_circles`, `best_sellers`, `banner_duo`, `product_carousel_favorites`, `advantages_grid`, `promo_fullwidth`, `latest_products`, `manifesto`, `newsletter`, `instagram_grid`.
+- Criar bucket de storage `homepage-media` (público leitura, admin escrita).
+- Migração para seed dos blocos padrão da nova home.
 
-### 5. Documentação
-- Atualizar `docs/PHASES.md` com a mudança de arquitetura multi-gateway.
-- `docs/ENV.md` — anotar que as chaves de NuPay/Stripe/MP são persistidas na tabela `integrations`, não em env vars.
+## Frontend
+
+- Refatorar `src/routes/index.tsx` para renderizar dinamicamente a lista de blocos ordenados por `position`, cada `kind` mapeado para um componente React em `src/components/home/blocks/*`.
+- Manter as escolhas de tipografia (Fraunces + Inter) e paleta atual da Absoluto Glamur — mesma sofisticação, layout no ritmo da Nuvemshop.
+- Responsivo mobile-first, banners com aspect ratio adequado desktop/mobile.
+
+## Detalhes técnicos
+
+- Bibliotecas novas: `@dnd-kit/core`, `@dnd-kit/sortable`.
+- Server functions em `src/lib/homepage-blocks.functions.ts` para create/update/delete/reorder.
+- Upload usa o cliente Supabase autenticado (RLS já protege via role admin).
+- SEO da home permanece com metadata do próprio `index.tsx`; banners passam `og:image` quando o primeiro hero tiver imagem absoluta.
 
 ## Fora do escopo desta entrega
-- Implementação real dos adaptadores Stripe e Mercado Pago — a estrutura fica pronta (cards no painel, roteamento, tabela), mas as chamadas efetivas ficam como placeholder ("Configuração aceita, integração ativada em breve") pra não misturar 3 gateways novos numa entrega só. Se quiser Stripe/MP funcionais agora, é só pedir na sequência.
-- Split de pagamento (rachar 1 pedido entre 2 gateways) — o híbrido aqui é **por método**, não por transação.
 
-## Ordem de execução
-1. Migration (integrations + routing + payments extension).
-2. `nupay.server.ts` + refactor de `checkout.functions.ts` com sistema de adaptadores.
-3. Webhook `/api/public/webhooks/nupay` + rota de retorno.
-4. UI de roteamento no painel de integrações.
-5. Seletor de método no checkout da loja.
-6. Teste ponta a ponta em sandbox.
+- Editor visual "point-and-click" na própria home (só o painel).
+- Versões A/B de blocos.
+- Agendamento por data (blocos ligam/desligam manualmente).
+
+Ao aprovar, começo pela migração dos novos `kind`, depois os componentes de bloco, e por fim o editor drag-and-drop.
