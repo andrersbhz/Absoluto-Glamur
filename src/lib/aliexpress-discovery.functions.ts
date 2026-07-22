@@ -148,7 +148,7 @@ async function requestAli(
     if (v === undefined || v === null || v === "") continue;
     params[k] = String(v);
   }
-  params.sign = sign(params, appSecret);
+  params.sign = await sign(params, appSecret);
   const query = new URLSearchParams(params).toString();
   const res = await fetch(`https://api-sg.aliexpress.com/sync?${query}`, { method: "POST" });
   const text = await res.text();
