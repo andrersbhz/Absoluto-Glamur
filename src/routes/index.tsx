@@ -53,6 +53,21 @@ function Index() {
   const primaryHref = hero.cta_primary_href ?? "/products";
   const secondaryHref = hero.cta_secondary_href ?? "/products?collection=promocoes";
 
+  // Fallback dinâmico: se não houver imagem configurada no hero, usa a capa
+  // do primeiro produto em destaque (mais vendidos → lançamentos → categorias).
+  const dynamicHeroProduct =
+    bestsellers[0] ??
+    newArrivals[0] ??
+    byCategory.flatMap((r) => r.products)[0] ??
+    null;
+  const heroImageUrl =
+    hero.image_url && hero.image_url.trim().length > 0
+      ? hero.image_url
+      : dynamicHeroProduct?.media?.find((m) => m.kind !== "video")?.url ??
+        dynamicHeroProduct?.media?.[0]?.url ??
+        null;
+  const heroProductName = !hero.image_url ? dynamicHeroProduct?.name ?? null : null;
+
   return (
     <StoreLayout>
       {/* Announcement bar */}
@@ -130,20 +145,20 @@ function Index() {
               <div
                 className="relative h-full w-full overflow-hidden rounded-[2rem] bg-gradient-to-br from-primary via-berry to-plum shadow-elegant ring-1 ring-champagne/40"
                 style={
-                  hero.image_url
-                    ? { backgroundImage: `url(${hero.image_url})`, backgroundSize: "cover", backgroundPosition: "center" }
+                  heroImageUrl
+                    ? { backgroundImage: `url(${heroImageUrl})`, backgroundSize: "cover", backgroundPosition: "center" }
                     : undefined
                 }
               >
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.35),transparent_45%)]" />
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_90%,color-mix(in_oklab,var(--champagne)_65%,transparent),transparent_50%)]" />
-                {!hero.image_url && (
+                {!heroImageUrl && (
                   <div className="absolute inset-0 flex items-center justify-center">
                     <span className="font-display text-[9rem] leading-none text-white/15">{hero.monogram ?? "A·G"}</span>
                   </div>
                 )}
                 <div className="absolute bottom-6 left-6 right-6 flex items-center justify-between rounded-full border border-champagne/60 bg-black/25 px-5 py-2.5 text-[10px] uppercase tracking-[0.3em] text-white backdrop-blur">
-                  <span>{hero.seal_left ?? "Maison Absoluto"}</span>
+                  <span>{heroProductName ?? hero.seal_left ?? "Maison Absoluto"}</span>
                   <span className="text-champagne">{hero.seal_right ?? "Est. 2025"}</span>
                 </div>
               </div>
