@@ -93,6 +93,14 @@ export const Route = createFileRoute("/api/public/webhooks/pagbank")({
                   paid_at: paidAt,
                 })
                 .eq("id", pay.order_id);
+              if (map.order === "paid") {
+                try {
+                  const { notifyAdminsOfPaidOrder } = await import("@/lib/push.server");
+                  await notifyAdminsOfPaidOrder(pay.order_id);
+                } catch (e) {
+                  console.error("[push] pagbank notify failed", e);
+                }
+              }
             }
           }
         }
