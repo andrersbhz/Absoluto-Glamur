@@ -37,10 +37,26 @@ function slugify(v: string): string {
 // a Unix timestamp in milliseconds. Business parameters remain flat and are
 // included in the signature together with the public parameters.
 
-function sign(params: Record<string, string>, secret: string): string {
+async function hmacSha256Hex(secret: string, data: string): Promise<string> {
+  const enc = new TextEncoder();
+  const key = await globalThis.crypto.subtle.importKey(
+    "raw",
+    enc.encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const sigBuf = await globalThis.crypto.subtle.sign("HMAC", key, enc.encode(data));
+  const bytes = new Uint8Array(sigBuf);
+  let hex = "";
+  for (const b of bytes) hex += b.toString(16).padStart(2, "0");
+  return hex.toUpperCase();
+}
+
+async function sign(params: Record<string, string>, secret: string): Promise<string> {
   const keys = Object.keys(params).sort();
   const base = keys.map((k) => `${k}${params[k]}`).join("");
-  return createHmac("sha256", secret).update(base, "utf8").digest("hex").toUpperCase();
+  return hmacSha256Hex(secret, base);
 }
 
 async function loadAliCreds() {
@@ -64,10 +80,10 @@ async function loadAliCreds() {
   return { appKey, appSecret, accessToken, refreshToken };
 }
 
-function signRestPath(apiPath: string, params: Record<string, string>, secret: string): string {
+async function signRestPath(apiPath: string, params: Record<string, string>, secret: string): Promise<string> {
   const keys = Object.keys(params).sort();
   const base = apiPath + keys.map((k) => `${k}${params[k]}`).join("");
-  return createHmac("sha256", secret).update(base, "utf8").digest("hex").toUpperCase();
+  return hmacSha256Hex(secret, base);
 }
 
 async function refreshAliToken(appKey: string, appSecret: string, refreshToken: string): Promise<string> {
