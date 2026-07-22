@@ -176,14 +176,31 @@ function CatalogEditor() {
 
   const syncStockFn = useServerFn(syncAliexpressStock);
   const syncStock = useMutation({
-    mutationFn: () => syncStockFn({ data: { product_id: id } }),
+    mutationFn: (opts: { silent?: boolean } | void) =>
+      syncStockFn({ data: { product_id: id } }).then((r) => ({ ...r, silent: !!opts?.silent })),
     onSuccess: (r) => {
       setForm((f) => ({ ...f, stock: String(r.total_stock) }));
-      toast.success(`Estoque AliExpress: ${r.total_stock} unidades (${r.variants_updated} variantes)`);
+      if (!r.silent) {
+        toast.success(`Estoque AliExpress: ${r.total_stock} unidades (${r.variants_updated} variantes)`);
+      }
       prodQ.refetch();
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error, vars) => {
+      if (!vars || !(vars as { silent?: boolean }).silent) toast.error(e.message);
+    },
   });
+
+  // Auto-sync stock from AliExpress on first open (silently, only if linked).
+  const autoSyncedRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (isNew) return;
+    if (!prodQ.data) return;
+    if (autoSyncedRef.current === id) return;
+    autoSyncedRef.current = id;
+    syncStock.mutate({ silent: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, prodQ.data]);
+
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
