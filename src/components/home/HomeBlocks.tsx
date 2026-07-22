@@ -263,7 +263,7 @@ export function HomeBlock({ block }: { block: HomepageBlock }) {
       <section className="border-y border-border bg-secondary/40">
         <div className="mx-auto flex max-w-4xl flex-col items-center gap-4 px-4 py-14 text-center sm:px-6 lg:px-8">
           {block.subtitle && <p className="text-[11px] uppercase tracking-[0.32em] text-champagne">{block.subtitle}</p>}
-          <h2 className="font-display text-3xl sm:text-4xl">{blockock_title(block, "Receba novidades e ofertas exclusivas")}</h2>
+          <h2 className="font-display text-3xl sm:text-4xl">{block.title ?? "Receba novidades e ofertas exclusivas"}</h2>
           <p className="text-sm text-muted-foreground">{s(data.body, "Assine e ganhe 10% de desconto na sua primeira compra.")}</p>
           <form className="mt-3 flex w-full max-w-md flex-col gap-2 sm:flex-row" onSubmit={(e) => { e.preventDefault(); alert("Obrigado! Você foi inscrito(a)."); }}>
             <input type="email" required placeholder="Seu melhor e-mail" className="flex-1 rounded-full border border-border bg-background px-5 py-3 text-sm outline-none focus:border-primary" />
