@@ -149,13 +149,52 @@ Regras finais:
     }
 
     const parsed = extractJson(raw);
+
+    // Remove emojis, símbolos decorativos e ruído tipográfico dos textos curtos.
+    const EMOJI_RE = /[\p{Extended_Pictographic}\p{Emoji_Presentation}]/gu;
+    const DECOR_RE = /[★☆✦✧✩✪✫✬✭✮✯✰✱✲✳✴✵✶✷✸✹✺✻✼❀❁❂❃❄❅❆❇❈❉❊❋❤♥♡☀☁☂☃☄►◄▲▼◆◇○●◎♦♣♠♪♫♬✓✔✗✘➜➔➤→←↑↓⇒⇐⇑⇓•·]/g;
+    const cleanText = (s: string) =>
+      s
+        .replace(EMOJI_RE, "")
+        .replace(DECOR_RE, "")
+        .replace(/#{1,}/g, "")
+        .replace(/\*+/g, "")
+        .replace(/!{2,}/g, "!")
+        .replace(/\.{3,}/g, ".")
+        .replace(/\s+/g, " ")
+        .trim();
+
+    const cleanHtml = (s: string) =>
+      s
+        .replace(EMOJI_RE, "")
+        .replace(DECOR_RE, "")
+        .replace(/[ \t]+/g, " ")
+        .trim();
+
+    // Encurta título mantendo palavras inteiras (alvo 60, teto 65).
+    const shortenTitle = (raw: string, target = 60, hardMax = 65) => {
+      const clean = cleanText(raw);
+      if (clean.length <= hardMax) return clean;
+      const words = clean.split(" ");
+      const out: string[] = [];
+      for (const w of words) {
+        const next = out.length ? out.join(" ") + " " + w : w;
+        if (next.length > target) break;
+        out.push(w);
+      }
+      const joined = out.join(" ").replace(/[,\-–—:;]+$/g, "").trim();
+      return joined.length ? joined : clean.slice(0, hardMax).trim();
+    };
+
     const result = {
-      name: String(parsed.name ?? prod.name).slice(0, 120),
-      short_description: String(parsed.short_description ?? "").slice(0, 400),
-      description_html: String(parsed.description_html ?? ""),
-      seo_title: String(parsed.seo_title ?? "").slice(0, 70),
-      seo_description: String(parsed.seo_description ?? "").slice(0, 200),
-      keywords: Array.isArray(parsed.keywords) ? parsed.keywords.map(String).slice(0, 10) : [],
+      name: shortenTitle(String(parsed.name ?? prod.name), 60, 65),
+      short_description: cleanText(String(parsed.short_description ?? "")).slice(0, 400),
+      description_html: cleanHtml(String(parsed.description_html ?? "")),
+      seo_title: shortenTitle(String(parsed.seo_title ?? parsed.name ?? ""), 58, 60),
+      seo_description: cleanText(String(parsed.seo_description ?? "")).slice(0, 160),
+      keywords: Array.isArray(parsed.keywords)
+        ? parsed.keywords.map((k: unknown) => cleanText(String(k)).toLowerCase()).filter(Boolean).slice(0, 10)
+        : [],
     };
 
     if (data.apply) {
