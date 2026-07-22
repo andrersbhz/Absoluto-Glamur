@@ -63,7 +63,9 @@ function Index() {
   const heroImageUrl =
     hero.image_url && hero.image_url.trim().length > 0
       ? hero.image_url
-      : dynamicHeroProduct?.thumbnail_url ?? null;
+      : dynamicHeroProduct?.media?.find((m) => m.kind !== "video")?.url ??
+        dynamicHeroProduct?.media?.[0]?.url ??
+        null;
   const heroProductName = !hero.image_url ? dynamicHeroProduct?.name ?? null : null;
 
   return (
