@@ -63,8 +63,22 @@ export function collectionsAdminQuery() {
   });
 }
 
+export type HeroSlide = {
+  title?: string;
+  subtitle?: string;
+  cta_label?: string;
+  cta_href?: string;
+  image_url?: string;
+  align?: "left" | "center" | "right";
+};
+
 export type HomeContent = {
   announcement?: { enabled?: boolean; text?: string };
+  hero_slider?: {
+    enabled?: boolean;
+    autoplay_ms?: number;
+    slides?: HeroSlide[];
+  };
   hero?: {
     badge?: string;
     title_line1?: string;
