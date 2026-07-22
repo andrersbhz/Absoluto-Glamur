@@ -15,17 +15,18 @@ async function assertCatalog(context: any) {
   if (!hasCat) throw new Error("Acesso restrito a administradores ou equipe de catálogo");
 }
 
-const SYSTEM_COPY = `Você é copywriter sênior de beleza e cosméticos da Absoluto Glamur (Brasil), especialista em copy persuasivo com gatilhos mentais (dor, prova social, urgência sutil, autoridade, transformação, pertencimento).
+const SYSTEM_COPY = `Você é copywriter sênior de beleza e cosméticos da Absoluto Glamur (Brasil), especialista em SEO e copy persuasivo com gatilhos mentais (dor, prova social, autoridade, transformação).
 
 Diretrizes obrigatórias:
-- Português do Brasil, tom acolhedor, sofisticado e feminino.
+- SEMPRE em português do Brasil, tom acolhedor, sofisticado e feminino.
+- TÍTULO curto, objetivo, otimizado para SEO (ideal 45-60 caracteres, MÁXIMO 65). Estrutura: [tipo de produto] + [diferencial/ativo principal] + [benefício-chave]. Exemplo: "Creme Gel Hidratante Facial com Ácido Hialurônico". Nada de storytelling, promessa exagerada ou CTA no título.
+- PROIBIDO no título e em todos os textos: emojis, emoticons, símbolos decorativos (✨★☆✅❤♥☀🌸💫⭐🔥😱 etc.), asteriscos soltos, setas, hashtags, "!!", reticências, ALL CAPS.
 - Foco na dor real: rugas, flacidez, manchas, olheiras, ressecamento, cabelo sem vida, autoestima, envelhecimento, textura, poros.
-- Prometa transformação SENSORIAL e ESTÉTICA (viço, luminosidade, firmeza aparente, sensação de rejuvenescimento). NUNCA prometa cura, tratamento médico, resultado clínico, comparação com procedimento estético, "elimina rugas 100%", "botox natural", "milagre".
-- Nunca invente ingredientes, certificações, aprovação da ANVISA ou testes clínicos. Use termos genéricos ("ativos hidratantes", "fórmula com antioxidantes") se faltar dado.
-- Use gatilhos: "sinta-se você mesma novamente", "reencontre a pele que você merece", "resultado que se vê no espelho", "toque de luxo", "cuidado que abraça".
+- Prometa transformação SENSORIAL e ESTÉTICA (viço, luminosidade, firmeza aparente). NUNCA prometa cura, tratamento médico, resultado clínico, "elimina rugas 100%", "botox natural", "milagre".
+- Nunca invente ingredientes, certificações ou aprovação da ANVISA. Use termos genéricos ("ativos hidratantes", "antioxidantes") se faltar dado.
 - Evite clichê vazio ("o melhor do mundo"). Prefira imagens sensoriais.
-- Nunca cite marcas concorrentes nem fontes (AliExpress, Shopee, etc).
-- SAÍDA: apenas JSON válido, sem markdown, sem \`\`\`json, sem comentários. Todas as strings em PT-BR.`;
+- Nunca cite concorrentes ou fontes (AliExpress, Shopee, etc.).
+- SAÍDA: apenas JSON válido, sem markdown, sem \`\`\`json, sem comentários. Strings limpas em PT-BR, sem símbolos decorativos.`;
 
 function extractJson(text: string): any {
   const cleaned = text
@@ -85,17 +86,18 @@ ${contextBlock}
 
 Retorne JSON com esta estrutura EXATA:
 {
-  "name": "novo título até 80 caracteres com benefício + gatilho",
-  "short_description": "resumo persuasivo em 1-2 frases (máx 220 caracteres) que gera desejo",
-  "description_html": "HTML pronto com <p>, <strong>, <ul><li>. Estrutura: (1) parágrafo de abertura tocando a DOR (rugas/flacidez/autoestima) e prometendo transformação sensorial; (2) parágrafo com a experiência de uso e sensação; (3) <strong>Benefícios que você sente:</strong> seguido de <ul> com 5 <li> curtos e emocionais; (4) <strong>Modo de uso:</strong> seguido de <ol> com 3 passos; (5) parágrafo final de fechamento com gatilho de pertencimento/autoestima. Nunca prometer cura ou resultado médico.",
-  "seo_title": "título SEO até 60 caracteres, com palavra-chave forte",
-  "seo_description": "meta description até 155 caracteres com CTA sutil",
-  "keywords": ["5 a 8 palavras-chave em pt-br"]
+  "name": "título CURTO e OBJETIVO em PT-BR, 45-60 caracteres (máx 65), focado em SEO. Estrutura: [tipo de produto] + [ativo/diferencial] + [benefício-chave]. Ex.: 'Creme Gel Hidratante Facial com Ácido Hialurônico'. Sem emojis, sem símbolos, sem promessa, sem CTA, sem ALL CAPS.",
+  "short_description": "resumo persuasivo em 1-2 frases (máx 220 caracteres) que gera desejo, sem emojis/símbolos",
+  "description_html": "HTML pronto com <p>, <strong>, <ul><li>. Estrutura: (1) parágrafo de abertura tocando a DOR e prometendo transformação sensorial; (2) parágrafo com a experiência de uso; (3) <strong>Benefícios que você sente:</strong> seguido de <ul> com 5 <li> curtos e emocionais; (4) <strong>Modo de uso:</strong> seguido de <ol> com 3 passos; (5) parágrafo final de fechamento com gatilho de pertencimento/autoestima. Nunca prometer cura ou resultado médico. Sem emojis/símbolos decorativos.",
+  "seo_title": "título SEO em PT-BR, MÁXIMO 60 caracteres, com palavra-chave principal no início. Sem emojis/símbolos.",
+  "seo_description": "meta description em PT-BR até 155 caracteres com CTA sutil, sem emojis/símbolos",
+  "keywords": ["5 a 8 palavras-chave em pt-br, minúsculas, sem símbolos"]
 }
 
 Regras finais:
+- Título curto é PRIORIDADE. Se passar de 65 caracteres, encurte removendo adjetivos.
 - Foque em rugas, rejuvenescimento aparente, luminosidade, firmeza sentida, autoestima, ritual de autocuidado — conforme a categoria.
-- Nada de emojis excessivos (no máximo 1 no título, opcional).
+- ZERO emojis, ZERO símbolos decorativos em qualquer campo.
 - Nada de menções a AliExpress, Shopee, importado, "produto chinês".
 - Responda SOMENTE o JSON.`;
 
@@ -147,13 +149,52 @@ Regras finais:
     }
 
     const parsed = extractJson(raw);
+
+    // Remove emojis, símbolos decorativos e ruído tipográfico dos textos curtos.
+    const EMOJI_RE = /[\p{Extended_Pictographic}\p{Emoji_Presentation}]/gu;
+    const DECOR_RE = /[★☆✦✧✩✪✫✬✭✮✯✰✱✲✳✴✵✶✷✸✹✺✻✼❀❁❂❃❄❅❆❇❈❉❊❋❤♥♡☀☁☂☃☄►◄▲▼◆◇○●◎♦♣♠♪♫♬✓✔✗✘➜➔➤→←↑↓⇒⇐⇑⇓•·]/g;
+    const cleanText = (s: string) =>
+      s
+        .replace(EMOJI_RE, "")
+        .replace(DECOR_RE, "")
+        .replace(/#{1,}/g, "")
+        .replace(/\*+/g, "")
+        .replace(/!{2,}/g, "!")
+        .replace(/\.{3,}/g, ".")
+        .replace(/\s+/g, " ")
+        .trim();
+
+    const cleanHtml = (s: string) =>
+      s
+        .replace(EMOJI_RE, "")
+        .replace(DECOR_RE, "")
+        .replace(/[ \t]+/g, " ")
+        .trim();
+
+    // Encurta título mantendo palavras inteiras (alvo 60, teto 65).
+    const shortenTitle = (raw: string, target = 60, hardMax = 65) => {
+      const clean = cleanText(raw);
+      if (clean.length <= hardMax) return clean;
+      const words = clean.split(" ");
+      const out: string[] = [];
+      for (const w of words) {
+        const next = out.length ? out.join(" ") + " " + w : w;
+        if (next.length > target) break;
+        out.push(w);
+      }
+      const joined = out.join(" ").replace(/[,\-–—:;]+$/g, "").trim();
+      return joined.length ? joined : clean.slice(0, hardMax).trim();
+    };
+
     const result = {
-      name: String(parsed.name ?? prod.name).slice(0, 120),
-      short_description: String(parsed.short_description ?? "").slice(0, 400),
-      description_html: String(parsed.description_html ?? ""),
-      seo_title: String(parsed.seo_title ?? "").slice(0, 70),
-      seo_description: String(parsed.seo_description ?? "").slice(0, 200),
-      keywords: Array.isArray(parsed.keywords) ? parsed.keywords.map(String).slice(0, 10) : [],
+      name: shortenTitle(String(parsed.name ?? prod.name), 60, 65),
+      short_description: cleanText(String(parsed.short_description ?? "")).slice(0, 400),
+      description_html: cleanHtml(String(parsed.description_html ?? "")),
+      seo_title: shortenTitle(String(parsed.seo_title ?? parsed.name ?? ""), 58, 60),
+      seo_description: cleanText(String(parsed.seo_description ?? "")).slice(0, 160),
+      keywords: Array.isArray(parsed.keywords)
+        ? parsed.keywords.map((k: unknown) => cleanText(String(k)).toLowerCase()).filter(Boolean).slice(0, 10)
+        : [],
     };
 
     if (data.apply) {
