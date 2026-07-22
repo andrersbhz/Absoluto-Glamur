@@ -86,17 +86,18 @@ ${contextBlock}
 
 Retorne JSON com esta estrutura EXATA:
 {
-  "name": "novo título até 80 caracteres com benefício + gatilho",
-  "short_description": "resumo persuasivo em 1-2 frases (máx 220 caracteres) que gera desejo",
-  "description_html": "HTML pronto com <p>, <strong>, <ul><li>. Estrutura: (1) parágrafo de abertura tocando a DOR (rugas/flacidez/autoestima) e prometendo transformação sensorial; (2) parágrafo com a experiência de uso e sensação; (3) <strong>Benefícios que você sente:</strong> seguido de <ul> com 5 <li> curtos e emocionais; (4) <strong>Modo de uso:</strong> seguido de <ol> com 3 passos; (5) parágrafo final de fechamento com gatilho de pertencimento/autoestima. Nunca prometer cura ou resultado médico.",
-  "seo_title": "título SEO até 60 caracteres, com palavra-chave forte",
-  "seo_description": "meta description até 155 caracteres com CTA sutil",
-  "keywords": ["5 a 8 palavras-chave em pt-br"]
+  "name": "título CURTO e OBJETIVO em PT-BR, 45-60 caracteres (máx 65), focado em SEO. Estrutura: [tipo de produto] + [ativo/diferencial] + [benefício-chave]. Ex.: 'Creme Gel Hidratante Facial com Ácido Hialurônico'. Sem emojis, sem símbolos, sem promessa, sem CTA, sem ALL CAPS.",
+  "short_description": "resumo persuasivo em 1-2 frases (máx 220 caracteres) que gera desejo, sem emojis/símbolos",
+  "description_html": "HTML pronto com <p>, <strong>, <ul><li>. Estrutura: (1) parágrafo de abertura tocando a DOR e prometendo transformação sensorial; (2) parágrafo com a experiência de uso; (3) <strong>Benefícios que você sente:</strong> seguido de <ul> com 5 <li> curtos e emocionais; (4) <strong>Modo de uso:</strong> seguido de <ol> com 3 passos; (5) parágrafo final de fechamento com gatilho de pertencimento/autoestima. Nunca prometer cura ou resultado médico. Sem emojis/símbolos decorativos.",
+  "seo_title": "título SEO em PT-BR, MÁXIMO 60 caracteres, com palavra-chave principal no início. Sem emojis/símbolos.",
+  "seo_description": "meta description em PT-BR até 155 caracteres com CTA sutil, sem emojis/símbolos",
+  "keywords": ["5 a 8 palavras-chave em pt-br, minúsculas, sem símbolos"]
 }
 
 Regras finais:
+- Título curto é PRIORIDADE. Se passar de 65 caracteres, encurte removendo adjetivos.
 - Foque em rugas, rejuvenescimento aparente, luminosidade, firmeza sentida, autoestima, ritual de autocuidado — conforme a categoria.
-- Nada de emojis excessivos (no máximo 1 no título, opcional).
+- ZERO emojis, ZERO símbolos decorativos em qualquer campo.
 - Nada de menções a AliExpress, Shopee, importado, "produto chinês".
 - Responda SOMENTE o JSON.`;
 
