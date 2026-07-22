@@ -59,7 +59,7 @@ function MarketingAdmin() {
             <TabsTrigger value="seo">SEO</TabsTrigger>
           </TabsList>
           <TabsContent value="homepage" className="mt-6">
-            <HomepageBlocksPanel />
+            <HomepageBlocksEditor />
           </TabsContent>
           <TabsContent value="content" className="mt-6">
             <HomeContentPanel />
