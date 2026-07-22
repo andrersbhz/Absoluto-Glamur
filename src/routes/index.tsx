@@ -4,6 +4,7 @@ import { Sparkles, ShieldCheck, Truck, Gem, Crown, Star, Heart, Award, Leaf } fr
 import type { ComponentType } from "react";
 import { StoreLayout } from "@/components/store/StoreLayout";
 import { ProductCard } from "@/components/store/ProductCard";
+import { HeroSlider } from "@/components/store/HeroSlider";
 import { categoriesQuery, collectionsQuery, featuredProductsQuery, productsByCategoryQuery } from "@/lib/catalog";
 import { homepageBlocksQuery, homeContentQuery, type HomepageBlock } from "@/lib/marketing";
 
@@ -74,6 +75,8 @@ function Index() {
   const featuredCollections = collections.filter((c) => c.is_featured);
 
   const announcement = home.announcement ?? {};
+  const heroSlider = home.hero_slider ?? {};
+  const heroSlides = heroSlider.slides ?? [];
   const hero = home.hero ?? {};
   const trustBadges = home.trust_badges ?? [];
   const manifesto = home.manifesto ?? {};
@@ -109,6 +112,11 @@ function Index() {
             <Crown className="h-3 w-3 text-champagne" />
           </div>
         </div>
+      ) : null}
+
+      {/* Hero Slider (editável) */}
+      {heroSlider.enabled !== false && heroSlides.length > 0 ? (
+        <HeroSlider slides={heroSlides} autoplayMs={heroSlider.autoplay_ms ?? 6000} />
       ) : null}
 
       {/* HERO */}

@@ -106,6 +106,8 @@ function HomeContentPanel() {
   const pillars = value.pillars ?? {};
   const pillarItems = pillars.items ?? [];
   const badges = value.trust_badges ?? [];
+  const slider = value.hero_slider ?? {};
+  const sliderSlides = slider.slides ?? [];
 
   return (
     <div className="space-y-6">
@@ -157,6 +159,120 @@ function HomeContentPanel() {
           </div>
         </div>
       </section>
+
+      <section className="rounded-2xl border border-border bg-card p-5">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="font-display text-lg">Slider do topo</h3>
+            <p className="text-xs text-muted-foreground">Exibido abaixo do menu, 500px de altura, largura total.</p>
+          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() =>
+              patch((v) => ({
+                ...v,
+                hero_slider: {
+                  ...v.hero_slider,
+                  slides: [
+                    ...(v.hero_slider?.slides ?? []),
+                    { title: "", subtitle: "", cta_label: "Comprar", cta_href: "/products", image_url: "", align: "center" },
+                  ],
+                },
+              }))
+            }
+          >
+            <Plus className="mr-1 h-4 w-4" /> Novo slide
+          </Button>
+        </div>
+        <div className="mt-3 grid gap-3 sm:grid-cols-3 sm:items-center">
+          <label className="flex items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={slider.enabled !== false}
+              onChange={(e) => patch((v) => ({ ...v, hero_slider: { ...v.hero_slider, enabled: e.target.checked } }))}
+            />
+            Ativo
+          </label>
+          <label className="text-sm">
+            <span className="text-muted-foreground">Autoplay (ms)</span>
+            <Input
+              type="number"
+              min={0}
+              value={slider.autoplay_ms ?? 6000}
+              onChange={(e) =>
+                patch((v) => ({ ...v, hero_slider: { ...v.hero_slider, autoplay_ms: Number(e.target.value) || 0 } }))
+              }
+            />
+          </label>
+        </div>
+        <div className="mt-4 space-y-4">
+          {sliderSlides.length === 0 && (
+            <p className="rounded-xl border border-dashed border-border p-6 text-center text-sm text-muted-foreground">
+              Nenhum slide criado ainda.
+            </p>
+          )}
+          {sliderSlides.map((s, i) => {
+            const updateSlide = (upd: Partial<typeof s>) =>
+              patch((v) => {
+                const arr = [...(v.hero_slider?.slides ?? [])];
+                arr[i] = { ...arr[i], ...upd };
+                return { ...v, hero_slider: { ...v.hero_slider, slides: arr } };
+              });
+            const removeSlide = () =>
+              patch((v) => ({
+                ...v,
+                hero_slider: { ...v.hero_slider, slides: (v.hero_slider?.slides ?? []).filter((_, j) => j !== i) },
+              }));
+            const move = (dir: -1 | 1) =>
+              patch((v) => {
+                const arr = [...(v.hero_slider?.slides ?? [])];
+                const j = i + dir;
+                if (j < 0 || j >= arr.length) return v;
+                [arr[i], arr[j]] = [arr[j], arr[i]];
+                return { ...v, hero_slider: { ...v.hero_slider, slides: arr } };
+              });
+            return (
+              <div key={i} className="rounded-xl border border-border p-4">
+                <div className="mb-3 flex items-center justify-between">
+                  <span className="text-xs uppercase tracking-widest text-muted-foreground">Slide {i + 1}</span>
+                  <div className="flex gap-1">
+                    <Button size="icon" variant="ghost" onClick={() => move(-1)} disabled={i === 0}>
+                      <ArrowUp className="h-4 w-4" />
+                    </Button>
+                    <Button size="icon" variant="ghost" onClick={() => move(1)} disabled={i === sliderSlides.length - 1}>
+                      <ArrowDown className="h-4 w-4" />
+                    </Button>
+                    <Button size="icon" variant="ghost" onClick={removeSlide}>
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                  </div>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <Input placeholder="Título" value={s.title ?? ""} onChange={(e) => updateSlide({ title: e.target.value })} />
+                  <Input placeholder="URL da imagem" value={s.image_url ?? ""} onChange={(e) => updateSlide({ image_url: e.target.value })} />
+                  <Textarea className="sm:col-span-2" placeholder="Subtítulo" value={s.subtitle ?? ""} onChange={(e) => updateSlide({ subtitle: e.target.value })} />
+                  <Input placeholder="Texto do botão" value={s.cta_label ?? ""} onChange={(e) => updateSlide({ cta_label: e.target.value })} />
+                  <Input placeholder="Link do produto (ex: /categoria/produto)" value={s.cta_href ?? ""} onChange={(e) => updateSlide({ cta_href: e.target.value })} />
+                  <label className="text-sm">
+                    <span className="text-muted-foreground">Alinhamento</span>
+                    <select
+                      className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
+                      value={s.align ?? "center"}
+                      onChange={(e) => updateSlide({ align: e.target.value as "left" | "center" | "right" })}
+                    >
+                      <option value="left">Esquerda</option>
+                      <option value="center">Centro</option>
+                      <option value="right">Direita</option>
+                    </select>
+                  </label>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
 
       <section className="rounded-2xl border border-border bg-card p-5">
         <div className="flex items-center justify-between">
