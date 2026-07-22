@@ -25,12 +25,14 @@ function num(v: unknown): number {
 }
 
 /**
- * Faz uma chamada à API AliExpress DS para obter o estoque atual do produto.
- * Retorna estoque total e mapa SKU→estoque para casar com variantes locais.
+ * Faz uma chamada à API AliExpress DS para obter estoque + preço/custo atual
+ * do produto (em BRL, moeda alvo BR). Retorna também mapa SKU→estoque.
  */
-async function fetchAliexpressStock(productId: string): Promise<{
+async function fetchAliexpressLive(productId: string): Promise<{
   total: number;
   bySku: Record<string, number>;
+  costBrlCents: number | null;
+  priceBrlCents: number | null;
 }> {
   const json = await callAli("aliexpress.ds.product.get", {
     product_id: productId,
@@ -52,6 +54,13 @@ async function fetchAliexpressStock(productId: string): Promise<{
 
   const bySku: Record<string, number> = {};
   let total = 0;
+  const priceCandidates: number[] = [];
+  const parsePrice = (v: unknown): number | null => {
+    if (v == null) return null;
+    const s = String(v).replace(/[^\d.,-]/g, "").replace(",", ".");
+    const n = parseFloat(s);
+    return Number.isFinite(n) && n > 0 ? Math.round(n * 100) : null;
+  };
   for (const s of skus) {
     const stock = num(
       s.sku_available_stock ?? s.available_stock ?? s.sku_stock ?? s.stock ?? s.inventory,
@@ -59,11 +68,33 @@ async function fetchAliexpressStock(productId: string): Promise<{
     total += stock;
     const code = String(s.sku_code ?? s.sku_id ?? "").trim();
     if (code) bySku[code] = stock;
+    const p = parsePrice(
+      s.offer_sale_price ?? s.sku_price ?? s.offer_bulk_sale_price ?? s.price,
+    );
+    if (p != null) priceCandidates.push(p);
   }
   if (total === 0) {
     total = num(result.total_available_stock ?? result.stock ?? result.available_stock);
   }
-  return { total, bySku };
+  // Fallbacks a nível de produto (quando não vieram SKUs individuais).
+  const productPriceInfo =
+    result.ae_item_base_info_dto ?? result.ae_multimedia_info_dto ?? result;
+  const productPrice =
+    parsePrice(
+      productPriceInfo.sale_price ??
+        productPriceInfo.offer_sale_price ??
+        productPriceInfo.min_amount ??
+        result.min_amount ??
+        result.sale_price,
+    ) ??
+    (priceCandidates.length > 0 ? Math.min(...priceCandidates) : null);
+  return { total, bySku, costBrlCents: productPrice, priceBrlCents: productPrice };
+}
+
+// Alias de compatibilidade para chamadas antigas.
+async function fetchAliexpressStock(productId: string) {
+  const r = await fetchAliexpressLive(productId);
+  return { total: r.total, bySku: r.bySku };
 }
 
 /**
