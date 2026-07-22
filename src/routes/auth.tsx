@@ -13,8 +13,28 @@ const searchSchema = z.object({ next: z.string().optional() });
 
 export const Route = createFileRoute("/auth")({
   validateSearch: searchSchema,
+  head: () => ({
+    meta: [
+      { title: "Entrar ou criar conta · Absoluto Glamur" },
+      {
+        name: "description",
+        content:
+          "Acesse sua conta Absoluto Glamur para acompanhar pedidos, favoritos e finalizar compras com segurança.",
+      },
+      { property: "og:title", content: "Entrar · Absoluto Glamur" },
+      {
+        property: "og:description",
+        content: "Faça login ou crie sua conta na Absoluto Glamur.",
+      },
+      { property: "og:url", content: "https://absolutoglamur.com.br/auth" },
+      { property: "og:type", content: "website" },
+      { name: "robots", content: "noindex, follow" },
+    ],
+    links: [{ rel: "canonical", href: "https://absolutoglamur.com.br/auth" }],
+  }),
   component: AuthPage,
 });
+
 
 function AuthPage() {
   const navigate = useNavigate();
