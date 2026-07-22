@@ -29,7 +29,7 @@ export async function nupayFetch<T = unknown>(
       "X-Merchant-Token": config.merchantToken,
       "Content-Type": "application/json",
       Accept: "application/json",
-      "User-Agent": "bloom-checkout/1.0",
+      "User-Agent": "absoluto-glamur-checkout/1.0",
       ...(init?.headers ?? {}),
     },
   });

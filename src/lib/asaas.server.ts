@@ -23,7 +23,7 @@ export async function asaasFetch<T = unknown>(
       access_token: config.apiKey,
       "Content-Type": "application/json",
       Accept: "application/json",
-      "User-Agent": "bloom-checkout/1.0",
+      "User-Agent": "absoluto-glamur-checkout/1.0",
       ...(init?.headers ?? {}),
     },
   });
