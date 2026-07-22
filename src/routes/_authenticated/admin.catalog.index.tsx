@@ -299,6 +299,8 @@ function CatalogList() {
                   }}
                   onOptimize={() => handleOptimize(p.id, p.name)}
                   optimizing={aiTarget?.id === p.id && aiLoading !== "idle"}
+                  onSync={() => handleRowSync(p.id)}
+                  syncing={!!rowSyncing[p.id]}
                 />
               ))}
             </tbody>
@@ -395,11 +397,15 @@ function ProductRow({
   onDelete,
   onOptimize,
   optimizing,
+  onSync,
+  syncing,
 }: {
   row: AdminProductRow;
   onDelete: () => void;
   onOptimize: () => void;
   optimizing: boolean;
+  onSync: () => void;
+  syncing: boolean;
 }) {
   const statusBadge =
     row.status === "active" ? (
