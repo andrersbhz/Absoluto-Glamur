@@ -74,6 +74,39 @@ export type Database = {
         }
         Relationships: []
       }
+      admin_push_subscriptions: {
+        Row: {
+          auth: string
+          created_at: string
+          endpoint: string
+          id: string
+          last_success_at: string | null
+          p256dh: string
+          user_agent: string | null
+          user_id: string
+        }
+        Insert: {
+          auth: string
+          created_at?: string
+          endpoint: string
+          id?: string
+          last_success_at?: string | null
+          p256dh: string
+          user_agent?: string | null
+          user_id: string
+        }
+        Update: {
+          auth?: string
+          created_at?: string
+          endpoint?: string
+          id?: string
+          last_success_at?: string | null
+          p256dh?: string
+          user_agent?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       ai_generations: {
         Row: {
           cost_usd: number | null
@@ -1531,6 +1564,33 @@ export type Database = {
           id?: string
           phone?: string | null
           updated_at?: string
+        }
+        Relationships: []
+      }
+      push_config: {
+        Row: {
+          created_at: string
+          id: boolean
+          updated_at: string
+          vapid_private_key: string
+          vapid_public_key: string
+          vapid_subject: string
+        }
+        Insert: {
+          created_at?: string
+          id?: boolean
+          updated_at?: string
+          vapid_private_key: string
+          vapid_public_key: string
+          vapid_subject?: string
+        }
+        Update: {
+          created_at?: string
+          id?: boolean
+          updated_at?: string
+          vapid_private_key?: string
+          vapid_public_key?: string
+          vapid_subject?: string
         }
         Relationships: []
       }
