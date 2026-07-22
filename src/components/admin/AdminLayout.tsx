@@ -8,6 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { useTheme } from "@/hooks/use-theme";
 import { Badge } from "@/components/ui/badge";
+import { AdminPushToggle } from "@/components/admin/AdminPushToggle";
 
 type NavItem = { label: string; icon: typeof LayoutDashboard; to?: string; phase: number };
 
@@ -103,6 +104,7 @@ export function AdminLayout({ children }: { children: ReactNode }) {
               <span className="hidden sm:inline">Ver loja</span>
               <ExternalLink className="h-3 w-3 opacity-70" />
             </Link>
+            <AdminPushToggle />
             <div className="hidden gap-1 sm:flex">
               {roles.map((r) => (
                 <Badge key={r} variant="secondary">{r}</Badge>
