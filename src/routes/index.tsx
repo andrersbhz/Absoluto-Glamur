@@ -114,6 +114,11 @@ function Index() {
         </div>
       ) : null}
 
+      {/* Hero Slider (editável) */}
+      {heroSlider.enabled !== false && heroSlides.length > 0 ? (
+        <HeroSlider slides={heroSlides} autoplayMs={heroSlider.autoplay_ms ?? 6000} />
+      ) : null}
+
       {/* HERO */}
       <section className="relative isolate overflow-hidden">
         <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(1200px_600px_at_20%_-10%,var(--secondary),transparent_60%),radial-gradient(900px_500px_at_100%_10%,color-mix(in_oklab,var(--champagne)_35%,transparent),transparent_60%),linear-gradient(180deg,var(--background),var(--background))]" />
