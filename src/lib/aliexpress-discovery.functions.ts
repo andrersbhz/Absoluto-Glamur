@@ -88,7 +88,7 @@ async function refreshAliToken(appKey: string, appSecret: string, refreshToken: 
     sign_method: "sha256",
     timestamp: Date.now().toString(),
   };
-  const signature = signRestPath("/auth/token/refresh", signParams, appSecret);
+  const signature = await signRestPath("/auth/token/refresh", signParams, appSecret);
   const body = new URLSearchParams({ ...signParams, sign: signature }).toString();
   const res = await fetch("https://api-sg.aliexpress.com/rest/auth/token/refresh", {
     method: "POST",
