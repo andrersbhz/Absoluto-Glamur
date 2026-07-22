@@ -106,6 +106,8 @@ function HomeContentPanel() {
   const pillars = value.pillars ?? {};
   const pillarItems = pillars.items ?? [];
   const badges = value.trust_badges ?? [];
+  const slider = value.hero_slider ?? {};
+  const sliderSlides = slider.slides ?? [];
 
   return (
     <div className="space-y-6">
