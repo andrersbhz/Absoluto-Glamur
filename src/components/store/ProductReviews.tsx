@@ -271,7 +271,7 @@ function ReviewCard({
           >
             <X className="h-4 w-4" />
           </button>
-          <img src={lightbox} alt={`Foto ampliada da avaliação de ${initialAuthorLabel(review)}`} className="max-h-full max-w-full rounded-xl" />
+          <img src={lightbox} alt={`Foto ampliada da avaliação de ${review.author_name ?? "cliente"}`} className="max-h-full max-w-full rounded-xl" />
         </div>
       )}
     </article>
