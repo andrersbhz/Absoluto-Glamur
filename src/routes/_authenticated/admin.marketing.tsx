@@ -1,19 +1,18 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { toast } from "sonner";
-import { Plus, Trash2, ArrowUp, ArrowDown, Save, ImagePlus, Loader2 } from "lucide-react";
+import { Plus, Trash2, Save, Loader2 } from "lucide-react";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { supabase } from "@/integrations/supabase/client";
-import { homepageBlocksAdminQuery, collectionsAdminQuery, homeContentQuery, type HomeContent } from "@/lib/marketing";
+import { collectionsAdminQuery, homeContentQuery, type HomeContent } from "@/lib/marketing";
 import { upsertSiteSetting } from "@/lib/site-settings.functions";
 import { useServerFn } from "@tanstack/react-start";
-import { imageFileToWebpDataUri } from "@/lib/image-webp";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { HomepageBlocksEditor } from "@/components/admin/HomepageBlocksEditor";
 
 export const Route = createFileRoute("/_authenticated/admin/marketing")({
   beforeLoad: async () => {
