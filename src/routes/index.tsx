@@ -53,6 +53,19 @@ function Index() {
   const primaryHref = hero.cta_primary_href ?? "/products";
   const secondaryHref = hero.cta_secondary_href ?? "/products?collection=promocoes";
 
+  // Fallback dinâmico: se não houver imagem configurada no hero, usa a capa
+  // do primeiro produto em destaque (mais vendidos → lançamentos → categorias).
+  const dynamicHeroProduct =
+    bestsellers[0] ??
+    newArrivals[0] ??
+    byCategory.flatMap((r) => r.products)[0] ??
+    null;
+  const heroImageUrl =
+    hero.image_url && hero.image_url.trim().length > 0
+      ? hero.image_url
+      : dynamicHeroProduct?.thumbnail_url ?? null;
+  const heroProductName = !hero.image_url ? dynamicHeroProduct?.name ?? null : null;
+
   return (
     <StoreLayout>
       {/* Announcement bar */}
