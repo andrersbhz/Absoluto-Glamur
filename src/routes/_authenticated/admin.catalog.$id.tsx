@@ -6,6 +6,7 @@ import {
   ArrowLeft,
   ArrowDown,
   ArrowUp,
+  FileVideo,
   ImageIcon,
   Plus,
   Save,
@@ -14,6 +15,7 @@ import {
   Tag,
   Trash2,
 } from "lucide-react";
+
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { isVideoUrl } from "@/lib/media-kind";
@@ -529,29 +531,12 @@ function CatalogEditor() {
                         >
                           <div className="flex h-[72px] w-[72px] items-center justify-center overflow-hidden rounded-lg border border-border bg-secondary">
                             {m.url ? (
-                              isVideo ? (
-                                <video
-                                  src={m.url}
-                                  className="h-full w-full object-cover"
-                                  muted
-                                  playsInline
-                                  loop
-                                  autoPlay
-                                />
-                              ) : (
-                                <img
-                                  src={m.url}
-                                  alt={m.alt || ""}
-                                  className="h-full w-full object-cover"
-                                  onError={(e) => {
-                                    (e.currentTarget as HTMLImageElement).style.display = "none";
-                                  }}
-                                />
-                              )
+                              <MediaThumb url={m.url} alt={m.alt} isVideo={isVideo} />
                             ) : (
                               <ImageIcon className="h-6 w-6 text-muted-foreground" />
                             )}
                           </div>
+
                           <div className="space-y-2">
                             <div className="flex items-center gap-2">
                               {i === 0 && (
@@ -907,3 +892,40 @@ function Check({ ok, children }: { ok: boolean; children: React.ReactNode }) {
     </li>
   );
 }
+
+function MediaThumb({ url, alt, isVideo }: { url: string; alt: string; isVideo: boolean }) {
+  const [failed, setFailed] = useState(false);
+  if (failed) {
+    return (
+      <div className="flex h-full w-full flex-col items-center justify-center gap-1 text-muted-foreground">
+        {isVideo ? <FileVideo className="h-6 w-6" /> : <ImageIcon className="h-6 w-6" />}
+        <span className="text-[9px] uppercase tracking-wide">{isVideo ? "vídeo" : "imagem"}</span>
+      </div>
+    );
+  }
+  if (isVideo) {
+    return (
+      <video
+        src={url}
+        className="h-full w-full object-cover"
+        muted
+        playsInline
+        loop
+        autoPlay
+        preload="metadata"
+        crossOrigin="anonymous"
+        onError={() => setFailed(true)}
+      />
+    );
+  }
+  return (
+    <img
+      src={url}
+      alt={alt || ""}
+      className="h-full w-full object-cover"
+      loading="lazy"
+      onError={() => setFailed(true)}
+    />
+  );
+}
+
