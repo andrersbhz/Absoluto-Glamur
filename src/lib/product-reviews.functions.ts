@@ -276,6 +276,42 @@ async function fetchAliexpressReviews(productId: string, minRating = 4.5): Promi
   return await fetchViaFirecrawl(productId, minRating);
 }
 
+// Internal helper: fetch + upsert reviews for one product. Safe to call from
+// other server functions (e.g. right after importing a product). Best-effort;
+// returns counts without throwing on transient upstream failures.
+export async function syncReviewsForProductInternal(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  admin: any,
+  productId: string,
+  sourceId: string,
+  minRating = 4.5,
+): Promise<{ fetched: number; upserted: number }> {
+  try {
+    const reviews = await fetchAliexpressReviews(sourceId, minRating);
+    if (reviews.length === 0) return { fetched: 0, upserted: 0 };
+    const rows = reviews.map((r) => ({
+      product_id: productId,
+      source: "aliexpress",
+      source_review_id: r.source_review_id,
+      author_name: r.author_name,
+      author_country: r.author_country,
+      rating: r.rating,
+      title: r.title,
+      body: r.body,
+      images: r.images,
+      reviewed_at: r.reviewed_at,
+      is_visible: true,
+    }));
+    const { error } = await admin
+      .from("product_external_reviews")
+      .upsert(rows, { onConflict: "product_id,source,source_review_id" });
+    if (error) return { fetched: reviews.length, upserted: 0 };
+    return { fetched: reviews.length, upserted: rows.length };
+  } catch {
+    return { fetched: 0, upserted: 0 };
+  }
+}
+
 
 export const syncAliexpressReviews = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
