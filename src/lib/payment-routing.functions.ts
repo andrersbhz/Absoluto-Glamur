@@ -18,23 +18,8 @@ export type CheckoutMethodDTO = {
  */
 export const listCheckoutMethods = createServerFn({ method: "GET" }).handler(
   async (): Promise<CheckoutMethodDTO[]> => {
-    const { createClient } = await import("@supabase/supabase-js");
-    const key = process.env.SUPABASE_PUBLISHABLE_KEY!;
-    const url = process.env.SUPABASE_URL!;
-    const supa = createClient(url, key, {
-      auth: { persistSession: false, autoRefreshToken: false },
-      global: {
-        fetch: (input, init) => {
-          const h = new Headers(init?.headers);
-          if (key.startsWith("sb_") && h.get("Authorization") === `Bearer ${key}`) {
-            h.delete("Authorization");
-          }
-          h.set("apikey", key);
-          return fetch(input, { ...init, headers: h });
-        },
-      },
-    });
-    const { data, error } = await supa
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data, error } = await supabaseAdmin
       .from("payment_method_routing")
       .select("method, provider, enabled, display_label, sort_order")
       .eq("enabled", true)
@@ -49,6 +34,7 @@ export const listCheckoutMethods = createServerFn({ method: "GET" }).handler(
     }));
   },
 );
+
 
 /** Admin: lista completo (habilitados e desabilitados) */
 export const listAdminRouting = createServerFn({ method: "GET" })
