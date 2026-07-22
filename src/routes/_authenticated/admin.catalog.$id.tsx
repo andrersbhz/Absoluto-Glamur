@@ -1,7 +1,7 @@
 import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowLeft,
   ArrowDown,
@@ -176,14 +176,31 @@ function CatalogEditor() {
 
   const syncStockFn = useServerFn(syncAliexpressStock);
   const syncStock = useMutation({
-    mutationFn: () => syncStockFn({ data: { product_id: id } }),
+    mutationFn: (opts: { silent?: boolean } | void) =>
+      syncStockFn({ data: { product_id: id } }).then((r) => ({ ...r, silent: !!opts?.silent })),
     onSuccess: (r) => {
       setForm((f) => ({ ...f, stock: String(r.total_stock) }));
-      toast.success(`Estoque AliExpress: ${r.total_stock} unidades (${r.variants_updated} variantes)`);
+      if (!r.silent) {
+        toast.success(`Estoque AliExpress: ${r.total_stock} unidades (${r.variants_updated} variantes)`);
+      }
       prodQ.refetch();
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error, vars) => {
+      if (!vars || !(vars as { silent?: boolean }).silent) toast.error(e.message);
+    },
   });
+
+  // Auto-sync stock from AliExpress on first open (silently, only if linked).
+  const autoSyncedRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (isNew) return;
+    if (!prodQ.data) return;
+    if (autoSyncedRef.current === id) return;
+    autoSyncedRef.current = id;
+    syncStock.mutate({ silent: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, prodQ.data]);
+
 
   function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -434,7 +451,7 @@ function CatalogEditor() {
                           placeholder="AG-SER-VITC-30"
                         />
                       </Field>
-                      <Field label="Estoque disponível" hint={isNew ? undefined : "Conecte ao AliExpress para sincronizar automaticamente."}>
+                      <Field label="Estoque disponível" hint={isNew ? undefined : "Sincroniza automaticamente ao abrir. Use o botão para forçar atualização."}>
                         <div className="flex gap-2">
                           <input
                             type="number"
@@ -447,6 +464,7 @@ function CatalogEditor() {
                             <button
                               type="button"
                               onClick={() => syncStock.mutate()}
+
                               disabled={syncStock.isPending}
                               title="Sincronizar estoque com AliExpress"
                               className="inline-flex items-center gap-1 rounded-lg border border-primary/40 bg-primary/10 px-3 text-xs font-medium text-primary transition hover:bg-primary/20 disabled:opacity-50"
