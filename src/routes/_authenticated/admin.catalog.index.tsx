@@ -90,6 +90,40 @@ function CatalogList() {
     queryFn: () => list({ data: { q, status } }),
   });
 
+  // Auto-sincroniza silenciosamente ao abrir o catálogo, garantindo estoque/custo
+  // atualizados via API AliExpress sem exigir clique manual (uma vez por sessão).
+  const autoSyncedRef = useRef(false);
+  useEffect(() => {
+    if (autoSyncedRef.current) return;
+    const rows = query.data ?? [];
+    if (rows.length === 0) return;
+    const connected = rows.filter((r) => r.ali_source_id);
+    const missing = connected.filter((r) => r.stock == null || r.cost_cents == null);
+    if (missing.length === 0) return;
+    autoSyncedRef.current = true;
+    (async () => {
+      try {
+        await syncAll({ data: { limit: 200 } });
+        qc.invalidateQueries({ queryKey: ["admin-products"] });
+      } catch {
+        // silencioso — botão manual continua disponível
+      }
+    })();
+  }, [query.data, syncAll, qc]);
+
+  async function handleRowSync(id: string) {
+    setRowSyncing((s) => ({ ...s, [id]: true }));
+    try {
+      const r = await syncOne({ data: { product_id: id } });
+      toast.success(`Estoque: ${r.total_stock} · ${r.variants_updated} variante(s)`);
+      qc.invalidateQueries({ queryKey: ["admin-products"] });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Falha ao sincronizar");
+    } finally {
+      setRowSyncing((s) => ({ ...s, [id]: false }));
+    }
+  }
+
   const delMut = useMutation({
     mutationFn: (id: string) => del({ data: { id } }),
     onSuccess: () => {
