@@ -892,3 +892,40 @@ function Check({ ok, children }: { ok: boolean; children: React.ReactNode }) {
     </li>
   );
 }
+
+function MediaThumb({ url, alt, isVideo }: { url: string; alt: string; isVideo: boolean }) {
+  const [failed, setFailed] = useState(false);
+  if (failed) {
+    return (
+      <div className="flex h-full w-full flex-col items-center justify-center gap-1 text-muted-foreground">
+        {isVideo ? <FileVideo className="h-6 w-6" /> : <ImageIcon className="h-6 w-6" />}
+        <span className="text-[9px] uppercase tracking-wide">{isVideo ? "vídeo" : "imagem"}</span>
+      </div>
+    );
+  }
+  if (isVideo) {
+    return (
+      <video
+        src={url}
+        className="h-full w-full object-cover"
+        muted
+        playsInline
+        loop
+        autoPlay
+        preload="metadata"
+        crossOrigin="anonymous"
+        onError={() => setFailed(true)}
+      />
+    );
+  }
+  return (
+    <img
+      src={url}
+      alt={alt || ""}
+      className="h-full w-full object-cover"
+      loading="lazy"
+      onError={() => setFailed(true)}
+    />
+  );
+}
+
