@@ -47,20 +47,21 @@ export function HomepageBlocksEditor() {
   const addBlock = async (kind: string) => {
     const nextPos = (blocks[blocks.length - 1]?.position ?? 0) + 10;
     const defaults = defaultDataFor(kind);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error, data } = await supabase.from("homepage_blocks").insert({
-      kind, title: defaults.title, subtitle: defaults.subtitle ?? null, data: defaults.data, position: nextPos, is_active: true,
+      kind, title: defaults.title, subtitle: defaults.subtitle ?? null, data: defaults.data as any, position: nextPos, is_active: true,
     }).select("id").single();
     setShowAdd(false);
-    if (error) return toast.error(error.message);
+    if (error) { toast.error(error.message); return; }
     toast.success("Bloco adicionado");
     if (data?.id) setExpanded((e) => ({ ...e, [data.id]: true }));
     refresh();
   };
 
-  const updateBlock = async (id: string, patch: Record<string, unknown>) => {
+  const updateBlock = async (id: string, patch: Record<string, unknown>): Promise<void> => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const { error } = await supabase.from("homepage_blocks").update(patch as any).eq("id", id);
-    if (error) return toast.error(error.message);
+    if (error) { toast.error(error.message); return; }
     refresh();
   };
 
@@ -399,7 +400,7 @@ function ImageField({ label, value, onChange }: { label: string; value: string; 
             const file = e.target.files?.[0]; if (!file) return;
             setUploading(true);
             try {
-              const dataUri = await imageFileToWebpDataUri(file, { maxWidth: 1920, quality: 0.85 });
+              const { dataUri } = await imageFileToWebpDataUri(file, { maxWidth: 1920, quality: 0.85 });
               onChange(dataUri);
             } catch (err) {
               toast.error(err instanceof Error ? err.message : "Falha ao processar imagem");
