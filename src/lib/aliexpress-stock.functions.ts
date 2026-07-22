@@ -126,7 +126,7 @@ export const syncAliexpressStock = createServerFn({ method: "POST" })
       throw new Error("Produto não está conectado ao AliExpress (sem source_id no import).");
     }
 
-    const { total, bySku } = await fetchAliexpressStock(imp.source_id);
+    const { total, bySku, costBrlCents } = await fetchAliexpressLive(imp.source_id);
 
     const { data: variants } = await supabaseAdmin
       .from("product_variants")
@@ -147,6 +147,19 @@ export const syncAliexpressStock = createServerFn({ method: "POST" })
       await supabaseAdmin
         .from("product_inventory")
         .upsert(rows, { onConflict: "variant_id" });
+    }
+
+    // Registra custo (BRL) em pricing_calculations para exibir no admin.
+    if (costBrlCents && costBrlCents > 0) {
+      await supabaseAdmin.from("pricing_calculations").insert({
+        product_id: data.product_id,
+        cost_cents: costBrlCents,
+        suggested_price_cents: costBrlCents,
+        final_price_cents: costBrlCents,
+        margin_pct: 0,
+        breakdown: { source: "aliexpress_live", synced_at: new Date().toISOString() },
+        applied: false,
+      } as any);
     }
 
     // Marca a última sincronização no import.
@@ -213,7 +226,7 @@ export async function runBulkSync(limit: number) {
     while (cursor < list.length) {
       const row = list[cursor++];
       try {
-        const { total, bySku } = await fetchAliexpressStock(row.source_id!);
+        const { total, bySku, costBrlCents } = await fetchAliexpressLive(row.source_id!);
         const { data: variants } = await supabaseAdmin
           .from("product_variants")
           .select("id, sku, is_default")
@@ -228,6 +241,17 @@ export async function runBulkSync(limit: number) {
           await supabaseAdmin
             .from("product_inventory")
             .upsert(rows, { onConflict: "variant_id" });
+        }
+        if (costBrlCents && costBrlCents > 0) {
+          await supabaseAdmin.from("pricing_calculations").insert({
+            product_id: row.product_id!,
+            cost_cents: costBrlCents,
+            suggested_price_cents: costBrlCents,
+            final_price_cents: costBrlCents,
+            margin_pct: 0,
+            breakdown: { source: "aliexpress_live", synced_at: new Date().toISOString() },
+            applied: false,
+          } as any);
         }
         ok += 1;
       } catch (e) {
