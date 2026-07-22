@@ -298,11 +298,11 @@ function CategoryCirclesBlock({ block }: { block: HomepageBlock }) {
           {block.title && <h2 className="mt-2 font-display text-3xl">{block.title}</h2>}
         </div>
       )}
-      <div className="grid grid-cols-3 gap-6 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8">
+      <div className="flex flex-wrap justify-center gap-6">
         {list.map((c) => {
           const img = ((data.images as Record<string, string> | undefined) ?? {})[c.slug];
           return (
-            <Link key={c.id} to="/products" search={{ category: c.slug } as never} className="group flex flex-col items-center gap-2">
+            <Link key={c.id} to="/products" search={{ category: c.slug } as never} className="group flex w-20 flex-col items-center gap-2 sm:w-24">
               <div className="relative h-20 w-20 overflow-hidden rounded-full bg-gradient-to-br from-secondary to-champagne/40 ring-1 ring-champagne/40 transition group-hover:ring-primary sm:h-24 sm:w-24">
                 {img && <img src={img} alt={c.name} className="h-full w-full object-cover" loading="lazy" />}
               </div>
