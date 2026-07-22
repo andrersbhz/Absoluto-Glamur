@@ -1,18 +1,19 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { toast } from "sonner";
-import { Plus, Trash2, Save, Loader2 } from "lucide-react";
+import { Plus, Trash2, ArrowUp, ArrowDown, Save, ImagePlus, Loader2 } from "lucide-react";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { supabase } from "@/integrations/supabase/client";
-import { collectionsAdminQuery, homeContentQuery, type HomeContent } from "@/lib/marketing";
+import { homepageBlocksAdminQuery, collectionsAdminQuery, homeContentQuery, type HomeContent } from "@/lib/marketing";
 import { upsertSiteSetting } from "@/lib/site-settings.functions";
 import { useServerFn } from "@tanstack/react-start";
+import { imageFileToWebpDataUri } from "@/lib/image-webp";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { HomepageBlocksEditor } from "@/components/admin/HomepageBlocksEditor";
 
 export const Route = createFileRoute("/_authenticated/admin/marketing")({
   beforeLoad: async () => {
@@ -59,7 +60,7 @@ function MarketingAdmin() {
             <TabsTrigger value="seo">SEO</TabsTrigger>
           </TabsList>
           <TabsContent value="homepage" className="mt-6">
-            <HomepageBlocksEditor />
+            <HomepageBlocksPanel />
           </TabsContent>
           <TabsContent value="content" className="mt-6">
             <HomeContentPanel />
@@ -252,6 +253,191 @@ function HomeContentPanel() {
   );
 }
 
+function HomepageBlocksPanel() {
+  const qc = useQueryClient();
+  const { data: blocks = [], isLoading } = useQuery(homepageBlocksAdminQuery());
+  const [saving, setSaving] = useState<string | null>(null);
+
+  const refresh = () => {
+    qc.invalidateQueries({ queryKey: ["homepage-blocks"] });
+  };
+
+  const addBlock = async () => {
+    const nextPos = (blocks[blocks.length - 1]?.position ?? 0) + 10;
+    const { error } = await supabase.from("homepage_blocks").insert({
+      kind: "banner",
+      title: "Novo bloco",
+      subtitle: null,
+      data: {},
+      position: nextPos,
+      is_active: false,
+    });
+    if (error) return toast.error(error.message);
+    toast.success("Bloco criado");
+    refresh();
+  };
+
+  const updateBlock = async (id: string, patch: Record<string, unknown>) => {
+    setSaving(id);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await supabase.from("homepage_blocks").update(patch as any).eq("id", id);
+    setSaving(null);
+    if (error) return toast.error(error.message);
+    refresh();
+  };
+
+  const deleteBlock = async (id: string) => {
+    if (!confirm("Remover bloco?")) return;
+    const { error } = await supabase.from("homepage_blocks").delete().eq("id", id);
+    if (error) return toast.error(error.message);
+    toast.success("Bloco removido");
+    refresh();
+  };
+
+  const move = async (id: string, direction: -1 | 1) => {
+    const idx = blocks.findIndex((b) => b.id === id);
+    const other = blocks[idx + direction];
+    if (!other) return;
+    await Promise.all([
+      supabase.from("homepage_blocks").update({ position: other.position }).eq("id", id),
+      supabase.from("homepage_blocks").update({ position: blocks[idx].position }).eq("id", other.id),
+    ]);
+    refresh();
+  };
+
+  if (isLoading) return <p className="text-sm text-muted-foreground">Carregando blocos…</p>;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex justify-end">
+        <Button onClick={addBlock}>
+          <Plus className="mr-2 h-4 w-4" /> Novo bloco
+        </Button>
+      </div>
+      {blocks.length === 0 && (
+        <div className="rounded-2xl border border-dashed border-border p-10 text-center text-sm text-muted-foreground">
+          Nenhum bloco configurado. Adicione o primeiro bloco para começar a montar a homepage.
+        </div>
+      )}
+      {blocks.map((block, idx) => (
+        <div key={block.id} className="rounded-2xl border border-border bg-card p-5 shadow-soft">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex items-center gap-2">
+              <Badge variant={block.is_active ? "default" : "outline"}>
+                {block.is_active ? "Ativo" : "Rascunho"}
+              </Badge>
+              <span className="text-xs uppercase tracking-widest text-muted-foreground">
+                {block.kind}
+              </span>
+            </div>
+            <div className="flex gap-1">
+              <Button variant="ghost" size="icon" disabled={idx === 0} onClick={() => move(block.id, -1)}>
+                <ArrowUp className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                disabled={idx === blocks.length - 1}
+                onClick={() => move(block.id, 1)}
+              >
+                <ArrowDown className="h-4 w-4" />
+              </Button>
+              <Button variant="ghost" size="icon" onClick={() => deleteBlock(block.id)}>
+                <Trash2 className="h-4 w-4 text-destructive" />
+              </Button>
+            </div>
+          </div>
+
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            <label className="text-sm">
+              <span className="text-muted-foreground">Tipo</span>
+              <select
+                className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
+                value={block.kind}
+                onChange={(e) => updateBlock(block.id, { kind: e.target.value })}
+              >
+                {BLOCK_KINDS.map((k) => (
+                  <option key={k.value} value={k.value}>
+                    {k.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="text-sm">
+              <span className="text-muted-foreground">Título</span>
+              <Input
+                defaultValue={block.title ?? ""}
+                onBlur={(e) => updateBlock(block.id, { title: e.target.value || null })}
+              />
+            </label>
+            <label className="text-sm sm:col-span-2">
+              <span className="text-muted-foreground">Subtítulo</span>
+              <Input
+                defaultValue={block.subtitle ?? ""}
+                onBlur={(e) => updateBlock(block.id, { subtitle: e.target.value || null })}
+              />
+            </label>
+            {(block.kind === "hero" || block.kind === "banner") && (
+              <div className="sm:col-span-2">
+                <BannerUpload
+                  currentUrl={(block.data as { image_url?: string } | null)?.image_url ?? null}
+                  onUploaded={(dataUri) => {
+                    const next = { ...(block.data ?? {}), image_url: dataUri };
+                    updateBlock(block.id, { data: next });
+                  }}
+                  onClear={() => {
+                    const next = { ...(block.data ?? {}) } as Record<string, unknown>;
+                    delete next.image_url;
+                    updateBlock(block.id, { data: next });
+                  }}
+                />
+              </div>
+            )}
+            <label className="text-sm sm:col-span-2">
+              <span className="text-muted-foreground">
+                Dados (JSON) —{" "}
+                {block.kind === "hero" && "ex.: { cta_href, cta_label, image_url }"}
+                {block.kind === "collection" && 'ex.: { slug: "mais-vendidos", limit: 4 }'}
+                {block.kind === "category_grid" && 'ex.: { categories: ["skincare","cabelos"] }'}
+                {block.kind === "banner" && "ex.: { image_url, href }"}
+                {block.kind === "text" && "ex.: { body: 'Markdown/Texto' }"}
+              </span>
+              <Textarea
+                rows={4}
+                defaultValue={JSON.stringify(block.data ?? {}, null, 2)}
+                onBlur={(e) => {
+                  try {
+                    const parsed = JSON.parse(e.target.value || "{}");
+                    updateBlock(block.id, { data: parsed });
+                  } catch {
+                    toast.error("JSON inválido");
+                  }
+                }}
+                className="font-mono text-xs"
+              />
+            </label>
+          </div>
+
+          <div className="mt-4 flex items-center justify-between">
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={block.is_active}
+                onChange={(e) => updateBlock(block.id, { is_active: e.target.checked })}
+              />
+              Ativo (visível na homepage)
+            </label>
+            {saving === block.id && (
+              <span className="text-xs text-muted-foreground">
+                <Save className="mr-1 inline h-3 w-3" /> Salvando…
+              </span>
+            )}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 function CollectionsPanel() {
   const qc = useQueryClient();
@@ -405,3 +591,98 @@ function SeoPanel() {
   );
 }
 
+function BannerUpload({
+  currentUrl,
+  onUploaded,
+  onClear,
+}: {
+  currentUrl: string | null;
+  onUploaded: (dataUri: string) => void;
+  onClear: () => void;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [busy, setBusy] = useState(false);
+  const [meta, setMeta] = useState<{ w: number; h: number; kb: number } | null>(null);
+
+  const handleFile = async (file: File | null) => {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast.error("Envie um arquivo de imagem (JPEG, PNG, WebP, AVIF, GIF).");
+      return;
+    }
+    setBusy(true);
+    try {
+      const { dataUri, width, height, sizeKb } = await imageFileToWebpDataUri(file, {
+        maxWidth: 1600,
+        quality: 0.82,
+      });
+      if (sizeKb > 900) {
+        toast.warning(
+          `Banner com ${sizeKb} KB — considere reduzir a resolução ou usar imagem mais simples.`,
+        );
+      }
+      setMeta({ w: width, h: height, kb: sizeKb });
+      onUploaded(dataUri);
+      toast.success(`Convertido para WebP · ${width}×${height} · ${sizeKb} KB`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Falha ao processar imagem");
+    } finally {
+      setBusy(false);
+      if (inputRef.current) inputRef.current.value = "";
+    }
+  };
+
+  return (
+    <div className="rounded-xl border border-dashed border-border bg-secondary/30 p-3">
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3">
+          {currentUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={currentUrl}
+              alt="Preview do banner"
+              className="h-16 w-28 rounded-md border border-border object-cover"
+            />
+          ) : (
+            <div className="flex h-16 w-28 items-center justify-center rounded-md border border-border bg-background text-xs text-muted-foreground">
+              sem imagem
+            </div>
+          )}
+          <div className="text-xs text-muted-foreground">
+            <p className="font-medium text-foreground">Imagem do banner</p>
+            <p>Envie JPEG/PNG — convertemos para WebP otimizado (até 1600px).</p>
+            {meta && (
+              <p className="mt-0.5 text-[11px]">
+                Última: {meta.w}×{meta.h}px · {meta.kb} KB
+              </p>
+            )}
+          </div>
+        </div>
+        <div className="flex gap-2">
+          <input
+            ref={inputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={(e) => handleFile(e.target.files?.[0] ?? null)}
+          />
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => inputRef.current?.click()}
+            disabled={busy}
+          >
+            {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ImagePlus className="mr-2 h-4 w-4" />}
+            {currentUrl ? "Trocar" : "Enviar imagem"}
+          </Button>
+          {currentUrl && (
+            <Button type="button" variant="ghost" size="sm" onClick={onClear} disabled={busy}>
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}

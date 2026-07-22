@@ -1,13 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-// crypto is loaded lazily inside handlers to keep this module client-safe
-// (server-fn transformer strips handler bodies but preserves top-level imports).
-type CreateHmac = typeof import("node:crypto").createHmac;
-let _createHmac: CreateHmac | null = null;
-async function getCreateHmac(): Promise<CreateHmac> {
-  if (!_createHmac) _createHmac = (await import("node:crypto")).createHmac;
-  return _createHmac;
-}
+import { createHmac } from "crypto";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import {
   computeSalePriceCents,
@@ -43,10 +36,9 @@ function slugify(v: string): string {
 // a Unix timestamp in milliseconds. Business parameters remain flat and are
 // included in the signature together with the public parameters.
 
-async function sign(params: Record<string, string>, secret: string): Promise<string> {
+function sign(params: Record<string, string>, secret: string): string {
   const keys = Object.keys(params).sort();
   const base = keys.map((k) => `${k}${params[k]}`).join("");
-  const createHmac = await getCreateHmac();
   return createHmac("sha256", secret).update(base, "utf8").digest("hex").toUpperCase();
 }
 
@@ -71,10 +63,9 @@ async function loadAliCreds() {
   return { appKey, appSecret, accessToken, refreshToken };
 }
 
-async function signRestPath(apiPath: string, params: Record<string, string>, secret: string): Promise<string> {
+function signRestPath(apiPath: string, params: Record<string, string>, secret: string): string {
   const keys = Object.keys(params).sort();
   const base = apiPath + keys.map((k) => `${k}${params[k]}`).join("");
-  const createHmac = await getCreateHmac();
   return createHmac("sha256", secret).update(base, "utf8").digest("hex").toUpperCase();
 }
 
@@ -88,7 +79,7 @@ async function refreshAliToken(appKey: string, appSecret: string, refreshToken: 
     sign_method: "sha256",
     timestamp: Date.now().toString(),
   };
-  const signature = await signRestPath("/auth/token/refresh", signParams, appSecret);
+  const signature = signRestPath("/auth/token/refresh", signParams, appSecret);
   const body = new URLSearchParams({ ...signParams, sign: signature }).toString();
   const res = await fetch("https://api-sg.aliexpress.com/rest/auth/token/refresh", {
     method: "POST",
@@ -148,7 +139,7 @@ async function requestAli(
     if (v === undefined || v === null || v === "") continue;
     params[k] = String(v);
   }
-  params.sign = await sign(params, appSecret);
+  params.sign = sign(params, appSecret);
   const query = new URLSearchParams(params).toString();
   const res = await fetch(`https://api-sg.aliexpress.com/sync?${query}`, { method: "POST" });
   const text = await res.text();
