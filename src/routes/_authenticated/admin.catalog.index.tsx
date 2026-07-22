@@ -1,7 +1,7 @@
 import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Plus, Search, Trash2, Package, ExternalLink, Download, RefreshCw, Sparkles, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -17,7 +17,7 @@ import {
   type AdminProductRow,
 } from "@/lib/admin-catalog.functions";
 import { optimizeProductCopy } from "@/lib/ai-product-optimize.functions";
-import { syncAllAliexpressStock } from "@/lib/aliexpress-stock.functions";
+import { syncAllAliexpressStock, syncAliexpressStock } from "@/lib/aliexpress-stock.functions";
 import { bulkSyncAliexpressReviews } from "@/lib/product-reviews.functions";
 import { Star } from "lucide-react";
 
@@ -44,6 +44,8 @@ function CatalogList() {
   const del = useServerFn(deleteAdminProduct);
   const exportCsv = useServerFn(exportAdminProductsCsv);
   const syncAll = useServerFn(syncAllAliexpressStock);
+  const syncOne = useServerFn(syncAliexpressStock);
+  const [rowSyncing, setRowSyncing] = useState<Record<string, boolean>>({});
   const bulkReviews = useServerFn(bulkSyncAliexpressReviews);
   const optimize = useServerFn(optimizeProductCopy);
   const qc = useQueryClient();
@@ -87,6 +89,40 @@ function CatalogList() {
     queryKey: ["admin-products", { q, status }],
     queryFn: () => list({ data: { q, status } }),
   });
+
+  // Auto-sincroniza silenciosamente ao abrir o catálogo, garantindo estoque/custo
+  // atualizados via API AliExpress sem exigir clique manual (uma vez por sessão).
+  const autoSyncedRef = useRef(false);
+  useEffect(() => {
+    if (autoSyncedRef.current) return;
+    const rows = query.data ?? [];
+    if (rows.length === 0) return;
+    const connected = rows.filter((r) => r.ali_source_id);
+    const missing = connected.filter((r) => r.stock == null || r.cost_cents == null);
+    if (missing.length === 0) return;
+    autoSyncedRef.current = true;
+    (async () => {
+      try {
+        await syncAll({ data: { limit: 200 } });
+        qc.invalidateQueries({ queryKey: ["admin-products"] });
+      } catch {
+        // silencioso — botão manual continua disponível
+      }
+    })();
+  }, [query.data, syncAll, qc]);
+
+  async function handleRowSync(id: string) {
+    setRowSyncing((s) => ({ ...s, [id]: true }));
+    try {
+      const r = await syncOne({ data: { product_id: id } });
+      toast.success(`Estoque: ${r.total_stock} · ${r.variants_updated} variante(s)`);
+      qc.invalidateQueries({ queryKey: ["admin-products"] });
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Falha ao sincronizar");
+    } finally {
+      setRowSyncing((s) => ({ ...s, [id]: false }));
+    }
+  }
 
   const delMut = useMutation({
     mutationFn: (id: string) => del({ data: { id } }),
@@ -263,6 +299,8 @@ function CatalogList() {
                   }}
                   onOptimize={() => handleOptimize(p.id, p.name)}
                   optimizing={aiTarget?.id === p.id && aiLoading !== "idle"}
+                  onSync={() => handleRowSync(p.id)}
+                  syncing={!!rowSyncing[p.id]}
                 />
               ))}
             </tbody>
@@ -359,11 +397,15 @@ function ProductRow({
   onDelete,
   onOptimize,
   optimizing,
+  onSync,
+  syncing,
 }: {
   row: AdminProductRow;
   onDelete: () => void;
   onOptimize: () => void;
   optimizing: boolean;
+  onSync: () => void;
+  syncing: boolean;
 }) {
   const statusBadge =
     row.status === "active" ? (
@@ -434,6 +476,20 @@ function ProductRow({
       <td className="px-4 py-3">{row.media_count}</td>
       <td className="px-4 py-3">
         <div className="flex items-center justify-end gap-2">
+          {row.ali_source_id && (
+            <button
+              onClick={onSync}
+              disabled={syncing}
+              title="Sincronizar estoque e custo do AliExpress"
+              className="inline-flex items-center gap-1 rounded-lg border border-border p-1.5 text-xs hover:bg-secondary disabled:opacity-60"
+            >
+              {syncing ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <RefreshCw className="h-3.5 w-3.5" />
+              )}
+            </button>
+          )}
           {row.status === "active" && (
             <Link
               to="/products/$slug"
