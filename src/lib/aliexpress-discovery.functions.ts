@@ -71,9 +71,10 @@ async function loadAliCreds() {
   return { appKey, appSecret, accessToken, refreshToken };
 }
 
-function signRestPath(apiPath: string, params: Record<string, string>, secret: string): string {
+async function signRestPath(apiPath: string, params: Record<string, string>, secret: string): Promise<string> {
   const keys = Object.keys(params).sort();
   const base = apiPath + keys.map((k) => `${k}${params[k]}`).join("");
+  const createHmac = await getCreateHmac();
   return createHmac("sha256", secret).update(base, "utf8").digest("hex").toUpperCase();
 }
 
