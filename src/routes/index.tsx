@@ -8,8 +8,38 @@ import { categoriesQuery, collectionsQuery, featuredProductsQuery, productsByCat
 import { homepageBlocksQuery, homeContentQuery, type HomepageBlock } from "@/lib/marketing";
 
 export const Route = createFileRoute("/")({
+  head: () => ({
+    meta: [
+      { title: "Absoluto Glamur · Cosméticos premium com curadoria" },
+      {
+        name: "description",
+        content:
+          "Absoluto Glamur — maison digital de beleza. Skincare, maquiagem e cabelos selecionados com curadoria, com envio para todo o Brasil.",
+      },
+      { property: "og:title", content: "Absoluto Glamur · Cosméticos premium" },
+      {
+        property: "og:description",
+        content:
+          "Skincare, maquiagem e cabelos com curadoria. Envio para todo o Brasil.",
+      },
+      { property: "og:url", content: "https://absolutoglamur.com.br/" },
+      { property: "og:type", content: "website" },
+      {
+        property: "og:image",
+        content:
+          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/be040f5f-bd15-4a98-8b8d-e90c140eacaf/id-preview-0aae106e--c8e28b23-eac8-4d4a-9c23-26a7e47a2ec8.lovable.app-1784319380473.png",
+      },
+      {
+        name: "twitter:image",
+        content:
+          "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/be040f5f-bd15-4a98-8b8d-e90c140eacaf/id-preview-0aae106e--c8e28b23-eac8-4d4a-9c23-26a7e47a2ec8.lovable.app-1784319380473.png",
+      },
+    ],
+    links: [{ rel: "canonical", href: "https://absolutoglamur.com.br/" }],
+  }),
   component: Index,
 });
+
 
 const ICON_MAP: Record<string, ComponentType<{ className?: string }>> = {
   sparkles: Sparkles,
@@ -322,7 +352,7 @@ function CustomBlock({ block }: { block: HomepageBlock }) {
       <section className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         <a href={href} className="block overflow-hidden rounded-2xl border border-border shadow-soft">
           {img ? (
-            <img src={img} alt={block.title ?? ""} className="w-full object-cover" loading="lazy" />
+            <img src={img} alt={`${block.title ?? "Banner promocional"}${block.subtitle ? ` — ${block.subtitle}` : " · Absoluto Glamur"}`} className="w-full object-cover" loading="lazy" />
           ) : (
             <div className="flex items-center justify-between bg-secondary px-6 py-8">
               <div>

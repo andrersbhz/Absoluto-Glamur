@@ -253,7 +253,7 @@ function ReviewCard({
               onClick={() => setLightbox(url)}
               className="h-20 w-20 overflow-hidden rounded-lg bg-secondary/40 ring-1 ring-border transition hover:ring-primary"
             >
-              <img src={url} alt="" className="h-full w-full object-cover" loading="lazy" />
+              <img src={url} alt={`Foto enviada por ${review.author_name ?? "cliente"}${review.title ? ` — ${review.title}` : ""}`} className="h-full w-full object-cover" loading="lazy" />
             </button>
           ))}
         </div>
@@ -271,7 +271,7 @@ function ReviewCard({
           >
             <X className="h-4 w-4" />
           </button>
-          <img src={lightbox} alt="" className="max-h-full max-w-full rounded-xl" />
+          <img src={lightbox} alt={`Foto ampliada da avaliação de ${initialAuthorLabel(review)}`} className="max-h-full max-w-full rounded-xl" />
         </div>
       )}
     </article>
