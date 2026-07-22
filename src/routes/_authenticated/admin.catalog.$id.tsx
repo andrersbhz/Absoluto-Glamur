@@ -6,6 +6,7 @@ import {
   ArrowLeft,
   ArrowDown,
   ArrowUp,
+  FileVideo,
   ImageIcon,
   Plus,
   Save,
@@ -14,6 +15,7 @@ import {
   Tag,
   Trash2,
 } from "lucide-react";
+
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { isVideoUrl } from "@/lib/media-kind";
