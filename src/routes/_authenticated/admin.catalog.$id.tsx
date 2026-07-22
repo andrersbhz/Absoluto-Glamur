@@ -464,6 +464,7 @@ function CatalogEditor() {
                             <button
                               type="button"
                               onClick={() => syncStock.mutate()}
+
                               disabled={syncStock.isPending}
                               title="Sincronizar estoque com AliExpress"
                               className="inline-flex items-center gap-1 rounded-lg border border-primary/40 bg-primary/10 px-3 text-xs font-medium text-primary transition hover:bg-primary/20 disabled:opacity-50"
