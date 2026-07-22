@@ -531,29 +531,12 @@ function CatalogEditor() {
                         >
                           <div className="flex h-[72px] w-[72px] items-center justify-center overflow-hidden rounded-lg border border-border bg-secondary">
                             {m.url ? (
-                              isVideo ? (
-                                <video
-                                  src={m.url}
-                                  className="h-full w-full object-cover"
-                                  muted
-                                  playsInline
-                                  loop
-                                  autoPlay
-                                />
-                              ) : (
-                                <img
-                                  src={m.url}
-                                  alt={m.alt || ""}
-                                  className="h-full w-full object-cover"
-                                  onError={(e) => {
-                                    (e.currentTarget as HTMLImageElement).style.display = "none";
-                                  }}
-                                />
-                              )
+                              <MediaThumb url={m.url} alt={m.alt} isVideo={isVideo} />
                             ) : (
                               <ImageIcon className="h-6 w-6 text-muted-foreground" />
                             )}
                           </div>
+
                           <div className="space-y-2">
                             <div className="flex items-center gap-2">
                               {i === 0 && (
