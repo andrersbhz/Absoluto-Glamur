@@ -46,7 +46,7 @@ export const useCart = create<CartState>()(
         })),
       clear: () => set({ items: [] }),
     }),
-    { name: "bloom-cart-v1" },
+    { name: "absoluto-glamur-cart-v1" },
   ),
 );
 

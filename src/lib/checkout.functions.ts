@@ -345,7 +345,7 @@ async function handleNuPayRedirect(ctx: OrderContext, integ: any) {
     env: (integ.mode as "sandbox" | "production") ?? "sandbox",
   };
 
-  const returnUrl = ctx.data.returnUrl ?? `https://bloom.app/checkout/${ctx.orderId}`;
+  const returnUrl = ctx.data.returnUrl ?? `https://absolutoglamur.com.br/checkout/${ctx.orderId}`;
   // Docs: POST /checkout/v1/orders → cria sessão + URL de redirecionamento
   const session = await nupayFetch<{
     id: string;
