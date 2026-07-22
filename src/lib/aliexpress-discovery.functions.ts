@@ -43,9 +43,10 @@ function slugify(v: string): string {
 // a Unix timestamp in milliseconds. Business parameters remain flat and are
 // included in the signature together with the public parameters.
 
-function sign(params: Record<string, string>, secret: string): string {
+async function sign(params: Record<string, string>, secret: string): Promise<string> {
   const keys = Object.keys(params).sort();
   const base = keys.map((k) => `${k}${params[k]}`).join("");
+  const createHmac = await getCreateHmac();
   return createHmac("sha256", secret).update(base, "utf8").digest("hex").toUpperCase();
 }
 
