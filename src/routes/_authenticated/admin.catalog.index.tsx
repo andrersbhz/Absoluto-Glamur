@@ -1,7 +1,7 @@
 import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Plus, Search, Trash2, Package, ExternalLink, Download, RefreshCw, Sparkles, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -17,7 +17,7 @@ import {
   type AdminProductRow,
 } from "@/lib/admin-catalog.functions";
 import { optimizeProductCopy } from "@/lib/ai-product-optimize.functions";
-import { syncAllAliexpressStock } from "@/lib/aliexpress-stock.functions";
+import { syncAllAliexpressStock, syncAliexpressStock } from "@/lib/aliexpress-stock.functions";
 import { bulkSyncAliexpressReviews } from "@/lib/product-reviews.functions";
 import { Star } from "lucide-react";
 
@@ -44,6 +44,8 @@ function CatalogList() {
   const del = useServerFn(deleteAdminProduct);
   const exportCsv = useServerFn(exportAdminProductsCsv);
   const syncAll = useServerFn(syncAllAliexpressStock);
+  const syncOne = useServerFn(syncAliexpressStock);
+  const [rowSyncing, setRowSyncing] = useState<Record<string, boolean>>({});
   const bulkReviews = useServerFn(bulkSyncAliexpressReviews);
   const optimize = useServerFn(optimizeProductCopy);
   const qc = useQueryClient();
