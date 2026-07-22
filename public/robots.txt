@@ -8,3 +8,5 @@ Disallow: /orders
 Disallow: /favorites
 Disallow: /auth
 Disallow: /api/
+
+Sitemap: https://absolutoglamur.com.br/sitemap.xml

@@ -5,9 +5,28 @@ import { cartTotals, useCart } from "@/lib/cart-store";
 import { formatBRL } from "@/lib/format";
 
 export const Route = createFileRoute("/cart")({
-  head: () => ({ meta: [{ title: "Carrinho · Absoluto Glamur" }] }),
+  head: () => ({
+    meta: [
+      { title: "Carrinho de compras · Absoluto Glamur" },
+      {
+        name: "description",
+        content:
+          "Revise os itens do seu carrinho na Absoluto Glamur e siga para o checkout com pagamento seguro via PIX ou cartão.",
+      },
+      { property: "og:title", content: "Seu carrinho · Absoluto Glamur" },
+      {
+        property: "og:description",
+        content: "Revise os itens do seu carrinho e finalize com pagamento seguro.",
+      },
+      { property: "og:url", content: "https://absolutoglamur.com.br/cart" },
+      { property: "og:type", content: "website" },
+      { name: "robots", content: "noindex, follow" },
+    ],
+    links: [{ rel: "canonical", href: "https://absolutoglamur.com.br/cart" }],
+  }),
   component: CartPage,
 });
+
 
 function CartPage() {
   const items = useCart((s) => s.items);

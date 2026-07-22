@@ -1,0 +1,23 @@
+# Absoluto Glamur
+
+> Loja online brasileira de cosméticos premium com curadoria de skincare, maquiagem e cuidados capilares, com envio para todo o Brasil.
+
+Absoluto Glamur é uma maison digital de beleza focada em produtos selecionados de skincare, maquiagem e cabelos, com foco em qualidade sensorial e experiência de compra elegante. Pagamentos via PIX e cartão, checkout transparente e entrega nacional.
+
+## Páginas principais
+
+- [Início](/): apresentação da marca, coleções em destaque e produtos mais vendidos
+- [Catálogo](/products): todos os produtos disponíveis, com filtros por categoria e coleção
+- [Carrinho](/cart): itens selecionados pela cliente
+
+## Categorias
+
+- [Skincare](/products?category=skincare): tratamento facial, hidratação e antissinais
+- [Maquiagem](/products?category=maquiagem): rosto, olhos e lábios
+- [Cabelos](/products?category=cabelos): shampoos, condicionadores e finalizadores
+- [Fitness](/products?category=fitness): bem-estar e cuidados para o corpo
+
+## Optional
+
+- [Coleção Lançamentos](/products?collection=lancamentos)
+- [Coleção Mais vendidos](/products?collection=mais-vendidos)

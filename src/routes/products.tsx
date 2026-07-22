@@ -15,12 +15,26 @@ export const Route = createFileRoute("/products")({
   validateSearch: (search) => searchSchema.parse(search),
   head: () => ({
     meta: [
-      { title: "Produtos · Absoluto Glamur" },
-      { name: "description", content: "Explore nosso catálogo de skincare, maquiagem e cabelos." },
+      { title: "Catálogo · Skincare, Maquiagem e Cabelos · Absoluto Glamur" },
+      {
+        name: "description",
+        content:
+          "Catálogo completo de skincare, maquiagem, cabelos e fitness da Absoluto Glamur. Selecione por categoria ou coleção e receba em todo o Brasil.",
+      },
+      { property: "og:title", content: "Catálogo Absoluto Glamur" },
+      {
+        property: "og:description",
+        content:
+          "Skincare, maquiagem e cabelos com curadoria. Explore o catálogo completo da Absoluto Glamur.",
+      },
+      { property: "og:url", content: "https://absolutoglamur.com.br/products" },
+      { property: "og:type", content: "website" },
     ],
+    links: [{ rel: "canonical", href: "https://absolutoglamur.com.br/products" }],
   }),
   component: ProductsPage,
 });
+
 
 function ProductsPage() {
   const { q, category, collection } = Route.useSearch();
