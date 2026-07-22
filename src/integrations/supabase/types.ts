@@ -398,6 +398,8 @@ export type Database = {
       }
       order_items: {
         Row: {
+          aliexpress_product_id: string | null
+          aliexpress_sku_attr: string | null
           created_at: string
           id: string
           image_url: string | null
@@ -412,6 +414,8 @@ export type Database = {
           variant_name: string | null
         }
         Insert: {
+          aliexpress_product_id?: string | null
+          aliexpress_sku_attr?: string | null
           created_at?: string
           id?: string
           image_url?: string | null
@@ -426,6 +430,8 @@ export type Database = {
           variant_name?: string | null
         }
         Update: {
+          aliexpress_product_id?: string | null
+          aliexpress_sku_attr?: string | null
           created_at?: string
           id?: string
           image_url?: string | null
@@ -474,6 +480,12 @@ export type Database = {
           customer_name: string
           customer_phone: string | null
           discount_cents: number
+          fulfillment_error: string | null
+          fulfillment_order_id: string | null
+          fulfillment_provider: string | null
+          fulfillment_response: Json | null
+          fulfillment_sent_at: string | null
+          fulfillment_status: string
           id: string
           notes: string | null
           paid_at: string | null
@@ -495,6 +507,12 @@ export type Database = {
           customer_name: string
           customer_phone?: string | null
           discount_cents?: number
+          fulfillment_error?: string | null
+          fulfillment_order_id?: string | null
+          fulfillment_provider?: string | null
+          fulfillment_response?: Json | null
+          fulfillment_sent_at?: string | null
+          fulfillment_status?: string
           id?: string
           notes?: string | null
           paid_at?: string | null
@@ -516,6 +534,12 @@ export type Database = {
           customer_name?: string
           customer_phone?: string | null
           discount_cents?: number
+          fulfillment_error?: string | null
+          fulfillment_order_id?: string | null
+          fulfillment_provider?: string | null
+          fulfillment_response?: Json | null
+          fulfillment_sent_at?: string | null
+          fulfillment_status?: string
           id?: string
           notes?: string | null
           paid_at?: string | null
