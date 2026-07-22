@@ -76,9 +76,22 @@ export const listAdminProducts = createServerFn({ method: "GET" })
       variants: {
         id: string; is_default: boolean;
         prices: { list_price_cents: number; sale_price_cents: number | null; is_active: boolean }[] | null;
-        inventory: { stock: number }[] | null;
+        inventory: { stock: number } | { stock: number }[] | null;
       }[] | null;
     };
+    // Busca vínculos AliExpress em paralelo para exibir botão de sync por linha.
+    const productIds = (rows as unknown as Row[]).map((r) => r.id);
+    const { data: imports } = await supabaseAdmin
+      .from("product_imports")
+      .select("product_id, source_id, created_at")
+      .in("product_id", productIds.length > 0 ? productIds : ["00000000-0000-0000-0000-000000000000"])
+      .in("source", ["aliexpress", "aliexpress_api"])
+      .not("source_id", "is", null)
+      .order("created_at", { ascending: false });
+    const aliBy: Record<string, string> = {};
+    for (const imp of imports ?? []) {
+      if (imp.product_id && imp.source_id && !aliBy[imp.product_id]) aliBy[imp.product_id] = imp.source_id;
+    }
     return (rows as unknown as Row[]).map((r) => {
       const def = r.variants?.find((v) => v.is_default) ?? r.variants?.[0];
       const price = def?.prices?.find((p) => p.is_active) ?? def?.prices?.[0];
@@ -87,7 +100,12 @@ export const listAdminProducts = createServerFn({ method: "GET" })
           ? price.sale_price_cents
           : price.list_price_cents
         : null;
-      const stock = def?.inventory?.[0]?.stock ?? null;
+      const invRaw = def?.inventory;
+      const stock = invRaw
+        ? Array.isArray(invRaw)
+          ? (invRaw[0]?.stock ?? null)
+          : (invRaw.stock ?? null)
+        : null;
       const mediaSorted = (r.media ?? []).slice().sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
       const cover = mediaSorted.find((m) => m.kind !== "video") ?? mediaSorted[0];
       const latestPricing = (r.pricing ?? [])
@@ -108,6 +126,7 @@ export const listAdminProducts = createServerFn({ method: "GET" })
         stock,
         thumbnail_url: cover?.url ?? null,
         updated_at: r.updated_at,
+        ali_source_id: aliBy[r.id] ?? null,
       };
     });
   });
