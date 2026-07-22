@@ -1,6 +1,13 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { createHmac } from "crypto";
+// crypto is loaded lazily inside handlers to keep this module client-safe
+// (server-fn transformer strips handler bodies but preserves top-level imports).
+type CreateHmac = typeof import("node:crypto").createHmac;
+let _createHmac: CreateHmac | null = null;
+async function getCreateHmac(): Promise<CreateHmac> {
+  if (!_createHmac) _createHmac = (await import("node:crypto")).createHmac;
+  return _createHmac;
+}
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import {
   computeSalePriceCents,
