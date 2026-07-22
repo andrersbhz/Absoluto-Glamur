@@ -38,6 +38,7 @@ export type AdminProductRow = {
   stock: number | null;
   thumbnail_url: string | null;
   updated_at: string;
+  ali_source_id: string | null;
 };
 
 export const listAdminProducts = createServerFn({ method: "GET" })
