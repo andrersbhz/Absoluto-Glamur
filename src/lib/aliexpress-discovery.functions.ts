@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { createHmac } from "crypto";
+// crypto is loaded lazily via Web Crypto (globalThis.crypto.subtle) so this
+// module stays browser-safe — see sign()/signRestPath() below.
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import {
   computeSalePriceCents,
