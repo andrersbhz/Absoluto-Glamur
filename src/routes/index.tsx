@@ -435,3 +435,76 @@ function FeaturedSection({
     </section>
   );
 }
+
+function AnnouncementBar({
+  announcement,
+}: {
+  announcement: { text?: string; product?: AnnouncementProduct };
+}) {
+  const product = announcement.product;
+  const hasProduct = !!(product?.slug && product?.category_slug);
+  const href =
+    product?.cta_href ||
+    (hasProduct
+      ? `/${product!.category_slug}/${product!.slug}${product?.variant_id ? `?variant=${product.variant_id}` : ""}`
+      : "/products");
+  const label = product?.cta_label || "Ver produto";
+  const eyebrow = product?.eyebrow || announcement.text || "Destaque do dia";
+
+  if (!hasProduct) {
+    return (
+      <div className="bg-plum text-primary-foreground">
+        <div className="mx-auto flex max-w-7xl items-center justify-center gap-3 px-4 py-2 text-[11px] uppercase tracking-[0.28em] sm:px-6 lg:px-8">
+          <Crown className="h-3 w-3 text-champagne" />
+          <span>{announcement.text}</span>
+          <Crown className="h-3 w-3 text-champagne" />
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative overflow-hidden bg-gradient-to-r from-plum via-plum to-primary/90 text-primary-foreground">
+      <span className="pointer-events-none absolute -left-24 top-1/2 h-40 w-40 -translate-y-1/2 rounded-full bg-champagne/25 blur-3xl" />
+      <span className="pointer-events-none absolute -right-24 top-1/2 h-40 w-40 -translate-y-1/2 rounded-full bg-primary/40 blur-3xl" />
+      <div className="relative mx-auto grid max-w-7xl grid-cols-1 items-center gap-4 px-4 py-3 sm:grid-cols-[1fr_auto] sm:px-6 sm:py-3.5 lg:px-8">
+        {/* DIV 1 — produto */}
+        <div className="flex min-w-0 items-center gap-4">
+          <div className="relative shrink-0">
+            <span className="absolute inset-0 -m-1 rounded-full bg-champagne/30 blur-md" />
+            {product?.image_url ? (
+              <img
+                src={product.image_url}
+                alt={product.name ?? ""}
+                className="relative h-14 w-14 rounded-full object-cover ring-2 ring-champagne/70 shadow-[0_0_20px_rgba(212,175,55,0.35)]"
+              />
+            ) : (
+              <div className="relative flex h-14 w-14 items-center justify-center rounded-full bg-champagne/20 ring-2 ring-champagne/60">
+                <Sparkles className="h-6 w-6 text-champagne" />
+              </div>
+            )}
+          </div>
+          <div className="min-w-0">
+            <p className="flex items-center gap-2 text-[10px] font-medium uppercase tracking-[0.32em] text-champagne">
+              <Sparkles className="h-3 w-3" /> {eyebrow}
+            </p>
+            <p className="mt-0.5 truncate font-display text-base leading-tight sm:text-lg">
+              {product?.name}
+            </p>
+          </div>
+        </div>
+
+        {/* DIV 2 — CTA */}
+        <div className="flex items-center justify-end">
+          <Link
+            to={href}
+            className="group inline-flex items-center gap-2 rounded-full bg-champagne px-5 py-2.5 text-xs font-semibold uppercase tracking-[0.24em] text-plum shadow-[0_8px_30px_rgba(212,175,55,0.35)] transition hover:shadow-[0_10px_40px_rgba(212,175,55,0.6)]"
+          >
+            {label}
+            <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
+          </Link>
+        </div>
+      </div>
+    </div>
+  );
+}
