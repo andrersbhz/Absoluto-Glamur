@@ -169,7 +169,9 @@ function HomeContentPanel() {
             </p>
           </div>
         </div>
+        <HeroPreview hero={hero} announcement={value.announcement} />
       </section>
+
 
       <section className="rounded-2xl border border-border bg-card p-5">
         <div className="flex items-center justify-between">
