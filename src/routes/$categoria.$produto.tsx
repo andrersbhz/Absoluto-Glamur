@@ -111,6 +111,11 @@ function ProductPage() {
   const { data: product } = useQuery(productDetailQuery(produto));
 
   const [variantId, setVariantId] = useState<string | null>(null);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const v = new URLSearchParams(window.location.search).get("variant");
+    if (v) setVariantId(v);
+  }, []);
 
   const variants = product?.variants ?? [];
   const selectedVariant = useMemo(

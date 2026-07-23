@@ -72,8 +72,24 @@ export type HeroSlide = {
   align?: "left" | "center" | "right";
 };
 
+export type AnnouncementProduct = {
+  product_id?: string;
+  slug?: string;
+  category_slug?: string;
+  name?: string;
+  image_url?: string;
+  variant_id?: string;
+  cta_label?: string;
+  cta_href?: string;
+  eyebrow?: string;
+};
+
 export type HomeContent = {
-  announcement?: { enabled?: boolean; text?: string };
+  announcement?: {
+    enabled?: boolean;
+    text?: string;
+    product?: AnnouncementProduct;
+  };
   hero_slider?: {
     enabled?: boolean;
     autoplay_ms?: number;
