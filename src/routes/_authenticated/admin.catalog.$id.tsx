@@ -474,20 +474,33 @@ function CatalogEditor() {
                             className="input flex-1"
                           />
                           {!isNew && (
-                            <button
-                              type="button"
-                              onClick={() => syncStock.mutate()}
+                            <>
+                              <button
+                                type="button"
+                                onClick={() => syncStock.mutate()}
 
-                              disabled={syncStock.isPending}
-                              title="Sincronizar estoque com AliExpress"
-                              className="inline-flex items-center gap-1 rounded-lg border border-primary/40 bg-primary/10 px-3 text-xs font-medium text-primary transition hover:bg-primary/20 disabled:opacity-50"
-                            >
-                              <RefreshCw className={`h-3.5 w-3.5 ${syncStock.isPending ? "animate-spin" : ""}`} />
-                              AliExpress
-                            </button>
+                                disabled={syncStock.isPending}
+                                title="Sincronizar estoque com AliExpress"
+                                className="inline-flex items-center gap-1 rounded-lg border border-primary/40 bg-primary/10 px-3 text-xs font-medium text-primary transition hover:bg-primary/20 disabled:opacity-50"
+                              >
+                                <RefreshCw className={`h-3.5 w-3.5 ${syncStock.isPending ? "animate-spin" : ""}`} />
+                                AliExpress
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => syncVariants.mutate()}
+                                disabled={syncVariants.isPending}
+                                title="Buscar e criar variações (cor/tamanho) do AliExpress"
+                                className="inline-flex items-center gap-1 rounded-lg border border-champagne/40 bg-champagne/10 px-3 text-xs font-medium text-champagne transition hover:bg-champagne/20 disabled:opacity-50"
+                              >
+                                <RefreshCw className={`h-3.5 w-3.5 ${syncVariants.isPending ? "animate-spin" : ""}`} />
+                                Variações
+                              </button>
+                            </>
                           )}
                         </div>
                       </Field>
+
                     </div>
                     <div className="grid gap-4 sm:grid-cols-2">
                       <Field label="Preço cheio" required hint="Valor em reais (R$).">
