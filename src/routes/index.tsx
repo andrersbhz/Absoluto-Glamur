@@ -496,13 +496,13 @@ function AnnouncementBar({
 
         {/* DIV 2 — CTA */}
         <div className="flex items-center justify-end">
-          <Link
-            to={href}
+          <a
+            href={href}
             className="group inline-flex items-center gap-2 rounded-full bg-champagne px-5 py-2.5 text-xs font-semibold uppercase tracking-[0.24em] text-plum shadow-[0_8px_30px_rgba(212,175,55,0.35)] transition hover:shadow-[0_10px_40px_rgba(212,175,55,0.6)]"
           >
             {label}
             <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" />
-          </Link>
+          </a>
         </div>
       </div>
     </div>
