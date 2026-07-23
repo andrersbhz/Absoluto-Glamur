@@ -124,6 +124,9 @@ function HomeContentPanel() {
 
       <section className="rounded-2xl border border-border bg-card p-5">
         <h3 className="font-display text-lg">Barra de anúncio</h3>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Exiba um destaque no topo da home. Selecione um produto para mostrar imagem, nome e botão "Ver produto". Se o produto tiver variações, escolha qual será a padrão.
+        </p>
         <div className="mt-3 grid gap-3 sm:grid-cols-[auto_1fr] sm:items-center">
           <label className="flex items-center gap-2 text-sm">
             <input
@@ -134,12 +137,20 @@ function HomeContentPanel() {
             Ativa
           </label>
           <Input
-            placeholder="Frete grátis acima de R$ 299 · Embalagem assinatura"
+            placeholder="Texto/eyebrow (ex: Destaque do dia · Frete grátis)"
             value={value.announcement?.text ?? ""}
             onChange={(e) => patch((v) => ({ ...v, announcement: { ...v.announcement, text: e.target.value } }))}
           />
         </div>
+        <AnnouncementProductPicker
+          value={value.announcement?.product}
+          onChange={(product) =>
+            patch((v) => ({ ...v, announcement: { ...v.announcement, product } }))
+          }
+        />
+        <AnnouncementBarPreview announcement={value.announcement} />
       </section>
+
 
       <section className="rounded-2xl border border-border bg-card p-5">
         <h3 className="font-display text-lg">Hero</h3>
