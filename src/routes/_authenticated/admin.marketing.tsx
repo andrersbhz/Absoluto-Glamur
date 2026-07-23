@@ -284,7 +284,9 @@ function HomeContentPanel() {
             );
           })}
         </div>
+        <SliderPreview slides={sliderSlides} />
       </section>
+
 
 
       <section className="rounded-2xl border border-border bg-card p-5">
