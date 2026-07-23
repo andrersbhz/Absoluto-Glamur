@@ -12,6 +12,21 @@ import { useAuth } from "@/hooks/use-auth";
 import { isVideoMedia } from "@/lib/media-kind";
 import { ProductReviews } from "@/components/store/ProductReviews";
 
+const ALLOWED_TAGS = new Set(["p", "br", "ul", "ol", "li", "strong", "b", "em", "i", "h2", "h3", "h4"]);
+function sanitizeDescriptionHtml(html: string): string {
+  // strip script/style blocks entirely
+  let out = html.replace(/<(script|style)[\s\S]*?<\/\1>/gi, "");
+  // strip all attributes and disallowed tags, keep only allowlisted tags without attrs
+  out = out.replace(/<\/?([a-zA-Z0-9]+)(\s[^>]*)?>/g, (_m, tag: string, _attrs) => {
+    const t = tag.toLowerCase();
+    if (!ALLOWED_TAGS.has(t)) return "";
+    return _m.startsWith("</") ? `</${t}>` : `<${t}>`;
+  });
+  // collapse excess whitespace between block tags
+  out = out.replace(/(&nbsp;|\u00a0)+/g, " ").replace(/[ \t]{2,}/g, " ").trim();
+  return out;
+}
+
 export const Route = createFileRoute("/$categoria/$produto")({
   loader: async ({ params, context }) => {
     const product = await context.queryClient.ensureQueryData(productDetailQuery(params.produto));
@@ -271,9 +286,10 @@ function ProductPage() {
             {product.description && (
               <div className="mt-10 border-t border-border pt-6">
                 <h2 className="font-display text-xl">Sobre o produto</h2>
-                <p className="mt-3 whitespace-pre-line text-sm leading-relaxed text-muted-foreground">
-                  {product.description}
-                </p>
+                <div
+                  className="prose prose-sm prose-invert mt-3 max-w-none text-sm leading-relaxed text-muted-foreground [&_p]:mb-3 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_strong]:text-foreground [&_h2]:font-display [&_h2]:text-lg [&_h2]:text-foreground [&_h3]:font-display [&_h3]:text-base [&_h3]:text-foreground"
+                  dangerouslySetInnerHTML={{ __html: sanitizeDescriptionHtml(product.description) }}
+                />
               </div>
             )}
           </div>
