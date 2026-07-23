@@ -31,6 +31,7 @@ export type IntegrationDTO = {
   webhook_token_masked: string | null;
   has_api_key: boolean;
   has_webhook_token: boolean;
+  reauth_required: boolean;
 };
 
 export const listIntegrations = createServerFn({ method: "GET" })
@@ -62,6 +63,7 @@ export const listIntegrations = createServerFn({ method: "GET" })
       webhook_token_masked: mask(i.webhook_token),
       has_api_key: !!i.api_key,
       has_webhook_token: !!i.webhook_token,
+      reauth_required: !!(i.config && typeof i.config === "object" && (i.config as Record<string, unknown>).reauth_required),
     }));
   });
 

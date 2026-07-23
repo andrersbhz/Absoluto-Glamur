@@ -262,6 +262,28 @@ function IntegrationCard({ integration }: { integration: Integration }) {
         </div>
       </div>
 
+      {isAliexpress && integration.reauth_required && (
+        <div className="mt-4 rounded-xl border border-destructive/40 bg-destructive/10 p-3 text-sm">
+          <p className="font-medium text-destructive">Reautorização necessária</p>
+          <p className="mt-1 text-xs text-destructive/90">
+            O refresh_token do AliExpress expirou ou foi invalidado. Clique em{" "}
+            <b>Autorizar AliExpress</b> abaixo (após confirmar App Key, App Secret e Callback URL)
+            para gerar novos tokens. Enquanto isso, sincronizações de estoque, importação e
+            fulfillment ficam suspensas.
+          </p>
+          <a
+            href="/api/public/aliexpress/start"
+            target="_blank"
+            rel="noreferrer noopener"
+            className="mt-2 inline-flex items-center gap-2 rounded-lg bg-destructive px-3 py-1.5 text-xs font-medium text-white hover:opacity-90"
+          >
+            <ExternalLink className="h-3.5 w-3.5" />
+            Reautorizar agora
+          </a>
+        </div>
+      )}
+
+
 
       <div className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
         <div>
