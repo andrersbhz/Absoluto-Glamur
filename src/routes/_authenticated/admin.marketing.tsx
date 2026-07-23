@@ -942,3 +942,286 @@ function BannerUpload({
     </div>
   );
 }
+
+type PickerProduct = {
+  id: string;
+  slug: string;
+  name: string;
+  category: { slug: string } | null;
+  media: { url: string; kind: string | null; position: number | null }[];
+  variants: { id: string; name: string | null; is_default: boolean; options: Record<string, unknown> | null }[];
+};
+
+function AnnouncementProductPicker({
+  value,
+  onChange,
+}: {
+  value: AnnouncementProduct | undefined;
+  onChange: (p: AnnouncementProduct | undefined) => void;
+}) {
+  const [term, setTerm] = useState("");
+  const [results, setResults] = useState<PickerProduct[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [loadedProduct, setLoadedProduct] = useState<PickerProduct | null>(null);
+
+  // Debounced search
+  const timer = useRef<number | null>(null);
+  const onTerm = (v: string) => {
+    setTerm(v);
+    if (timer.current) window.clearTimeout(timer.current);
+    if (!v.trim()) {
+      setResults([]);
+      return;
+    }
+    timer.current = window.setTimeout(async () => {
+      setLoading(true);
+      const { data } = await supabase
+        .from("products")
+        .select(
+          "id, slug, name, category:categories(slug), media:product_media(url, kind, position), variants:product_variants(id, name, is_default, options)",
+        )
+        .eq("status", "active")
+        .ilike("name", `%${v.trim()}%`)
+        .limit(8);
+      setResults((data ?? []) as unknown as PickerProduct[]);
+      setLoading(false);
+    }, 250);
+  };
+
+  // Load full detail of currently selected product (for variants list)
+  const selectedId = value?.product_id;
+  const selectedSlug = value?.slug;
+  const shouldFetchDetail =
+    !!selectedSlug && (!loadedProduct || loadedProduct.id !== selectedId);
+  const detailKey = selectedSlug ?? "";
+  // Hydrate loadedProduct on mount / when selection changes
+  if (shouldFetchDetail && detailKey) {
+    void (async () => {
+      const { data } = await supabase
+        .from("products")
+        .select(
+          "id, slug, name, category:categories(slug), media:product_media(url, kind, position), variants:product_variants(id, name, is_default, options)",
+        )
+        .eq("slug", detailKey)
+        .maybeSingle();
+      if (data) setLoadedProduct(data as unknown as PickerProduct);
+    })();
+  }
+
+  const pick = (p: PickerProduct) => {
+    const firstImage =
+      [...(p.media ?? [])]
+        .sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
+        .find((m) => m.kind !== "video")?.url ?? p.media?.[0]?.url ?? "";
+    const defaultVariant = p.variants?.find((v) => v.is_default) ?? p.variants?.[0];
+    onChange({
+      product_id: p.id,
+      slug: p.slug,
+      category_slug: p.category?.slug ?? "produto",
+      name: p.name,
+      image_url: firstImage,
+      variant_id: (p.variants?.length ?? 0) > 1 ? defaultVariant?.id : undefined,
+      cta_label: value?.cta_label || "Ver produto",
+      cta_href: undefined,
+      eyebrow: value?.eyebrow,
+    });
+    setLoadedProduct(p);
+    setResults([]);
+    setTerm("");
+  };
+
+  const clear = () => {
+    onChange(undefined);
+    setLoadedProduct(null);
+  };
+
+  const activeVariants = loadedProduct?.variants ?? [];
+  const hasVariants = activeVariants.length > 1;
+
+  return (
+    <div className="mt-5 space-y-3 rounded-xl border border-border/70 bg-background/40 p-4">
+      <p className="text-xs font-medium uppercase tracking-[0.24em] text-champagne">
+        Produto em destaque
+      </p>
+
+      {value?.slug ? (
+        <div className="flex items-center gap-3 rounded-lg border border-border bg-card p-3">
+          {value.image_url ? (
+            <img src={value.image_url} alt="" className="h-14 w-14 rounded-lg object-cover" />
+          ) : (
+            <div className="flex h-14 w-14 items-center justify-center rounded-lg bg-secondary">
+              <Sparkles className="h-5 w-5 text-muted-foreground" />
+            </div>
+          )}
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-medium">{value.name}</p>
+            <p className="truncate text-xs text-muted-foreground">
+              /{value.category_slug}/{value.slug}
+            </p>
+          </div>
+          <Button size="icon" variant="ghost" onClick={clear} title="Remover">
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
+      ) : (
+        <div className="relative">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            className="pl-9"
+            placeholder="Buscar produto por nome..."
+            value={term}
+            onChange={(e) => onTerm(e.target.value)}
+          />
+          {(loading || results.length > 0) && (
+            <div className="absolute z-10 mt-1 max-h-72 w-full overflow-auto rounded-lg border border-border bg-card shadow-lg">
+              {loading && <p className="p-3 text-xs text-muted-foreground">Buscando...</p>}
+              {results.map((p) => {
+                const img =
+                  [...(p.media ?? [])]
+                    .sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
+                    .find((m) => m.kind !== "video")?.url ?? p.media?.[0]?.url;
+                return (
+                  <button
+                    key={p.id}
+                    type="button"
+                    onClick={() => pick(p)}
+                    className="flex w-full items-center gap-3 border-b border-border/60 p-2.5 text-left last:border-0 hover:bg-secondary"
+                  >
+                    {img ? (
+                      <img src={img} alt="" className="h-10 w-10 rounded-md object-cover" />
+                    ) : (
+                      <div className="h-10 w-10 rounded-md bg-secondary" />
+                    )}
+                    <div className="min-w-0">
+                      <p className="truncate text-sm">{p.name}</p>
+                      <p className="truncate text-xs text-muted-foreground">
+                        /{p.category?.slug ?? "produto"}/{p.slug}
+                        {p.variants.length > 1 ? ` · ${p.variants.length} variações` : ""}
+                      </p>
+                    </div>
+                  </button>
+                );
+              })}
+              {!loading && results.length === 0 && term.trim() && (
+                <p className="p-3 text-xs text-muted-foreground">Nenhum produto encontrado.</p>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {value?.slug && (
+        <div className="grid gap-3 sm:grid-cols-2">
+          <label className="text-sm">
+            <span className="text-muted-foreground">Nome exibido (opcional)</span>
+            <Input
+              value={value.name ?? ""}
+              onChange={(e) => onChange({ ...value, name: e.target.value })}
+            />
+          </label>
+          <label className="text-sm">
+            <span className="text-muted-foreground">Imagem (URL) — opcional</span>
+            <Input
+              value={value.image_url ?? ""}
+              onChange={(e) => onChange({ ...value, image_url: e.target.value })}
+            />
+          </label>
+          <label className="text-sm">
+            <span className="text-muted-foreground">Texto do botão</span>
+            <Input
+              placeholder="Ver produto"
+              value={value.cta_label ?? ""}
+              onChange={(e) => onChange({ ...value, cta_label: e.target.value })}
+            />
+          </label>
+          <label className="text-sm">
+            <span className="text-muted-foreground">Link customizado (opcional)</span>
+            <Input
+              placeholder={`/${value.category_slug}/${value.slug}`}
+              value={value.cta_href ?? ""}
+              onChange={(e) => onChange({ ...value, cta_href: e.target.value })}
+            />
+          </label>
+          {hasVariants && (
+            <label className="text-sm sm:col-span-2">
+              <span className="text-muted-foreground">
+                Variação padrão — o cliente cairá na página com esta opção pré-selecionada
+              </span>
+              <select
+                className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
+                value={value.variant_id ?? ""}
+                onChange={(e) => onChange({ ...value, variant_id: e.target.value || undefined })}
+              >
+                <option value="">— Sem preferência —</option>
+                {activeVariants.map((v) => {
+                  const opts = v.options as { attributes?: Record<string, string> } | null;
+                  const label =
+                    v.name ??
+                    (opts?.attributes ? Object.values(opts.attributes).join(" · ") : v.id);
+                  return (
+                    <option key={v.id} value={v.id}>
+                      {label}
+                      {v.is_default ? " (padrão)" : ""}
+                    </option>
+                  );
+                })}
+              </select>
+            </label>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function AnnouncementBarPreview({
+  announcement,
+}: {
+  announcement: HomeContent["announcement"];
+}) {
+  if (!announcement || announcement.enabled === false) return null;
+  const p = announcement.product;
+  if (!p?.slug) {
+    if (!announcement.text) return null;
+    return (
+      <div className="mt-4 overflow-hidden rounded-xl border border-border">
+        <div className="bg-plum px-4 py-2 text-center text-[11px] uppercase tracking-[0.28em] text-primary-foreground">
+          <Crown className="mr-2 inline h-3 w-3 text-champagne" />
+          {announcement.text}
+          <Crown className="ml-2 inline h-3 w-3 text-champagne" />
+        </div>
+      </div>
+    );
+  }
+  const eyebrow = p.eyebrow || announcement.text || "Destaque do dia";
+  return (
+    <div className="mt-4 overflow-hidden rounded-xl border border-border">
+      <div className="relative bg-gradient-to-r from-plum via-plum to-primary/90 text-primary-foreground">
+        <div className="grid grid-cols-1 items-center gap-3 px-4 py-3 sm:grid-cols-[1fr_auto]">
+          <div className="flex items-center gap-3">
+            {p.image_url ? (
+              <img
+                src={p.image_url}
+                alt=""
+                className="h-12 w-12 rounded-full object-cover ring-2 ring-champagne/60"
+              />
+            ) : (
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-champagne/20 ring-2 ring-champagne/60">
+                <Sparkles className="h-5 w-5 text-champagne" />
+              </div>
+            )}
+            <div className="min-w-0">
+              <p className="text-[10px] uppercase tracking-[0.32em] text-champagne">{eyebrow}</p>
+              <p className="mt-0.5 truncate text-sm">{p.name}</p>
+            </div>
+          </div>
+          <span className="inline-flex items-center gap-2 justify-self-end rounded-full bg-champagne px-4 py-2 text-[11px] font-semibold uppercase tracking-[0.24em] text-plum">
+            {p.cta_label || "Ver produto"}
+            <ArrowRight className="h-3 w-3" />
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
