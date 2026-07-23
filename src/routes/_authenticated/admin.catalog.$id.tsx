@@ -14,7 +14,9 @@ import {
   Star,
   Tag,
   Trash2,
+  Upload,
 } from "lucide-react";
+
 
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -285,6 +287,66 @@ function CatalogEditor() {
     [media[i], media[j]] = [media[j], media[i]];
     setForm({ ...form, media });
   }
+
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<{ done: number; total: number } | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  async function handleUploadFiles(files: FileList | File[]) {
+    const arr = Array.from(files).filter((f) =>
+      /^(image|video)\//.test(f.type),
+    );
+    if (arr.length === 0) {
+      toast.error("Selecione imagens ou vídeos válidos.");
+      return;
+    }
+    const MAX = 50 * 1024 * 1024;
+    const oversized = arr.filter((f) => f.size > MAX);
+    if (oversized.length) {
+      toast.error(`${oversized.length} arquivo(s) acima de 50MB foram ignorados.`);
+    }
+    const toUpload = arr.filter((f) => f.size <= MAX);
+    if (toUpload.length === 0) return;
+
+    setUploading(true);
+    setUploadProgress({ done: 0, total: toUpload.length });
+    const uploaded: { url: string; alt: string }[] = [];
+    try {
+      for (let i = 0; i < toUpload.length; i++) {
+        const file = toUpload[i];
+        const ext = file.name.split(".").pop()?.toLowerCase() || "bin";
+        const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 60);
+        const path = `${id}/${Date.now()}-${i}-${safeName}`.replace(/\/{2,}/g, "/");
+        const { error: upErr } = await supabase.storage
+          .from("product-media")
+          .upload(path, file, { contentType: file.type, upsert: false });
+        if (upErr) {
+          toast.error(`Falha ao enviar ${file.name}: ${upErr.message}`);
+          continue;
+        }
+        const { data: signed, error: signErr } = await supabase.storage
+          .from("product-media")
+          .createSignedUrl(path, 60 * 60 * 24 * 365 * 10);
+        if (signErr || !signed?.signedUrl) {
+          toast.error(`Falha ao gerar URL de ${file.name}`);
+          continue;
+        }
+        uploaded.push({ url: signed.signedUrl, alt: file.name.replace(/\.[^.]+$/, "") });
+        setUploadProgress({ done: i + 1, total: toUpload.length });
+        void ext;
+      }
+      if (uploaded.length) {
+        setForm((f) => ({ ...f, media: [...f.media, ...uploaded] }));
+        toast.success(`${uploaded.length} mídia(s) adicionada(s).`);
+      }
+    } finally {
+      setUploading(false);
+      setUploadProgress(null);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  }
+
+
 
   return (
     <AdminLayout>
@@ -562,9 +624,62 @@ function CatalogEditor() {
                 {tab === "media" && (
                   <Section title="Mídias do produto">
                     <p className="text-xs text-muted-foreground">
-                      A primeira mídia é a capa. Cole URLs de imagens (JPG, PNG, WEBP, GIF) ou
-                      vídeos (MP4, WEBM, MOV). GIFs animados e vídeos curtos ajudam na conversão.
+                      A primeira mídia é a capa. Envie do computador (imagens JPG/PNG/WEBP/GIF ou
+                      vídeos MP4/WEBM/MOV) ou cole URLs externas. Você pode selecionar vários
+                      arquivos de uma vez.
                     </p>
+
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*,video/*"
+                      multiple
+                      className="hidden"
+                      onChange={(e) => {
+                        if (e.target.files && e.target.files.length > 0) {
+                          void handleUploadFiles(e.target.files);
+                        }
+                      }}
+                    />
+
+                    <div
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                      }}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        if (e.dataTransfer.files?.length) {
+                          void handleUploadFiles(e.dataTransfer.files);
+                        }
+                      }}
+                      className="flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-primary/40 bg-primary/5 p-6 text-center"
+                    >
+                      <Upload className="h-6 w-6 text-primary" />
+                      <p className="text-sm text-foreground">
+                        Arraste arquivos aqui ou selecione múltiplos do computador
+                      </p>
+                      <div className="flex flex-wrap items-center justify-center gap-2">
+                        <button
+                          type="button"
+                          disabled={uploading}
+                          onClick={() => fileInputRef.current?.click()}
+                          className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-xs font-medium text-primary-foreground shadow-soft transition hover:opacity-90 disabled:opacity-50"
+                        >
+                          <Upload className="h-4 w-4" />
+                          {uploading
+                            ? uploadProgress
+                              ? `Enviando ${uploadProgress.done}/${uploadProgress.total}…`
+                              : "Enviando…"
+                            : "Selecionar arquivos"}
+                        </button>
+                        <span className="text-[11px] text-muted-foreground">
+                          Até 50MB por arquivo · imagens e vídeos
+                        </span>
+                      </div>
+                    </div>
+
                     <div className="space-y-3">
                       {form.media.map((m, i) => {
                         const isVideo = isVideoUrl(m.url);
@@ -658,11 +773,12 @@ function CatalogEditor() {
                         }
                         className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-border px-3 py-4 text-sm text-muted-foreground hover:bg-secondary"
                       >
-                        <Plus className="h-4 w-4" /> Adicionar imagem
+                        <Plus className="h-4 w-4" /> Adicionar URL manualmente
                       </button>
                     </div>
                   </Section>
                 )}
+
 
                 {tab === "seo" && (
                   <Section title="Otimização para busca (SEO)">
