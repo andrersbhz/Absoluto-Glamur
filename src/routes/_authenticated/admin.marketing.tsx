@@ -380,9 +380,112 @@ function HomeContentPanel() {
           Ícones disponíveis: sparkles, shield, truck, gem, crown, star, heart, award, leaf.
         </p>
       </section>
+
+      <div className="sticky bottom-4 z-20 flex justify-end">
+        <div className="rounded-full border border-border bg-card/95 px-4 py-2 shadow-lg backdrop-blur">
+          <Button onClick={handleSave} disabled={saving || !draft} size="sm">
+            {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+            {draft ? "Salvar configurações" : "Tudo salvo"}
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }
+
+function HeroPreview({
+  hero,
+  announcement,
+}: {
+  hero: NonNullable<HomeContent["hero"]>;
+  announcement: HomeContent["announcement"];
+}) {
+  const align = "center";
+  return (
+    <div className="mt-5">
+      <p className="mb-2 text-xs uppercase tracking-widest text-muted-foreground">Preview do banner</p>
+      <div className="overflow-hidden rounded-2xl border border-border">
+        {announcement?.enabled !== false && announcement?.text && (
+          <div className="bg-foreground py-2 text-center text-[11px] uppercase tracking-widest text-background">
+            {announcement.text}
+          </div>
+        )}
+        <div
+          className="relative flex min-h-[280px] w-full items-center justify-center bg-secondary bg-cover bg-center px-6 py-10 text-center sm:min-h-[360px]"
+          style={hero.image_url ? { backgroundImage: `url(${hero.image_url})` } : undefined}
+        >
+          <div className="absolute inset-0 bg-black/45" />
+          <div className={`relative z-10 max-w-2xl text-${align} text-white`}>
+            {hero.badge && (
+              <span className="inline-block rounded-full border border-white/40 px-3 py-1 text-[10px] uppercase tracking-[0.3em]">
+                {hero.badge}
+              </span>
+            )}
+            <h2 className="mt-4 font-display text-3xl leading-tight sm:text-4xl">
+              {hero.title_line1 || "Título linha 1"}{" "}
+              <span className="italic text-primary">{hero.title_highlight || "destaque"}</span>
+            </h2>
+            {hero.subtitle && <p className="mt-3 text-sm text-white/85">{hero.subtitle}</p>}
+            <div className="mt-5 flex flex-wrap justify-center gap-2">
+              {hero.cta_primary_label && (
+                <span className="rounded-full bg-primary px-5 py-2 text-xs font-medium uppercase tracking-widest text-primary-foreground">
+                  {hero.cta_primary_label}
+                </span>
+              )}
+              {hero.cta_secondary_label && (
+                <span className="rounded-full border border-white/60 px-5 py-2 text-xs font-medium uppercase tracking-widest">
+                  {hero.cta_secondary_label}
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SliderPreview({ slides }: { slides: NonNullable<NonNullable<HomeContent["hero_slider"]>["slides"]> }) {
+  const [i, setI] = useState(0);
+  if (!slides || slides.length === 0) return null;
+  const s = slides[Math.min(i, slides.length - 1)];
+  const align = s.align ?? "center";
+  const alignClass = align === "left" ? "text-left items-start" : align === "right" ? "text-right items-end" : "text-center items-center";
+  return (
+    <div className="mt-5">
+      <div className="mb-2 flex items-center justify-between">
+        <p className="text-xs uppercase tracking-widest text-muted-foreground">Preview do slider</p>
+        <div className="flex gap-1">
+          {slides.map((_, idx) => (
+            <button
+              key={idx}
+              type="button"
+              onClick={() => setI(idx)}
+              className={`h-2 w-6 rounded-full transition ${idx === i ? "bg-primary" : "bg-border"}`}
+              aria-label={`Slide ${idx + 1}`}
+            />
+          ))}
+        </div>
+      </div>
+      <div
+        className="relative flex min-h-[300px] w-full overflow-hidden rounded-2xl border border-border bg-cover bg-center px-6 py-10 sm:min-h-[400px]"
+        style={s.image_url ? { backgroundImage: `url(${s.image_url})` } : undefined}
+      >
+        <div className="absolute inset-0 bg-black/40" />
+        <div className={`relative z-10 flex w-full flex-col justify-center gap-3 text-white ${alignClass}`}>
+          {s.title && <h3 className="font-display text-3xl leading-tight sm:text-4xl">{s.title}</h3>}
+          {s.subtitle && <p className="max-w-xl text-sm text-white/85">{s.subtitle}</p>}
+          {s.cta_label && (
+            <span className="mt-2 inline-block w-fit rounded-full bg-primary px-5 py-2 text-xs font-medium uppercase tracking-widest text-primary-foreground">
+              {s.cta_label}
+            </span>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 
 function HomepageBlocksPanel() {
   const qc = useQueryClient();
