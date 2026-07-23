@@ -31,6 +31,7 @@ export type IntegrationDTO = {
   webhook_token_masked: string | null;
   has_api_key: boolean;
   has_webhook_token: boolean;
+  reauth_required: boolean;
 };
 
 export const listIntegrations = createServerFn({ method: "GET" })
