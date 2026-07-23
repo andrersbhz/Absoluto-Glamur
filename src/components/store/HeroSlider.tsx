@@ -24,10 +24,10 @@ export function HeroSlider({
 
   return (
     <section
-      className="relative w-full overflow-hidden bg-secondary"
-      style={{ height: 500 }}
+      className="relative w-full overflow-hidden bg-secondary min-h-[420px] h-[70vh] max-h-[640px] lg:min-h-[500px]"
       aria-label="Destaques"
     >
+
       {slides.map((s, i) => {
         const align = s.align ?? "center";
         const alignCls =
