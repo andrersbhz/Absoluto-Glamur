@@ -964,10 +964,12 @@ export type Database = {
           author_country: string | null
           author_name: string | null
           body: string | null
+          body_translated: boolean
           created_at: string
           id: string
           images: Json
           is_visible: boolean
+          last_synced_at: string | null
           product_id: string
           rating: number
           reviewed_at: string | null
@@ -980,10 +982,12 @@ export type Database = {
           author_country?: string | null
           author_name?: string | null
           body?: string | null
+          body_translated?: boolean
           created_at?: string
           id?: string
           images?: Json
           is_visible?: boolean
+          last_synced_at?: string | null
           product_id: string
           rating?: number
           reviewed_at?: string | null
@@ -996,10 +1000,12 @@ export type Database = {
           author_country?: string | null
           author_name?: string | null
           body?: string | null
+          body_translated?: boolean
           created_at?: string
           id?: string
           images?: Json
           is_visible?: boolean
+          last_synced_at?: string | null
           product_id?: string
           rating?: number
           reviewed_at?: string | null
