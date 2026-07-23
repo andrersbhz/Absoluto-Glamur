@@ -288,6 +288,66 @@ function CatalogEditor() {
     setForm({ ...form, media });
   }
 
+  const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<{ done: number; total: number } | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  async function handleUploadFiles(files: FileList | File[]) {
+    const arr = Array.from(files).filter((f) =>
+      /^(image|video)\//.test(f.type),
+    );
+    if (arr.length === 0) {
+      toast.error("Selecione imagens ou vídeos válidos.");
+      return;
+    }
+    const MAX = 50 * 1024 * 1024;
+    const oversized = arr.filter((f) => f.size > MAX);
+    if (oversized.length) {
+      toast.error(`${oversized.length} arquivo(s) acima de 50MB foram ignorados.`);
+    }
+    const toUpload = arr.filter((f) => f.size <= MAX);
+    if (toUpload.length === 0) return;
+
+    setUploading(true);
+    setUploadProgress({ done: 0, total: toUpload.length });
+    const uploaded: { url: string; alt: string }[] = [];
+    try {
+      for (let i = 0; i < toUpload.length; i++) {
+        const file = toUpload[i];
+        const ext = file.name.split(".").pop()?.toLowerCase() || "bin";
+        const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 60);
+        const path = `${id}/${Date.now()}-${i}-${safeName}`.replace(/\/{2,}/g, "/");
+        const { error: upErr } = await supabase.storage
+          .from("product-media")
+          .upload(path, file, { contentType: file.type, upsert: false });
+        if (upErr) {
+          toast.error(`Falha ao enviar ${file.name}: ${upErr.message}`);
+          continue;
+        }
+        const { data: signed, error: signErr } = await supabase.storage
+          .from("product-media")
+          .createSignedUrl(path, 60 * 60 * 24 * 365 * 10);
+        if (signErr || !signed?.signedUrl) {
+          toast.error(`Falha ao gerar URL de ${file.name}`);
+          continue;
+        }
+        uploaded.push({ url: signed.signedUrl, alt: file.name.replace(/\.[^.]+$/, "") });
+        setUploadProgress({ done: i + 1, total: toUpload.length });
+        void ext;
+      }
+      if (uploaded.length) {
+        setForm((f) => ({ ...f, media: [...f.media, ...uploaded] }));
+        toast.success(`${uploaded.length} mídia(s) adicionada(s).`);
+      }
+    } finally {
+      setUploading(false);
+      setUploadProgress(null);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  }
+
+
+
   return (
     <AdminLayout>
       <div className="mx-auto max-w-6xl pb-32">
