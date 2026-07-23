@@ -1,11 +1,12 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { Star, Pencil, RefreshCcw, Trash2, Plus, X, Eye, EyeOff } from "lucide-react";
 import {
   productReviewsQuery,
   syncAliexpressReviews,
+  autoSyncProductReviews,
   upsertReview,
   deleteReview,
   listAllReviews,
@@ -40,9 +41,31 @@ export function ProductReviews({ productId }: Props) {
   const publicQ = useQuery(productReviewsQuery(productId));
   const adminList = useServerFn(listAllReviews);
   const sync = useServerFn(syncAliexpressReviews);
+  const autoSync = useServerFn(autoSyncProductReviews);
   const [showAll, setShowAll] = useState(false);
   const [editing, setEditing] = useState<Partial<ExternalReview> | null>(null);
   const [syncing, setSyncing] = useState(false);
+
+  // Auto-sync silencioso ao abrir a página: traduz avaliações antigas para PT-BR
+  // e busca novas no AliExpress se o último sync for antigo (>= 12h).
+  const autoRanRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!productId) return;
+    if (autoRanRef.current === productId) return;
+    autoRanRef.current = productId;
+    autoSync({ data: { product_id: productId } })
+      .then((r) => {
+        if (r && ((r as { upserted?: number }).upserted || (r as { translated?: number }).translated)) {
+          qc.invalidateQueries({ queryKey: ["product-external-reviews", productId] });
+        }
+      })
+      .catch(() => {
+        /* silencioso */
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [productId]);
+
+
 
   const adminQ = useQuery({
     queryKey: ["admin-external-reviews", productId],

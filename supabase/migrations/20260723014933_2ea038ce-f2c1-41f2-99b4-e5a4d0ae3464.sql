@@ -1,0 +1,1 @@
+ALTER TABLE public.product_external_reviews ADD COLUMN IF NOT EXISTS body_translated boolean NOT NULL DEFAULT false; ALTER TABLE public.product_external_reviews ADD COLUMN IF NOT EXISTS last_synced_at timestamptz;

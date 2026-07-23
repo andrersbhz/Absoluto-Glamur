@@ -1,11 +1,68 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { queryOptions } from "@tanstack/react-query";
+import { generateText } from "ai";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabase } from "@/integrations/supabase/client";
 import { callAli } from "./aliexpress-discovery.functions";
+import { createLovableAiGatewayProvider } from "./ai-gateway.server";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
+
+// ---------- Tradução em lote para PT-BR (Lovable AI) ----------
+async function translateReviewsToPtBr(
+  items: { title: string | null; body: string | null }[],
+): Promise<{ title: string | null; body: string | null }[]> {
+  if (items.length === 0) return [];
+  const key = process.env.LOVABLE_API_KEY;
+  if (!key) return items;
+  // Só envia para IA aqueles que têm algum texto.
+  const indexed = items.map((it, i) => ({ i, ...it }));
+  const needing = indexed.filter((it) => (it.title && it.title.trim()) || (it.body && it.body.trim()));
+  if (needing.length === 0) return items;
+
+  const payload = needing.map((it) => ({
+    i: it.i,
+    title: it.title ?? "",
+    body: it.body ?? "",
+  }));
+
+  const gateway = createLovableAiGatewayProvider(key);
+  const model = gateway("google/gemini-2.5-flash");
+
+  const prompt = `Traduza para português do Brasil (PT-BR) as avaliações abaixo, mantendo o tom natural e coloquial de cliente. Preserve emojis, quebras de linha e pontuação. NÃO invente conteúdo. Se já estiver em PT-BR, apenas corrija erros óbvios de ortografia. Retorne SOMENTE um JSON válido no formato:
+[{"i": <indice>, "title": "...", "body": "..."}]
+
+Entrada:
+${JSON.stringify(payload)}`;
+
+  try {
+    const { text } = await generateText({
+      model,
+      prompt,
+      temperature: 0.2,
+    });
+    const match = text.match(/\[[\s\S]*\]/);
+    const parsed = match ? JSON.parse(match[0]) : [];
+    const map = new Map<number, { title?: string; body?: string }>();
+    for (const row of parsed) {
+      if (typeof row?.i === "number") {
+        map.set(row.i, { title: row.title, body: row.body });
+      }
+    }
+    return items.map((orig, i) => {
+      const t = map.get(i);
+      if (!t) return orig;
+      return {
+        title: t.title !== undefined && t.title !== null ? String(t.title) || orig.title : orig.title,
+        body: t.body !== undefined && t.body !== null ? String(t.body) || orig.body : orig.body,
+      };
+    });
+  } catch {
+    return items;
+  }
+}
+
 
 export type ExternalReview = {
   id: string;
@@ -289,18 +346,24 @@ export async function syncReviewsForProductInternal(
   try {
     const reviews = await fetchAliexpressReviews(sourceId, minRating);
     if (reviews.length === 0) return { fetched: 0, upserted: 0 };
-    const rows = reviews.map((r) => ({
+    const translated = await translateReviewsToPtBr(
+      reviews.map((r) => ({ title: r.title, body: r.body })),
+    );
+    const now = new Date().toISOString();
+    const rows = reviews.map((r, i) => ({
       product_id: productId,
       source: "aliexpress",
       source_review_id: r.source_review_id,
       author_name: r.author_name,
       author_country: r.author_country,
       rating: r.rating,
-      title: r.title,
-      body: r.body,
+      title: translated[i]?.title ?? r.title,
+      body: translated[i]?.body ?? r.body,
       images: r.images,
       reviewed_at: r.reviewed_at,
       is_visible: true,
+      body_translated: true,
+      last_synced_at: now,
     }));
     const { error } = await admin
       .from("product_external_reviews")
@@ -311,6 +374,7 @@ export async function syncReviewsForProductInternal(
     return { fetched: 0, upserted: 0 };
   }
 }
+
 
 
 export const syncAliexpressReviews = createServerFn({ method: "POST" })
@@ -348,18 +412,24 @@ export const syncAliexpressReviews = createServerFn({ method: "POST" })
       return { fetched: 0, upserted: 0, message: "Nenhuma avaliação retornada pela API do AliExpress." };
     }
 
-    const rows = reviews.map((r) => ({
+    const translated = await translateReviewsToPtBr(
+      reviews.map((r) => ({ title: r.title, body: r.body })),
+    );
+    const now = new Date().toISOString();
+    const rows = reviews.map((r, i) => ({
       product_id: data.product_id,
       source: "aliexpress",
       source_review_id: r.source_review_id,
       author_name: r.author_name,
       author_country: r.author_country,
       rating: r.rating,
-      title: r.title,
-      body: r.body,
+      title: translated[i]?.title ?? r.title,
+      body: translated[i]?.body ?? r.body,
       images: r.images,
       reviewed_at: r.reviewed_at,
       is_visible: true,
+      body_translated: true,
+      last_synced_at: now,
     }));
 
     const { error } = await supabaseAdmin
@@ -369,6 +439,7 @@ export const syncAliexpressReviews = createServerFn({ method: "POST" })
 
     return { fetched: reviews.length, upserted: rows.length };
   });
+
 
 // -------- CRUD (admin) --------
 
@@ -477,18 +548,24 @@ export const bulkSyncAliexpressReviews = createServerFn({ method: "POST" })
       try {
         const reviews = await fetchAliexpressReviews(String(row.source_id), data.min_rating);
         if (reviews.length > 0) {
-          const rows = reviews.map((r) => ({
+          const translated = await translateReviewsToPtBr(
+            reviews.map((r) => ({ title: r.title, body: r.body })),
+          );
+          const now = new Date().toISOString();
+          const rows = reviews.map((r, i) => ({
             product_id: row.product_id!,
             source: "aliexpress",
             source_review_id: r.source_review_id,
             author_name: r.author_name,
             author_country: r.author_country,
             rating: r.rating,
-            title: r.title,
-            body: r.body,
+            title: translated[i]?.title ?? r.title,
+            body: translated[i]?.body ?? r.body,
             images: r.images,
             reviewed_at: r.reviewed_at,
             is_visible: true,
+            body_translated: true,
+            last_synced_at: now,
           }));
           const { error } = await supabaseAdmin
             .from("product_external_reviews")
@@ -496,6 +573,7 @@ export const bulkSyncAliexpressReviews = createServerFn({ method: "POST" })
           if (error) throw error;
           upserted += rows.length;
         }
+
         processed++;
       } catch (e) {
         failures.push({
@@ -508,3 +586,81 @@ export const bulkSyncAliexpressReviews = createServerFn({ method: "POST" })
     return { total: unique.length, processed, upserted, failures };
   });
 
+
+// -------- Auto-sync público (chamado ao abrir a página do produto) --------
+// Executa em background com throttling: só busca no AliExpress se o último
+// sync do produto for antigo (>= 12h). Sempre tenta traduzir para PT-BR
+// eventuais linhas ainda em outro idioma (body_translated=false).
+const AUTO_SYNC_TTL_HOURS = 12;
+
+export const autoSyncProductReviews = createServerFn({ method: "POST" })
+  .inputValidator((v: unknown) =>
+    z.object({ product_id: z.string().uuid() }).parse(v),
+  )
+  .handler(async ({ data }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    // 1) Backfill: traduz linhas antigas ainda não traduzidas (limite pequeno).
+    const { data: untranslated } = await supabaseAdmin
+      .from("product_external_reviews")
+      .select("id, title, body")
+      .eq("product_id", data.product_id)
+      .eq("body_translated", false)
+      .limit(30);
+    let translatedCount = 0;
+    if (untranslated && untranslated.length > 0) {
+      const t = await translateReviewsToPtBr(
+        untranslated.map((r: any) => ({ title: r.title, body: r.body })),
+      );
+      for (let i = 0; i < untranslated.length; i++) {
+        const orig = untranslated[i] as any;
+        const tr = t[i];
+        if (!tr) continue;
+        await supabaseAdmin
+          .from("product_external_reviews")
+          .update({
+            title: tr.title ?? orig.title,
+            body: tr.body ?? orig.body,
+            body_translated: true,
+          })
+          .eq("id", orig.id);
+        translatedCount++;
+      }
+    }
+
+    // 2) Se o último sync foi recente, não bate no AliExpress.
+    const { data: latest } = await supabaseAdmin
+      .from("product_external_reviews")
+      .select("last_synced_at")
+      .eq("product_id", data.product_id)
+      .eq("source", "aliexpress")
+      .order("last_synced_at", { ascending: false, nullsFirst: false })
+      .limit(1)
+      .maybeSingle();
+    const lastSync = latest?.last_synced_at ? new Date(latest.last_synced_at).getTime() : 0;
+    const ttlMs = AUTO_SYNC_TTL_HOURS * 3600 * 1000;
+    if (lastSync && Date.now() - lastSync < ttlMs) {
+      return { translated: translatedCount, fetched: 0, upserted: 0, skipped: true };
+    }
+
+    const { data: imp } = await supabaseAdmin
+      .from("product_imports")
+      .select("source_id")
+      .eq("product_id", data.product_id)
+      .in("source", ["aliexpress", "aliexpress_api"])
+      .not("source_id", "is", null)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (!imp?.source_id) {
+      return { translated: translatedCount, fetched: 0, upserted: 0, skipped: true };
+    }
+
+    const r = await syncReviewsForProductInternal(
+      supabaseAdmin,
+      data.product_id,
+      String(imp.source_id),
+      4.5,
+    );
+    return { translated: translatedCount, fetched: r.fetched, upserted: r.upserted, skipped: false };
+  });
