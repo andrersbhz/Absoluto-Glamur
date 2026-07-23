@@ -1,12 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { Sparkles, ShieldCheck, Truck, Gem, Crown, Star, Heart, Award, Leaf } from "lucide-react";
+import { Sparkles, ShieldCheck, Truck, Gem, Crown, Star, Heart, Award, Leaf, ArrowRight } from "lucide-react";
 import type { ComponentType } from "react";
 import { StoreLayout } from "@/components/store/StoreLayout";
 import { ProductCard } from "@/components/store/ProductCard";
 import { HeroSlider } from "@/components/store/HeroSlider";
 import { categoriesQuery, collectionsQuery, featuredProductsQuery, productsByCategoryQuery } from "@/lib/catalog";
-import { homepageBlocksQuery, homeContentQuery, type HomepageBlock } from "@/lib/marketing";
+import { homepageBlocksQuery, homeContentQuery, type HomepageBlock, type AnnouncementProduct } from "@/lib/marketing";
 
 export const Route = createFileRoute("/")({
   head: () => ({
