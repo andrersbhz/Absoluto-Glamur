@@ -157,6 +157,16 @@ function HomeContentPanel() {
             <Input placeholder="Selo esquerda" value={hero.seal_left ?? ""} onChange={(e) => patch((v) => ({ ...v, hero: { ...v.hero, seal_left: e.target.value } }))} />
             <Input placeholder="Selo direita" value={hero.seal_right ?? ""} onChange={(e) => patch((v) => ({ ...v, hero: { ...v.hero, seal_right: e.target.value } }))} />
           </div>
+          <div className="sm:col-span-2">
+            <BannerUpload
+              currentUrl={hero.image_url ?? null}
+              onUploaded={(dataUri) => patch((v) => ({ ...v, hero: { ...v.hero, image_url: dataUri } }))}
+              onClear={() => patch((v) => ({ ...v, hero: { ...v.hero, image_url: "" } }))}
+            />
+            <p className="mt-2 text-xs text-muted-foreground">
+              Faça upload da imagem de fundo do Hero (convertida em WebP automaticamente) ou informe uma URL no campo acima.
+            </p>
+          </div>
         </div>
       </section>
 
