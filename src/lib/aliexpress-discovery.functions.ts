@@ -482,12 +482,19 @@ export const discoverAliexpressProducts = createServerFn({ method: "POST" })
       // Keyword discovery is provided by the official Affiliate product query.
       try {
         json = await callAli("aliexpress.affiliate.product.query", bizParams);
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        if (!/InsufficientPermission|does not have permission/i.test(message)) throw error;
-        items = await searchAliExpressWeb(data.keyword.trim(), data.page_size);
-        items = await enrichWebResultsWithAliDetails(items);
-        json = null;
+      } catch (apiError) {
+        // Affiliate access and OAuth tokens may be unavailable even while the
+        // store can still discover public products. Keep discovery operational
+        // through the connected web catalog instead of returning a false zero.
+        try {
+          items = await searchAliExpressWeb(data.keyword.trim(), data.page_size);
+          items = await enrichWebResultsWithAliDetails(items);
+          json = null;
+        } catch (fallbackError) {
+          const apiMessage = apiError instanceof Error ? apiError.message : String(apiError);
+          const fallbackMessage = fallbackError instanceof Error ? fallbackError.message : String(fallbackError);
+          throw new Error(`Busca indisponível. API AliExpress: ${apiMessage} Fallback: ${fallbackMessage}`);
+        }
       }
     } else {
       delete bizParams.ship_to_country;
@@ -533,7 +540,7 @@ export const discoverAliexpressProducts = createServerFn({ method: "POST" })
     }
 
     const filtered = data.min_rating
-      ? items.filter((i) => (i.evaluate_rate ?? 0) >= data.min_rating!)
+      ? items.filter((i) => i.evaluate_rate == null || i.evaluate_rate >= data.min_rating!)
       : items;
 
     return { items: filtered, total };
