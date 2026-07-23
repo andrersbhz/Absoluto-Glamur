@@ -1,7 +1,7 @@
 import { createFileRoute, Link, notFound, redirect } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { Heart, Star, ShoppingBag, ChevronLeft, Pencil } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { StoreLayout } from "@/components/store/StoreLayout";
 import { pickActivePrice, productDetailQuery } from "@/lib/catalog";
@@ -127,10 +127,23 @@ function ProductPage() {
 
   const media = useMemo(() => [...(product?.media ?? [])], [product]);
   const [activeIdx, setActiveIdx] = useState(0);
+
+  // Ao trocar de variação, se ela tiver imagem própria, tenta ativar essa mídia.
+  const variantImageUrl =
+    (selectedVariant?.options as { image_url?: string } | undefined)?.image_url ?? null;
+  useEffect(() => {
+    if (!variantImageUrl) return;
+    const idx = media.findIndex((m) => m.url === variantImageUrl);
+    if (idx >= 0) setActiveIdx(idx);
+  }, [variantImageUrl, media]);
+
   if (!product) return null;
   const active = media[activeIdx] ?? media[0];
-  const activeUrl = active?.url;
-  const activeIsVideo = isVideoMedia(active);
+  const activeUrl = variantImageUrl && !media.some((m) => m.url === variantImageUrl)
+    ? variantImageUrl
+    : active?.url;
+  const activeIsVideo = isVideoMedia(active) && !(variantImageUrl && !media.some((m) => m.url === variantImageUrl));
+
   const fav = isFavorite(product.id);
 
   return (
@@ -225,25 +238,40 @@ function ProductPage() {
 
             {variants.length > 1 && (
               <div className="mt-6">
-                <p className="mb-2 text-sm font-medium">Variação</p>
+                <p className="mb-2 text-sm font-medium">Escolha uma variação</p>
                 <div className="flex flex-wrap gap-2">
-                  {variants.map((v) => (
-                    <button
-                      key={v.id}
-                      type="button"
-                      onClick={() => setVariantId(v.id)}
-                      className={`rounded-lg border px-3 py-2 text-sm transition ${
-                        (variantId ?? variants.find((x) => x.is_default)?.id ?? variants[0]?.id) === v.id
-                          ? "border-primary bg-primary/10 text-primary"
-                          : "border-border text-foreground hover:bg-secondary"
-                      }`}
-                    >
-                      {v.name ?? v.sku}
-                    </button>
-                  ))}
+                  {variants.map((v) => {
+                    const opts = v.options as { image_url?: string; attributes?: Record<string, string> } | null;
+                    const img = opts?.image_url;
+                    const label =
+                      v.name ??
+                      (opts?.attributes ? Object.values(opts.attributes).join(" · ") : null) ??
+                      v.sku;
+                    const isActive =
+                      (variantId ?? variants.find((x) => x.is_default)?.id ?? variants[0]?.id) === v.id;
+                    return (
+                      <button
+                        key={v.id}
+                        type="button"
+                        onClick={() => setVariantId(v.id)}
+                        className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm transition ${
+                          isActive
+                            ? "border-primary bg-primary/10 text-primary"
+                            : "border-border text-foreground hover:bg-secondary"
+                        }`}
+                      >
+                        {img && (
+                          <img src={img} alt="" className="h-8 w-8 rounded-md object-cover" />
+                        )}
+                        <span className="max-w-[180px] truncate">{label}</span>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             )}
+
+
 
             <p className="mt-4 text-xs text-muted-foreground">
               {stock > 0 ? `${stock} unidades em estoque` : "Fora de estoque"}
