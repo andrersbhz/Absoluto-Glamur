@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { Plus, Trash2, ArrowUp, ArrowDown, Save, ImagePlus, Loader2 } from "lucide-react";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { supabase } from "@/integrations/supabase/client";
-import { homepageBlocksAdminQuery, collectionsAdminQuery, homeContentQuery, type HomeContent } from "@/lib/marketing";
+import { homepageBlocksAdminQuery, collectionsAdminQuery, homeContentQuery, type HomeContent, type AnnouncementProduct } from "@/lib/marketing";
 import { upsertSiteSetting } from "@/lib/site-settings.functions";
 import { useServerFn } from "@tanstack/react-start";
 import { imageFileToWebpDataUri } from "@/lib/image-webp";
