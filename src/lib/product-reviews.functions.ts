@@ -1,11 +1,68 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { queryOptions } from "@tanstack/react-query";
+import { generateText } from "ai";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabase } from "@/integrations/supabase/client";
 import { callAli } from "./aliexpress-discovery.functions";
+import { createLovableAiGatewayProvider } from "./ai-gateway.server";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
+
+// ---------- Tradução em lote para PT-BR (Lovable AI) ----------
+async function translateReviewsToPtBr(
+  items: { title: string | null; body: string | null }[],
+): Promise<{ title: string | null; body: string | null }[]> {
+  if (items.length === 0) return [];
+  const key = process.env.LOVABLE_API_KEY;
+  if (!key) return items;
+  // Só envia para IA aqueles que têm algum texto.
+  const indexed = items.map((it, i) => ({ i, ...it }));
+  const needing = indexed.filter((it) => (it.title && it.title.trim()) || (it.body && it.body.trim()));
+  if (needing.length === 0) return items;
+
+  const payload = needing.map((it) => ({
+    i: it.i,
+    title: it.title ?? "",
+    body: it.body ?? "",
+  }));
+
+  const gateway = createLovableAiGatewayProvider(key);
+  const model = gateway("google/gemini-2.5-flash");
+
+  const prompt = `Traduza para português do Brasil (PT-BR) as avaliações abaixo, mantendo o tom natural e coloquial de cliente. Preserve emojis, quebras de linha e pontuação. NÃO invente conteúdo. Se já estiver em PT-BR, apenas corrija erros óbvios de ortografia. Retorne SOMENTE um JSON válido no formato:
+[{"i": <indice>, "title": "...", "body": "..."}]
+
+Entrada:
+${JSON.stringify(payload)}`;
+
+  try {
+    const { text } = await generateText({
+      model,
+      prompt,
+      temperature: 0.2,
+    });
+    const match = text.match(/\[[\s\S]*\]/);
+    const parsed = match ? JSON.parse(match[0]) : [];
+    const map = new Map<number, { title?: string; body?: string }>();
+    for (const row of parsed) {
+      if (typeof row?.i === "number") {
+        map.set(row.i, { title: row.title, body: row.body });
+      }
+    }
+    return items.map((orig, i) => {
+      const t = map.get(i);
+      if (!t) return orig;
+      return {
+        title: t.title !== undefined && t.title !== null ? String(t.title) || orig.title : orig.title,
+        body: t.body !== undefined && t.body !== null ? String(t.body) || orig.body : orig.body,
+      };
+    });
+  } catch {
+    return items;
+  }
+}
+
 
 export type ExternalReview = {
   id: string;
