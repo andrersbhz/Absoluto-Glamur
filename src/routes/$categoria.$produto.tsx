@@ -127,10 +127,23 @@ function ProductPage() {
 
   const media = useMemo(() => [...(product?.media ?? [])], [product]);
   const [activeIdx, setActiveIdx] = useState(0);
+
+  // Ao trocar de variação, se ela tiver imagem própria, tenta ativar essa mídia.
+  const variantImageUrl =
+    (selectedVariant?.options as { image_url?: string } | undefined)?.image_url ?? null;
+  useMemo(() => {
+    if (!variantImageUrl) return;
+    const idx = media.findIndex((m) => m.url === variantImageUrl);
+    if (idx >= 0) setActiveIdx(idx);
+  }, [variantImageUrl, media]);
+
   if (!product) return null;
   const active = media[activeIdx] ?? media[0];
-  const activeUrl = active?.url;
-  const activeIsVideo = isVideoMedia(active);
+  const activeUrl = variantImageUrl && !media.some((m) => m.url === variantImageUrl)
+    ? variantImageUrl
+    : active?.url;
+  const activeIsVideo = isVideoMedia(active) && !(variantImageUrl && !media.some((m) => m.url === variantImageUrl));
+
   const fav = isFavorite(product.id);
 
   return (
