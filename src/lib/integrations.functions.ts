@@ -186,10 +186,59 @@ export const testIntegration = createServerFn({ method: "POST" })
       }
     }
 
+    if (data.provider === "aliexpress") {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const cfg: any = (row.config as any) ?? {};
+      const appKey = String(cfg.app_key ?? row.api_key ?? "").trim();
+      const appSecret = String(cfg.app_secret ?? row.webhook_token ?? "").trim();
+      const accessToken = String(cfg.access_token ?? "").trim();
+      if (!appKey || !appSecret) {
+        throw new Error("Preencha App Key e App Secret antes de testar.");
+      }
+      if (!accessToken) {
+        throw new Error(
+          "AliExpress ainda não autorizado. Clique em 'Autorizar AliExpress' para completar o OAuth.",
+        );
+      }
+      try {
+        const { callAli } = await import("./aliexpress-discovery.functions");
+        // Chamada leve só para validar o access_token. Se falhar por token, callAli tenta refresh.
+        await callAli("aliexpress.ds.recommend.feed.get", {
+          feed_name: "DS_bestseller",
+          page_no: 1,
+          page_size: 1,
+          target_currency: "BRL",
+          target_language: "PT",
+        });
+        await supabaseAdmin
+          .from("integrations")
+          .update({
+            last_verified_at: new Date().toISOString(),
+            last_status: "ok",
+            last_error: null,
+            enabled: true,
+          })
+          .eq("provider", "aliexpress");
+        return { ok: true, info: { name: "AliExpress Open Platform", email: cfg.aliexpress_user_id ?? null } };
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        await supabaseAdmin
+          .from("integrations")
+          .update({
+            last_verified_at: new Date().toISOString(),
+            last_status: "error",
+            last_error: msg,
+          })
+          .eq("provider", "aliexpress");
+        throw new Error(msg);
+      }
+    }
+
     return {
       ok: true,
       info: {
         message: `Teste automático para "${data.provider}" ainda não está disponível. Salve as credenciais e valide manualmente no fluxo do provedor.`,
       },
     };
+
   });
