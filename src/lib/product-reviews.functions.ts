@@ -346,18 +346,24 @@ export async function syncReviewsForProductInternal(
   try {
     const reviews = await fetchAliexpressReviews(sourceId, minRating);
     if (reviews.length === 0) return { fetched: 0, upserted: 0 };
-    const rows = reviews.map((r) => ({
+    const translated = await translateReviewsToPtBr(
+      reviews.map((r) => ({ title: r.title, body: r.body })),
+    );
+    const now = new Date().toISOString();
+    const rows = reviews.map((r, i) => ({
       product_id: productId,
       source: "aliexpress",
       source_review_id: r.source_review_id,
       author_name: r.author_name,
       author_country: r.author_country,
       rating: r.rating,
-      title: r.title,
-      body: r.body,
+      title: translated[i]?.title ?? r.title,
+      body: translated[i]?.body ?? r.body,
       images: r.images,
       reviewed_at: r.reviewed_at,
       is_visible: true,
+      body_translated: true,
+      last_synced_at: now,
     }));
     const { error } = await admin
       .from("product_external_reviews")
@@ -368,6 +374,7 @@ export async function syncReviewsForProductInternal(
     return { fetched: 0, upserted: 0 };
   }
 }
+
 
 
 export const syncAliexpressReviews = createServerFn({ method: "POST" })
