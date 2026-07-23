@@ -71,13 +71,15 @@ async function loadAliCreds() {
   const appSecret: string = cfg.app_secret ?? data?.webhook_token ?? "";
   const accessToken: string = cfg.access_token ?? "";
   const refreshToken: string = cfg.refresh_token ?? "";
+  const refreshedAt: string | null = cfg.refreshed_at ?? cfg.authorized_at ?? null;
+  const expiresIn: number = Number(cfg.expires_in ?? 0);
   if (!appKey || !appSecret) {
     throw new Error("Configure App Key (API Key) e App Secret (Webhook Token) do AliExpress em /admin/integrations.");
   }
-  if (!accessToken) {
-    throw new Error("AliExpress não autorizado. Vá em /admin/integrations e clique em 'Autorizar AliExpress' para completar o OAuth (troca do code por access_token).");
+  if (cfg.reauth_required || !accessToken) {
+    throw new Error("AliExpress precisa ser reautorizado em /admin/integrations (clique em 'Autorizar AliExpress').");
   }
-  return { appKey, appSecret, accessToken, refreshToken };
+  return { appKey, appSecret, accessToken, refreshToken, refreshedAt, expiresIn };
 }
 
 async function signRestPath(apiPath: string, params: Record<string, string>, secret: string): Promise<string> {
