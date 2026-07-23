@@ -586,3 +586,81 @@ export const bulkSyncAliexpressReviews = createServerFn({ method: "POST" })
     return { total: unique.length, processed, upserted, failures };
   });
 
+
+// -------- Auto-sync público (chamado ao abrir a página do produto) --------
+// Executa em background com throttling: só busca no AliExpress se o último
+// sync do produto for antigo (>= 12h). Sempre tenta traduzir para PT-BR
+// eventuais linhas ainda em outro idioma (body_translated=false).
+const AUTO_SYNC_TTL_HOURS = 12;
+
+export const autoSyncProductReviews = createServerFn({ method: "POST" })
+  .inputValidator((v: unknown) =>
+    z.object({ product_id: z.string().uuid() }).parse(v),
+  )
+  .handler(async ({ data }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    // 1) Backfill: traduz linhas antigas ainda não traduzidas (limite pequeno).
+    const { data: untranslated } = await supabaseAdmin
+      .from("product_external_reviews")
+      .select("id, title, body")
+      .eq("product_id", data.product_id)
+      .eq("body_translated", false)
+      .limit(30);
+    let translatedCount = 0;
+    if (untranslated && untranslated.length > 0) {
+      const t = await translateReviewsToPtBr(
+        untranslated.map((r: any) => ({ title: r.title, body: r.body })),
+      );
+      for (let i = 0; i < untranslated.length; i++) {
+        const orig = untranslated[i] as any;
+        const tr = t[i];
+        if (!tr) continue;
+        await supabaseAdmin
+          .from("product_external_reviews")
+          .update({
+            title: tr.title ?? orig.title,
+            body: tr.body ?? orig.body,
+            body_translated: true,
+          })
+          .eq("id", orig.id);
+        translatedCount++;
+      }
+    }
+
+    // 2) Se o último sync foi recente, não bate no AliExpress.
+    const { data: latest } = await supabaseAdmin
+      .from("product_external_reviews")
+      .select("last_synced_at")
+      .eq("product_id", data.product_id)
+      .eq("source", "aliexpress")
+      .order("last_synced_at", { ascending: false, nullsFirst: false })
+      .limit(1)
+      .maybeSingle();
+    const lastSync = latest?.last_synced_at ? new Date(latest.last_synced_at).getTime() : 0;
+    const ttlMs = AUTO_SYNC_TTL_HOURS * 3600 * 1000;
+    if (lastSync && Date.now() - lastSync < ttlMs) {
+      return { translated: translatedCount, fetched: 0, upserted: 0, skipped: true };
+    }
+
+    const { data: imp } = await supabaseAdmin
+      .from("product_imports")
+      .select("source_id")
+      .eq("product_id", data.product_id)
+      .in("source", ["aliexpress", "aliexpress_api"])
+      .not("source_id", "is", null)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (!imp?.source_id) {
+      return { translated: translatedCount, fetched: 0, upserted: 0, skipped: true };
+    }
+
+    const r = await syncReviewsForProductInternal(
+      supabaseAdmin,
+      data.product_id,
+      String(imp.source_id),
+      4.5,
+    );
+    return { translated: translatedCount, fetched: r.fetched, upserted: r.upserted, skipped: false };
+  });
