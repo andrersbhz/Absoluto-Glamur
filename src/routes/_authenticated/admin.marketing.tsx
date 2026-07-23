@@ -264,7 +264,7 @@ function HomeContentPanel() {
                 </div>
                 <div className="grid gap-3 sm:grid-cols-2">
                   <Input placeholder="Título" value={s.title ?? ""} onChange={(e) => updateSlide({ title: e.target.value })} />
-                  <Input placeholder="URL da imagem" value={s.image_url ?? ""} onChange={(e) => updateSlide({ image_url: e.target.value })} />
+                  <Input placeholder="URL da imagem (ou faça upload abaixo)" value={s.image_url ?? ""} onChange={(e) => updateSlide({ image_url: e.target.value })} />
                   <Textarea className="sm:col-span-2" placeholder="Subtítulo" value={s.subtitle ?? ""} onChange={(e) => updateSlide({ subtitle: e.target.value })} />
                   <Input placeholder="Texto do botão" value={s.cta_label ?? ""} onChange={(e) => updateSlide({ cta_label: e.target.value })} />
                   <Input placeholder="Link do produto (ex: /categoria/produto)" value={s.cta_href ?? ""} onChange={(e) => updateSlide({ cta_href: e.target.value })} />
@@ -280,6 +280,16 @@ function HomeContentPanel() {
                       <option value="right">Direita</option>
                     </select>
                   </label>
+                  <div className="sm:col-span-2">
+                    <BannerUpload
+                      currentUrl={s.image_url ?? null}
+                      onUploaded={(dataUri) => updateSlide({ image_url: dataUri })}
+                      onClear={() => updateSlide({ image_url: "" })}
+                    />
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      Upload convertido para WebP automaticamente para carregamento rápido.
+                    </p>
+                  </div>
                 </div>
               </div>
             );
