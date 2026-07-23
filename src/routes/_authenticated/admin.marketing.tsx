@@ -176,12 +176,13 @@ function HomeContentPanel() {
       <section className="rounded-2xl border border-border bg-card p-5">
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="font-display text-lg">Slider do topo</h3>
-            <p className="text-xs text-muted-foreground">Exibido abaixo do menu, 500px de altura, largura total.</p>
+            <h3 className="font-display text-lg">Hero Slider (topo)</h3>
+            <p className="text-xs text-muted-foreground">Banner principal em largura total (até 5 imagens). Cada slide tem link do produto.</p>
           </div>
           <Button
             size="sm"
             variant="outline"
+            disabled={sliderSlides.length >= 5}
             onClick={() =>
               patch((v) => ({
                 ...v,
@@ -195,7 +196,7 @@ function HomeContentPanel() {
               }))
             }
           >
-            <Plus className="mr-1 h-4 w-4" /> Novo slide
+            <Plus className="mr-1 h-4 w-4" /> Novo slide ({sliderSlides.length}/5)
           </Button>
         </div>
         <div className="mt-3 grid gap-3 sm:grid-cols-3 sm:items-center">
@@ -263,7 +264,7 @@ function HomeContentPanel() {
                 </div>
                 <div className="grid gap-3 sm:grid-cols-2">
                   <Input placeholder="Título" value={s.title ?? ""} onChange={(e) => updateSlide({ title: e.target.value })} />
-                  <Input placeholder="URL da imagem" value={s.image_url ?? ""} onChange={(e) => updateSlide({ image_url: e.target.value })} />
+                  <Input placeholder="URL da imagem (ou faça upload abaixo)" value={s.image_url ?? ""} onChange={(e) => updateSlide({ image_url: e.target.value })} />
                   <Textarea className="sm:col-span-2" placeholder="Subtítulo" value={s.subtitle ?? ""} onChange={(e) => updateSlide({ subtitle: e.target.value })} />
                   <Input placeholder="Texto do botão" value={s.cta_label ?? ""} onChange={(e) => updateSlide({ cta_label: e.target.value })} />
                   <Input placeholder="Link do produto (ex: /categoria/produto)" value={s.cta_href ?? ""} onChange={(e) => updateSlide({ cta_href: e.target.value })} />
@@ -279,6 +280,16 @@ function HomeContentPanel() {
                       <option value="right">Direita</option>
                     </select>
                   </label>
+                  <div className="sm:col-span-2">
+                    <BannerUpload
+                      currentUrl={s.image_url ?? null}
+                      onUploaded={(dataUri) => updateSlide({ image_url: dataUri })}
+                      onClear={() => updateSlide({ image_url: "" })}
+                    />
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      Upload convertido para WebP automaticamente para carregamento rápido.
+                    </p>
+                  </div>
                 </div>
               </div>
             );

@@ -119,7 +119,8 @@ function Index() {
         <HeroSlider slides={heroSlides} autoplayMs={heroSlider.autoplay_ms ?? 6000} />
       ) : null}
 
-      {/* HERO */}
+      {/* HERO — apenas quando o slider não está ativo/preenchido */}
+      {!(heroSlider.enabled !== false && heroSlides.length > 0) && (
       <section
         className="relative isolate overflow-hidden min-h-[420px] lg:min-h-[500px] flex items-center"
         style={
@@ -196,6 +197,8 @@ function Index() {
           </div>
         </div>
       </section>
+      )}
+
 
       {/* Categorias */}
       {categories.length > 0 && (
