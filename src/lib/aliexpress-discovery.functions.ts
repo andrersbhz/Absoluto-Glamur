@@ -219,7 +219,21 @@ export async function callAli<T = any>(
   method: string,
   bizParams: Record<string, string | number | boolean | undefined | null>,
 ): Promise<T> {
-  const { appKey, appSecret, accessToken, refreshToken } = await loadAliCreds();
+  let { appKey, appSecret, accessToken, refreshToken, refreshedAt, expiresIn } = await loadAliCreds();
+
+  // Refresh preventivo: se access_token expira em menos de 5 min, renova antes.
+  if (refreshedAt && expiresIn > 0) {
+    const ageMs = Date.now() - new Date(refreshedAt).getTime();
+    const remainingSec = expiresIn - Math.floor(ageMs / 1000);
+    if (remainingSec < 300 && refreshToken) {
+      try {
+        accessToken = await refreshAliToken(appKey, appSecret, refreshToken);
+      } catch {
+        // segue tentando com o token atual; erro real será tratado abaixo
+      }
+    }
+  }
+
   let json = await requestAli(method, appKey, appSecret, accessToken, bizParams);
 
   const isTokenErr = (j: any) => {
