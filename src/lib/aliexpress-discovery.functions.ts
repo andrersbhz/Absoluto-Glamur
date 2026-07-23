@@ -87,8 +87,39 @@ async function signRestPath(apiPath: string, params: Record<string, string>, sec
 }
 
 async function refreshAliToken(appKey: string, appSecret: string, refreshToken: string): Promise<string> {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+  const markInvalid = async (msg: string) => {
+    const { data: existing } = await supabaseAdmin
+      .from("integrations")
+      .select("config")
+      .eq("provider", "aliexpress")
+      .maybeSingle();
+    const prev = (existing?.config ?? {}) as any;
+    const nextCfg: any = { ...prev };
+    delete nextCfg.access_token;
+    delete nextCfg.refresh_token;
+    delete nextCfg.expires_in;
+    delete nextCfg.refresh_expires_in;
+    delete nextCfg.refreshed_at;
+    nextCfg.reauth_required = true;
+    nextCfg.reauth_required_at = new Date().toISOString();
+    await supabaseAdmin
+      .from("integrations")
+      .update({
+        config: nextCfg,
+        enabled: false,
+        last_status: "error",
+        last_error: msg,
+        last_verified_at: new Date().toISOString(),
+      })
+      .eq("provider", "aliexpress");
+  };
+
   if (!refreshToken) {
-    throw new Error("AliExpress access_token expirado e refresh_token indisponível — reautorize em /admin/integrations.");
+    const msg = "AliExpress access_token expirado e refresh_token indisponível — reautorize em /admin/integrations.";
+    await markInvalid(msg);
+    throw new Error(msg);
   }
   const signParams: Record<string, string> = {
     app_key: appKey,
@@ -107,17 +138,31 @@ async function refreshAliToken(appKey: string, appSecret: string, refreshToken: 
   let json: any = {};
   try { json = JSON.parse(text); } catch { /* keep */ }
   if (!res.ok || json.error || !json.access_token) {
-    const msg = json.error_description ?? json.msg ?? json.message ?? json.error ?? text.slice(0, 300);
-    throw new Error(`Falha ao renovar token AliExpress: ${msg}. Reautorize em /admin/integrations.`);
+    const raw = json.error_description ?? json.msg ?? json.message ?? json.error ?? text.slice(0, 300);
+    const msg = `Falha ao renovar token AliExpress: ${raw}. Reautorize em /admin/integrations.`;
+    if (/invalid|expired|IllegalRefreshToken|InvalidRefreshToken/i.test(String(raw))) {
+      await markInvalid(msg);
+    } else {
+      await supabaseAdmin
+        .from("integrations")
+        .update({
+          last_status: "error",
+          last_error: msg,
+          last_verified_at: new Date().toISOString(),
+        })
+        .eq("provider", "aliexpress");
+    }
+    throw new Error(msg);
   }
 
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const { data: existing } = await supabaseAdmin
     .from("integrations")
     .select("config")
     .eq("provider", "aliexpress")
     .maybeSingle();
   const prev = (existing?.config ?? {}) as any;
+  delete prev.reauth_required;
+  delete prev.reauth_required_at;
   await supabaseAdmin
     .from("integrations")
     .update({
@@ -129,6 +174,7 @@ async function refreshAliToken(appKey: string, appSecret: string, refreshToken: 
         refresh_expires_in: json.refresh_expires_in ?? prev.refresh_expires_in,
         refreshed_at: new Date().toISOString(),
       },
+      enabled: true,
       last_status: "ok",
       last_error: null,
       last_verified_at: new Date().toISOString(),
