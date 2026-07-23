@@ -104,14 +104,8 @@ function Index() {
   return (
     <StoreLayout>
       {/* Announcement bar */}
-      {announcement.enabled !== false && announcement.text ? (
-        <div className="bg-plum text-primary-foreground">
-          <div className="mx-auto flex max-w-7xl items-center justify-center gap-3 px-4 py-2 text-[11px] uppercase tracking-[0.28em] sm:px-6 lg:px-8">
-            <Crown className="h-3 w-3 text-champagne" />
-            <span>{announcement.text}</span>
-            <Crown className="h-3 w-3 text-champagne" />
-          </div>
-        </div>
+      {announcement.enabled !== false && (announcement.text || announcement.product?.slug) ? (
+        <AnnouncementBar announcement={announcement} />
       ) : null}
 
       {/* Hero Slider (editável) */}
