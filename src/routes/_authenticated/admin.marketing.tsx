@@ -176,12 +176,13 @@ function HomeContentPanel() {
       <section className="rounded-2xl border border-border bg-card p-5">
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="font-display text-lg">Slider do topo</h3>
-            <p className="text-xs text-muted-foreground">Exibido abaixo do menu, 500px de altura, largura total.</p>
+            <h3 className="font-display text-lg">Hero Slider (topo)</h3>
+            <p className="text-xs text-muted-foreground">Banner principal em largura total (até 5 imagens). Cada slide tem link do produto.</p>
           </div>
           <Button
             size="sm"
             variant="outline"
+            disabled={sliderSlides.length >= 5}
             onClick={() =>
               patch((v) => ({
                 ...v,
@@ -195,7 +196,7 @@ function HomeContentPanel() {
               }))
             }
           >
-            <Plus className="mr-1 h-4 w-4" /> Novo slide
+            <Plus className="mr-1 h-4 w-4" /> Novo slide ({sliderSlides.length}/5)
           </Button>
         </div>
         <div className="mt-3 grid gap-3 sm:grid-cols-3 sm:items-center">
