@@ -152,10 +152,10 @@ export const syncAliexpressVariants = createServerFn({ method: "POST" })
     let idx = 0;
     for (const s of skus) {
       const name = humanName(s.attributes);
-      const options: Record<string, unknown> = {
+      const options = {
         attributes: s.attributes,
         image_url: s.image_url,
-      };
+      } as any;
       const existingRow = existingBySku.get(s.sku_code);
       const isDefault = idx === 0 && (existing ?? []).length === 0
         ? true
