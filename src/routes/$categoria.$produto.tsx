@@ -271,9 +271,10 @@ function ProductPage() {
             {product.description && (
               <div className="mt-10 border-t border-border pt-6">
                 <h2 className="font-display text-xl">Sobre o produto</h2>
-                <p className="mt-3 whitespace-pre-line text-sm leading-relaxed text-muted-foreground">
-                  {product.description}
-                </p>
+                <div
+                  className="prose prose-sm prose-invert mt-3 max-w-none text-sm leading-relaxed text-muted-foreground [&_p]:mb-3 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_strong]:text-foreground [&_h2]:font-display [&_h2]:text-lg [&_h2]:text-foreground [&_h3]:font-display [&_h3]:text-base [&_h3]:text-foreground"
+                  dangerouslySetInnerHTML={{ __html: sanitizeDescriptionHtml(product.description) }}
+                />
               </div>
             )}
           </div>
