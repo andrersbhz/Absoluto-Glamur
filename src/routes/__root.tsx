@@ -14,6 +14,7 @@ import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { supabase } from "@/integrations/supabase/client";
 import { getGtmContainerId } from "@/lib/gtm.functions";
+import { CustomerPushPrompt } from "@/components/store/CustomerPushPrompt";
 
 function NotFoundComponent() {
   return (
@@ -160,6 +161,7 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <Outlet />
+      <CustomerPushPrompt />
       <Toaster richColors position="top-right" />
     </QueryClientProvider>
   );
