@@ -238,25 +238,40 @@ function ProductPage() {
 
             {variants.length > 1 && (
               <div className="mt-6">
-                <p className="mb-2 text-sm font-medium">Variação</p>
+                <p className="mb-2 text-sm font-medium">Escolha uma variação</p>
                 <div className="flex flex-wrap gap-2">
-                  {variants.map((v) => (
-                    <button
-                      key={v.id}
-                      type="button"
-                      onClick={() => setVariantId(v.id)}
-                      className={`rounded-lg border px-3 py-2 text-sm transition ${
-                        (variantId ?? variants.find((x) => x.is_default)?.id ?? variants[0]?.id) === v.id
-                          ? "border-primary bg-primary/10 text-primary"
-                          : "border-border text-foreground hover:bg-secondary"
-                      }`}
-                    >
-                      {v.name ?? v.sku}
-                    </button>
-                  ))}
+                  {variants.map((v) => {
+                    const opts = v.options as { image_url?: string; attributes?: Record<string, string> } | null;
+                    const img = opts?.image_url;
+                    const label =
+                      v.name ??
+                      (opts?.attributes ? Object.values(opts.attributes).join(" · ") : null) ??
+                      v.sku;
+                    const isActive =
+                      (variantId ?? variants.find((x) => x.is_default)?.id ?? variants[0]?.id) === v.id;
+                    return (
+                      <button
+                        key={v.id}
+                        type="button"
+                        onClick={() => setVariantId(v.id)}
+                        className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm transition ${
+                          isActive
+                            ? "border-primary bg-primary/10 text-primary"
+                            : "border-border text-foreground hover:bg-secondary"
+                        }`}
+                      >
+                        {img && (
+                          <img src={img} alt="" className="h-8 w-8 rounded-md object-cover" />
+                        )}
+                        <span className="max-w-[180px] truncate">{label}</span>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             )}
+
+
 
             <p className="mt-4 text-xs text-muted-foreground">
               {stock > 0 ? `${stock} unidades em estoque` : "Fora de estoque"}
