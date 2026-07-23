@@ -189,7 +189,17 @@ function CatalogEditor() {
     onError: (e: Error, vars) => {
       if (!vars || !(vars as { silent?: boolean }).silent) toast.error(e.message);
     },
+
+  const syncVariantsFn = useServerFn(syncAliexpressVariants);
+  const syncVariants = useMutation({
+    mutationFn: () => syncVariantsFn({ data: { product_id: id } }),
+    onSuccess: (r) => {
+      toast.success(`Variações sincronizadas: ${r.variants_upserted}${r.total_skus ? ` de ${r.total_skus}` : ""}`);
+      prodQ.refetch();
+    },
+    onError: (e: Error) => toast.error(e.message),
   });
+
 
   // Auto-sync stock from AliExpress on first open (silently, only if linked).
   const autoSyncedRef = useRef<string | null>(null);
