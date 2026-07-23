@@ -131,7 +131,7 @@ function ProductPage() {
   // Ao trocar de variação, se ela tiver imagem própria, tenta ativar essa mídia.
   const variantImageUrl =
     (selectedVariant?.options as { image_url?: string } | undefined)?.image_url ?? null;
-  useMemo(() => {
+  useEffect(() => {
     if (!variantImageUrl) return;
     const idx = media.findIndex((m) => m.url === variantImageUrl);
     if (idx >= 0) setActiveIdx(idx);
