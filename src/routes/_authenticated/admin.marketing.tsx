@@ -110,16 +110,17 @@ function HomeContentPanel() {
   const sliderSlides = slider.slides ?? [];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pb-24">
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
           Edite os textos e imagens editoriais da home. Ativo em tempo real após salvar.
         </p>
         <Button onClick={handleSave} disabled={saving || !draft}>
           {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-          Salvar
+          Salvar configurações
         </Button>
       </div>
+
 
       <section className="rounded-2xl border border-border bg-card p-5">
         <h3 className="font-display text-lg">Barra de anúncio</h3>
