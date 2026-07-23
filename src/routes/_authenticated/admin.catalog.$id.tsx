@@ -189,6 +189,8 @@ function CatalogEditor() {
     onError: (e: Error, vars) => {
       if (!vars || !(vars as { silent?: boolean }).silent) toast.error(e.message);
     },
+  });
+
 
   const syncVariantsFn = useServerFn(syncAliexpressVariants);
   const syncVariants = useMutation({
