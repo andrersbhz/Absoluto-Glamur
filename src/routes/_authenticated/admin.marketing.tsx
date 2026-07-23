@@ -2,7 +2,7 @@ import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
-import { Plus, Trash2, ArrowUp, ArrowDown, Save, ImagePlus, Loader2 } from "lucide-react";
+import { Plus, Trash2, ArrowUp, ArrowDown, Save, ImagePlus, Loader2, Search, X, Sparkles, ArrowRight, Crown } from "lucide-react";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { supabase } from "@/integrations/supabase/client";
 import { homepageBlocksAdminQuery, collectionsAdminQuery, homeContentQuery, type HomeContent, type AnnouncementProduct } from "@/lib/marketing";
