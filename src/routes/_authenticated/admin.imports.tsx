@@ -408,6 +408,7 @@ function ApiTab() {
       if (kws.length === 0) throw new Error("A IA não retornou palavras-chave. Ajuste o nicho.");
 
       const map = new Map<string, DiscoveryProduct>();
+      const searchErrors: string[] = [];
       for (let i = 0; i < kws.length; i++) {
         const kw = kws[i];
         setProgress({ current: i + 1, total: kws.length, label: `Buscando: "${kw}"` });
@@ -417,7 +418,7 @@ function ApiTab() {
               keyword: kw,
               page: 1,
               page_size: perKeyword,
-              sort: "SALE_PRICE_ASC",
+              sort: "LAST_VOLUME_DESC",
               min_rating: minRating,
             },
           });
@@ -428,7 +429,12 @@ function ApiTab() {
           }
         } catch (e) {
           console.warn("discover falhou para keyword", kw, e);
+          searchErrors.push(e instanceof Error ? e.message : String(e));
         }
+      }
+      if (map.size === 0 && searchErrors.length > 0) {
+        const uniqueErrors = Array.from(new Set(searchErrors));
+        throw new Error(uniqueErrors[0] ?? "Não foi possível consultar os produtos do AliExpress.");
       }
       // sort by (rating * log(sales))
       const sorted = Array.from(map.values()).sort((a, b) => {
