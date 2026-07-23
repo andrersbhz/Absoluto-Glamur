@@ -120,34 +120,53 @@ function Index() {
       ) : null}
 
       {/* HERO */}
-      <section className="relative isolate overflow-hidden">
-        <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(1200px_600px_at_20%_-10%,var(--secondary),transparent_60%),radial-gradient(900px_500px_at_100%_10%,color-mix(in_oklab,var(--champagne)_35%,transparent),transparent_60%),linear-gradient(180deg,var(--background),var(--background))]" />
+      <section
+        className="relative isolate overflow-hidden min-h-[420px] lg:min-h-[500px] flex items-center"
+        style={
+          heroImageUrl
+            ? {
+                backgroundImage: `url(${heroImageUrl})`,
+                backgroundSize: "cover",
+                backgroundPosition: "center",
+                backgroundRepeat: "no-repeat",
+              }
+            : undefined
+        }
+      >
+        {!heroImageUrl && (
+          <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(1200px_600px_at_20%_-10%,var(--secondary),transparent_60%),radial-gradient(900px_500px_at_100%_10%,color-mix(in_oklab,var(--champagne)_35%,transparent),transparent_60%),linear-gradient(180deg,var(--background),var(--background))]" />
+        )}
+        {heroImageUrl && (
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-black/60 via-black/35 to-black/10" />
+        )}
         <div
-          className="pointer-events-none absolute inset-0 -z-10 opacity-[0.06] mix-blend-multiply"
+          className="pointer-events-none absolute inset-0 opacity-[0.06] mix-blend-multiply"
           style={{
             backgroundImage:
               "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/></filter><rect width='100%' height='100%' filter='url(%23n)' opacity='0.7'/></svg>\")",
           }}
         />
 
-        <div className="mx-auto grid max-w-7xl gap-14 px-4 py-24 sm:px-6 lg:grid-cols-12 lg:items-center lg:gap-16 lg:px-8 lg:py-32">
-          <div className="lg:col-span-7">
+        <div className="relative z-10 mx-auto w-full max-w-7xl px-4 py-20 sm:px-6 lg:px-8 lg:py-28">
+          <div className="max-w-2xl">
             {hero.badge ? (
-              <p className="inline-flex items-center gap-2 rounded-full border border-champagne/40 bg-background/60 px-4 py-1.5 text-[11px] uppercase tracking-[0.32em] text-plum backdrop-blur">
+              <p className={`inline-flex items-center gap-2 rounded-full border px-4 py-1.5 text-[11px] uppercase tracking-[0.32em] backdrop-blur ${heroImageUrl ? "border-white/40 bg-black/30 text-white" : "border-champagne/40 bg-background/60 text-plum"}`}>
                 <Sparkles className="h-3.5 w-3.5 text-champagne" /> {hero.badge}
               </p>
             ) : null}
-            <h1 className="mt-8 font-display text-6xl leading-[0.98] tracking-tight text-foreground sm:text-7xl lg:text-[5.5rem]">
+            <h1 className={`mt-8 font-display text-5xl leading-[0.98] tracking-tight sm:text-6xl lg:text-7xl ${heroImageUrl ? "text-white drop-shadow-[0_2px_20px_rgba(0,0,0,0.5)]" : "text-foreground"}`}>
               {hero.title_line1 ?? "Beleza rara,"}
               <br />
-              <span className="bg-gradient-to-r from-plum via-primary to-champagne bg-clip-text text-transparent">
+              <span className={heroImageUrl ? "text-champagne" : "bg-gradient-to-r from-plum via-primary to-champagne bg-clip-text text-transparent"}>
                 {hero.title_highlight ?? "assinatura sua."}
               </span>
             </h1>
             {hero.subtitle ? (
-              <p className="mt-8 max-w-xl text-lg leading-relaxed text-muted-foreground">{hero.subtitle}</p>
+              <p className={`mt-6 max-w-xl text-base leading-relaxed sm:text-lg ${heroImageUrl ? "text-white/90" : "text-muted-foreground"}`}>
+                {hero.subtitle}
+              </p>
             ) : null}
-            <div className="mt-10 flex flex-wrap items-center gap-6">
+            <div className="mt-8 flex flex-wrap items-center gap-6">
               <a
                 href={primaryHref}
                 className="group relative inline-flex items-center justify-center overflow-hidden rounded-full bg-primary px-8 py-3.5 text-xs font-medium uppercase tracking-[0.28em] text-primary-foreground shadow-elegant transition hover:shadow-[0_20px_60px_-20px_var(--primary)]"
@@ -158,7 +177,7 @@ function Index() {
               {hero.cta_secondary_label ? (
                 <a
                   href={secondaryHref}
-                  className="inline-flex items-center gap-2 text-xs uppercase tracking-[0.32em] text-plum transition hover:text-primary"
+                  className={`inline-flex items-center gap-2 text-xs uppercase tracking-[0.32em] transition ${heroImageUrl ? "text-white hover:text-champagne" : "text-plum hover:text-primary"}`}
                 >
                   {hero.cta_secondary_label} <span aria-hidden>→</span>
                 </a>
@@ -166,7 +185,7 @@ function Index() {
             </div>
 
             {trustBadges.length > 0 && (
-              <div className="mt-14 flex flex-wrap items-center gap-x-10 gap-y-4 text-[11px] uppercase tracking-[0.28em] text-muted-foreground">
+              <div className={`mt-12 flex flex-wrap items-center gap-x-8 gap-y-3 text-[11px] uppercase tracking-[0.28em] ${heroImageUrl ? "text-white/85" : "text-muted-foreground"}`}>
                 {trustBadges.map((b, i) => (
                   <span key={i} className="flex items-center gap-2">
                     <Gem className="h-3 w-3 text-champagne" /> {b.label}
@@ -174,33 +193,6 @@ function Index() {
                 ))}
               </div>
             )}
-          </div>
-
-          {/* Vitrine */}
-          <div className="relative lg:col-span-5">
-            <div className="relative mx-auto aspect-[4/5] max-w-md">
-              <div className="absolute -inset-6 rounded-[2.5rem] bg-gradient-to-br from-champagne/60 via-champagne/10 to-transparent blur-2xl" />
-              <div
-                className="relative h-full w-full overflow-hidden rounded-[2rem] bg-gradient-to-br from-primary via-berry to-plum shadow-elegant ring-1 ring-champagne/40"
-                style={
-                  heroImageUrl
-                    ? { backgroundImage: `url(${heroImageUrl})`, backgroundSize: "cover", backgroundPosition: "center" }
-                    : undefined
-                }
-              >
-                <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.35),transparent_45%)]" />
-                <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_90%,color-mix(in_oklab,var(--champagne)_65%,transparent),transparent_50%)]" />
-                {!heroImageUrl && (
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <span className="font-display text-[9rem] leading-none text-white/15">{hero.monogram ?? "A·G"}</span>
-                  </div>
-                )}
-                <div className="absolute bottom-6 left-6 right-6 flex items-center justify-between rounded-full border border-champagne/60 bg-black/25 px-5 py-2.5 text-[10px] uppercase tracking-[0.3em] text-white backdrop-blur">
-                  <span>{heroProductName ?? hero.seal_left ?? "Maison Absoluto"}</span>
-                  <span className="text-champagne">{hero.seal_right ?? "Est. 2025"}</span>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
       </section>
