@@ -12,6 +12,21 @@ import { useAuth } from "@/hooks/use-auth";
 import { isVideoMedia } from "@/lib/media-kind";
 import { ProductReviews } from "@/components/store/ProductReviews";
 
+const ALLOWED_TAGS = new Set(["p", "br", "ul", "ol", "li", "strong", "b", "em", "i", "h2", "h3", "h4"]);
+function sanitizeDescriptionHtml(html: string): string {
+  // strip script/style blocks entirely
+  let out = html.replace(/<(script|style)[\s\S]*?<\/\1>/gi, "");
+  // strip all attributes and disallowed tags, keep only allowlisted tags without attrs
+  out = out.replace(/<\/?([a-zA-Z0-9]+)(\s[^>]*)?>/g, (_m, tag: string, _attrs) => {
+    const t = tag.toLowerCase();
+    if (!ALLOWED_TAGS.has(t)) return "";
+    return _m.startsWith("</") ? `</${t}>` : `<${t}>`;
+  });
+  // collapse excess whitespace between block tags
+  out = out.replace(/(&nbsp;|\u00a0)+/g, " ").replace(/[ \t]{2,}/g, " ").trim();
+  return out;
+}
+
 export const Route = createFileRoute("/$categoria/$produto")({
   loader: async ({ params, context }) => {
     const product = await context.queryClient.ensureQueryData(productDetailQuery(params.produto));
