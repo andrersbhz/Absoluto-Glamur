@@ -814,7 +814,7 @@ export const importAliexpressProductToStore = createServerFn({ method: "POST" })
         is_featured: false,
         brand_id: settings.default_brand_id ?? null,
         category_id: settings.default_category_id ?? null,
-        tags: [],
+        tags: buildProductTags({ name: norm.title }),
       })
       .select("id")
       .single();
