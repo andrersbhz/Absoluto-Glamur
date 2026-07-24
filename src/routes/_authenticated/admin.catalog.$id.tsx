@@ -866,9 +866,20 @@ function CatalogEditor() {
               {/* Aside preview */}
               <aside className="space-y-4 lg:sticky lg:top-16 lg:self-start">
                 <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-soft">
-                  <div className="flex aspect-[4/5] items-center justify-center overflow-hidden bg-secondary">
+                  <div className="relative flex aspect-[4/5] items-center justify-center overflow-hidden bg-secondary">
                     {cover ? (
-                      <img src={cover} alt={form.name} className="h-full w-full object-cover" />
+                      isVideoUrl(cover) ? (
+                        <video
+                          src={cover}
+                          className="h-full w-full object-cover"
+                          muted
+                          loop
+                          autoPlay
+                          playsInline
+                        />
+                      ) : (
+                        <img src={cover} alt={form.name} className="h-full w-full object-cover" />
+                      )
                     ) : (
                       <div className="flex flex-col items-center gap-2 text-muted-foreground">
                         <ImageIcon className="h-8 w-8" />
@@ -876,6 +887,29 @@ function CatalogEditor() {
                       </div>
                     )}
                   </div>
+                  {form.media.length > 1 && (
+                    <div className="flex gap-1.5 overflow-x-auto border-t border-border bg-secondary/40 p-2">
+                      {form.media.slice(0, 8).map((m, idx) =>
+                        m.url ? (
+                          <div
+                            key={`${m.url}-${idx}`}
+                            className="relative h-12 w-12 flex-shrink-0 overflow-hidden rounded-md border border-border bg-background"
+                          >
+                            {isVideoUrl(m.url) ? (
+                              <>
+                                <video src={m.url} className="h-full w-full object-cover" muted playsInline />
+                                <span className="absolute bottom-0 right-0 rounded-tl bg-black/60 px-1 text-[9px] text-white">
+                                  vídeo
+                                </span>
+                              </>
+                            ) : (
+                              <img src={m.url} alt={m.alt ?? ""} className="h-full w-full object-cover" />
+                            )}
+                          </div>
+                        ) : null,
+                      )}
+                    </div>
+                  )}
                   <div className="space-y-2 p-4">
                     <p className="text-[11px] uppercase tracking-wide text-muted-foreground">
                       {metaQ.data?.brands.find((b) => b.id === form.brand_id)?.name ??
