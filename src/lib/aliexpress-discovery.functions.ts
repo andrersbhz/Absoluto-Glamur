@@ -4,6 +4,7 @@ import { z } from "zod";
 // module stays browser-safe — see sign()/signRestPath() below.
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import {
+  buildProductTags,
   computeSalePriceCents,
   stripBrandMentions,
   toParagraphHtml,
