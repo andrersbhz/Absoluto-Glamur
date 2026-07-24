@@ -200,7 +200,7 @@ async function requestAli(
     method,
     app_key: appKey,
     session: accessToken,
-    sign_method: "sha256",
+    sign_method: "hmac-sha256",
     timestamp: Date.now().toString(),
     simplify: "true",
   };
