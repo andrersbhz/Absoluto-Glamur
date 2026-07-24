@@ -141,12 +141,20 @@ function ProductCard({
         </div>
         <Button
           onClick={onAdd}
-          disabled={isImporting}
-          className="mt-1 w-full gap-1 bg-primary text-primary-foreground hover:bg-primary/90"
+          disabled={isImporting || isAdded}
+          className={`mt-1 w-full gap-1 ${
+            isAdded
+              ? "bg-emerald-600 text-white hover:bg-emerald-600"
+              : "bg-primary text-primary-foreground hover:bg-primary/90"
+          }`}
         >
           {isImporting ? (
             <>
               <Loader2 className="h-4 w-4 animate-spin" /> Adicionando…
+            </>
+          ) : isAdded ? (
+            <>
+              <Check className="h-4 w-4" /> Adicionado ao catálogo
             </>
           ) : (
             <>
