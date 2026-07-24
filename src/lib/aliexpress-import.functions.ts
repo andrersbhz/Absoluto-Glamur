@@ -83,10 +83,12 @@ export const getImportSettings = createServerFn({ method: "GET" })
     const { data } = await supabaseAdmin
       .from("integrations")
       .select("config")
-      .eq("provider", "aliexpress_import")
+      .eq("provider", "aliexpress")
       .maybeSingle();
-    if (!data?.config) return DEFAULT_SETTINGS;
-    const parsed = SettingsSchema.safeParse(data.config);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const raw = (data?.config as any)?.import_settings ?? data?.config ?? null;
+    if (!raw) return DEFAULT_SETTINGS;
+    const parsed = SettingsSchema.safeParse(raw);
     return parsed.success ? parsed.data : DEFAULT_SETTINGS;
   });
 
@@ -96,23 +98,21 @@ export const saveImportSettings = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await assertCatalog(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: existing } = await supabaseAdmin
+      .from("integrations")
+      .select("config")
+      .eq("provider", "aliexpress")
+      .maybeSingle();
+    const prev = (existing?.config as Record<string, unknown> | null) ?? {};
+    const merged = { ...prev, import_settings: data };
     const { error } = await supabaseAdmin
       .from("integrations")
-      .upsert(
-        {
-          provider: "aliexpress_import",
-          category: "catalog",
-          display_name: "Importador AliExpress",
-          description: "Configurações de importação (markup, defaults)",
-          enabled: true,
-          mode: "production" as const,
-          config: data,
-        },
-        { onConflict: "provider" },
-      );
+      .update({ config: merged })
+      .eq("provider", "aliexpress");
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
 
 // -------------------- Pricing helpers --------------------
 
