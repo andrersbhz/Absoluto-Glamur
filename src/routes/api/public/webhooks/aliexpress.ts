@@ -73,7 +73,7 @@ export const Route = createFileRoute("/api/public/webhooks/aliexpress")({
           const signParams: Record<string, string> = {
             app_key: appKey,
             code,
-            sign_method: "sha256",
+            sign_method: "hmac-sha256",
             timestamp: restTs(),
           };
           const signature = signRest("/auth/token/create", signParams, appSecret);
