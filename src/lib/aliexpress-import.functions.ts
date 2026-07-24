@@ -453,7 +453,7 @@ async function commitImportRow(
       is_featured: false,
       brand_id: opts.brand_id,
       category_id: opts.category_id,
-      tags: [],
+      tags: buildProductTags({ name: norm.title }),
     })
     .select("id")
     .single();
