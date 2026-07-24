@@ -13,7 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Star, Store, Search, Plus, ExternalLink, Loader2, TrendingUp, Sparkles, Check } from "lucide-react";
+import { Star, Store, Search, Plus, ExternalLink, Loader2, TrendingUp, Sparkles, Check, PackagePlus } from "lucide-react";
 import {
   discoverAliexpressProducts,
   importAliexpressProductToStore,
@@ -177,6 +177,12 @@ function DiscoverPage() {
   }>({ keyword: "", page: 1 });
   const [importing, setImporting] = useState<string | null>(null);
   const [added, setAdded] = useState<Set<string>>(new Set());
+  const [bulkState, setBulkState] = useState<{ running: boolean; done: number; total: number; failed: number }>({
+    running: false,
+    done: 0,
+    total: 0,
+    failed: 0,
+  });
   const qc = useQueryClient();
 
   const discover = useServerFn(discoverAliexpressProducts);
@@ -228,6 +234,35 @@ function DiscoverPage() {
         : (categories.find((c) => c.slug === suggestCategory)?.name ?? "");
     setKeyword(catName);
     setSubmitted({ keyword: catName, page: 1, sort: "LAST_VOLUME_DESC" });
+  }
+
+  async function importAllVisible() {
+    const pending = items.filter((p) => !added.has(p.product_id));
+    if (pending.length === 0) {
+      toast.info("Todos os produtos exibidos já foram adicionados.");
+      return;
+    }
+    setBulkState({ running: true, done: 0, total: pending.length, failed: 0 });
+    let done = 0;
+    let failed = 0;
+    for (const p of pending) {
+      setImporting(p.product_id);
+      try {
+        await importFn({ data: { product_id: p.product_id, status: "draft", stock: 10 } });
+        setAdded((prev) => new Set(prev).add(p.product_id));
+        done += 1;
+      } catch (e) {
+        failed += 1;
+        console.error("bulk import failed", p.product_id, e);
+      } finally {
+        setImporting(null);
+        setBulkState((s) => ({ ...s, done: done, failed }));
+      }
+    }
+    setBulkState({ running: false, done, total: pending.length, failed });
+    qc.invalidateQueries({ queryKey: ["admin-products"] });
+    if (failed === 0) toast.success(`${done} produto(s) adicionado(s) ao catálogo`);
+    else toast.warning(`${done} adicionado(s), ${failed} falharam`);
   }
 
   const items = query.data?.items ?? [];
@@ -321,6 +356,32 @@ function DiscoverPage() {
           </div>
         ) : (
           <>
+            <div className="flex flex-col gap-2 rounded-xl border border-border bg-card p-3 md:flex-row md:items-center md:justify-between">
+              <div className="text-sm text-muted-foreground">
+                {items.length} produto(s) exibidos ·{" "}
+                <span className="text-foreground">{items.filter((p) => !added.has(p.product_id)).length}</span> pendente(s)
+                {bulkState.running && (
+                  <span className="ml-2">
+                    · Importando {bulkState.done}/{bulkState.total}
+                    {bulkState.failed > 0 && ` (${bulkState.failed} falhas)`}
+                  </span>
+                )}
+              </div>
+              <Button
+                type="button"
+                onClick={importAllVisible}
+                disabled={bulkState.running || items.every((p) => added.has(p.product_id))}
+                className="gap-1 bg-primary text-primary-foreground hover:bg-primary/90"
+              >
+                {bulkState.running ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <PackagePlus className="h-4 w-4" />
+                )}
+                Adicionar todos ao catálogo
+              </Button>
+            </div>
+
             <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
               {items.map((p) => (
                 <ProductCard
@@ -332,6 +393,7 @@ function DiscoverPage() {
                 />
               ))}
             </div>
+
 
             <div className="flex items-center justify-center gap-2 py-4">
               <Button
