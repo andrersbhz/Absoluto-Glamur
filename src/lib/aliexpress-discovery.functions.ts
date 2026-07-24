@@ -129,7 +129,7 @@ async function refreshAliToken(appKey: string, appSecret: string, refreshToken: 
   const signParams: Record<string, string> = {
     app_key: appKey,
     refresh_token: refreshToken,
-    sign_method: "sha256",
+    sign_method: "hmac-sha256",
     timestamp: Date.now().toString(),
   };
   const signature = await signRestPath("/auth/token/refresh", signParams, appSecret);
