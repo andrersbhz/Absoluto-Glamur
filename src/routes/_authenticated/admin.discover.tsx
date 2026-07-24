@@ -177,6 +177,12 @@ function DiscoverPage() {
   }>({ keyword: "", page: 1 });
   const [importing, setImporting] = useState<string | null>(null);
   const [added, setAdded] = useState<Set<string>>(new Set());
+  const [bulkState, setBulkState] = useState<{ running: boolean; done: number; total: number; failed: number }>({
+    running: false,
+    done: 0,
+    total: 0,
+    failed: 0,
+  });
   const qc = useQueryClient();
 
   const discover = useServerFn(discoverAliexpressProducts);
