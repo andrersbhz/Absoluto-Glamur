@@ -76,7 +76,10 @@ async function loadAliCreds() {
   if (!appKey || !appSecret) {
     throw new Error("Configure App Key (API Key) e App Secret (Webhook Token) do AliExpress em /admin/integrations.");
   }
-  if (cfg.reauth_required || !accessToken) {
+  // Só bloqueia quando o access_token realmente não existe. Flag `reauth_required`
+  // pode ficar velha após uma renovação/reautorização; se o token está presente,
+  // seguimos e deixamos o refresh automático tratar caso o AliExpress rejeite.
+  if (!accessToken) {
     throw new Error("AliExpress precisa ser reautorizado em /admin/integrations (clique em 'Autorizar AliExpress').");
   }
   return { appKey, appSecret, accessToken, refreshToken, refreshedAt, expiresIn };
