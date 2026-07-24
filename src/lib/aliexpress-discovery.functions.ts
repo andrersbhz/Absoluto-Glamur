@@ -4,6 +4,7 @@ import { z } from "zod";
 // module stays browser-safe — see sign()/signRestPath() below.
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import {
+  buildProductTags,
   computeSalePriceCents,
   stripBrandMentions,
   toParagraphHtml,
@@ -813,7 +814,7 @@ export const importAliexpressProductToStore = createServerFn({ method: "POST" })
         is_featured: false,
         brand_id: settings.default_brand_id ?? null,
         category_id: settings.default_category_id ?? null,
-        tags: [],
+        tags: buildProductTags({ name: norm.title }),
       })
       .select("id")
       .single();
