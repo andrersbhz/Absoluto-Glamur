@@ -13,7 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Star, Store, Search, Plus, ExternalLink, Loader2, TrendingUp, Sparkles, Check } from "lucide-react";
+import { Star, Store, Search, Plus, ExternalLink, Loader2, TrendingUp, Sparkles, Check, PackagePlus } from "lucide-react";
 import {
   discoverAliexpressProducts,
   importAliexpressProductToStore,
