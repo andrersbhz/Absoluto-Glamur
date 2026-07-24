@@ -236,6 +236,35 @@ function DiscoverPage() {
     setSubmitted({ keyword: catName, page: 1, sort: "LAST_VOLUME_DESC" });
   }
 
+  async function importAllVisible() {
+    const pending = items.filter((p) => !added.has(p.product_id));
+    if (pending.length === 0) {
+      toast.info("Todos os produtos exibidos já foram adicionados.");
+      return;
+    }
+    setBulkState({ running: true, done: 0, total: pending.length, failed: 0 });
+    let done = 0;
+    let failed = 0;
+    for (const p of pending) {
+      setImporting(p.product_id);
+      try {
+        await importFn({ data: { product_id: p.product_id, status: "draft", stock: 10 } });
+        setAdded((prev) => new Set(prev).add(p.product_id));
+        done += 1;
+      } catch (e) {
+        failed += 1;
+        console.error("bulk import failed", p.product_id, e);
+      } finally {
+        setImporting(null);
+        setBulkState((s) => ({ ...s, done: done, failed }));
+      }
+    }
+    setBulkState({ running: false, done, total: pending.length, failed });
+    qc.invalidateQueries({ queryKey: ["admin-products"] });
+    if (failed === 0) toast.success(`${done} produto(s) adicionado(s) ao catálogo`);
+    else toast.warning(`${done} adicionado(s), ${failed} falharam`);
+  }
+
   const items = query.data?.items ?? [];
 
   return (
