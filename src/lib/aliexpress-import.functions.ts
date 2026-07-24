@@ -718,10 +718,13 @@ export const commitImport = createServerFn({ method: "POST" })
     const { data: cfg } = await supabaseAdmin
       .from("integrations")
       .select("config")
-      .eq("provider", "aliexpress_import")
+      .eq("provider", "aliexpress")
       .maybeSingle();
-    const settingsParsed = SettingsSchema.safeParse(cfg?.config);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const settingsRaw = (cfg?.config as any)?.import_settings ?? cfg?.config ?? null;
+    const settingsParsed = SettingsSchema.safeParse(settingsRaw);
     const settings: ImportSettings = settingsParsed.success ? settingsParsed.data : DEFAULT_SETTINGS;
+
     const effective: ImportSettings =
       data.markup_override_percent != null
         ? { ...settings, markup_percent: data.markup_override_percent }
