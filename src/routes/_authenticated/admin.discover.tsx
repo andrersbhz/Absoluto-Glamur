@@ -52,10 +52,12 @@ function ProductCard({
   product,
   onAdd,
   isImporting,
+  isAdded,
 }: {
   product: DiscoveryProduct;
   onAdd: () => void;
   isImporting: boolean;
+  isAdded: boolean;
 }) {
   return (
     <div className="admin-neon-box group flex flex-col overflow-hidden rounded-xl border border-border bg-card transition">
