@@ -83,10 +83,12 @@ export const getImportSettings = createServerFn({ method: "GET" })
     const { data } = await supabaseAdmin
       .from("integrations")
       .select("config")
-      .eq("provider", "aliexpress_import")
+      .eq("provider", "aliexpress")
       .maybeSingle();
-    if (!data?.config) return DEFAULT_SETTINGS;
-    const parsed = SettingsSchema.safeParse(data.config);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const raw = (data?.config as any)?.import_settings ?? data?.config ?? null;
+    if (!raw) return DEFAULT_SETTINGS;
+    const parsed = SettingsSchema.safeParse(raw);
     return parsed.success ? parsed.data : DEFAULT_SETTINGS;
   });
 
@@ -96,23 +98,21 @@ export const saveImportSettings = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await assertCatalog(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: existing } = await supabaseAdmin
+      .from("integrations")
+      .select("config")
+      .eq("provider", "aliexpress")
+      .maybeSingle();
+    const prev = (existing?.config as Record<string, unknown> | null) ?? {};
+    const merged = { ...prev, import_settings: data };
     const { error } = await supabaseAdmin
       .from("integrations")
-      .upsert(
-        {
-          provider: "aliexpress_import",
-          category: "catalog",
-          display_name: "Importador AliExpress",
-          description: "Configurações de importação (markup, defaults)",
-          enabled: true,
-          mode: "production" as const,
-          config: data,
-        },
-        { onConflict: "provider" },
-      );
+      .update({ config: merged })
+      .eq("provider", "aliexpress");
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
 
 // -------------------- Pricing helpers --------------------
 
@@ -314,10 +314,13 @@ export const scrapeUrlPreview = createServerFn({ method: "POST" })
     const { data: cfg } = await supabaseAdmin
       .from("integrations")
       .select("config")
-      .eq("provider", "aliexpress_import")
+      .eq("provider", "aliexpress")
       .maybeSingle();
-    const settingsParsed = SettingsSchema.safeParse(cfg?.config);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const settingsRaw = (cfg?.config as any)?.import_settings ?? cfg?.config ?? null;
+    const settingsParsed = SettingsSchema.safeParse(settingsRaw);
     const settings: ImportSettings = settingsParsed.success ? settingsParsed.data : DEFAULT_SETTINGS;
+
 
     // Translate to pt-BR
     const translated = await translateToPtBr({ title: raw.title, description: raw.description });
@@ -363,10 +366,12 @@ async function loadSettings(admin: any): Promise<ImportSettings> {
   const { data } = await admin
     .from("integrations")
     .select("config")
-    .eq("provider", "aliexpress_import")
+    .eq("provider", "aliexpress")
     .maybeSingle();
-  const parsed = SettingsSchema.safeParse(data?.config);
+  const raw = (data?.config as Record<string, unknown> | null)?.import_settings ?? data?.config ?? null;
+  const parsed = SettingsSchema.safeParse(raw);
   return parsed.success ? parsed.data : DEFAULT_SETTINGS;
+
 }
 
 // Shared helper: create real product from an import row
@@ -713,10 +718,13 @@ export const commitImport = createServerFn({ method: "POST" })
     const { data: cfg } = await supabaseAdmin
       .from("integrations")
       .select("config")
-      .eq("provider", "aliexpress_import")
+      .eq("provider", "aliexpress")
       .maybeSingle();
-    const settingsParsed = SettingsSchema.safeParse(cfg?.config);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const settingsRaw = (cfg?.config as any)?.import_settings ?? cfg?.config ?? null;
+    const settingsParsed = SettingsSchema.safeParse(settingsRaw);
     const settings: ImportSettings = settingsParsed.success ? settingsParsed.data : DEFAULT_SETTINGS;
+
     const effective: ImportSettings =
       data.markup_override_percent != null
         ? { ...settings, markup_percent: data.markup_override_percent }
