@@ -327,6 +327,7 @@ function DiscoverPage() {
                   key={p.product_id}
                   product={p}
                   isImporting={importing === p.product_id}
+                  isAdded={added.has(p.product_id)}
                   onAdd={() => importMut.mutate(p.product_id)}
                 />
               ))}
