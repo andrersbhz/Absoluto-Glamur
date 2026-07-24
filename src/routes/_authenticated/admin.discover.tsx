@@ -196,8 +196,9 @@ function DiscoverPage() {
         setImporting(null);
       }
     },
-    onSuccess: () => {
+    onSuccess: (_data, product_id) => {
       toast.success("Produto adicionado ao catálogo como rascunho");
+      setAdded((prev) => new Set(prev).add(product_id));
       qc.invalidateQueries({ queryKey: ["admin-products"] });
     },
     onError: (e: unknown) => {
