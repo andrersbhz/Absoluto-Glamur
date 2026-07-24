@@ -366,10 +366,12 @@ async function loadSettings(admin: any): Promise<ImportSettings> {
   const { data } = await admin
     .from("integrations")
     .select("config")
-    .eq("provider", "aliexpress_import")
+    .eq("provider", "aliexpress")
     .maybeSingle();
-  const parsed = SettingsSchema.safeParse(data?.config);
+  const raw = (data?.config as Record<string, unknown> | null)?.import_settings ?? data?.config ?? null;
+  const parsed = SettingsSchema.safeParse(raw);
   return parsed.success ? parsed.data : DEFAULT_SETTINGS;
+
 }
 
 // Shared helper: create real product from an import row
