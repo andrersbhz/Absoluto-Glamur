@@ -1008,7 +1008,7 @@ function MoneyInput({
 }) {
   return (
     <div className="relative">
-      <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">
+      <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-xs font-medium text-muted-foreground">
         R$
       </span>
       <input
@@ -1019,7 +1019,7 @@ function MoneyInput({
           const cleaned = e.target.value.replace(/[^0-9,.]/g, "");
           onChange(cleaned);
         }}
-        className="input pl-9"
+        className="input pl-12"
         placeholder="0,00"
       />
     </div>
