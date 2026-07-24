@@ -13,7 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Star, Store, Search, Plus, ExternalLink, Loader2, TrendingUp, Sparkles } from "lucide-react";
+import { Star, Store, Search, Plus, ExternalLink, Loader2, TrendingUp, Sparkles, Check } from "lucide-react";
 import {
   discoverAliexpressProducts,
   importAliexpressProductToStore,
@@ -52,10 +52,12 @@ function ProductCard({
   product,
   onAdd,
   isImporting,
+  isAdded,
 }: {
   product: DiscoveryProduct;
   onAdd: () => void;
   isImporting: boolean;
+  isAdded: boolean;
 }) {
   return (
     <div className="admin-neon-box group flex flex-col overflow-hidden rounded-xl border border-border bg-card transition">
@@ -139,12 +141,20 @@ function ProductCard({
         </div>
         <Button
           onClick={onAdd}
-          disabled={isImporting}
-          className="mt-1 w-full gap-1 bg-primary text-primary-foreground hover:bg-primary/90"
+          disabled={isImporting || isAdded}
+          className={`mt-1 w-full gap-1 ${
+            isAdded
+              ? "bg-emerald-600 text-white hover:bg-emerald-600"
+              : "bg-primary text-primary-foreground hover:bg-primary/90"
+          }`}
         >
           {isImporting ? (
             <>
               <Loader2 className="h-4 w-4 animate-spin" /> Adicionando…
+            </>
+          ) : isAdded ? (
+            <>
+              <Check className="h-4 w-4" /> Adicionado ao catálogo
             </>
           ) : (
             <>
@@ -166,6 +176,7 @@ function DiscoverPage() {
     sort?: string;
   }>({ keyword: "", page: 1 });
   const [importing, setImporting] = useState<string | null>(null);
+  const [added, setAdded] = useState<Set<string>>(new Set());
   const qc = useQueryClient();
 
   const discover = useServerFn(discoverAliexpressProducts);
@@ -195,8 +206,9 @@ function DiscoverPage() {
         setImporting(null);
       }
     },
-    onSuccess: () => {
+    onSuccess: (_data, product_id) => {
       toast.success("Produto adicionado ao catálogo como rascunho");
+      setAdded((prev) => new Set(prev).add(product_id));
       qc.invalidateQueries({ queryKey: ["admin-products"] });
     },
     onError: (e: unknown) => {
@@ -315,6 +327,7 @@ function DiscoverPage() {
                   key={p.product_id}
                   product={p}
                   isImporting={importing === p.product_id}
+                  isAdded={added.has(p.product_id)}
                   onAdd={() => importMut.mutate(p.product_id)}
                 />
               ))}
