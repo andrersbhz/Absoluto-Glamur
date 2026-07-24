@@ -225,6 +225,44 @@ export function stripBrandMentions(input: string | null | undefined): string | n
   return out.trim() || null;
 }
 
+// Gera tags a partir do nome do produto + atributos (categoria, marca, extras).
+// Remove stopwords em pt-BR, normaliza acentos e limita a ~10 tags únicas.
+const TAG_STOPWORDS = new Set([
+  "a","o","as","os","de","da","do","das","dos","e","em","para","com","sem","por",
+  "um","uma","uns","umas","no","na","nos","nas","ao","aos","the","and","for","of",
+  "com","kit","novo","nova","pcs","pc","ml","g","kg","cm","mm","un","und","pack",
+]);
+export function buildProductTags(input: {
+  name?: string | null;
+  categoryName?: string | null;
+  brandName?: string | null;
+  extras?: Array<string | null | undefined>;
+}): string[] {
+  const out = new Set<string>();
+  const push = (raw: string | null | undefined) => {
+    if (!raw) return;
+    const norm = String(raw)
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9\s-]/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+    if (!norm) return;
+    if (norm.length >= 3 && norm.length <= 32 && !TAG_STOPWORDS.has(norm)) out.add(norm);
+  };
+  if (input.categoryName) push(input.categoryName);
+  if (input.brandName) push(input.brandName);
+  for (const e of input.extras ?? []) push(e ?? undefined);
+  if (input.name) {
+    for (const tok of input.name.split(/[\s,/|·•\-–—()\\[\]]+/)) {
+      const clean = tok.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "");
+      if (clean.length >= 4 && !TAG_STOPWORDS.has(clean) && !/^\d+$/.test(clean)) out.add(clean);
+      if (out.size >= 10) break;
+    }
+  }
+  return Array.from(out).slice(0, 10);
+
 // Converte texto/HTML em HTML com parágrafos <p>. Se o conteúdo já tiver tags
 // de bloco (<p>, <br>, <ul>, <h*>, <div>), sanitiza e devolve. Caso contrário,
 // quebra por linhas em branco e envolve cada bloco em <p>.
