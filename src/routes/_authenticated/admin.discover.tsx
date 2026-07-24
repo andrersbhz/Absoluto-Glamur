@@ -166,6 +166,7 @@ function DiscoverPage() {
     sort?: string;
   }>({ keyword: "", page: 1 });
   const [importing, setImporting] = useState<string | null>(null);
+  const [added, setAdded] = useState<Set<string>>(new Set());
   const qc = useQueryClient();
 
   const discover = useServerFn(discoverAliexpressProducts);
