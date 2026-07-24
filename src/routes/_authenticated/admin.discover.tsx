@@ -356,6 +356,32 @@ function DiscoverPage() {
           </div>
         ) : (
           <>
+            <div className="flex flex-col gap-2 rounded-xl border border-border bg-card p-3 md:flex-row md:items-center md:justify-between">
+              <div className="text-sm text-muted-foreground">
+                {items.length} produto(s) exibidos ·{" "}
+                <span className="text-foreground">{items.filter((p) => !added.has(p.product_id)).length}</span> pendente(s)
+                {bulkState.running && (
+                  <span className="ml-2">
+                    · Importando {bulkState.done}/{bulkState.total}
+                    {bulkState.failed > 0 && ` (${bulkState.failed} falhas)`}
+                  </span>
+                )}
+              </div>
+              <Button
+                type="button"
+                onClick={importAllVisible}
+                disabled={bulkState.running || items.every((p) => added.has(p.product_id))}
+                className="gap-1 bg-primary text-primary-foreground hover:bg-primary/90"
+              >
+                {bulkState.running ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <PackagePlus className="h-4 w-4" />
+                )}
+                Adicionar todos ao catálogo
+              </Button>
+            </div>
+
             <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
               {items.map((p) => (
                 <ProductCard
@@ -367,6 +393,7 @@ function DiscoverPage() {
                 />
               ))}
             </div>
+
 
             <div className="flex items-center justify-center gap-2 py-4">
               <Button
