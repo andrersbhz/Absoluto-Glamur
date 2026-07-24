@@ -262,6 +262,9 @@ export function buildProductTags(input: {
     }
   }
   return Array.from(out).slice(0, 10);
+}
+
+
 
 // Converte texto/HTML em HTML com parágrafos <p>. Se o conteúdo já tiver tags
 // de bloco (<p>, <br>, <ul>, <h*>, <div>), sanitiza e devolve. Caso contrário,
