@@ -191,8 +191,8 @@ export const testIntegration = createServerFn({ method: "POST" })
     if (data.provider === "aliexpress") {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const cfg: any = (row.config as any) ?? {};
-      const appKey = String(cfg.app_key ?? row.api_key ?? "").trim();
-      const appSecret = String(cfg.app_secret ?? row.webhook_token ?? "").trim();
+      const appKey = String(row.api_key ?? cfg.app_key ?? "").trim();
+      const appSecret = String(row.webhook_token ?? cfg.app_secret ?? "").trim();
       const accessToken = String(cfg.access_token ?? "").trim();
       if (!appKey || !appSecret) {
         throw new Error("Preencha App Key e App Secret antes de testar.");

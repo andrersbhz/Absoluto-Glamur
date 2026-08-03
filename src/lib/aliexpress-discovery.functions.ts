@@ -57,8 +57,9 @@ async function hmacSha256Hex(secret: string, data: string): Promise<string> {
 
 async function sign(params: Record<string, string>, secret: string): Promise<string> {
   const keys = Object.keys(params).sort();
-  // No gateway /sync o nome da API já é o parâmetro `method`; diferente de
-  // endpoints REST com caminho, ele não deve ser prefixado novamente.
+  // No gateway /sync, APIs nomeadas (ex.: aliexpress.ds.*) não prefixam a
+  // base. O nome já participa como valor do parâmetro `method`. Apenas APIs
+  // REST cujo identificador contém "/" recebem o caminho como prefixo.
   const base = keys.map((k) => `${k}${params[k]}`).join("");
   return hmacSha256Hex(secret, base);
 }
@@ -71,8 +72,13 @@ async function loadAliCreds() {
     .eq("provider", "aliexpress")
     .maybeSingle();
   const cfg = (data?.config ?? {}) as any;
-  const appKey = String(cfg.app_key ?? data?.api_key ?? "").trim();
-  const appSecret = String(cfg.app_secret ?? data?.webhook_token ?? "").trim();
+  // api_key/webhook_token são os campos canônicos editados pelo painel.
+  // config.app_* existe apenas para instalações antigas e não pode sobrescrever
+  // uma credencial mais nova salva na integração.
+  const appKey = String(data?.api_key ?? cfg.app_key ?? "").trim();
+  const appSecret = String(data?.webhook_token ?? cfg.app_secret ?? "").trim();
+  const legacyAppSecret = String(cfg.app_secret ?? "").trim();
+  const fallbackAppSecret = legacyAppSecret && legacyAppSecret !== appSecret ? legacyAppSecret : null;
   const accessToken = String(cfg.access_token ?? "").trim();
   const refreshToken = String(cfg.refresh_token ?? "").trim();
   const refreshedAt: string | null = cfg.refreshed_at ?? cfg.authorized_at ?? null;
@@ -86,7 +92,7 @@ async function loadAliCreds() {
   if (!accessToken) {
     throw new Error("AliExpress precisa ser reautorizado em /admin/integrations (clique em 'Autorizar AliExpress').");
   }
-  return { appKey, appSecret, accessToken, refreshToken, refreshedAt, expiresIn };
+  return { appKey, appSecret, fallbackAppSecret, accessToken, refreshToken, refreshedAt, expiresIn };
 }
 
 async function signRestPath(apiPath: string, params: Record<string, string>, secret: string): Promise<string> {
@@ -205,8 +211,6 @@ async function requestAli(
     session: accessToken,
     sign_method: "sha256",
     timestamp: Date.now().toString(),
-    format: "json",
-    partner_id: "aliexpress-api-sdk-nodejs-20230701",
     simplify: "true",
   };
   for (const [k, v] of Object.entries(bizParams)) {
@@ -214,11 +218,17 @@ async function requestAli(
     params[k] = String(v);
   }
   params.sign = await sign(params, appSecret);
-  const body = new URLSearchParams(params).toString();
-  const res = await fetch("https://api-sg.aliexpress.com/sync", {
+  // O SDK IOP envia chamadas POST comuns com todos os parâmetros assinados
+  // na query string e corpo vazio. Enviar somente form-urlencoded no corpo
+  // faz o gateway /sync não encontrar `sign`, resultando em IncompleteSignature.
+  // O cliente DS oficial também transmite a query ordenada. Embora a ordem
+  // não devesse importar em HTTP, o validador TOP compara a forma canônica.
+  const query = Object.entries(params)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(value)}`)
+    .join("&");
+  const res = await fetch(`https://api-sg.aliexpress.com/sync?${query}`, {
     method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body,
   });
   const text = await res.text();
   try {
@@ -232,7 +242,7 @@ export async function callAli<T = any>(
   method: string,
   bizParams: Record<string, string | number | boolean | undefined | null>,
 ): Promise<T> {
-  let { appKey, appSecret, accessToken, refreshToken, refreshedAt, expiresIn } = await loadAliCreds();
+  let { appKey, appSecret, fallbackAppSecret, accessToken, refreshToken, refreshedAt, expiresIn } = await loadAliCreds();
 
   // Refresh preventivo: se access_token expira em menos de 5 min, renova antes.
   if (refreshedAt && expiresIn > 0) {
@@ -248,6 +258,16 @@ export async function callAli<T = any>(
   }
 
   let json = await requestAli(method, appKey, appSecret, accessToken, bizParams);
+
+  // Instalações antigas guardavam o App Secret em config.app_secret. Durante
+  // a unificação da integração, o painel passou a usar webhook_token. Se os
+  // valores divergirem, tente o legado apenas quando a plataforma confirmar
+  // uma assinatura inválida — nunca para outros tipos de falha.
+  if (json?.error_response?.code === "IncompleteSignature" && fallbackAppSecret) {
+    appSecret = fallbackAppSecret;
+    fallbackAppSecret = null;
+    json = await requestAli(method, appKey, appSecret, accessToken, bizParams);
+  }
 
   const isTokenErr = (j: any) => {
     const er = j?.error_response;
@@ -265,7 +285,9 @@ export async function callAli<T = any>(
   if (json.error_response) {
     const er = json.error_response;
     const detail = er.sub_msg ?? er.msg ?? "erro desconhecido";
-    throw new Error(`AliExpress ${er.code ?? er.sub_code ?? ""}: ${detail}`);
+    const codes = [er.code, er.sub_code].filter(Boolean).join("/");
+    const requestId = er.request_id ? ` (request_id: ${er.request_id})` : "";
+    throw new Error(`AliExpress ${codes}: ${detail}${requestId}`);
   }
   return json as T;
 }
