@@ -32,11 +32,12 @@ function slugify(v: string): string {
     .slice(0, 80);
 }
 
-// -------------------- AliExpress API signing (HMAC-SHA256) --------------------
+// -------------------- AliExpress API signing (SHA256 via HMAC-SHA256) --------------------
 // Docs: https://openservice.aliexpress.com/doc/doc.htm — TOP protocol.
 // The current AliExpress TOP gateway expects the OAuth token in `session` and
-// a Unix timestamp in milliseconds. Business parameters remain flat and are
-// included in the signature together with the public parameters.
+// a Unix timestamp in milliseconds. For /sync, `sign_method` must be the
+// protocol value `sha256`; the digest itself is HMAC-SHA256. Business params
+// remain flat and are included in the signature with all public params.
 
 async function hmacSha256Hex(secret: string, data: string): Promise<string> {
   const enc = new TextEncoder();
@@ -200,8 +201,10 @@ async function requestAli(
     method,
     app_key: appKey,
     session: accessToken,
-    sign_method: "hmac-sha256",
+    sign_method: "sha256",
     timestamp: Date.now().toString(),
+    format: "json",
+    v: "2.0",
     simplify: "true",
   };
   for (const [k, v] of Object.entries(bizParams)) {
