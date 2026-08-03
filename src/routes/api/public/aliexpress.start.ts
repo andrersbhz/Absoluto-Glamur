@@ -17,7 +17,7 @@ export const Route = createFileRoute("/api/public/aliexpress/start")({
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const cfg = (data?.config as any) ?? {};
-        const appKey = cfg.app_key ?? data?.api_key ?? "";
+        const appKey = data?.api_key ?? cfg.app_key ?? "";
         if (!appKey) {
           return new Response(
             "<!doctype html><meta charset=utf-8><h1>App Key não cadastrada</h1><p>Preencha App Key e App Secret em /admin/integrations e tente novamente.</p>",

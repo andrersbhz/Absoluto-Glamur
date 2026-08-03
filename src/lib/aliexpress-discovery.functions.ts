@@ -72,8 +72,11 @@ async function loadAliCreds() {
     .eq("provider", "aliexpress")
     .maybeSingle();
   const cfg = (data?.config ?? {}) as any;
-  const appKey = String(cfg.app_key ?? data?.api_key ?? "").trim();
-  const appSecret = String(cfg.app_secret ?? data?.webhook_token ?? "").trim();
+  // api_key/webhook_token são os campos canônicos editados pelo painel.
+  // config.app_* existe apenas para instalações antigas e não pode sobrescrever
+  // uma credencial mais nova salva na integração.
+  const appKey = String(data?.api_key ?? cfg.app_key ?? "").trim();
+  const appSecret = String(data?.webhook_token ?? cfg.app_secret ?? "").trim();
   const accessToken = String(cfg.access_token ?? "").trim();
   const refreshToken = String(cfg.refresh_token ?? "").trim();
   const refreshedAt: string | null = cfg.refreshed_at ?? cfg.authorized_at ?? null;

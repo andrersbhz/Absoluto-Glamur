@@ -48,8 +48,8 @@ export const Route = createFileRoute("/api/public/webhooks/aliexpress")({
 
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const cfg = (integ?.config as any) ?? {};
-        const appKey = String(cfg.app_key ?? integ?.api_key ?? "").trim();
-        const appSecret = String(cfg.app_secret ?? integ?.webhook_token ?? "").trim();
+        const appKey = String(integ?.api_key ?? cfg.app_key ?? "").trim();
+        const appSecret = String(integ?.webhook_token ?? cfg.app_secret ?? "").trim();
 
         if (!appKey || !appSecret) {
           await supabaseAdmin
