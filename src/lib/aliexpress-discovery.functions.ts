@@ -273,7 +273,9 @@ export async function callAli<T = any>(
   if (json.error_response) {
     const er = json.error_response;
     const detail = er.sub_msg ?? er.msg ?? "erro desconhecido";
-    throw new Error(`AliExpress ${er.code ?? er.sub_code ?? ""}: ${detail}`);
+    const codes = [er.code, er.sub_code].filter(Boolean).join("/");
+    const requestId = er.request_id ? ` (request_id: ${er.request_id})` : "";
+    throw new Error(`AliExpress ${codes}: ${detail}${requestId}`);
   }
   return json as T;
 }
