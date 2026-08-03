@@ -77,6 +77,8 @@ async function loadAliCreds() {
   // uma credencial mais nova salva na integração.
   const appKey = String(data?.api_key ?? cfg.app_key ?? "").trim();
   const appSecret = String(data?.webhook_token ?? cfg.app_secret ?? "").trim();
+  const legacyAppSecret = String(cfg.app_secret ?? "").trim();
+  const fallbackAppSecret = legacyAppSecret && legacyAppSecret !== appSecret ? legacyAppSecret : null;
   const accessToken = String(cfg.access_token ?? "").trim();
   const refreshToken = String(cfg.refresh_token ?? "").trim();
   const refreshedAt: string | null = cfg.refreshed_at ?? cfg.authorized_at ?? null;
@@ -90,7 +92,7 @@ async function loadAliCreds() {
   if (!accessToken) {
     throw new Error("AliExpress precisa ser reautorizado em /admin/integrations (clique em 'Autorizar AliExpress').");
   }
-  return { appKey, appSecret, accessToken, refreshToken, refreshedAt, expiresIn };
+  return { appKey, appSecret, fallbackAppSecret, accessToken, refreshToken, refreshedAt, expiresIn };
 }
 
 async function signRestPath(apiPath: string, params: Record<string, string>, secret: string): Promise<string> {
@@ -240,7 +242,7 @@ export async function callAli<T = any>(
   method: string,
   bizParams: Record<string, string | number | boolean | undefined | null>,
 ): Promise<T> {
-  let { appKey, appSecret, accessToken, refreshToken, refreshedAt, expiresIn } = await loadAliCreds();
+  let { appKey, appSecret, fallbackAppSecret, accessToken, refreshToken, refreshedAt, expiresIn } = await loadAliCreds();
 
   // Refresh preventivo: se access_token expira em menos de 5 min, renova antes.
   if (refreshedAt && expiresIn > 0) {
@@ -256,6 +258,16 @@ export async function callAli<T = any>(
   }
 
   let json = await requestAli(method, appKey, appSecret, accessToken, bizParams);
+
+  // Instalações antigas guardavam o App Secret em config.app_secret. Durante
+  // a unificação da integração, o painel passou a usar webhook_token. Se os
+  // valores divergirem, tente o legado apenas quando a plataforma confirmar
+  // uma assinatura inválida — nunca para outros tipos de falha.
+  if (json?.error_response?.code === "IncompleteSignature" && fallbackAppSecret) {
+    appSecret = fallbackAppSecret;
+    fallbackAppSecret = null;
+    json = await requestAli(method, appKey, appSecret, accessToken, bizParams);
+  }
 
   const isTokenErr = (j: any) => {
     const er = j?.error_response;
