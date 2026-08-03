@@ -57,7 +57,10 @@ async function hmacSha256Hex(secret: string, data: string): Promise<string> {
 
 async function sign(params: Record<string, string>, secret: string): Promise<string> {
   const keys = Object.keys(params).sort();
-  const base = keys.map((k) => `${k}${params[k]}`).join("");
+  // O protocolo TOP SHA256 prefixa a string canônica com o nome da API.
+  // O parâmetro `method` continua também na lista ordenada, como exige o SDK.
+  const apiName = params.method ?? "";
+  const base = apiName + keys.map((k) => `${k}${params[k]}`).join("");
   return hmacSha256Hex(secret, base);
 }
 
