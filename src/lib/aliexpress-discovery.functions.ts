@@ -207,6 +207,7 @@ async function requestAli(
     sign_method: "sha256",
     timestamp: Date.now().toString(),
     format: "json",
+    v: "2.0",
     partner_id: "aliexpress-api-sdk-nodejs-20230701",
     simplify: "true",
   };
