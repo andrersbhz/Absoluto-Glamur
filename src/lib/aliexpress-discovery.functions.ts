@@ -55,12 +55,12 @@ async function hmacSha256Hex(secret: string, data: string): Promise<string> {
   return hex.toUpperCase();
 }
 
-async function sign(apiName: string, params: Record<string, string>, secret: string): Promise<string> {
+async function sign(params: Record<string, string>, secret: string): Promise<string> {
   const keys = Object.keys(params).sort();
-  // O protocolo IOP/TOP do gateway /sync prefixa a base com o nome da API e,
-  // em seguida, concatena todos os parâmetros (incluindo `method`) em ordem
-  // ASCII. O SDK oficial faz exatamente essa composição antes do HMAC-SHA256.
-  const base = apiName + keys.map((k) => `${k}${params[k]}`).join("");
+  // No gateway /sync, APIs nomeadas (ex.: aliexpress.ds.*) não prefixam a
+  // base. O nome já participa como valor do parâmetro `method`. Apenas APIs
+  // REST cujo identificador contém "/" recebem o caminho como prefixo.
+  const base = keys.map((k) => `${k}${params[k]}`).join("");
   return hmacSha256Hex(secret, base);
 }
 
@@ -214,12 +214,13 @@ async function requestAli(
     if (v === undefined || v === null || v === "") continue;
     params[k] = String(v);
   }
-  params.sign = await sign(method, params, appSecret);
-  const body = new URLSearchParams(params).toString();
-  const res = await fetch("https://api-sg.aliexpress.com/sync", {
+  params.sign = await sign(params, appSecret);
+  // O SDK IOP envia chamadas POST comuns com todos os parâmetros assinados
+  // na query string e corpo vazio. Enviar somente form-urlencoded no corpo
+  // faz o gateway /sync não encontrar `sign`, resultando em IncompleteSignature.
+  const query = new URLSearchParams(params).toString();
+  const res = await fetch(`https://api-sg.aliexpress.com/sync?${query}`, {
     method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body,
   });
   const text = await res.text();
   try {
