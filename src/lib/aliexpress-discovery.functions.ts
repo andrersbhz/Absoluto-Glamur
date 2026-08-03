@@ -219,7 +219,12 @@ async function requestAli(
   // O SDK IOP envia chamadas POST comuns com todos os parâmetros assinados
   // na query string e corpo vazio. Enviar somente form-urlencoded no corpo
   // faz o gateway /sync não encontrar `sign`, resultando em IncompleteSignature.
-  const query = new URLSearchParams(params).toString();
+  // O cliente DS oficial também transmite a query ordenada. Embora a ordem
+  // não devesse importar em HTTP, o validador TOP compara a forma canônica.
+  const query = Object.entries(params)
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([key, value]) => `${encodeURIComponent(key)}=${encodeURIComponent(value)}`)
+    .join("&");
   const res = await fetch(`https://api-sg.aliexpress.com/sync?${query}`, {
     method: "POST",
   });
