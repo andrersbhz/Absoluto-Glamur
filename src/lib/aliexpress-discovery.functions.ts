@@ -71,10 +71,10 @@ async function loadAliCreds() {
     .eq("provider", "aliexpress")
     .maybeSingle();
   const cfg = (data?.config ?? {}) as any;
-  const appKey: string = cfg.app_key ?? data?.api_key ?? "";
-  const appSecret: string = cfg.app_secret ?? data?.webhook_token ?? "";
-  const accessToken: string = cfg.access_token ?? "";
-  const refreshToken: string = cfg.refresh_token ?? "";
+  const appKey = String(cfg.app_key ?? data?.api_key ?? "").trim();
+  const appSecret = String(cfg.app_secret ?? data?.webhook_token ?? "").trim();
+  const accessToken = String(cfg.access_token ?? "").trim();
+  const refreshToken = String(cfg.refresh_token ?? "").trim();
   const refreshedAt: string | null = cfg.refreshed_at ?? cfg.authorized_at ?? null;
   const expiresIn: number = Number(cfg.expires_in ?? 0);
   if (!appKey || !appSecret) {
@@ -214,8 +214,12 @@ async function requestAli(
     params[k] = String(v);
   }
   params.sign = await sign(params, appSecret);
-  const query = new URLSearchParams(params).toString();
-  const res = await fetch(`https://api-sg.aliexpress.com/sync?${query}`, { method: "POST" });
+  const body = new URLSearchParams(params).toString();
+  const res = await fetch("https://api-sg.aliexpress.com/sync", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body,
+  });
   const text = await res.text();
   try {
     return JSON.parse(text);
