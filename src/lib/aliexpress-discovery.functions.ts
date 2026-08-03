@@ -32,11 +32,12 @@ function slugify(v: string): string {
     .slice(0, 80);
 }
 
-// -------------------- AliExpress API signing (HMAC-SHA256) --------------------
+// -------------------- AliExpress API signing (SHA256 via HMAC-SHA256) --------------------
 // Docs: https://openservice.aliexpress.com/doc/doc.htm — TOP protocol.
 // The current AliExpress TOP gateway expects the OAuth token in `session` and
-// a Unix timestamp in milliseconds. Business parameters remain flat and are
-// included in the signature together with the public parameters.
+// a Unix timestamp in milliseconds. For /sync, `sign_method` must be the
+// protocol value `sha256`; the digest itself is HMAC-SHA256. Business params
+// remain flat and are included in the signature with all public params.
 
 async function hmacSha256Hex(secret: string, data: string): Promise<string> {
   const enc = new TextEncoder();
@@ -56,6 +57,8 @@ async function hmacSha256Hex(secret: string, data: string): Promise<string> {
 
 async function sign(params: Record<string, string>, secret: string): Promise<string> {
   const keys = Object.keys(params).sort();
+  // No gateway /sync o nome da API já é o parâmetro `method`; diferente de
+  // endpoints REST com caminho, ele não deve ser prefixado novamente.
   const base = keys.map((k) => `${k}${params[k]}`).join("");
   return hmacSha256Hex(secret, base);
 }
@@ -68,10 +71,10 @@ async function loadAliCreds() {
     .eq("provider", "aliexpress")
     .maybeSingle();
   const cfg = (data?.config ?? {}) as any;
-  const appKey: string = cfg.app_key ?? data?.api_key ?? "";
-  const appSecret: string = cfg.app_secret ?? data?.webhook_token ?? "";
-  const accessToken: string = cfg.access_token ?? "";
-  const refreshToken: string = cfg.refresh_token ?? "";
+  const appKey = String(cfg.app_key ?? data?.api_key ?? "").trim();
+  const appSecret = String(cfg.app_secret ?? data?.webhook_token ?? "").trim();
+  const accessToken = String(cfg.access_token ?? "").trim();
+  const refreshToken = String(cfg.refresh_token ?? "").trim();
   const refreshedAt: string | null = cfg.refreshed_at ?? cfg.authorized_at ?? null;
   const expiresIn: number = Number(cfg.expires_in ?? 0);
   if (!appKey || !appSecret) {
@@ -200,8 +203,10 @@ async function requestAli(
     method,
     app_key: appKey,
     session: accessToken,
-    sign_method: "hmac-sha256",
+    sign_method: "sha256",
     timestamp: Date.now().toString(),
+    format: "json",
+    partner_id: "aliexpress-api-sdk-nodejs-20230701",
     simplify: "true",
   };
   for (const [k, v] of Object.entries(bizParams)) {
@@ -209,8 +214,12 @@ async function requestAli(
     params[k] = String(v);
   }
   params.sign = await sign(params, appSecret);
-  const query = new URLSearchParams(params).toString();
-  const res = await fetch(`https://api-sg.aliexpress.com/sync?${query}`, { method: "POST" });
+  const body = new URLSearchParams(params).toString();
+  const res = await fetch("https://api-sg.aliexpress.com/sync", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body,
+  });
   const text = await res.text();
   try {
     return JSON.parse(text);
