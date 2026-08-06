@@ -7,6 +7,9 @@ export type CartItem = {
   slug: string;
   name: string;
   variantName: string | null;
+  /** Atributos escolhidos, ex.: { Cor: "Preto", Tamanho: "M" } */
+  attributes?: Record<string, string> | null;
+  sku?: string | null;
   imageUrl: string | null;
   unitCents: number;
   quantity: number;

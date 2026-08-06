@@ -4,7 +4,8 @@ import { Heart, Star, ShoppingBag, ChevronLeft, Pencil } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { StoreLayout } from "@/components/store/StoreLayout";
-import { pickActivePrice, productDetailQuery } from "@/lib/catalog";
+import { pickActivePrice, productDetailQuery, variantAttrValues, variantImage } from "@/lib/catalog";
+import { VariantSelector } from "@/components/store/VariantSelector";
 import { effectivePrice, formatBRL } from "@/lib/format";
 import { useCart } from "@/lib/cart-store";
 import { useFavorites } from "@/lib/favorites";
@@ -117,7 +118,13 @@ function ProductPage() {
     if (v) setVariantId(v);
   }, []);
 
-  const variants = product?.variants ?? [];
+  // Somente variações realmente disponíveis no fornecedor entram no seletor.
+  const variants = useMemo(() => {
+    const all = product?.variants ?? [];
+    const available = all.filter((v) => v.is_available !== false);
+    return available.length > 0 ? available : all;
+  }, [product]);
+
   const selectedVariant = useMemo(
     () => variants.find((v) => v.id === variantId) ?? variants.find((v) => v.is_default) ?? variants[0],
     [variants, variantId],
@@ -125,6 +132,7 @@ function ProductPage() {
   const priceRow = pickActivePrice(selectedVariant);
   const price = priceRow ? effectivePrice(priceRow.list_price_cents, priceRow.sale_price_cents) : null;
   const stock = selectedVariant?.inventory?.stock ?? 0;
+  const selectedAttributes = selectedVariant ? variantAttrValues(selectedVariant) : {};
 
   const addToCart = useCart((s) => s.add);
   const { isFavorite, toggle, canFavorite } = useFavorites();
@@ -134,8 +142,7 @@ function ProductPage() {
   const [activeIdx, setActiveIdx] = useState(0);
 
   // Ao trocar de variação, se ela tiver imagem própria, tenta ativar essa mídia.
-  const variantImageUrl =
-    (selectedVariant?.options as { image_url?: string } | undefined)?.image_url ?? null;
+  const variantImageUrl = variantImage(selectedVariant);
   useEffect(() => {
     if (!variantImageUrl) return;
     const idx = media.findIndex((m) => m.url === variantImageUrl);
@@ -241,42 +248,11 @@ function ProductPage() {
               )}
             </div>
 
-            {variants.length > 1 && (
-              <div className="mt-6">
-                <p className="mb-2 text-sm font-medium">Escolha uma variação</p>
-                <div className="flex flex-wrap gap-2">
-                  {variants.map((v) => {
-                    const opts = v.options as { image_url?: string; attributes?: Record<string, string> } | null;
-                    const img = opts?.image_url;
-                    const label =
-                      v.name ??
-                      (opts?.attributes ? Object.values(opts.attributes).join(" · ") : null) ??
-                      v.sku;
-                    const isActive =
-                      (variantId ?? variants.find((x) => x.is_default)?.id ?? variants[0]?.id) === v.id;
-                    return (
-                      <button
-                        key={v.id}
-                        type="button"
-                        onClick={() => setVariantId(v.id)}
-                        className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm transition ${
-                          isActive
-                            ? "border-primary bg-primary/10 text-primary"
-                            : "border-border text-foreground hover:bg-secondary"
-                        }`}
-                      >
-                        {img && (
-                          <img src={img} alt="" className="h-8 w-8 rounded-md object-cover" />
-                        )}
-                        <span className="max-w-[180px] truncate">{label}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-
+            <VariantSelector
+              variants={variants}
+              selectedId={selectedVariant?.id}
+              onSelect={setVariantId}
+            />
 
             <p className="mt-4 text-xs text-muted-foreground">
               {stock > 0 ? `${stock} unidades em estoque` : "Fora de estoque"}
@@ -288,13 +264,21 @@ function ProductPage() {
                 disabled={!selectedVariant || !price || stock <= 0}
                 onClick={() => {
                   if (!selectedVariant || !price) return;
+                  const attrs = selectedAttributes;
                   addToCart({
                     productId: product.id,
                     variantId: selectedVariant.id,
                     slug: product.slug,
                     name: product.name,
-                    variantName: selectedVariant.name ?? null,
-                    imageUrl: media.find((m) => !isVideoMedia(m))?.url ?? null,
+                    variantName:
+                      selectedVariant.name ??
+                      (Object.keys(attrs).length > 0 ? Object.values(attrs).join(" · ") : null),
+                    attributes: Object.keys(attrs).length > 0 ? attrs : null,
+                    sku: selectedVariant.sku ?? null,
+                    imageUrl:
+                      variantImage(selectedVariant) ??
+                      media.find((m) => !isVideoMedia(m))?.url ??
+                      null,
                     unitCents: price.price,
                   });
                   toast.success("Adicionado ao carrinho");

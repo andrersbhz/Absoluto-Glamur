@@ -14,6 +14,7 @@ export type ProductListItem = {
   variants: {
     id: string;
     is_default: boolean;
+    is_available?: boolean;
     prices: { list_price_cents: number; sale_price_cents: number | null; is_active: boolean }[];
   }[];
 };
@@ -24,7 +25,7 @@ const PRODUCT_SELECT = `
   category:categories(name, slug),
   media:product_media(url, alt, position, kind),
   variants:product_variants(
-    id, is_default,
+    id, is_default, is_available,
     prices:product_prices(list_price_cents, sale_price_cents, is_active)
   )
 `;
@@ -131,19 +132,24 @@ export function productsByCategoryQuery(perCategory = 4) {
   });
 }
 
+export type ProductVariantDetail = {
+  id: string;
+  sku: string;
+  name: string | null;
+  options: Record<string, unknown>;
+  is_default: boolean;
+  is_available: boolean;
+  external_sku_id: string | null;
+  external_sku_attr: string | null;
+  prices: { list_price_cents: number; sale_price_cents: number | null; is_active: boolean }[];
+  inventory: { stock: number; reserved: number } | null;
+};
+
 export type ProductDetail = Omit<ProductListItem, "variants"> & {
   description: string | null;
   tags: string[];
   attributes: Record<string, unknown>;
-  variants: {
-    id: string;
-    sku: string;
-    name: string | null;
-    options: Record<string, unknown>;
-    is_default: boolean;
-    prices: { list_price_cents: number; sale_price_cents: number | null; is_active: boolean }[];
-    inventory: { stock: number; reserved: number } | null;
-  }[];
+  variants: ProductVariantDetail[];
   seo: { meta_title: string | null; meta_description: string | null; og_image_url: string | null } | null;
 };
 
@@ -160,7 +166,7 @@ export function productDetailQuery(slug: string) {
           category:categories(name, slug),
           media:product_media(url, alt, position, kind),
           variants:product_variants(
-            id, sku, name, options, is_default,
+            id, sku, name, options, is_default, is_available, external_sku_id, external_sku_attr,
             prices:product_prices(list_price_cents, sale_price_cents, is_active),
             inventory:product_inventory(stock, reserved)
           ),
@@ -174,6 +180,37 @@ export function productDetailQuery(slug: string) {
     },
     staleTime: 30_000,
   });
+}
+
+/** Atributos disponíveis a partir das variações reais (ordem estável). */
+export function variantAttributes(
+  variants: Pick<ProductVariantDetail, "options">[],
+): { name: string; values: string[] }[] {
+  const map = new Map<string, string[]>();
+  for (const v of variants) {
+    const attrs = (v.options as { attributes?: Record<string, string> } | null)?.attributes;
+    if (!attrs) continue;
+    for (const [k, val] of Object.entries(attrs)) {
+      if (!k || !val) continue;
+      const list = map.get(k) ?? [];
+      if (!list.includes(val)) list.push(val);
+      map.set(k, list);
+    }
+  }
+  return [...map.entries()].map(([name, values]) => ({ name, values }));
+}
+
+export function variantAttrValues(v: Pick<ProductVariantDetail, "options">): Record<string, string> {
+  return (v.options as { attributes?: Record<string, string> } | null)?.attributes ?? {};
+}
+
+export function variantImage(v: Pick<ProductVariantDetail, "options"> | undefined): string | null {
+  if (!v) return null;
+  return (v.options as { image_url?: string | null } | null)?.image_url ?? null;
+}
+
+export function variantStock(v: Pick<ProductVariantDetail, "inventory"> | undefined): number {
+  return v?.inventory?.stock ?? 0;
 }
 
 export function categoriesQuery() {
@@ -207,8 +244,9 @@ export function collectionsQuery() {
 }
 
 export function pickDefaultVariant(p: Pick<ProductListItem, "variants">) {
-  const variants = p.variants ?? [];
-  return variants.find((v) => v.is_default) ?? variants[0];
+  const variants = (p.variants ?? []).filter((v) => v.is_available !== false);
+  const pool = variants.length > 0 ? variants : (p.variants ?? []);
+  return pool.find((v) => v.is_default) ?? pool[0];
 }
 
 export function pickActivePrice(

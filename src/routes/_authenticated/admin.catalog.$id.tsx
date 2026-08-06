@@ -108,7 +108,7 @@ function slugify(v: string) {
 }
 const brl = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 
-type TabId = "general" | "pricing" | "media" | "seo" | "publish";
+type TabId = "general" | "pricing" | "variants" | "media" | "seo" | "publish";
 
 function CatalogEditor() {
   const { id } = Route.useParams();
@@ -269,15 +269,18 @@ function CatalogEditor() {
   const loading = !isNew && prodQ.isLoading;
   const cover = form.media[0]?.url;
 
+  const variantRows = prodQ.data?.variants ?? [];
+
   const tabs: { id: TabId; label: string; hint?: string }[] = useMemo(
     () => [
       { id: "general", label: "Geral" },
       { id: "pricing", label: "Preço & Estoque" },
+      { id: "variants", label: `Variações (${variantRows.length})` },
       { id: "media", label: `Mídia (${form.media.length})` },
       { id: "seo", label: "SEO" },
       { id: "publish", label: "Publicação" },
     ],
-    [form.media.length],
+    [form.media.length, variantRows.length],
   );
 
   function moveMedia(i: number, dir: -1 | 1) {
@@ -620,6 +623,94 @@ function CatalogEditor() {
                     </Field>
                   </Section>
                 )}
+
+                {tab === "variants" && (
+                  <Section title="Variações reais do fornecedor">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <p className="text-xs text-muted-foreground">
+                        Atributos, imagens, preços e estoque vêm dos SKUs reais importados do
+                        AliExpress. Use “Sincronizar variações” para atualizar.
+                      </p>
+                      {!isNew && (
+                        <button
+                          type="button"
+                          onClick={() => syncVariants.mutate()}
+                          disabled={syncVariants.isPending}
+                          className="inline-flex items-center gap-1 rounded-lg border border-champagne/40 bg-champagne/10 px-3 py-2 text-xs font-medium text-champagne transition hover:bg-champagne/20 disabled:opacity-50"
+                        >
+                          <RefreshCw className={`h-3.5 w-3.5 ${syncVariants.isPending ? "animate-spin" : ""}`} />
+                          Sincronizar variações
+                        </button>
+                      )}
+                    </div>
+
+                    {variantRows.length === 0 ? (
+                      <div className="rounded-xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">
+                        Nenhuma variação importada ainda.
+                      </div>
+                    ) : (
+                      <div className="overflow-x-auto rounded-xl border border-border">
+                        <table className="w-full text-sm">
+                          <thead className="bg-secondary/50 text-xs uppercase tracking-wide text-muted-foreground">
+                            <tr>
+                              <th className="px-3 py-2 text-left">Variação</th>
+                              <th className="px-3 py-2 text-left">SKU</th>
+                              <th className="px-3 py-2 text-right">Preço</th>
+                              <th className="px-3 py-2 text-right">Estoque</th>
+                              <th className="px-3 py-2 text-left">Status</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {variantRows.map((v) => {
+                              const label =
+                                Object.entries(v.attributes)
+                                  .map(([k, val]) => `${k}: ${val}`)
+                                  .join(" · ") || v.name || "Padrão";
+                              return (
+                                <tr key={v.id} className="border-t border-border/60">
+                                  <td className="px-3 py-2">
+                                    <div className="flex items-center gap-2">
+                                      {v.image_url && (
+                                        <img
+                                          src={v.image_url}
+                                          alt={label}
+                                          className="h-9 w-9 rounded-md object-cover"
+                                        />
+                                      )}
+                                      <span>{label}</span>
+                                      {v.is_default && (
+                                        <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[10px] text-primary">
+                                          padrão
+                                        </span>
+                                      )}
+                                    </div>
+                                  </td>
+                                  <td className="px-3 py-2 font-mono text-xs text-muted-foreground">{v.sku}</td>
+                                  <td className="px-3 py-2 text-right">{brl.format(v.price_cents / 100)}</td>
+                                  <td className={`px-3 py-2 text-right ${v.stock <= 0 ? "text-destructive" : ""}`}>
+                                    {v.stock}
+                                  </td>
+                                  <td className="px-3 py-2">
+                                    <span
+                                      className={`rounded-full px-2 py-0.5 text-[11px] ${
+                                        v.is_available && v.stock > 0
+                                          ? "bg-emerald-500/15 text-emerald-400"
+                                          : "bg-destructive/15 text-destructive"
+                                      }`}
+                                    >
+                                      {v.is_available ? (v.stock > 0 ? "Disponível" : "Sem estoque") : "Indisponível"}
+                                    </span>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </Section>
+                )}
+
 
                 {tab === "media" && (
                   <Section title="Mídias do produto">

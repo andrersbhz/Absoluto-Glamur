@@ -165,6 +165,17 @@ export type AdminProductDetail = {
     stock: number;
     weight_grams: number | null;
   };
+  variants: {
+    id: string;
+    sku: string;
+    name: string | null;
+    attributes: Record<string, string>;
+    image_url: string | null;
+    is_default: boolean;
+    is_available: boolean;
+    stock: number;
+    price_cents: number;
+  }[];
   media: { id: string; url: string; alt: string | null; position: number }[];
   seo: { title: string | null; description: string | null };
 };
@@ -179,7 +190,7 @@ export const getAdminProduct = createServerFn({ method: "GET" })
       .from("products")
       .select(
         `id, slug, name, short_description, description, status, is_featured, brand_id, category_id, tags,
-         variants:product_variants(id, sku, is_default, weight_grams,
+         variants:product_variants(id, sku, name, options, is_default, is_available, weight_grams,
            prices:product_prices(list_price_cents, sale_price_cents, is_active),
            inventory:product_inventory(stock)
          ),
@@ -192,6 +203,9 @@ export const getAdminProduct = createServerFn({ method: "GET" })
     if (!p) throw new Error("Produto não encontrado");
     type V = {
       id: string; sku: string; is_default: boolean; weight_grams: number | null;
+      name?: string | null;
+      options?: { attributes?: Record<string, string>; image_url?: string | null } | null;
+      is_available?: boolean | null;
       prices: { list_price_cents: number; sale_price_cents: number | null; is_active: boolean }[] | null;
       inventory: { stock: number } | { stock: number }[] | null;
     };
@@ -225,6 +239,26 @@ export const getAdminProduct = createServerFn({ method: "GET" })
         stock,
         weight_grams: def?.weight_grams ?? null,
       },
+      variants: variants.map((v) => {
+        const inv = v.inventory;
+        const st = inv ? (Array.isArray(inv) ? (inv[0]?.stock ?? 0) : (inv.stock ?? 0)) : 0;
+        const pr = v.prices?.find((x) => x.is_active) ?? v.prices?.[0];
+        const unit =
+          pr?.sale_price_cents && pr.sale_price_cents > 0 && pr.sale_price_cents < pr.list_price_cents
+            ? pr.sale_price_cents
+            : (pr?.list_price_cents ?? 0);
+        return {
+          id: v.id,
+          sku: v.sku,
+          name: v.name ?? null,
+          attributes: v.options?.attributes ?? {},
+          image_url: v.options?.image_url ?? null,
+          is_default: v.is_default,
+          is_available: v.is_available !== false,
+          stock: st,
+          price_cents: unit,
+        };
+      }),
       media: ((p.media as unknown as { id: string; url: string; alt: string | null; position: number }[]) ?? [])
         .sort((a, b) => a.position - b.position),
       seo: { title: seoObj?.meta_title ?? null, description: seoObj?.meta_description ?? null },

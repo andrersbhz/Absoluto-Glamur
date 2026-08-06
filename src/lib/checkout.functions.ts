@@ -45,6 +45,7 @@ type OrderItemInsert = {
   unit_cents: number;
   quantity: number;
   total_cents: number;
+  aliexpress_sku_attr?: string | null;
 };
 
 type OrderContext = {
@@ -93,7 +94,7 @@ export const createCheckout = createServerFn({ method: "POST" })
     const { data: variants, error: varErr } = await supabaseAdmin
       .from("product_variants")
       .select(
-        `id, name,
+        `id, name, sku, external_sku_id, external_sku_attr, options, is_available,
          product:products!inner(id, slug, name, status),
          prices:product_prices(list_price_cents, sale_price_cents, is_active),
          media:product_media(url, position, kind)`,
@@ -104,6 +105,11 @@ export const createCheckout = createServerFn({ method: "POST" })
     type VariantRow = {
       id: string;
       name: string | null;
+      sku: string | null;
+      external_sku_id: string | null;
+      external_sku_attr: string | null;
+      options: { attributes?: Record<string, string>; image_url?: string | null } | null;
+      is_available: boolean | null;
       product: { id: string; slug: string; name: string; status: string };
       prices: { list_price_cents: number; sale_price_cents: number | null; is_active: boolean }[] | null;
       media: { url: string; position: number | null; kind: string | null }[] | null;
@@ -116,6 +122,9 @@ export const createCheckout = createServerFn({ method: "POST" })
       if (!v || v.product?.status !== "active") {
         throw new Error("Um dos produtos não está mais disponível.");
       }
+      if (v.is_available === false) {
+        throw new Error(`A variação escolhida de ${v.product.name} não está mais disponível.`);
+      }
       const price = (v.prices ?? []).find((p) => p.is_active) ?? v.prices?.[0];
       if (!price) throw new Error(`Preço não configurado para ${v.product.name}`);
       const unit =
@@ -124,17 +133,23 @@ export const createCheckout = createServerFn({ method: "POST" })
           : price.list_price_cents;
       const media = (v.media ?? []).filter((m) => m.kind !== "video");
       const image =
-        [...media].sort((a, b) => (a.position ?? 0) - (b.position ?? 0))[0]?.url ?? null;
+        v.options?.image_url ??
+        [...media].sort((a, b) => (a.position ?? 0) - (b.position ?? 0))[0]?.url ??
+        null;
+      const attrs = v.options?.attributes ?? null;
+      const variantName =
+        v.name ?? (attrs && Object.keys(attrs).length > 0 ? Object.values(attrs).join(" · ") : null);
       return {
         product_id: v.product.id,
         variant_id: v.id,
         product_name: v.product.name,
-        variant_name: v.name,
+        variant_name: variantName,
         slug: v.product.slug,
         image_url: image,
         unit_cents: unit,
         quantity: i.quantity,
         total_cents: unit * i.quantity,
+        aliexpress_sku_attr: v.external_sku_attr ?? null,
       };
     });
 

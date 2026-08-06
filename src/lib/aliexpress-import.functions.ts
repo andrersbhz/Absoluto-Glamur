@@ -507,6 +507,13 @@ async function commitImportRow(
     } catch {
       // ignore — reviews are non-critical
     }
+    // Best-effort: importa as variações/SKUs reais do produto.
+    try {
+      const { syncVariantsForProduct } = await import("./aliexpress-variants.server");
+      await syncVariantsForProduct(admin, productId, String(norm.source_id), settings);
+    } catch {
+      // ignore — produto continua válido com a variação única
+    }
   }
 
   return { productId, priceCents };
@@ -811,6 +818,19 @@ export const commitImport = createServerFn({ method: "POST" })
           .from("product_inventory")
           .upsert({ variant_id: vrow.id, stock: data.stock }, { onConflict: "variant_id" });
       }
+      if (norm.source_id) {
+        try {
+          const { syncVariantsForProduct } = await import("./aliexpress-variants.server");
+          await syncVariantsForProduct(
+            supabaseAdmin,
+            imp.product_id,
+            String(norm.source_id),
+            settings,
+          );
+        } catch {
+          // mantém variação única
+        }
+      }
       await supabaseAdmin
         .from("product_imports")
         .update({ status: "imported", error: null })
@@ -888,6 +908,15 @@ export const commitImport = createServerFn({ method: "POST" })
       .from("product_imports")
       .update({ status: "imported", product_id: productId, error: null })
       .eq("id", data.id);
+
+    if (norm.source_id) {
+      try {
+        const { syncVariantsForProduct } = await import("./aliexpress-variants.server");
+        await syncVariantsForProduct(supabaseAdmin, productId, String(norm.source_id), settings);
+      } catch {
+        // variação única continua válida
+      }
+    }
 
     return { id: productId, slug, price_cents: priceCents };
   });
