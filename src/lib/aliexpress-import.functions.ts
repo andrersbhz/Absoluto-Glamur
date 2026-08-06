@@ -896,5 +896,14 @@ export const commitImport = createServerFn({ method: "POST" })
       .update({ status: "imported", product_id: productId, error: null })
       .eq("id", data.id);
 
+    if (norm.source_id) {
+      try {
+        const { syncVariantsForProduct } = await import("./aliexpress-variants.server");
+        await syncVariantsForProduct(supabaseAdmin, productId, String(norm.source_id), settings);
+      } catch {
+        // variação única continua válida
+      }
+    }
+
     return { id: productId, slug, price_cents: priceCents };
   });
