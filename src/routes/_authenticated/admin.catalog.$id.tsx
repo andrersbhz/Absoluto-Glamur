@@ -108,7 +108,7 @@ function slugify(v: string) {
 }
 const brl = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" });
 
-type TabId = "general" | "pricing" | "media" | "seo" | "publish";
+type TabId = "general" | "pricing" | "variants" | "media" | "seo" | "publish";
 
 function CatalogEditor() {
   const { id } = Route.useParams();
