@@ -239,6 +239,26 @@ export const getAdminProduct = createServerFn({ method: "GET" })
         stock,
         weight_grams: def?.weight_grams ?? null,
       },
+      variants: variants.map((v) => {
+        const inv = v.inventory;
+        const st = inv ? (Array.isArray(inv) ? (inv[0]?.stock ?? 0) : (inv.stock ?? 0)) : 0;
+        const pr = v.prices?.find((x) => x.is_active) ?? v.prices?.[0];
+        const unit =
+          pr?.sale_price_cents && pr.sale_price_cents > 0 && pr.sale_price_cents < pr.list_price_cents
+            ? pr.sale_price_cents
+            : (pr?.list_price_cents ?? 0);
+        return {
+          id: v.id,
+          sku: v.sku,
+          name: v.name ?? null,
+          attributes: v.options?.attributes ?? {},
+          image_url: v.options?.image_url ?? null,
+          is_default: v.is_default,
+          is_available: v.is_available !== false,
+          stock: st,
+          price_cents: unit,
+        };
+      }),
       media: ((p.media as unknown as { id: string; url: string; alt: string | null; position: number }[]) ?? [])
         .sort((a, b) => a.position - b.position),
       seo: { title: seoObj?.meta_title ?? null, description: seoObj?.meta_description ?? null },
