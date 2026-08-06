@@ -66,7 +66,16 @@ function CartPage() {
                     <Link to="/products/$slug" params={{ slug: i.slug }} className="font-display text-base">
                       {i.name}
                     </Link>
-                    {i.variantName && <p className="text-xs text-muted-foreground">{i.variantName}</p>}
+                    {i.attributes && Object.keys(i.attributes).length > 0 ? (
+                      <p className="text-xs text-muted-foreground">
+                        {Object.entries(i.attributes)
+                          .map(([k, v]) => `${k}: ${v}`)
+                          .join(" · ")}
+                      </p>
+                    ) : (
+                      i.variantName && <p className="text-xs text-muted-foreground">{i.variantName}</p>
+                    )}
+                    {i.sku && <p className="text-[11px] text-muted-foreground/70">SKU: {i.sku}</p>}
                     <p className="text-sm text-foreground">{formatBRL(i.unitCents)}</p>
                     <div className="mt-1 flex items-center gap-2">
                       <button
