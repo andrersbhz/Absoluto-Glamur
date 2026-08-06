@@ -1467,7 +1467,10 @@ export type Database = {
         Row: {
           barcode: string | null
           created_at: string
+          external_sku_attr: string | null
+          external_sku_id: string | null
           id: string
+          is_available: boolean
           is_default: boolean
           name: string | null
           options: Json
@@ -1479,7 +1482,10 @@ export type Database = {
         Insert: {
           barcode?: string | null
           created_at?: string
+          external_sku_attr?: string | null
+          external_sku_id?: string | null
           id?: string
+          is_available?: boolean
           is_default?: boolean
           name?: string | null
           options?: Json
@@ -1491,7 +1497,10 @@ export type Database = {
         Update: {
           barcode?: string | null
           created_at?: string
+          external_sku_attr?: string | null
+          external_sku_id?: string | null
           id?: string
+          is_available?: boolean
           is_default?: boolean
           name?: string | null
           options?: Json
