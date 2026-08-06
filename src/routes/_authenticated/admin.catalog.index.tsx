@@ -115,8 +115,12 @@ function CatalogList() {
     setRowSyncing((s) => ({ ...s, [id]: true }));
     try {
       const r = await syncOne({ data: { product_id: id } });
-      toast.success(`Estoque: ${r.total_stock} · ${r.variants_updated} variante(s)`);
-      qc.invalidateQueries({ queryKey: ["admin-products"] });
+      if (r.skipped) {
+        toast.info(r.reason ?? "Produto não está conectado ao AliExpress.");
+      } else {
+        toast.success(`Estoque: ${r.total_stock} · ${r.variants_updated} variante(s)`);
+        qc.invalidateQueries({ queryKey: ["admin-products"] });
+      }
     } catch (e) {
       toast.error(e instanceof Error ? e.message : "Falha ao sincronizar");
     } finally {
