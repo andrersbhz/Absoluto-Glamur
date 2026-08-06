@@ -14,6 +14,7 @@ export type ProductListItem = {
   variants: {
     id: string;
     is_default: boolean;
+    is_available?: boolean;
     prices: { list_price_cents: number; sale_price_cents: number | null; is_active: boolean }[];
   }[];
 };
@@ -24,7 +25,7 @@ const PRODUCT_SELECT = `
   category:categories(name, slug),
   media:product_media(url, alt, position, kind),
   variants:product_variants(
-    id, is_default,
+    id, is_default, is_available,
     prices:product_prices(list_price_cents, sale_price_cents, is_active)
   )
 `;
