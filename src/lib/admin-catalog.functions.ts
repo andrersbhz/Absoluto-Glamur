@@ -203,6 +203,9 @@ export const getAdminProduct = createServerFn({ method: "GET" })
     if (!p) throw new Error("Produto não encontrado");
     type V = {
       id: string; sku: string; is_default: boolean; weight_grams: number | null;
+      name?: string | null;
+      options?: { attributes?: Record<string, string>; image_url?: string | null } | null;
+      is_available?: boolean | null;
       prices: { list_price_cents: number; sale_price_cents: number | null; is_active: boolean }[] | null;
       inventory: { stock: number } | { stock: number }[] | null;
     };
