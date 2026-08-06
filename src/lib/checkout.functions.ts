@@ -121,6 +121,9 @@ export const createCheckout = createServerFn({ method: "POST" })
       if (!v || v.product?.status !== "active") {
         throw new Error("Um dos produtos não está mais disponível.");
       }
+      if (v.is_available === false) {
+        throw new Error(`A variação escolhida de ${v.product.name} não está mais disponível.`);
+      }
       const price = (v.prices ?? []).find((p) => p.is_active) ?? v.prices?.[0];
       if (!price) throw new Error(`Preço não configurado para ${v.product.name}`);
       const unit =
@@ -129,17 +132,23 @@ export const createCheckout = createServerFn({ method: "POST" })
           : price.list_price_cents;
       const media = (v.media ?? []).filter((m) => m.kind !== "video");
       const image =
-        [...media].sort((a, b) => (a.position ?? 0) - (b.position ?? 0))[0]?.url ?? null;
+        v.options?.image_url ??
+        [...media].sort((a, b) => (a.position ?? 0) - (b.position ?? 0))[0]?.url ??
+        null;
+      const attrs = v.options?.attributes ?? null;
+      const variantName =
+        v.name ?? (attrs && Object.keys(attrs).length > 0 ? Object.values(attrs).join(" · ") : null);
       return {
         product_id: v.product.id,
         variant_id: v.id,
         product_name: v.product.name,
-        variant_name: v.name,
+        variant_name: variantName,
         slug: v.product.slug,
         image_url: image,
         unit_cents: unit,
         quantity: i.quantity,
         total_cents: unit * i.quantity,
+        aliexpress_sku_attr: v.external_sku_attr ?? null,
       };
     });
 
