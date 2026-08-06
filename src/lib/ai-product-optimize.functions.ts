@@ -143,10 +143,16 @@ Regras finais:
     });
 
     if (status === "error") {
-      if (err?.includes("429")) throw new Error("Limite de requisições atingido. Aguarde alguns segundos.");
-      if (err?.includes("402")) throw new Error("Créditos de IA esgotados. Adicione créditos no workspace.");
+      const e = (err ?? "").toLowerCase();
+      if (e.includes("429") || e.includes("too many requests") || e.includes("rate limit"))
+        throw new Error("Limite de requisições atingido. Aguarde alguns segundos e tente novamente.");
+      if (e.includes("402") || e.includes("payment required") || e.includes("insufficient"))
+        throw new Error(
+          "Créditos de IA esgotados. Adicione créditos do Lovable AI no workspace para usar a otimização por IA.",
+        );
       throw new Error(err ?? "Falha ao chamar IA");
     }
+
 
     const parsed = extractJson(raw);
 
