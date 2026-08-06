@@ -269,15 +269,18 @@ function CatalogEditor() {
   const loading = !isNew && prodQ.isLoading;
   const cover = form.media[0]?.url;
 
+  const variantRows = prodQ.data?.variants ?? [];
+
   const tabs: { id: TabId; label: string; hint?: string }[] = useMemo(
     () => [
       { id: "general", label: "Geral" },
       { id: "pricing", label: "Preço & Estoque" },
+      { id: "variants", label: `Variações (${variantRows.length})` },
       { id: "media", label: `Mídia (${form.media.length})` },
       { id: "seo", label: "SEO" },
       { id: "publish", label: "Publicação" },
     ],
-    [form.media.length],
+    [form.media.length, variantRows.length],
   );
 
   function moveMedia(i: number, dir: -1 | 1) {
