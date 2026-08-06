@@ -93,7 +93,7 @@ export const createCheckout = createServerFn({ method: "POST" })
     const { data: variants, error: varErr } = await supabaseAdmin
       .from("product_variants")
       .select(
-        `id, name,
+        `id, name, sku, external_sku_id, external_sku_attr, options, is_available,
          product:products!inner(id, slug, name, status),
          prices:product_prices(list_price_cents, sale_price_cents, is_active),
          media:product_media(url, position, kind)`,
@@ -104,6 +104,11 @@ export const createCheckout = createServerFn({ method: "POST" })
     type VariantRow = {
       id: string;
       name: string | null;
+      sku: string | null;
+      external_sku_id: string | null;
+      external_sku_attr: string | null;
+      options: { attributes?: Record<string, string>; image_url?: string | null } | null;
+      is_available: boolean | null;
       product: { id: string; slug: string; name: string; status: string };
       prices: { list_price_cents: number; sale_price_cents: number | null; is_active: boolean }[] | null;
       media: { url: string; position: number | null; kind: string | null }[] | null;
