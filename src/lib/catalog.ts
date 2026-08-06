@@ -244,8 +244,9 @@ export function collectionsQuery() {
 }
 
 export function pickDefaultVariant(p: Pick<ProductListItem, "variants">) {
-  const variants = p.variants ?? [];
-  return variants.find((v) => v.is_default) ?? variants[0];
+  const variants = (p.variants ?? []).filter((v) => v.is_available !== false);
+  const pool = variants.length > 0 ? variants : (p.variants ?? []);
+  return pool.find((v) => v.is_default) ?? pool[0];
 }
 
 export function pickActivePrice(
