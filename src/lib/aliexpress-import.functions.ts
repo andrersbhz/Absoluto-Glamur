@@ -507,6 +507,13 @@ async function commitImportRow(
     } catch {
       // ignore — reviews are non-critical
     }
+    // Best-effort: importa as variações/SKUs reais do produto.
+    try {
+      const { syncVariantsForProduct } = await import("./aliexpress-variants.server");
+      await syncVariantsForProduct(admin, productId, String(norm.source_id), settings);
+    } catch {
+      // ignore — produto continua válido com a variação única
+    }
   }
 
   return { productId, priceCents };
