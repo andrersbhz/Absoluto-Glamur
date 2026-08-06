@@ -165,6 +165,17 @@ export type AdminProductDetail = {
     stock: number;
     weight_grams: number | null;
   };
+  variants: {
+    id: string;
+    sku: string;
+    name: string | null;
+    attributes: Record<string, string>;
+    image_url: string | null;
+    is_default: boolean;
+    is_available: boolean;
+    stock: number;
+    price_cents: number;
+  }[];
   media: { id: string; url: string; alt: string | null; position: number }[];
   seo: { title: string | null; description: string | null };
 };
