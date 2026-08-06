@@ -117,7 +117,13 @@ function ProductPage() {
     if (v) setVariantId(v);
   }, []);
 
-  const variants = product?.variants ?? [];
+  // Somente variações realmente disponíveis no fornecedor entram no seletor.
+  const variants = useMemo(() => {
+    const all = product?.variants ?? [];
+    const available = all.filter((v) => v.is_available !== false);
+    return available.length > 0 ? available : all;
+  }, [product]);
+
   const selectedVariant = useMemo(
     () => variants.find((v) => v.id === variantId) ?? variants.find((v) => v.is_default) ?? variants[0],
     [variants, variantId],
@@ -125,6 +131,7 @@ function ProductPage() {
   const priceRow = pickActivePrice(selectedVariant);
   const price = priceRow ? effectivePrice(priceRow.list_price_cents, priceRow.sale_price_cents) : null;
   const stock = selectedVariant?.inventory?.stock ?? 0;
+  const selectedAttributes = selectedVariant ? variantAttrValues(selectedVariant) : {};
 
   const addToCart = useCart((s) => s.add);
   const { isFavorite, toggle, canFavorite } = useFavorites();
@@ -134,8 +141,7 @@ function ProductPage() {
   const [activeIdx, setActiveIdx] = useState(0);
 
   // Ao trocar de variação, se ela tiver imagem própria, tenta ativar essa mídia.
-  const variantImageUrl =
-    (selectedVariant?.options as { image_url?: string } | undefined)?.image_url ?? null;
+  const variantImageUrl = variantImage(selectedVariant);
   useEffect(() => {
     if (!variantImageUrl) return;
     const idx = media.findIndex((m) => m.url === variantImageUrl);
