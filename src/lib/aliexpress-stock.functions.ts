@@ -123,7 +123,14 @@ export const syncAliexpressStock = createServerFn({ method: "POST" })
       .maybeSingle();
 
     if (!imp?.source_id) {
-      throw new Error("Produto não está conectado ao AliExpress (sem source_id no import).");
+      // Produto sem vínculo AliExpress: não é erro, apenas não há o que sincronizar.
+      return {
+        skipped: true as const,
+        reason: "Produto não está conectado ao AliExpress.",
+        source_id: null,
+        total_stock: 0,
+        variants_updated: 0,
+      };
     }
 
     const { total, bySku, costBrlCents } = await fetchAliexpressLive(imp.source_id);
