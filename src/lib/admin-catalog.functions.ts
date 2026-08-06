@@ -190,7 +190,7 @@ export const getAdminProduct = createServerFn({ method: "GET" })
       .from("products")
       .select(
         `id, slug, name, short_description, description, status, is_featured, brand_id, category_id, tags,
-         variants:product_variants(id, sku, is_default, weight_grams,
+         variants:product_variants(id, sku, name, options, is_default, is_available, weight_grams,
            prices:product_prices(list_price_cents, sale_price_cents, is_active),
            inventory:product_inventory(stock)
          ),
