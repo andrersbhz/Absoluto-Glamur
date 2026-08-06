@@ -248,42 +248,11 @@ function ProductPage() {
               )}
             </div>
 
-            {variants.length > 1 && (
-              <div className="mt-6">
-                <p className="mb-2 text-sm font-medium">Escolha uma variação</p>
-                <div className="flex flex-wrap gap-2">
-                  {variants.map((v) => {
-                    const opts = v.options as { image_url?: string; attributes?: Record<string, string> } | null;
-                    const img = opts?.image_url;
-                    const label =
-                      v.name ??
-                      (opts?.attributes ? Object.values(opts.attributes).join(" · ") : null) ??
-                      v.sku;
-                    const isActive =
-                      (variantId ?? variants.find((x) => x.is_default)?.id ?? variants[0]?.id) === v.id;
-                    return (
-                      <button
-                        key={v.id}
-                        type="button"
-                        onClick={() => setVariantId(v.id)}
-                        className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm transition ${
-                          isActive
-                            ? "border-primary bg-primary/10 text-primary"
-                            : "border-border text-foreground hover:bg-secondary"
-                        }`}
-                      >
-                        {img && (
-                          <img src={img} alt="" className="h-8 w-8 rounded-md object-cover" />
-                        )}
-                        <span className="max-w-[180px] truncate">{label}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-
+            <VariantSelector
+              variants={variants}
+              selectedId={selectedVariant?.id}
+              onSelect={setVariantId}
+            />
 
             <p className="mt-4 text-xs text-muted-foreground">
               {stock > 0 ? `${stock} unidades em estoque` : "Fora de estoque"}
@@ -295,13 +264,21 @@ function ProductPage() {
                 disabled={!selectedVariant || !price || stock <= 0}
                 onClick={() => {
                   if (!selectedVariant || !price) return;
+                  const attrs = selectedAttributes;
                   addToCart({
                     productId: product.id,
                     variantId: selectedVariant.id,
                     slug: product.slug,
                     name: product.name,
-                    variantName: selectedVariant.name ?? null,
-                    imageUrl: media.find((m) => !isVideoMedia(m))?.url ?? null,
+                    variantName:
+                      selectedVariant.name ??
+                      (Object.keys(attrs).length > 0 ? Object.values(attrs).join(" · ") : null),
+                    attributes: Object.keys(attrs).length > 0 ? attrs : null,
+                    sku: selectedVariant.sku ?? null,
+                    imageUrl:
+                      variantImage(selectedVariant) ??
+                      media.find((m) => !isVideoMedia(m))?.url ??
+                      null,
                     unitCents: price.price,
                   });
                   toast.success("Adicionado ao carrinho");
