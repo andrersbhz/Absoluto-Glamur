@@ -45,6 +45,7 @@ type OrderItemInsert = {
   unit_cents: number;
   quantity: number;
   total_cents: number;
+  aliexpress_sku_attr?: string | null;
 };
 
 type OrderContext = {
