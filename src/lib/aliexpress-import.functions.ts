@@ -818,6 +818,19 @@ export const commitImport = createServerFn({ method: "POST" })
           .from("product_inventory")
           .upsert({ variant_id: vrow.id, stock: data.stock }, { onConflict: "variant_id" });
       }
+      if (norm.source_id) {
+        try {
+          const { syncVariantsForProduct } = await import("./aliexpress-variants.server");
+          await syncVariantsForProduct(
+            supabaseAdmin,
+            imp.product_id,
+            String(norm.source_id),
+            settings,
+          );
+        } catch {
+          // mantém variação única
+        }
+      }
       await supabaseAdmin
         .from("product_imports")
         .update({ status: "imported", error: null })
