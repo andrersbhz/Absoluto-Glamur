@@ -182,6 +182,10 @@ function CatalogEditor() {
     mutationFn: (opts: { silent?: boolean } | void) =>
       syncStockFn({ data: { product_id: id } }).then((r) => ({ ...r, silent: !!opts?.silent })),
     onSuccess: (r) => {
+      if (r.skipped) {
+        if (!r.silent) toast.info(r.reason ?? "Produto não está conectado ao AliExpress.");
+        return;
+      }
       setForm((f) => ({ ...f, stock: String(r.total_stock) }));
       if (!r.silent) {
         toast.success(`Estoque AliExpress: ${r.total_stock} unidades (${r.variants_updated} variantes)`);

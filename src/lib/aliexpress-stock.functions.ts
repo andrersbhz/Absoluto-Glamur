@@ -183,6 +183,8 @@ export const syncAliexpressStock = createServerFn({ method: "POST" })
       .eq("source_id", imp.source_id);
 
     return {
+      skipped: false as const,
+      reason: null,
       source_id: imp.source_id,
       total_stock: total,
       variants_updated: rows.length,
