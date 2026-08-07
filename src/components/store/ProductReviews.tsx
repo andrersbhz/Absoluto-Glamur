@@ -14,20 +14,16 @@ import {
 } from "@/lib/product-reviews.functions";
 import { useAuth } from "@/hooks/use-auth";
 
-type Props = {
-  productId: string;
-};
+type Props = { productId: string };
 
 function StarRow({ rating }: { rating: number }) {
   return (
-    <div className="flex items-center gap-0.5">
+    <div className="flex items-center gap-0.5" aria-label={`${rating} de 5 estrelas`}>
       {[1, 2, 3, 4, 5].map((i) => (
         <Star
           key={i}
           className={`h-3.5 w-3.5 ${
-            i <= Math.round(rating)
-              ? "fill-champagne text-champagne"
-              : "text-muted-foreground/30"
+            i <= Math.round(rating) ? "fill-champagne text-champagne" : "text-muted-foreground/30"
           }`}
         />
       ))}
@@ -45,70 +41,69 @@ export function ProductReviews({ productId }: Props) {
   const [showAll, setShowAll] = useState(false);
   const [editing, setEditing] = useState<Partial<ExternalReview> | null>(null);
   const [syncing, setSyncing] = useState(false);
-
-  // Auto-sync silencioso ao abrir a página: traduz avaliações antigas para PT-BR
-  // e busca novas no AliExpress se o último sync for antigo (>= 12h).
   const autoRanRef = useRef<string | null>(null);
-  useEffect(() => {
-    if (!productId) return;
-    if (autoRanRef.current === productId) return;
-    autoRanRef.current = productId;
-    autoSync({ data: { product_id: productId } })
-      .then((r) => {
-        if (r && ((r as { upserted?: number }).upserted || (r as { translated?: number }).translated)) {
-          qc.invalidateQueries({ queryKey: ["product-external-reviews", productId] });
-        }
-      })
-      .catch(() => {
-        /* silencioso */
-      });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [productId]);
-
-
 
   const adminQ = useQuery({
     queryKey: ["admin-external-reviews", productId],
     enabled: isAdmin && showAll,
     queryFn: () => adminList({ data: { product_id: productId } }),
+    staleTime: 0,
   });
 
-  const reviews = (isAdmin && showAll ? adminQ.data : publicQ.data) ?? [];
+  async function refetchReviews() {
+    await qc.invalidateQueries({ queryKey: ["product-external-reviews", productId] });
+    await qc.invalidateQueries({ queryKey: ["admin-external-reviews", productId] });
+    await publicQ.refetch();
+    if (isAdmin && showAll) await adminQ.refetch();
+  }
 
-  const refetch = () => {
-    qc.invalidateQueries({ queryKey: ["product-external-reviews", productId] });
-    qc.invalidateQueries({ queryKey: ["admin-external-reviews", productId] });
-  };
+  useEffect(() => {
+    if (!productId || autoRanRef.current === productId) return;
+    autoRanRef.current = productId;
+    autoSync({ data: { product_id: productId } })
+      .then(async (r) => {
+        if (r && ((r.upserted ?? 0) > 0 || (r.translated ?? 0) > 0)) {
+          await refetchReviews();
+        }
+      })
+      .catch(() => {
+        // Auto-sync é silencioso; botão manual mostra o erro completo.
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [productId]);
+
+  const reviews = (isAdmin && showAll ? adminQ.data : publicQ.data) ?? [];
 
   async function handleSync() {
     setSyncing(true);
     try {
-      const r = await sync({ data: { product_id: productId, min_rating: 4.5 } });
-      if ((r as { upserted?: number }).upserted && (r as { upserted?: number }).upserted! > 0) {
-        toast.success(`${(r as { upserted: number }).upserted} avaliações importadas.`);
+      const r = await sync({ data: { product_id: productId, min_rating: 0 } });
+      await refetchReviews();
+      if ((r.upserted ?? 0) > 0) {
+        toast.success(`${r.upserted} avaliações do AliExpress sincronizadas e exibidas.`);
       } else {
-        toast.info((r as { message?: string }).message ?? "Nenhuma avaliação nova.");
+        toast.info(r.message ?? "Nenhuma avaliação nova encontrada.");
       }
-      refetch();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Erro ao sincronizar.");
+      toast.error(e instanceof Error ? e.message : "Erro ao sincronizar avaliações.");
     } finally {
       setSyncing(false);
     }
   }
 
+  if (!isAdmin && publicQ.isLoading) return null;
   if (!isAdmin && reviews.length === 0) return null;
 
   return (
-    <section className="mt-12 border-t border-border pt-8">
+    <section className="mt-12 border-t border-border pt-8" id="avaliacoes">
       <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h2 className="font-display text-2xl">Avaliações de clientes</h2>
           <p className="text-xs text-muted-foreground">
-            Apenas comentários com nota 4.5 ou superior · {reviews.length}{" "}
-            {reviews.length === 1 ? "avaliação" : "avaliações"}
+            Avaliações do produto · {reviews.length} {reviews.length === 1 ? "avaliação" : "avaliações"}
           </p>
         </div>
+
         {isAdmin && (
           <div className="flex flex-wrap items-center gap-2">
             <button
@@ -118,54 +113,48 @@ export function ProductReviews({ productId }: Props) {
               className="inline-flex items-center gap-1.5 rounded-lg border border-primary/40 bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary transition hover:bg-primary/20 disabled:opacity-50"
             >
               <RefreshCcw className={`h-3.5 w-3.5 ${syncing ? "animate-spin" : ""}`} />
-              Sincronizar do AliExpress
+              {syncing ? "Sincronizando..." : "Sincronizar do AliExpress"}
             </button>
+
             <button
               type="button"
               onClick={() =>
-                setEditing({
-                  product_id: productId,
-                  rating: 5,
-                  images: [],
-                  is_visible: true,
-                })
+                setEditing({ product_id: productId, rating: 5, images: [], is_visible: true })
               }
               className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground transition hover:bg-secondary"
             >
               <Plus className="h-3.5 w-3.5" /> Nova avaliação
             </button>
+
             <button
               type="button"
               onClick={() => setShowAll((v) => !v)}
               className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-medium text-foreground transition hover:bg-secondary"
             >
-              {showAll ? (
-                <>
-                  <Eye className="h-3.5 w-3.5" /> Só visíveis
-                </>
-              ) : (
-                <>
-                  <EyeOff className="h-3.5 w-3.5" /> Mostrar todas
-                </>
-              )}
+              {showAll ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}
+              {showAll ? "Só visíveis" : "Mostrar todas"}
             </button>
           </div>
         )}
       </div>
 
+      {publicQ.isError && !showAll && (
+        <p className="mb-4 text-sm text-destructive">Não foi possível carregar as avaliações.</p>
+      )}
+
       {reviews.length === 0 ? (
         <p className="text-sm text-muted-foreground">
-          Nenhuma avaliação ainda. Sincronize do AliExpress ou adicione manualmente.
+          Nenhuma avaliação disponível para este produto.
         </p>
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
-          {reviews.map((r) => (
+          {reviews.map((review) => (
             <ReviewCard
-              key={r.id}
-              review={r}
+              key={review.id}
+              review={review}
               admin={isAdmin}
-              onEdit={() => setEditing(r)}
-              onChanged={refetch}
+              onEdit={() => setEditing(review)}
+              onChanged={refetchReviews}
             />
           ))}
         </div>
@@ -175,9 +164,9 @@ export function ProductReviews({ productId }: Props) {
         <ReviewEditor
           initial={editing}
           onClose={() => setEditing(null)}
-          onSaved={() => {
+          onSaved={async () => {
             setEditing(null);
-            refetch();
+            await refetchReviews();
           }}
         />
       )}
@@ -194,7 +183,7 @@ function ReviewCard({
   review: ExternalReview;
   admin: boolean;
   onEdit: () => void;
-  onChanged: () => void;
+  onChanged: () => void | Promise<void>;
 }) {
   const del = useServerFn(deleteReview);
   const [lightbox, setLightbox] = useState<string | null>(null);
@@ -204,28 +193,26 @@ function ReviewCard({
     try {
       await del({ data: { id: review.id } });
       toast.success("Avaliação excluída");
-      onChanged();
+      await onChanged();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Erro ao excluir");
+      toast.error(e instanceof Error ? e.message : "Erro ao excluir avaliação.");
     }
   }
 
   return (
     <article
-      className={`rounded-2xl border border-border bg-card/40 p-4 ${
-        !review.is_visible ? "opacity-60" : ""
-      }`}
+      className={`rounded-2xl border border-border bg-card/40 p-4 ${!review.is_visible ? "opacity-60" : ""}`}
     >
       <header className="flex items-start justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">
-            <StarRow rating={review.rating} />
+            <StarRow rating={Number(review.rating)} />
             <span className="text-xs font-medium text-foreground">
               {Number(review.rating).toFixed(1)}
             </span>
           </div>
           <p className="mt-1 text-sm font-medium text-foreground">
-            {review.author_name ?? "Cliente AliExpress"}
+            {review.author_name || "Cliente AliExpress"}
             {review.author_country && (
               <span className="ml-1 text-xs font-normal text-muted-foreground">
                 · {review.author_country}
@@ -238,13 +225,14 @@ function ReviewCard({
             </p>
           )}
         </div>
+
         {admin && (
           <div className="flex items-center gap-1">
             <button
               type="button"
               onClick={onEdit}
               className="rounded-md p-1.5 text-muted-foreground transition hover:bg-secondary hover:text-primary"
-              title="Editar"
+              title="Editar avaliação"
             >
               <Pencil className="h-3.5 w-3.5" />
             </button>
@@ -252,31 +240,36 @@ function ReviewCard({
               type="button"
               onClick={handleDelete}
               className="rounded-md p-1.5 text-muted-foreground transition hover:bg-secondary hover:text-destructive"
-              title="Excluir"
+              title="Excluir avaliação"
             >
               <Trash2 className="h-3.5 w-3.5" />
             </button>
           </div>
         )}
       </header>
-      {review.title && (
-        <h3 className="mt-3 text-sm font-semibold text-foreground">{review.title}</h3>
-      )}
+
+      {review.title && <h3 className="mt-3 text-sm font-semibold text-foreground">{review.title}</h3>}
       {review.body && (
         <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-muted-foreground">
           {review.body}
         </p>
       )}
-      {review.images.length > 0 && (
+
+      {review.images?.length > 0 && (
         <div className="mt-3 flex flex-wrap gap-2">
           {review.images.map((url, i) => (
             <button
               type="button"
-              key={i}
+              key={`${url}-${i}`}
               onClick={() => setLightbox(url)}
               className="h-20 w-20 overflow-hidden rounded-lg bg-secondary/40 ring-1 ring-border transition hover:ring-primary"
             >
-              <img src={url} alt={`Foto enviada por ${review.author_name ?? "cliente"}${review.title ? ` — ${review.title}` : ""}`} className="h-full w-full object-cover" loading="lazy" />
+              <img
+                src={url}
+                alt={`Foto da avaliação de ${review.author_name || "cliente"}`}
+                className="h-full w-full object-cover"
+                loading="lazy"
+              />
             </button>
           ))}
         </div>
@@ -294,7 +287,11 @@ function ReviewCard({
           >
             <X className="h-4 w-4" />
           </button>
-          <img src={lightbox} alt={`Foto ampliada da avaliação de ${review.author_name ?? "cliente"}`} className="max-h-full max-w-full rounded-xl" />
+          <img
+            src={lightbox}
+            alt={`Foto ampliada da avaliação de ${review.author_name || "cliente"}`}
+            className="max-h-full max-w-full rounded-xl"
+          />
         </div>
       )}
     </article>
@@ -308,12 +305,12 @@ function ReviewEditor({
 }: {
   initial: Partial<ExternalReview>;
   onClose: () => void;
-  onSaved: () => void;
+  onSaved: () => void | Promise<void>;
 }) {
   const upsert = useServerFn(upsertReview);
   const [author, setAuthor] = useState(initial.author_name ?? "");
   const [country, setCountry] = useState(initial.author_country ?? "");
-  const [rating, setRating] = useState<number>(Number(initial.rating ?? 5));
+  const [rating, setRating] = useState(Number(initial.rating ?? 5));
   const [title, setTitle] = useState(initial.title ?? "");
   const [body, setBody] = useState(initial.body ?? "");
   const [imagesText, setImagesText] = useState((initial.images ?? []).join("\n"));
@@ -342,9 +339,9 @@ function ReviewEditor({
         },
       });
       toast.success("Avaliação salva");
-      onSaved();
+      await onSaved();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Erro ao salvar");
+      toast.error(e instanceof Error ? e.message : "Erro ao salvar avaliação.");
     } finally {
       setSaving(false);
     }
@@ -354,96 +351,49 @@ function ReviewEditor({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
       <div className="w-full max-w-xl rounded-2xl border border-border bg-background p-6 shadow-2xl">
         <div className="mb-4 flex items-center justify-between">
-          <h3 className="font-display text-xl">
-            {initial.id ? "Editar avaliação" : "Nova avaliação"}
-          </h3>
+          <h3 className="font-display text-xl">{initial.id ? "Editar avaliação" : "Nova avaliação"}</h3>
           <button type="button" onClick={onClose} className="rounded p-1 hover:bg-secondary">
             <X className="h-4 w-4" />
           </button>
         </div>
+
         <div className="grid gap-3">
           <div className="grid grid-cols-2 gap-3">
             <label className="text-xs">
               <span className="mb-1 block text-muted-foreground">Autor</span>
-              <input
-                value={author}
-                onChange={(e) => setAuthor(e.target.value)}
-                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
-              />
+              <input value={author} onChange={(e) => setAuthor(e.target.value)} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" />
             </label>
             <label className="text-xs">
               <span className="mb-1 block text-muted-foreground">País</span>
-              <input
-                value={country}
-                onChange={(e) => setCountry(e.target.value)}
-                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
-              />
+              <input value={country} onChange={(e) => setCountry(e.target.value)} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" />
             </label>
           </div>
+
           <label className="text-xs">
             <span className="mb-1 block text-muted-foreground">Nota (0–5)</span>
-            <input
-              type="number"
-              step="0.1"
-              min={0}
-              max={5}
-              value={rating}
-              onChange={(e) => setRating(parseFloat(e.target.value))}
-              className="w-24 rounded-lg border border-border bg-background px-3 py-2 text-sm"
-            />
+            <input type="number" step="0.1" min={0} max={5} value={rating} onChange={(e) => setRating(Number(e.target.value))} className="w-24 rounded-lg border border-border bg-background px-3 py-2 text-sm" />
           </label>
           <label className="text-xs">
             <span className="mb-1 block text-muted-foreground">Título</span>
-            <input
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
-            />
+            <input value={title} onChange={(e) => setTitle(e.target.value)} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" />
           </label>
           <label className="text-xs">
             <span className="mb-1 block text-muted-foreground">Comentário</span>
-            <textarea
-              value={body}
-              onChange={(e) => setBody(e.target.value)}
-              rows={5}
-              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
-            />
+            <textarea value={body} onChange={(e) => setBody(e.target.value)} rows={5} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" />
           </label>
           <label className="text-xs">
-            <span className="mb-1 block text-muted-foreground">
-              Imagens (uma URL por linha)
-            </span>
-            <textarea
-              value={imagesText}
-              onChange={(e) => setImagesText(e.target.value)}
-              rows={3}
-              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs font-mono"
-              placeholder="https://..."
-            />
+            <span className="mb-1 block text-muted-foreground">Imagens (uma URL por linha)</span>
+            <textarea value={imagesText} onChange={(e) => setImagesText(e.target.value)} rows={3} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs font-mono" />
           </label>
           <label className="flex items-center gap-2 text-xs">
-            <input
-              type="checkbox"
-              checked={visible}
-              onChange={(e) => setVisible(e.target.checked)}
-            />
+            <input type="checkbox" checked={visible} onChange={(e) => setVisible(e.target.checked)} />
             <span>Visível na loja</span>
           </label>
         </div>
+
         <div className="mt-5 flex justify-end gap-2">
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-lg border border-border bg-background px-4 py-2 text-sm hover:bg-secondary"
-          >
-            Cancelar
-          </button>
-          <button
-            type="button"
-            disabled={saving}
-            onClick={handleSave}
-            className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50"
-          >
+          <button type="button" onClick={onClose} className="rounded-lg border border-border bg-background px-4 py-2 text-sm hover:bg-secondary">Cancelar</button>
+          <button type="button" disabled={saving} onClick={handleSave} className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-90 disabled:opacity-50">
             {saving ? "Salvando..." : "Salvar"}
           </button>
         </div>
