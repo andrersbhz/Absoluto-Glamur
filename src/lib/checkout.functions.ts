@@ -109,7 +109,11 @@ export const createCheckout = createServerFn({ method: "POST" })
       sku: string | null;
       external_sku_id: string | null;
       external_sku_attr: string | null;
-      options: { attributes?: Record<string, string>; image_url?: string | null } | null;
+      options: {
+        attributes?: Record<string, string>;
+        image_url?: string | null;
+        source_id?: string | null;
+      } | null;
       is_available: boolean | null;
       product: { id: string; slug: string; name: string; status: string };
       prices: { list_price_cents: number; sale_price_cents: number | null; is_active: boolean }[] | null;
@@ -117,6 +121,31 @@ export const createCheckout = createServerFn({ method: "POST" })
     };
     const vmap = new Map<string, VariantRow>();
     (variants as unknown as VariantRow[] | null)?.forEach((v) => vmap.set(v.id, v));
+
+    // Fallback seguro: product_id externo (AliExpress) pelo import do produto,
+    // usado apenas quando a variação não guardou options.source_id.
+    const productIds = Array.from(
+      new Set(
+        Array.from(vmap.values())
+          .map((v) => v.product?.id)
+          .filter((id): id is string => !!id),
+      ),
+    );
+    const externalByProduct = new Map<string, string>();
+    if (productIds.length > 0) {
+      const { data: imports } = await supabaseAdmin
+        .from("product_imports")
+        .select("product_id, source_id, updated_at")
+        .in("product_id", productIds)
+        .in("source", ["aliexpress", "aliexpress_api", "aliexpress_url"])
+        .not("source_id", "is", null)
+        .order("updated_at", { ascending: false });
+      for (const imp of imports ?? []) {
+        if (imp.product_id && imp.source_id && !externalByProduct.has(imp.product_id)) {
+          externalByProduct.set(imp.product_id, String(imp.source_id));
+        }
+      }
+    }
 
     const orderItems: OrderItemInsert[] = data.items.map((i) => {
       const v = vmap.get(i.variantId);
@@ -140,6 +169,10 @@ export const createCheckout = createServerFn({ method: "POST" })
       const attrs = v.options?.attributes ?? null;
       const variantName =
         v.name ?? (attrs && Object.keys(attrs).length > 0 ? Object.values(attrs).join(" · ") : null);
+      const externalProductId =
+        (v.options?.source_id ? String(v.options.source_id) : null) ??
+        externalByProduct.get(v.product.id) ??
+        null;
       return {
         product_id: v.product.id,
         variant_id: v.id,
@@ -150,9 +183,12 @@ export const createCheckout = createServerFn({ method: "POST" })
         unit_cents: unit,
         quantity: i.quantity,
         total_cents: unit * i.quantity,
+        // Congela o mapeamento exato da variação escolhida para o fulfillment.
+        aliexpress_product_id: externalProductId,
         aliexpress_sku_attr: v.external_sku_attr ?? null,
       };
     });
+
 
     const subtotal = orderItems.reduce((s, i) => s + i.total_cents, 0);
     const shipping = 0;
