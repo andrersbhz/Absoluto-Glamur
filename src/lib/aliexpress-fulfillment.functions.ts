@@ -63,48 +63,59 @@ async function loadOrder(orderId: string): Promise<OrderRow> {
 async function resolveItemMapping(
   item: OrderRow["order_items"][number],
 ): Promise<{ product_id: string; sku_attr: string | null; sku_id: string | null }> {
-  if (item.aliexpress_product_id) {
-    return {
-      product_id: item.aliexpress_product_id,
-      sku_attr: item.aliexpress_sku_attr,
-      sku_id: null,
-    };
-  }
-  if (!item.product_id) {
-    throw new Error(`Item "${item.product_name}" não está vinculado a nenhum produto do catálogo.`);
-  }
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { data: imp } = await supabaseAdmin
-    .from("product_imports")
-    .select("source_id, raw_data, normalized_data")
-    .eq("product_id", item.product_id)
-    .eq("source", "aliexpress")
-    .order("updated_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
 
-  if (!imp?.source_id) {
+  // 1) Variação escolhida pelo cliente é sempre a fonte da verdade.
+  let variant: {
+    external_sku_id: string | null;
+    external_sku_attr: string | null;
+    options: { source_id?: string | null; sku_attr?: string | null } | null;
+  } | null = null;
+  if (item.variant_id) {
+    const { data } = await supabaseAdmin
+      .from("product_variants")
+      .select("external_sku_id, external_sku_attr, options")
+      .eq("id", item.variant_id)
+      .maybeSingle();
+    variant = (data as typeof variant) ?? null;
+  }
+
+  const skuAttr = item.aliexpress_sku_attr ?? variant?.external_sku_attr ?? variant?.options?.sku_attr ?? null;
+  const skuId = variant?.external_sku_id ?? null;
+
+  // 2) product_id externo: congelado no pedido → variação → import do produto.
+  let externalProductId: string | null =
+    item.aliexpress_product_id ?? (variant?.options?.source_id ? String(variant.options.source_id) : null);
+
+  if (!externalProductId && item.product_id) {
+    const { data: imp } = await supabaseAdmin
+      .from("product_imports")
+      .select("source_id")
+      .eq("product_id", item.product_id)
+      .in("source", ["aliexpress", "aliexpress_api", "aliexpress_url"])
+      .not("source_id", "is", null)
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (imp?.source_id) externalProductId = String(imp.source_id);
+  }
+
+  if (!externalProductId) {
     throw new Error(
-      `Item "${item.product_name}" não veio do AliExpress (sem source_id). Vincule manualmente o aliexpress_product_id.`,
+      `Item "${item.product_name}" não tem produto AliExpress vinculado. Informe o aliexpress_product_id do item antes de enviar.`,
     );
   }
 
-  // Try to extract a SKU attr from raw_data variants (best-effort).
-  const raw = (imp.raw_data ?? {}) as any;
-  const candidates: any[] =
-    raw?.ae_item_sku_info_dtos?.ae_item_sku_info_d_t_o ??
-    raw?.sku_info?.sku_list ??
-    raw?.skus ??
-    [];
-  let sku_attr: string | null = null;
-  let sku_id: string | null = null;
-  if (Array.isArray(candidates) && candidates.length > 0) {
-    const first = candidates[0];
-    sku_attr = first.sku_attr ?? first.ae_sku_property_dtos ?? first.attributes ?? null;
-    sku_id = first.sku_id ?? first.id ?? null;
+  // 3) Nunca "chutar" um SKU: se o item tem variação, ela precisa estar mapeada.
+  if (item.variant_id && !skuAttr && !skuId) {
+    throw new Error(
+      `Item "${item.product_name}" tem variação selecionada, mas sem SKU do AliExpress mapeado. Sincronize as variações do produto e tente novamente — enviar sem o SKU exato compraria a variação errada.`,
+    );
   }
-  return { product_id: imp.source_id, sku_attr, sku_id };
+
+  return { product_id: externalProductId, sku_attr: skuAttr, sku_id: skuId };
 }
+
 
 function buildLogisticsAddress(o: OrderRow) {
   const a = o.shipping_address ?? {};
