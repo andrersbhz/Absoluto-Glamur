@@ -14,8 +14,6 @@ async function translateReviewsToPtBr(
   items: { title: string | null; body: string | null }[],
 ): Promise<{ title: string | null; body: string | null }[]> {
   if (items.length === 0) return [];
-  const key = process.env.LOVABLE_API_KEY;
-  if (!key) return items;
   // Só envia para IA aqueles que têm algum texto.
   const indexed = items.map((it, i) => ({ i, ...it }));
   const needing = indexed.filter((it) => (it.title && it.title.trim()) || (it.body && it.body.trim()));
@@ -27,9 +25,6 @@ async function translateReviewsToPtBr(
     body: it.body ?? "",
   }));
 
-  const gateway = createLovableAiGatewayProvider(key);
-  const model = gateway("google/gemini-2.5-flash");
-
   const prompt = `Traduza para português do Brasil (PT-BR) as avaliações abaixo, mantendo o tom natural e coloquial de cliente. Preserve emojis, quebras de linha e pontuação. NÃO invente conteúdo. Se já estiver em PT-BR, apenas corrija erros óbvios de ortografia. Retorne SOMENTE um JSON válido no formato:
 [{"i": <indice>, "title": "...", "body": "..."}]
 
@@ -37,11 +32,11 @@ Entrada:
 ${JSON.stringify(payload)}`;
 
   try {
-    const { text } = await generateText({
-      model,
+    const text = await generateWithOwnKeys(
+      "Você é um tradutor profissional de avaliações de clientes para português do Brasil. Responda apenas com JSON válido.",
       prompt,
-      temperature: 0.2,
-    });
+    );
+    if (!text) return items;
     const match = text.match(/\[[\s\S]*\]/);
     const parsed = match ? JSON.parse(match[0]) : [];
     const map = new Map<number, { title?: string; body?: string }>();
