@@ -12,7 +12,6 @@ function signRest(apiPath: string, params: Record<string, string>, appSecret: st
   return createHmac("sha256", appSecret).update(base, "utf8").digest("hex").toUpperCase();
 }
 
-
 /**
  * Callback OAuth do AliExpress Open Platform.
  * Fluxo:
@@ -68,7 +67,6 @@ export const Route = createFileRoute("/api/public/webhooks/aliexpress")({
           );
         }
 
-
         try {
           const signParams: Record<string, string> = {
             app_key: appKey,
@@ -96,7 +94,11 @@ export const Route = createFileRoute("/api/public/webhooks/aliexpress")({
             code?: string;
             msg?: string;
           } = {};
-          try { tokenJson = JSON.parse(tokenText); } catch { /* keep empty */ }
+          try {
+            tokenJson = JSON.parse(tokenText);
+          } catch {
+            /* keep empty */
+          }
 
           if (!tokenRes.ok || tokenJson.error || !tokenJson.access_token) {
             const msg =
@@ -123,7 +125,6 @@ export const Route = createFileRoute("/api/public/webhooks/aliexpress")({
               400,
             );
           }
-
 
           await supabaseAdmin
             .from("integrations")
@@ -180,7 +181,8 @@ function htmlResponse(html: string, status: number) {
 }
 
 function escapeHtml(s: string) {
-  return s.replace(/[&<>"']/g, (c) =>
-    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!,
+  return s.replace(
+    /[&<>"']/g,
+    (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!,
   );
 }

@@ -81,12 +81,14 @@ async function resolveItemMapping(
     variant = (data as unknown as VariantMapping | null) ?? null;
   }
 
-  const skuAttr = item.aliexpress_sku_attr ?? variant?.external_sku_attr ?? variant?.options?.sku_attr ?? null;
+  const skuAttr =
+    item.aliexpress_sku_attr ?? variant?.external_sku_attr ?? variant?.options?.sku_attr ?? null;
   const skuId = variant?.external_sku_id ?? null;
 
   // 2) product_id externo: congelado no pedido → variação → import do produto.
   let externalProductId: string | null =
-    item.aliexpress_product_id ?? (variant?.options?.source_id ? String(variant.options.source_id) : null);
+    item.aliexpress_product_id ??
+    (variant?.options?.source_id ? String(variant.options.source_id) : null);
 
   if (!externalProductId && item.product_id) {
     const { data: imp } = await supabaseAdmin
@@ -117,7 +119,6 @@ async function resolveItemMapping(
   return { product_id: externalProductId, sku_attr: skuAttr, sku_id: skuId };
 }
 
-
 function buildLogisticsAddress(o: OrderRow) {
   const a = o.shipping_address ?? {};
   const phone = (o.customer_phone ?? "").replace(/\D/g, "");
@@ -125,7 +126,8 @@ function buildLogisticsAddress(o: OrderRow) {
   return {
     contact_person: o.customer_name,
     full_name: o.customer_name,
-    address: `${a.street ?? ""}, ${a.number ?? ""}${a.complement ? " - " + a.complement : ""}`.trim(),
+    address:
+      `${a.street ?? ""}, ${a.number ?? ""}${a.complement ? " - " + a.complement : ""}`.trim(),
     address2: a.district ?? "",
     city: a.city ?? "",
     province: a.state ?? "",
@@ -166,9 +168,7 @@ async function sendOrderToAli(orderId: string) {
     param_place_order_request4_open_api_d_t_o: JSON.stringify(dto),
   });
   const result =
-    response?.aliexpress_ds_order_create_response?.result ??
-    response?.result ??
-    response;
+    response?.aliexpress_ds_order_create_response?.result ?? response?.result ?? response;
   const aeOrderId: string | null =
     result?.order_list?.number?.[0]?.toString?.() ??
     result?.order_list?.[0]?.toString?.() ??
@@ -248,7 +248,13 @@ export const fulfillOrdersBulk = createServerFn({ method: "POST" })
       }
     }
     const okCount = results.filter((r) => r.ok).length;
-    return { ok: true as const, total: results.length, sent: okCount, failed: results.length - okCount, results };
+    return {
+      ok: true as const,
+      total: results.length,
+      sent: okCount,
+      failed: results.length - okCount,
+      results,
+    };
   });
 
 export const setOrderItemAliexpressMapping = createServerFn({ method: "POST" })

@@ -63,7 +63,11 @@ export const listIntegrations = createServerFn({ method: "GET" })
       webhook_token_masked: mask(i.webhook_token),
       has_api_key: !!i.api_key,
       has_webhook_token: !!i.webhook_token,
-      reauth_required: !!(i.config && typeof i.config === "object" && (i.config as Record<string, unknown>).reauth_required),
+      reauth_required: !!(
+        i.config &&
+        typeof i.config === "object" &&
+        (i.config as Record<string, unknown>).reauth_required
+      ),
     }));
   });
 
@@ -175,14 +179,22 @@ export const testIntegration = createServerFn({ method: "POST" })
         );
         await supabaseAdmin
           .from("integrations")
-          .update({ last_verified_at: new Date().toISOString(), last_status: "ok", last_error: null })
+          .update({
+            last_verified_at: new Date().toISOString(),
+            last_status: "ok",
+            last_error: null,
+          })
           .eq("provider", "pagbank");
         return { ok: true, info: { name: "PagBank", email: null } };
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
         await supabaseAdmin
           .from("integrations")
-          .update({ last_verified_at: new Date().toISOString(), last_status: "error", last_error: msg })
+          .update({
+            last_verified_at: new Date().toISOString(),
+            last_status: "error",
+            last_error: msg,
+          })
           .eq("provider", "pagbank");
         throw new Error(msg);
       }
@@ -218,7 +230,10 @@ export const testIntegration = createServerFn({ method: "POST" })
           .eq("provider", provider);
         return {
           ok: true,
-          info: { name: `${provider === "openai" ? "OpenAI" : "Gemini"} · ${cred.model}`, email: null },
+          info: {
+            name: `${provider === "openai" ? "OpenAI" : "Gemini"} · ${cred.model}`,
+            email: null,
+          },
         };
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
@@ -267,7 +282,10 @@ export const testIntegration = createServerFn({ method: "POST" })
             enabled: true,
           })
           .eq("provider", "aliexpress");
-        return { ok: true, info: { name: "AliExpress Open Platform", email: cfg.aliexpress_user_id ?? null } };
+        return {
+          ok: true,
+          info: { name: "AliExpress Open Platform", email: cfg.aliexpress_user_id ?? null },
+        };
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
         await supabaseAdmin
@@ -288,5 +306,4 @@ export const testIntegration = createServerFn({ method: "POST" })
         message: `Teste automático para "${data.provider}" ainda não está disponível. Salve as credenciais e valide manualmente no fluxo do provedor.`,
       },
     };
-
   });

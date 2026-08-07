@@ -116,7 +116,9 @@ export const createCheckout = createServerFn({ method: "POST" })
       } | null;
       is_available: boolean | null;
       product: { id: string; slug: string; name: string; status: string };
-      prices: { list_price_cents: number; sale_price_cents: number | null; is_active: boolean }[] | null;
+      prices:
+        | { list_price_cents: number; sale_price_cents: number | null; is_active: boolean }[]
+        | null;
       media: { url: string; position: number | null; kind: string | null }[] | null;
     };
     const vmap = new Map<string, VariantRow>();
@@ -158,7 +160,9 @@ export const createCheckout = createServerFn({ method: "POST" })
       const price = (v.prices ?? []).find((p) => p.is_active) ?? v.prices?.[0];
       if (!price) throw new Error(`Preço não configurado para ${v.product.name}`);
       const unit =
-        price.sale_price_cents && price.sale_price_cents > 0 && price.sale_price_cents < price.list_price_cents
+        price.sale_price_cents &&
+        price.sale_price_cents > 0 &&
+        price.sale_price_cents < price.list_price_cents
           ? price.sale_price_cents
           : price.list_price_cents;
       const media = (v.media ?? []).filter((m) => m.kind !== "video");
@@ -168,7 +172,8 @@ export const createCheckout = createServerFn({ method: "POST" })
         null;
       const attrs = v.options?.attributes ?? null;
       const variantName =
-        v.name ?? (attrs && Object.keys(attrs).length > 0 ? Object.values(attrs).join(" · ") : null);
+        v.name ??
+        (attrs && Object.keys(attrs).length > 0 ? Object.values(attrs).join(" · ") : null);
       const externalProductId =
         (v.options?.source_id ? String(v.options.source_id) : null) ??
         externalByProduct.get(v.product.id) ??
@@ -188,7 +193,6 @@ export const createCheckout = createServerFn({ method: "POST" })
         aliexpress_sku_attr: v.external_sku_attr ?? null,
       };
     });
-
 
     const subtotal = orderItems.reduce((s, i) => s + i.total_cents, 0);
     const shipping = 0;
@@ -456,8 +460,7 @@ async function handlePagBankCheckout(ctx: OrderContext, integ: any, method: stri
   };
 
   const origin =
-    (integ.config?.checkout_origin as string | undefined) ??
-    "https://www.absolutoglamur.com.br";
+    (integ.config?.checkout_origin as string | undefined) ?? "https://www.absolutoglamur.com.br";
   const returnUrl = ctx.data.returnUrl ?? `${origin}/checkout/${ctx.orderId}`;
   const notificationUrl = `${origin}/api/public/webhooks/pagbank`;
 

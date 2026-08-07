@@ -89,7 +89,10 @@ export async function callGemini(
   if (!res.ok) throw new Error(`gemini ${res.status}: ${(await res.text()).slice(0, 300)}`);
   const json = (await res.json()) as any;
   const parts = json?.candidates?.[0]?.content?.parts ?? [];
-  return parts.map((p: any) => p?.text ?? "").join("").trim();
+  return parts
+    .map((p: any) => p?.text ?? "")
+    .join("")
+    .trim();
 }
 
 export async function callOpenAi(
