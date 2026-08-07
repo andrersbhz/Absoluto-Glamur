@@ -19,6 +19,7 @@ import {
 import { optimizeProductCopy } from "@/lib/ai-product-optimize.functions";
 import { syncAllAliexpressStock, syncAliexpressStock } from "@/lib/aliexpress-stock.functions";
 import { bulkSyncAliexpressReviews } from "@/lib/product-reviews.functions";
+import { resyncAliexpressVariantsBulk } from "@/lib/aliexpress-variants.functions";
 import { Star } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/admin/catalog/")({
@@ -47,6 +48,7 @@ function CatalogList() {
   const syncOne = useServerFn(syncAliexpressStock);
   const [rowSyncing, setRowSyncing] = useState<Record<string, boolean>>({});
   const bulkReviews = useServerFn(bulkSyncAliexpressReviews);
+  const resyncVariants = useServerFn(resyncAliexpressVariantsBulk);
   const optimize = useServerFn(optimizeProductCopy);
   const qc = useQueryClient();
   const [q, setQ] = useState("");
