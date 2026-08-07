@@ -66,18 +66,19 @@ async function resolveItemMapping(
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
   // 1) Variação escolhida pelo cliente é sempre a fonte da verdade.
-  let variant: {
+  type VariantMapping = {
     external_sku_id: string | null;
     external_sku_attr: string | null;
     options: { source_id?: string | null; sku_attr?: string | null } | null;
-  } | null = null;
+  };
+  let variant: VariantMapping | null = null;
   if (item.variant_id) {
     const { data } = await supabaseAdmin
       .from("product_variants")
       .select("external_sku_id, external_sku_attr, options")
       .eq("id", item.variant_id)
       .maybeSingle();
-    variant = (data as typeof variant) ?? null;
+    variant = (data as unknown as VariantMapping | null) ?? null;
   }
 
   const skuAttr = item.aliexpress_sku_attr ?? variant?.external_sku_attr ?? variant?.options?.sku_attr ?? null;
