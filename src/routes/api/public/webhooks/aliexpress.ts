@@ -12,7 +12,6 @@ function signRest(apiPath: string, params: Record<string, string>, appSecret: st
   return createHmac("sha256", appSecret).update(base, "utf8").digest("hex").toUpperCase();
 }
 
-
 /**
  * Callback OAuth do AliExpress Open Platform.
  * Fluxo:
@@ -63,11 +62,10 @@ export const Route = createFileRoute("/api/public/webhooks/aliexpress")({
           return htmlResponse(
             `<h1>Code recebido, mas faltam credenciais</h1>
              <p>Cadastre App Key (em "API Key") e App Secret (em "Webhook Token") em /admin/integrations e refaça a autorização.</p>
-             <p><code>code=${escapeHtml(code)}</code></p>`,
+             <p>Depois clique novamente em "Autorizar AliExpress".</p>`,
             200,
           );
         }
-
 
         try {
           const signParams: Record<string, string> = {
@@ -96,7 +94,11 @@ export const Route = createFileRoute("/api/public/webhooks/aliexpress")({
             code?: string;
             msg?: string;
           } = {};
-          try { tokenJson = JSON.parse(tokenText); } catch { /* keep empty */ }
+          try {
+            tokenJson = JSON.parse(tokenText);
+          } catch {
+            /* keep empty */
+          }
 
           if (!tokenRes.ok || tokenJson.error || !tokenJson.access_token) {
             const msg =
@@ -108,40 +110,21 @@ export const Route = createFileRoute("/api/public/webhooks/aliexpress")({
               tokenText.slice(0, 300) ??
               `HTTP ${tokenRes.status}`;
 
-            // Debug info to help diagnose signature mismatches
-            const keysSorted = Object.keys(signParams).sort();
-            const baseString = "/auth/token/create" + keysSorted.map((k) => `${k}${signParams[k]}`).join("");
-            const debug = {
-              app_key_len: appKey.length,
-              app_key_head: appKey.slice(0, 4),
-              app_key_tail: appKey.slice(-2),
-              app_secret_len: appSecret.length,
-              app_secret_head: appSecret.slice(0, 2),
-              app_secret_tail: appSecret.slice(-2),
-              base_string: baseString,
-              signature,
-              response: tokenText.slice(0, 500),
-            };
-
             await supabaseAdmin
               .from("integrations")
               .update({
                 last_status: "error",
                 last_error: `Troca do code falhou: ${msg}`,
                 last_verified_at: new Date().toISOString(),
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                config: { ...cfg, last_oauth_debug: debug } as any,
               })
               .eq("provider", "aliexpress");
             return htmlResponse(
               `<h1>Falha ao trocar code por token</h1>
                <pre>${escapeHtml(msg)}</pre>
-               <details><summary>Debug (não compartilhe publicamente)</summary>
-               <pre>${escapeHtml(JSON.stringify(debug, null, 2))}</pre></details>`,
+               <p>Confira App Key e App Secret em /admin/integrations e refaça a autorização.</p>`,
               400,
             );
           }
-
 
           await supabaseAdmin
             .from("integrations")
@@ -198,7 +181,8 @@ function htmlResponse(html: string, status: number) {
 }
 
 function escapeHtml(s: string) {
-  return s.replace(/[&<>"']/g, (c) =>
-    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!,
+  return s.replace(
+    /[&<>"']/g,
+    (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!,
   );
 }
