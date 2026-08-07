@@ -3,6 +3,7 @@ import { z } from "zod";
 import { generateText } from "ai";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { createLovableAiGatewayProvider } from "./ai-gateway.server";
+import { generateWithOwnKeys } from "./ai-translate.server";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function assertCatalog(context: any) {
