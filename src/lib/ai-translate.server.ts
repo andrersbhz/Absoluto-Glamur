@@ -2,8 +2,9 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-// Tradução usando as chaves próprias do lojista (OpenAI / Gemini) cadastradas
-// em Admin → Integrações. NÃO consome créditos do Lovable AI.
+// Tradução usando as chaves próprias do lojista cadastradas em Admin → Integrações.
+// Gemini é o provedor principal por padrão por possuir camada gratuita adequada a tradução.
+// OpenAI permanece disponível apenas como fallback quando estiver habilitada e com saldo.
 // As chaves nunca são retornadas ao cliente nem escritas em log.
 
 export type AiProvider = "openai" | "gemini";
@@ -15,12 +16,12 @@ type AiCredential = {
 };
 
 export const DEFAULT_AI_MODEL: Record<AiProvider, string> = {
-  gemini: "gemini-2.0-flash",
+  gemini: "gemini-3.5-flash-lite",
   openai: "gpt-4o-mini",
 };
 
-/** Ordem padrão: OpenAI como principal, Gemini como fallback automático. */
-const DEFAULT_ORDER: AiProvider[] = ["openai", "gemini"];
+/** Ordem padrão: Gemini gratuito primeiro; OpenAI somente como fallback. */
+const DEFAULT_ORDER: AiProvider[] = ["gemini", "openai"];
 
 function readCredential(row: any): AiCredential | null {
   if (!row) return null;
@@ -51,7 +52,6 @@ async function loadAiCredentials(): Promise<AiCredential[]> {
     .eq("category", "ai");
   const rows = (data ?? []) as any[];
 
-  // Prioridade configurável em config.priority (menor = primeiro), sem mudar a UI.
   const order = [...DEFAULT_ORDER].sort((a, b) => {
     const pa = Number((rows.find((r) => r.provider === a)?.config as any)?.priority ?? NaN);
     const pb = Number((rows.find((r) => r.provider === b)?.config as any)?.priority ?? NaN);
@@ -69,30 +69,58 @@ async function loadAiCredentials(): Promise<AiCredential[]> {
   return out;
 }
 
-export async function callGemini(
-  cred: AiCredential,
+async function callGeminiModel(
+  apiKey: string,
+  model: string,
   system: string,
   prompt: string,
 ): Promise<string> {
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(
-    cred.model,
-  )}:generateContent?key=${encodeURIComponent(cred.apiKey)}`;
+    model,
+  )}:generateContent?key=${encodeURIComponent(apiKey)}`;
   const res = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       systemInstruction: { parts: [{ text: system }] },
       contents: [{ role: "user", parts: [{ text: prompt }] }],
-      generationConfig: { temperature: 0.2 },
+      generationConfig: { temperature: 0.1 },
     }),
   });
-  if (!res.ok) throw new Error(`gemini ${res.status}: ${(await res.text()).slice(0, 300)}`);
+  if (!res.ok) {
+    const body = (await res.text()).slice(0, 350);
+    throw new Error(`gemini ${res.status} (${model}): ${body}`);
+  }
   const json = (await res.json()) as any;
   const parts = json?.candidates?.[0]?.content?.parts ?? [];
   return parts
     .map((p: any) => p?.text ?? "")
     .join("")
     .trim();
+}
+
+export async function callGemini(
+  cred: AiCredential,
+  system: string,
+  prompt: string,
+): Promise<string> {
+  // Se o modelo configurado não existir/estiver indisponível, tenta outro modelo gratuito atual.
+  const models = Array.from(
+    new Set([cred.model, "gemini-3.5-flash-lite", "gemini-3.1-flash-lite"]),
+  );
+  let lastError: Error | null = null;
+  for (const model of models) {
+    try {
+      return await callGeminiModel(cred.apiKey, model, system, prompt);
+    } catch (e) {
+      lastError = e instanceof Error ? e : new Error(String(e));
+      // Chave inválida não será resolvida trocando de modelo.
+      if (/API_KEY_INVALID|API key not valid/i.test(lastError.message)) throw lastError;
+      // Limite/quota também não deve provocar várias chamadas inúteis.
+      if (/RESOURCE_EXHAUSTED|quota|rate limit/i.test(lastError.message)) throw lastError;
+    }
+  }
+  throw lastError ?? new Error("Gemini não retornou resposta.");
 }
 
 export async function callOpenAi(
@@ -112,9 +140,10 @@ export async function callOpenAi(
         { role: "system", content: system },
         { role: "user", content: prompt },
       ],
+      temperature: 0.1,
     }),
   });
-  if (!res.ok) throw new Error(`openai ${res.status}: ${(await res.text()).slice(0, 300)}`);
+  if (!res.ok) throw new Error(`openai ${res.status}: ${(await res.text()).slice(0, 350)}`);
   const json = (await res.json()) as any;
   return String(json?.choices?.[0]?.message?.content ?? "").trim();
 }
@@ -145,10 +174,8 @@ async function recordProviderStatus(provider: AiProvider, error: string | null) 
 }
 
 /**
- * Gera texto usando a primeira credencial de IA disponível do lojista
- * (principal + fallback automático no outro provedor).
- * Retorna null quando nenhuma chave está configurada ou todas falharam —
- * nesse caso o erro técnico fica gravado na integração correspondente.
+ * Gera texto usando a primeira credencial habilitada.
+ * A falha de IA NUNCA impede a importação: retorna null e o chamador preserva o texto original.
  */
 export async function generateWithOwnKeys(system: string, prompt: string): Promise<string | null> {
   let creds: AiCredential[] = [];
@@ -167,7 +194,6 @@ export async function generateWithOwnKeys(system: string, prompt: string): Promi
       await recordProviderStatus(cred.provider, "Resposta vazia do provedor de IA.");
     } catch (e) {
       await recordProviderStatus(cred.provider, e instanceof Error ? e.message : String(e));
-      // tenta o próximo provedor (fallback automático)
     }
   }
   return null;
