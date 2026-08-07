@@ -64,15 +64,24 @@ function CatalogList() {
   const [aiLoading, setAiLoading] = useState<"idle" | "generating" | "applying">("idle");
 
   const bulkSync = useMutation({
-    mutationFn: () => syncAll({ data: { limit: 200 } }),
-    onSuccess: (r) => {
+    mutationFn: async () => {
+      const stock = await syncAll({ data: { limit: 200 } });
+      // Reaproveita o mesmo botão para reparar as variações reais (SKUs) do catálogo.
+      const variants = await resyncVariants({ data: { limit: 200, only_missing_skus: false } });
+      return { stock, variants };
+    },
+    onSuccess: ({ stock, variants }) => {
       toast.success(
-        `Estoque sincronizado: ${r.updated}/${r.total} produtos${r.errors.length ? ` (${r.errors.length} falhas)` : ""}`,
+        `Estoque sincronizado: ${stock.updated}/${stock.total} produtos${stock.errors.length ? ` (${stock.errors.length} falhas)` : ""}`,
+      );
+      toast.success(
+        `Variações: ${variants.created} criadas, ${variants.updated} atualizadas, ${variants.unavailable} indisponíveis${variants.errors.length ? ` (${variants.errors.length} avisos)` : ""}`,
       );
       qc.invalidateQueries({ queryKey: ["admin-products"] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
 
   const bulkReviewsMut = useMutation({
     mutationFn: () => bulkReviews({ data: { min_rating: 4.5, limit: 100 } }),
