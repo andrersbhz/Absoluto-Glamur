@@ -188,6 +188,52 @@ export const testIntegration = createServerFn({ method: "POST" })
       }
     }
 
+    if (data.provider === "openai" || data.provider === "gemini") {
+      const provider = data.provider as "openai" | "gemini";
+      const { loadAiCredential, callAiProvider } = await import("./ai-translate.server");
+      const cred = await loadAiCredential(provider);
+      if (!cred) {
+        const msg = "Preencha a chave da API e ative a integração antes de testar.";
+        await supabaseAdmin
+          .from("integrations")
+          .update({
+            last_verified_at: new Date().toISOString(),
+            last_status: "error",
+            last_error: msg,
+          })
+          .eq("provider", provider);
+        throw new Error(msg);
+      }
+      try {
+        // Chamada mínima real ao modelo configurado.
+        const text = await callAiProvider(cred, "Responda apenas com: OK", "ping");
+        if (!text) throw new Error("O modelo respondeu vazio.");
+        await supabaseAdmin
+          .from("integrations")
+          .update({
+            last_verified_at: new Date().toISOString(),
+            last_status: "ok",
+            last_error: null,
+          })
+          .eq("provider", provider);
+        return {
+          ok: true,
+          info: { name: `${provider === "openai" ? "OpenAI" : "Gemini"} · ${cred.model}`, email: null },
+        };
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        await supabaseAdmin
+          .from("integrations")
+          .update({
+            last_verified_at: new Date().toISOString(),
+            last_status: "error",
+            last_error: msg,
+          })
+          .eq("provider", provider);
+        throw new Error(msg);
+      }
+    }
+
     if (data.provider === "aliexpress") {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const cfg: any = (row.config as any) ?? {};
