@@ -45,6 +45,7 @@ type OrderItemInsert = {
   unit_cents: number;
   quantity: number;
   total_cents: number;
+  aliexpress_product_id?: string | null;
   aliexpress_sku_attr?: string | null;
 };
 
