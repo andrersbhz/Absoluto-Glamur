@@ -445,7 +445,8 @@ async function syncVariantsAndRecord(
   if (warning) {
     await admin
       .from("product_imports")
-      .update({ status: "imported_with_warnings", error: warning })
+      // status permanece "imported" (produto existe); o aviso técnico fica em `error`.
+      .update({ error: warning })
       .eq("id", importId);
   }
 }
