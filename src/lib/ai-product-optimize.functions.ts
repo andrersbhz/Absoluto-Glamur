@@ -101,25 +101,20 @@ Regras finais:
 - Nada de menções a AliExpress, Shopee, importado, "produto chinês".
 - Responda SOMENTE o JSON.`;
 
-    const key = process.env.LOVABLE_API_KEY;
-    if (!key) throw new Error("LOVABLE_API_KEY ausente. Ative o Lovable AI.");
-    const modelId = data.model === "quality" ? "google/gemini-3.5-flash" : "google/gemini-3.1-flash-lite";
-    const gateway = createLovableAiGatewayProvider(key);
-    const model = gateway(modelId);
+    const { generateWithOwnKeys } = await import("./ai-translate.server");
 
     const startedAt = Date.now();
     let status: "success" | "error" = "success";
     let raw = "";
     let err: string | null = null;
-    let usage: any = {};
     try {
-      const r = await generateText({ model, system: SYSTEM_COPY, prompt });
-      raw = r.text;
-      usage = {
-        inputTokens: (r.usage as any)?.inputTokens ?? (r.usage as any)?.promptTokens,
-        outputTokens: (r.usage as any)?.outputTokens ?? (r.usage as any)?.completionTokens,
-        totalTokens: (r.usage as any)?.totalTokens,
-      };
+      const text = await generateWithOwnKeys(SYSTEM_COPY, prompt);
+      if (!text) {
+        status = "error";
+        err = "Nenhuma chave de IA configurada (Gemini ou OpenAI) em Admin → Integrações.";
+      } else {
+        raw = text;
+      }
     } catch (e) {
       status = "error";
       err = e instanceof Error ? e.message : String(e);
@@ -128,13 +123,13 @@ Regras finais:
     await context.supabase.from("ai_generations").insert({
       user_id: context.userId,
       purpose: "product_optimize_copy",
-      model: modelId,
-      provider: "lovable-ai",
+      model: data.model === "quality" ? "own-keys/quality" : "own-keys/fast",
+      provider: "own-keys",
       input: { product_id: data.product_id, prompt: prompt.slice(0, 3000) },
       output: raw.slice(0, 12000),
-      input_tokens: usage.inputTokens ?? null,
-      output_tokens: usage.outputTokens ?? null,
-      total_tokens: usage.totalTokens ?? null,
+      input_tokens: null,
+      output_tokens: null,
+      total_tokens: null,
       latency_ms: Date.now() - startedAt,
       status,
       error: err,
@@ -146,18 +141,11 @@ Regras finais:
       const e = (err ?? "").toLowerCase();
       let message = err ?? "Falha ao chamar IA";
       if (e.includes("429") || e.includes("too many requests") || e.includes("rate limit"))
-        message = "Limite de requisições atingido. Aguarde alguns segundos e tente novamente.";
-      else if (
-        e.includes("402") ||
-        e.includes("payment required") ||
-        e.includes("not enough credits") ||
-        e.includes("insufficient")
-      )
-        message =
-          "Créditos de IA esgotados. Adicione créditos do Lovable AI no workspace (Configurações → Workspace → Uso) para usar a otimização por IA.";
+        message = "Limite de requisições da sua chave de IA atingido. Aguarde e tente novamente.";
       // Retorna erro tratado (sem throw) para não derrubar a tela do admin.
       return { ok: false as const, error: message };
     }
+
 
 
     const parsed = extractJson(raw);
