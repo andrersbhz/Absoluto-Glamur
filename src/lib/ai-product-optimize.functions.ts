@@ -144,13 +144,19 @@ Regras finais:
 
     if (status === "error") {
       const e = (err ?? "").toLowerCase();
+      let message = err ?? "Falha ao chamar IA";
       if (e.includes("429") || e.includes("too many requests") || e.includes("rate limit"))
-        throw new Error("Limite de requisições atingido. Aguarde alguns segundos e tente novamente.");
-      if (e.includes("402") || e.includes("payment required") || e.includes("insufficient"))
-        throw new Error(
-          "Créditos de IA esgotados. Adicione créditos do Lovable AI no workspace para usar a otimização por IA.",
-        );
-      throw new Error(err ?? "Falha ao chamar IA");
+        message = "Limite de requisições atingido. Aguarde alguns segundos e tente novamente.";
+      else if (
+        e.includes("402") ||
+        e.includes("payment required") ||
+        e.includes("not enough credits") ||
+        e.includes("insufficient")
+      )
+        message =
+          "Créditos de IA esgotados. Adicione créditos do Lovable AI no workspace (Configurações → Workspace → Uso) para usar a otimização por IA.";
+      // Retorna erro tratado (sem throw) para não derrubar a tela do admin.
+      return { ok: false as const, error: message };
     }
 
 
