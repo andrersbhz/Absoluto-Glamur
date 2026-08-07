@@ -93,6 +93,8 @@ export function productReviewsQuery(productId: string | undefined) {
   return queryOptions({
     queryKey: ["product-external-reviews", productId],
     enabled: !!productId,
+    staleTime: 0,
+    refetchOnMount: "always",
     queryFn: async (): Promise<ExternalReview[]> => {
       if (!productId) return [];
       const { data, error } = await supabase
@@ -101,9 +103,12 @@ export function productReviewsQuery(productId: string | undefined) {
         .eq("product_id", productId)
         .eq("is_visible", true)
         .order("reviewed_at", { ascending: false, nullsFirst: false })
-        .limit(80);
+        .limit(100);
       if (error) throw error;
-      return (data ?? []).map((r: any) => ({ ...r, images: Array.isArray(r.images) ? r.images : [] })) as ExternalReview[];
+      return (data ?? []).map((r: any) => ({
+        ...r,
+        images: Array.isArray(r.images) ? r.images : [],
+      })) as ExternalReview[];
     },
   });
 }
@@ -120,7 +125,7 @@ export const listAllReviews = createServerFn({ method: "POST" })
       .eq("product_id", data.product_id)
       .order("reviewed_at", { ascending: false, nullsFirst: false });
     if (error) throw error;
-    return (rows ?? []) as ExternalReview[];
+    return (rows ?? []).map((r: any) => ({ ...r, images: Array.isArray(r.images) ? r.images : [] })) as ExternalReview[];
   });
 
 function toNum(v: unknown): number {
@@ -168,14 +173,17 @@ function collectImages(v: unknown): string[] {
   if (Array.isArray(v)) {
     for (const x of v) {
       if (typeof x === "string") add(x);
-      else if (x && typeof x === "object") add((x as any).url ?? (x as any).image_url ?? (x as any).imageUrl ?? (x as any).src);
+      else if (x && typeof x === "object") {
+        add((x as any).url ?? (x as any).image_url ?? (x as any).imageUrl ?? (x as any).src);
+      }
     }
   } else if (typeof v === "string") {
     for (const x of v.split(/[,;\s]+/)) add(x);
   } else if (v && typeof v === "object") {
     for (const x of Object.values(v as Record<string, unknown>)) {
-      if (Array.isArray(x)) for (const y of x) add(typeof y === "string" ? y : (y as any)?.url);
-      else add(typeof x === "string" ? x : null);
+      if (Array.isArray(x)) {
+        for (const y of x) add(typeof y === "string" ? y : (y as any)?.url ?? (y as any)?.imageUrl);
+      } else add(typeof x === "string" ? x : null);
     }
   }
   return out.slice(0, MAX_REVIEW_IMAGES);
@@ -183,35 +191,35 @@ function collectImages(v: unknown): string[] {
 
 function normalizeAliReview(raw: any): NormalizedAliReview {
   return {
-    source_review_id: safeText(raw.feedback_id ?? raw.feedbackId ?? raw.id ?? raw.review_id ?? raw.reviewId ?? raw.evaluation_id),
-    author_name: safeText(raw.buyer_name ?? raw.buyerName ?? raw.author ?? raw.buyer_nick ?? raw.buyerNick ?? raw.user_name ?? raw.userName ?? raw.anonymous),
-    author_country: safeText(raw.buyer_country ?? raw.buyerCountry ?? raw.country ?? raw.country_code ?? raw.countryCode),
+    source_review_id: safeText(raw.feedback_id ?? raw.feedbackId ?? raw.id ?? raw.review_id ?? raw.reviewId ?? raw.evaluation_id ?? raw.evaId),
+    author_name: safeText(raw.buyer_name ?? raw.buyerName ?? raw.author ?? raw.buyer_nick ?? raw.buyerNick ?? raw.user_name ?? raw.userName ?? raw.anonymousName),
+    author_country: safeText(raw.buyer_country ?? raw.buyerCountry ?? raw.country ?? raw.country_code ?? raw.countryCode ?? raw.buyerCountryCode),
     rating: Math.min(5, Math.max(0, toNum(raw.buyer_feedback_rating ?? raw.rating ?? raw.star ?? raw.stars ?? raw.buyer_rating ?? raw.evaluation_star ?? raw.starView))),
     title: safeText(raw.feedback_title ?? raw.feedbackTitle ?? raw.title),
     body: safeText(raw.buyer_feedback ?? raw.feedback ?? raw.content ?? raw.review_content ?? raw.evaluation_content ?? raw.buyerFeedback ?? raw.evaContent),
-    images: collectImages(raw.buyer_feedback_image ?? raw.buyer_feedback_images ?? raw.images ?? raw.image_list ?? raw.evaluation_image_list ?? raw.imageList ?? raw.pictures),
-    reviewed_at: safeDate(raw.buyer_feedback_date ?? raw.buyerFeedbackDate ?? raw.feedback_date ?? raw.date ?? raw.create_time ?? raw.createTime ?? raw.gmt_create ?? raw.evalDate),
+    images: collectImages(
+      raw.buyer_feedback_image ??
+        raw.buyer_feedback_images ??
+        raw.images ??
+        raw.image_list ??
+        raw.evaluation_image_list ??
+        raw.imageList ??
+        raw.pictures ??
+        raw.buyerFeedbackPicList ??
+        raw.evaImageList,
+    ),
+    reviewed_at: safeDate(
+      raw.buyer_feedback_date ??
+        raw.buyerFeedbackDate ??
+        raw.feedback_date ??
+        raw.date ??
+        raw.create_time ??
+        raw.createTime ??
+        raw.gmt_create ??
+        raw.evalDate ??
+        raw.evaDate,
+    ),
   };
-}
-
-function findReviewArrayDeep(value: unknown, depth = 0): any[] {
-  if (depth > 8 || value == null) return [];
-  if (Array.isArray(value)) {
-    const objects = value.filter((x) => x && typeof x === "object");
-    if (objects.some((x: any) => ["buyerFeedback", "buyer_feedback", "evaContent", "content", "feedback", "rating", "starView"].some((k) => x[k] != null))) return objects;
-    for (const x of value) {
-      const found = findReviewArrayDeep(x, depth + 1);
-      if (found.length) return found;
-    }
-    return [];
-  }
-  if (typeof value === "object") {
-    for (const x of Object.values(value as Record<string, unknown>)) {
-      const found = findReviewArrayDeep(x, depth + 1);
-      if (found.length) return found;
-    }
-  }
-  return [];
 }
 
 function fnv1a(input: string): string {
@@ -227,7 +235,9 @@ function ensureStableReviewId(productSourceId: string, r: NormalizedAliReview): 
   if (r.source_review_id) return r;
   const hasRealContent = !!(r.body || r.title || (r.author_name && r.reviewed_at) || r.images.length);
   if (!hasRealContent) return null;
-  const material = [r.author_name, r.reviewed_at, r.rating, r.title, r.body, r.images.join("|")].map((x) => String(x ?? "")).join("\u241f");
+  const material = [r.author_name, r.reviewed_at, r.rating, r.title, r.body, r.images.join("|")]
+    .map((x) => String(x ?? ""))
+    .join("\u241f");
   return { ...r, source_review_id: `det-${fnv1a(`${productSourceId}\u241e${material}`)}` };
 }
 
@@ -244,35 +254,17 @@ function dedupeReviews(productSourceId: string, reviews: NormalizedAliReview[], 
   return out;
 }
 
-async function parseResponseDeterministically(res: Response): Promise<any[]> {
-  const text = await res.text();
-  const trimmed = text.trim();
-  if ((res.headers.get("content-type") ?? "").includes("json") || trimmed.startsWith("{") || trimmed.startsWith("[")) {
-    try {
-      return findReviewArrayDeep(JSON.parse(trimmed));
-    } catch {
-      return [];
-    }
-  }
-
-  const patterns = [
-    /window\.runParams\s*=\s*(\{[\s\S]*?\})\s*;/i,
-    /window\.__INITIAL_STATE__\s*=\s*(\{[\s\S]*?\})\s*;/i,
-    /<script[^>]+type=["']application\/json["'][^>]*>([\s\S]*?)<\/script>/gi,
+function extractEvaList(payload: any): any[] {
+  const direct = payload?.data?.evaViewList;
+  if (Array.isArray(direct)) return direct;
+  const candidates = [
+    payload?.evaViewList,
+    payload?.data?.reviews,
+    payload?.reviews,
+    payload?.data?.feedbacks,
+    payload?.feedbacks,
   ];
-  for (const pattern of patterns) {
-    pattern.lastIndex = 0;
-    let m: RegExpExecArray | null;
-    while ((m = pattern.exec(text))) {
-      try {
-        const found = findReviewArrayDeep(JSON.parse(m[1]));
-        if (found.length) return found;
-      } catch {
-        // continua procurando outro JSON real
-      }
-      if (!pattern.global) break;
-    }
-  }
+  for (const c of candidates) if (Array.isArray(c)) return c;
   return [];
 }
 
@@ -280,43 +272,66 @@ async function fetchAliexpressReviews(
   productId: string,
   minRating = 0,
 ): Promise<{ reviews: NormalizedAliReview[]; errors: string[] }> {
-  const urls = [
-    `https://feedback.aliexpress.com/pc/searchEvaluation.do?productId=${encodeURIComponent(productId)}&page=1&pageSize=50&filter=all&sort=complex_default`,
-    `https://feedback.aliexpress.com/display/productEvaluation.htm?productId=${encodeURIComponent(productId)}&filter=all&page=1`,
-  ];
   const errors: string[] = [];
+  const pages = [1, 2, 3];
+  const collected: NormalizedAliReview[] = [];
 
-  for (const url of urls) {
+  for (const page of pages) {
+    const url = new URL("https://feedback.aliexpress.com/pc/searchEvaluation.do");
+    url.searchParams.set("productId", productId);
+    url.searchParams.set("lang", "en_US");
+    url.searchParams.set("country", "US");
+    url.searchParams.set("page", String(page));
+    url.searchParams.set("pageSize", "20");
+    url.searchParams.set("filter", "all");
+    url.searchParams.set("sort", "complex_default");
+
     try {
-      const res = await fetch(url, {
+      const res = await fetch(url.toString(), {
         method: "GET",
         redirect: "follow",
         headers: {
-          Accept: "application/json,text/html;q=0.9,*/*;q=0.8",
-          "Accept-Language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
-          Referer: `https://www.aliexpress.com/item/${encodeURIComponent(productId)}.html`,
-          "User-Agent": "Mozilla/5.0 (compatible; AbsolutoGlamur/1.0)",
+          Accept: "application/json, text/plain, */*",
+          "Accept-Language": "en-US,en;q=0.9",
+          Referer: `https://www.aliexpress.com/item/${productId}.html`,
+          Origin: "https://www.aliexpress.com",
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/131 Safari/537.36",
         },
       });
       if (!res.ok) {
-        errors.push(`AliExpress avaliações HTTP ${res.status}`);
+        errors.push(`AliExpress avaliações HTTP ${res.status} (página ${page})`);
         continue;
       }
-      const list = await parseResponseDeterministically(res);
-      const reviews = dedupeReviews(productId, list.map(normalizeAliReview), minRating);
-      if (reviews.length) return { reviews, errors };
-      errors.push("AliExpress retornou resposta válida, mas sem avaliações identificáveis.");
+      const text = await res.text();
+      let payload: any;
+      try {
+        payload = JSON.parse(text);
+      } catch {
+        errors.push(`Resposta de avaliações não veio em JSON (página ${page}).`);
+        continue;
+      }
+      const list = extractEvaList(payload);
+      if (!list.length) {
+        if (page === 1) errors.push("AliExpress respondeu sem data.evaViewList.");
+        break;
+      }
+      collected.push(...list.map(normalizeAliReview));
+      if (list.length < 20) break;
     } catch (e) {
-      errors.push(`Falha ao consultar avaliações públicas: ${(e instanceof Error ? e.message : String(e)).slice(0, 180)}`);
+      errors.push(`Falha ao consultar avaliações: ${(e instanceof Error ? e.message : String(e)).slice(0, 220)}`);
+      break;
     }
   }
 
-  return { reviews: [], errors: errors.slice(0, 4) };
+  const reviews = dedupeReviews(productId, collected, minRating);
+  return { reviews, errors: errors.slice(0, 6) };
 }
 
 async function persistRealReviews(admin: any, productId: string, reviews: NormalizedAliReview[]) {
   if (!reviews.length) return { upserted: 0, translated: 0 };
-  const translated = await translateReviewsToPtBr(reviews.map((r) => ({ title: r.title, body: r.body })));
+  const translated = await translateReviewsToPtBr(
+    reviews.map((r) => ({ title: r.title, body: r.body })),
+  );
   const now = new Date().toISOString();
   const rows = reviews.map((r, i) => ({
     product_id: productId,
@@ -333,9 +348,25 @@ async function persistRealReviews(admin: any, productId: string, reviews: Normal
     body_translated: translated[i]?.translated ?? false,
     last_synced_at: now,
   }));
-  const { error } = await admin.from("product_external_reviews").upsert(rows, { onConflict: "product_id,source,source_review_id" });
-  if (error) throw new Error(error.message);
-  return { upserted: rows.length, translated: translated.filter((x) => x.translated).length };
+
+  const { error } = await admin
+    .from("product_external_reviews")
+    .upsert(rows, { onConflict: "product_id,source,source_review_id" });
+  if (error) throw new Error(`Falha ao salvar avaliações: ${error.message}`);
+
+  const { count, error: countError } = await admin
+    .from("product_external_reviews")
+    .select("id", { count: "exact", head: true })
+    .eq("product_id", productId)
+    .eq("source", "aliexpress")
+    .eq("is_visible", true);
+  if (countError) throw new Error(`Avaliações foram gravadas, mas não foi possível validar: ${countError.message}`);
+  if (!count || count <= 0) throw new Error("O AliExpress retornou avaliações, mas nenhuma ficou visível no banco.");
+
+  return {
+    upserted: rows.length,
+    translated: translated.filter((x) => x.translated).length,
+  };
 }
 
 export async function syncReviewsForProductInternal(
@@ -351,13 +382,18 @@ export async function syncReviewsForProductInternal(
         fetched: 0,
         upserted: 0,
         translated: 0,
-        error: result.errors.join(" | ").slice(0, 700) || "Nenhuma avaliação real retornada pelo AliExpress.",
+        error: result.errors.length ? result.errors.join(" | ").slice(0, 900) : "Nenhuma avaliação real retornada pelo AliExpress.",
       };
     }
     const saved = await persistRealReviews(admin, productId, result.reviews);
     return { fetched: result.reviews.length, ...saved, error: null };
   } catch (e) {
-    return { fetched: 0, upserted: 0, translated: 0, error: (e instanceof Error ? e.message : String(e)).slice(0, 700) };
+    return {
+      fetched: 0,
+      upserted: 0,
+      translated: 0,
+      error: (e instanceof Error ? e.message : String(e)).slice(0, 900),
+    };
   }
 }
 
@@ -376,16 +412,26 @@ async function findAliSourceId(admin: any, productId: string): Promise<string | 
 
 export const syncAliexpressReviews = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((v: unknown) => z.object({ product_id: z.string().uuid(), min_rating: z.number().min(0).max(5).default(0) }).parse(v))
+  .inputValidator((v: unknown) =>
+    z.object({ product_id: z.string().uuid(), min_rating: z.number().min(0).max(5).default(0) }).parse(v),
+  )
   .handler(async ({ data, context }) => {
     await assertCatalog(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const sourceId = await findAliSourceId(supabaseAdmin, data.product_id);
     if (!sourceId) throw new Error("Este produto não está conectado ao AliExpress.");
-    const result = await syncReviewsForProductInternal(supabaseAdmin, data.product_id, sourceId, data.min_rating);
+
+    const result = await syncReviewsForProductInternal(
+      supabaseAdmin,
+      data.product_id,
+      sourceId,
+      data.min_rating,
+    );
+    if (result.error) throw new Error(result.error);
+
     return {
       ...result,
-      message: result.fetched > 0 ? `${result.upserted} avaliações reais sincronizadas.` : result.error ?? "Nenhuma avaliação real retornada pelo AliExpress.",
+      message: `${result.upserted} avaliações reais sincronizadas e liberadas para exibição.`,
     };
   });
 
@@ -421,11 +467,20 @@ export const upsertReview = createServerFn({ method: "POST" })
       source: "manual",
     };
     if (data.id) {
-      const { data: row, error } = await supabaseAdmin.from("product_external_reviews").update(payload).eq("id", data.id).select("*").single();
+      const { data: row, error } = await supabaseAdmin
+        .from("product_external_reviews")
+        .update(payload)
+        .eq("id", data.id)
+        .select("*")
+        .single();
       if (error) throw error;
       return row;
     }
-    const { data: row, error } = await supabaseAdmin.from("product_external_reviews").insert(payload).select("*").single();
+    const { data: row, error } = await supabaseAdmin
+      .from("product_external_reviews")
+      .insert(payload)
+      .select("*")
+      .single();
     if (error) throw error;
     return row;
   });
@@ -443,7 +498,9 @@ export const deleteReview = createServerFn({ method: "POST" })
 
 export const bulkSyncAliexpressReviews = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((v: unknown) => z.object({ min_rating: z.number().min(0).max(5).default(0), limit: z.number().int().min(1).max(200).default(50) }).parse(v ?? {}))
+  .inputValidator((v: unknown) =>
+    z.object({ min_rating: z.number().min(0).max(5).default(0), limit: z.number().int().min(1).max(200).default(50) }).parse(v ?? {}),
+  )
   .handler(async ({ data, context }) => {
     await assertCatalog(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -469,14 +526,21 @@ export const bulkSyncAliexpressReviews = createServerFn({ method: "POST" })
     let upserted = 0;
     let translated = 0;
     const failures: { product_id: string; error: string }[] = [];
+
     for (const row of unique) {
-      const r = await syncReviewsForProductInternal(supabaseAdmin, row.product_id!, String(row.source_id), data.min_rating);
+      const r = await syncReviewsForProductInternal(
+        supabaseAdmin,
+        row.product_id!,
+        String(row.source_id),
+        data.min_rating,
+      );
       processed++;
       fetched += r.fetched;
       upserted += r.upserted;
       translated += r.translated;
       if (r.error) failures.push({ product_id: row.product_id!, error: r.error });
     }
+
     return { total: unique.length, processed, fetched, upserted, translated, failures };
   });
 
@@ -494,12 +558,18 @@ export const autoSyncProductReviews = createServerFn({ method: "POST" })
       .eq("body_translated", false)
       .not("source_review_id", "is", null)
       .limit(30);
+
     let translatedCount = 0;
     if (untranslated?.length) {
-      const tr = await translateReviewsToPtBr(untranslated.map((r: any) => ({ title: r.title, body: r.body })));
+      const tr = await translateReviewsToPtBr(
+        untranslated.map((r: any) => ({ title: r.title, body: r.body })),
+      );
       for (let i = 0; i < untranslated.length; i++) {
         if (!tr[i]?.translated) continue;
-        const { error } = await supabaseAdmin.from("product_external_reviews").update({ title: tr[i].title, body: tr[i].body, body_translated: true }).eq("id", untranslated[i].id);
+        const { error } = await supabaseAdmin
+          .from("product_external_reviews")
+          .update({ title: tr[i].title, body: tr[i].body, body_translated: true })
+          .eq("id", untranslated[i].id);
         if (!error) translatedCount++;
       }
     }
@@ -513,13 +583,23 @@ export const autoSyncProductReviews = createServerFn({ method: "POST" })
       .order("last_synced_at", { ascending: false, nullsFirst: false })
       .limit(1)
       .maybeSingle();
+
     const lastSync = latest?.last_synced_at ? new Date(latest.last_synced_at).getTime() : 0;
     if (lastSync && Date.now() - lastSync < AUTO_SYNC_TTL_HOURS * 3600 * 1000) {
       return { translated: translatedCount, fetched: 0, upserted: 0, skipped: true, error: null };
     }
 
     const sourceId = await findAliSourceId(supabaseAdmin, data.product_id);
-    if (!sourceId) return { translated: translatedCount, fetched: 0, upserted: 0, skipped: true, error: null };
+    if (!sourceId) {
+      return { translated: translatedCount, fetched: 0, upserted: 0, skipped: true, error: null };
+    }
+
     const r = await syncReviewsForProductInternal(supabaseAdmin, data.product_id, sourceId, 0);
-    return { translated: translatedCount + r.translated, fetched: r.fetched, upserted: r.upserted, skipped: false, error: r.error };
+    return {
+      translated: translatedCount + r.translated,
+      fetched: r.fetched,
+      upserted: r.upserted,
+      skipped: false,
+      error: r.error,
+    };
   });
