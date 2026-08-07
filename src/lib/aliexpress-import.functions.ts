@@ -291,21 +291,21 @@ async function translateToPtBr(input: { title: string; description: string | nul
   title: string;
   description: string | null;
 }> {
-  const key = process.env.LOVABLE_API_KEY;
-  if (!key) return input; // silently skip if not configured
   try {
-    const gateway = createLovableAiGatewayProvider(key);
-    const model = gateway("google/gemini-2.5-flash");
     const payload = JSON.stringify({
       title: input.title,
       description: input.description ?? "",
     });
-    const { text } = await generateText({
-      model,
-      system:
-        "Você traduz descrições de produtos de cosméticos para português do Brasil, mantendo tom elegante, claro e comercial. Preserve unidades, especificações e nomes próprios de ingredientes. Não invente informações. Responda APENAS com JSON válido no formato {\"title\":\"...\",\"description\":\"...\"} sem comentários nem markdown.",
-      prompt: `Traduza para pt-BR o conteúdo abaixo. Reescreva de forma natural, sem estrangeirismos desnecessários.\n\n${payload}`,
-    });
+    const text = await generateWithOwnKeys(
+      "Você traduz descrições de produtos de cosméticos para português do Brasil, mantendo tom elegante, claro e comercial. Preserve unidades, especificações e nomes próprios de ingredientes. Não invente informações. Responda APENAS com JSON válido no formato {\"title\":\"...\",\"description\":\"...\"} sem comentários nem markdown.",
+      `Traduza para pt-BR o conteúdo abaixo. Reescreva de forma natural, sem estrangeirismos desnecessários.\n\n${payload}`,
+    );
+    if (!text) {
+      return {
+        title: stripBrandMentions(input.title) ?? input.title,
+        description: stripBrandMentions(input.description),
+      };
+    }
     const cleaned = text.trim().replace(/^```(?:json)?/i, "").replace(/```$/i, "").trim();
     const parsed = JSON.parse(cleaned);
     const rawTitle = typeof parsed.title === "string" && parsed.title.trim() ? parsed.title.trim() : input.title;
