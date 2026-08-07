@@ -140,6 +140,7 @@ export type SyncVariantsResult = {
   created: number;
   updated: number;
   unavailable: number;
+  errors: string[];
   note?: string;
 };
 
@@ -171,6 +172,7 @@ export async function syncVariantsForProduct(
       created: 0,
       updated: 0,
       unavailable: 0,
+      errors: [],
       note: "Nenhum SKU retornado pelo AliExpress.",
     };
   }
@@ -196,6 +198,7 @@ export async function syncVariantsForProduct(
 
   let created = 0;
   let updated = 0;
+  const errors: string[] = [];
 
   for (let i = 0; i < skus.length; i += 1) {
     const s = skus[i];
@@ -225,7 +228,10 @@ export async function syncVariantsForProduct(
     let variantId: string;
     if (row) {
       const { error } = await admin.from("product_variants").update(payload).eq("id", row.id);
-      if (error) continue;
+      if (error) {
+        errors.push(`SKU ${s.external_sku_id}: falha ao atualizar variação (${error.message})`);
+        continue;
+      }
       variantId = row.id;
       matchedIds.add(row.id);
       updated += 1;
@@ -241,7 +247,12 @@ export async function syncVariantsForProduct(
         })
         .select("id")
         .single();
-      if (error || !ins) continue;
+      if (error || !ins) {
+        errors.push(
+          `SKU ${s.external_sku_id}: falha ao criar variação (${error?.message ?? "sem retorno"})`,
+        );
+        continue;
+      }
       variantId = ins.id;
       matchedIds.add(variantId);
       created += 1;
@@ -262,16 +273,20 @@ export async function syncVariantsForProduct(
         sale_price_cents: saleCents > 0 && saleCents < listCents ? saleCents : null,
         is_active: true,
       };
-      if (activePrice?.id) {
-        await admin.from("product_prices").update(priceRow).eq("id", activePrice.id);
-      } else {
-        await admin.from("product_prices").insert({ variant_id: variantId, ...priceRow });
+      const { error: priceErr } = activePrice?.id
+        ? await admin.from("product_prices").update(priceRow).eq("id", activePrice.id)
+        : await admin.from("product_prices").insert({ variant_id: variantId, ...priceRow });
+      if (priceErr) {
+        errors.push(`SKU ${s.external_sku_id}: falha ao gravar preço (${priceErr.message})`);
       }
     }
 
-    await admin
+    const { error: invErr } = await admin
       .from("product_inventory")
       .upsert({ variant_id: variantId, stock: s.stock }, { onConflict: "variant_id" });
+    if (invErr) {
+      errors.push(`SKU ${s.external_sku_id}: falha ao gravar estoque (${invErr.message})`);
+    }
   }
 
   // SKUs que não vieram mais do fornecedor → indisponíveis (nunca excluídos).
@@ -302,5 +317,6 @@ export async function syncVariantsForProduct(
     created,
     updated,
     unavailable: stale.length,
+    errors,
   };
 }
