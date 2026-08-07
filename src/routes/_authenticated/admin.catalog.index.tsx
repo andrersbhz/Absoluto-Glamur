@@ -162,6 +162,11 @@ function CatalogList() {
     setAiLoading("generating");
     try {
       const r = await optimize({ data: { product_id: id, apply: false } });
+      if ("ok" in r && r.ok === false) {
+        toast.error(r.error);
+        setAiTarget(null);
+        return;
+      }
       setAiPreview({
         name: r.name,
         short_description: r.short_description,
