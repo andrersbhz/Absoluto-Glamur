@@ -162,6 +162,11 @@ function CatalogList() {
     setAiLoading("generating");
     try {
       const r = await optimize({ data: { product_id: id, apply: false } });
+      if ("ok" in r && r.ok === false) {
+        toast.error(r.error);
+        setAiTarget(null);
+        return;
+      }
       setAiPreview({
         name: r.name,
         short_description: r.short_description,
@@ -182,7 +187,11 @@ function CatalogList() {
     if (!aiTarget) return;
     setAiLoading("applying");
     try {
-      await optimize({ data: { product_id: aiTarget.id, apply: true } });
+      const r = await optimize({ data: { product_id: aiTarget.id, apply: true } });
+      if ("ok" in r && r.ok === false) {
+        toast.error(r.error);
+        return;
+      }
       toast.success("Copy otimizado aplicado ao produto");
       qc.invalidateQueries({ queryKey: ["admin-products"] });
       setAiTarget(null);
