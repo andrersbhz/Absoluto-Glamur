@@ -417,6 +417,39 @@ async function loadSettings(admin: any): Promise<ImportSettings> {
 }
 
 // Shared helper: create real product from an import row
+/**
+ * Sincroniza variações reais e registra o resultado técnico na importação.
+ * O produto continua válido mesmo se as variações falharem, mas a falha
+ * NUNCA é silenciosa: fica gravada em product_imports.error para o admin.
+ */
+async function syncVariantsAndRecord(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  admin: any,
+  importId: string,
+  productId: string,
+  sourceId: string,
+  settings: ImportSettings,
+): Promise<void> {
+  let warning: string | null = null;
+  try {
+    const { syncVariantsForProduct } = await import("./aliexpress-variants.server");
+    const result = await syncVariantsForProduct(admin, productId, sourceId, settings);
+    if (result.errors.length > 0) {
+      warning = `Sincronização de variações parcial: ${result.errors.slice(0, 5).join(" | ")}`;
+    } else if (result.total_skus === 0) {
+      warning = result.note ?? "Nenhuma variação (SKU) retornada pelo AliExpress.";
+    }
+  } catch (e) {
+    warning = `Falha ao sincronizar variações: ${e instanceof Error ? e.message : String(e)}`;
+  }
+  if (warning) {
+    await admin
+      .from("product_imports")
+      .update({ status: "imported_with_warnings", error: warning })
+      .eq("id", importId);
+  }
+}
+
 async function commitImportRow(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   admin: any,
@@ -508,13 +541,8 @@ async function commitImportRow(
     } catch {
       // ignore — reviews are non-critical
     }
-    // Best-effort: importa as variações/SKUs reais do produto.
-    try {
-      const { syncVariantsForProduct } = await import("./aliexpress-variants.server");
-      await syncVariantsForProduct(admin, productId, String(norm.source_id), settings);
-    } catch {
-      // ignore — produto continua válido com a variação única
-    }
+    // Variações/SKUs reais: falha é registrada na importação (nunca silenciosa).
+    await syncVariantsAndRecord(admin, importId, productId, String(norm.source_id), settings);
   }
 
   return { productId, priceCents };
@@ -819,23 +847,19 @@ export const commitImport = createServerFn({ method: "POST" })
           .from("product_inventory")
           .upsert({ variant_id: vrow.id, stock: data.stock }, { onConflict: "variant_id" });
       }
-      if (norm.source_id) {
-        try {
-          const { syncVariantsForProduct } = await import("./aliexpress-variants.server");
-          await syncVariantsForProduct(
-            supabaseAdmin,
-            imp.product_id,
-            String(norm.source_id),
-            settings,
-          );
-        } catch {
-          // mantém variação única
-        }
-      }
       await supabaseAdmin
         .from("product_imports")
         .update({ status: "imported", error: null })
         .eq("id", data.id);
+      if (norm.source_id) {
+        await syncVariantsAndRecord(
+          supabaseAdmin,
+          data.id,
+          imp.product_id,
+          String(norm.source_id),
+          settings,
+        );
+      }
       const { data: p } = await supabaseAdmin
         .from("products")
         .select("slug")
@@ -911,12 +935,13 @@ export const commitImport = createServerFn({ method: "POST" })
       .eq("id", data.id);
 
     if (norm.source_id) {
-      try {
-        const { syncVariantsForProduct } = await import("./aliexpress-variants.server");
-        await syncVariantsForProduct(supabaseAdmin, productId, String(norm.source_id), settings);
-      } catch {
-        // variação única continua válida
-      }
+      await syncVariantsAndRecord(
+        supabaseAdmin,
+        data.id,
+        productId,
+        String(norm.source_id),
+        settings,
+      );
     }
 
     return { id: productId, slug, price_cents: priceCents };
