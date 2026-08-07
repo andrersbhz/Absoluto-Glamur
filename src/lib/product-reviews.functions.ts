@@ -6,6 +6,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabase } from "@/integrations/supabase/client";
 import { callAli } from "./aliexpress-discovery.functions";
 import { createLovableAiGatewayProvider } from "./ai-gateway.server";
+import { generateWithOwnKeys } from "./ai-translate.server";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
