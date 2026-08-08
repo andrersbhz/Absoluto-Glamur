@@ -3,6 +3,7 @@ import { Minus, Plus, Trash2, ShoppingBag } from "lucide-react";
 import { StoreLayout } from "@/components/store/StoreLayout";
 import { cartTotals, useCart } from "@/lib/cart-store";
 import { formatBRL } from "@/lib/format";
+import { publicAttrValues } from "@/lib/catalog";
 
 export const Route = createFileRoute("/cart")({
   head: () => ({
