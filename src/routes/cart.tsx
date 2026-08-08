@@ -3,6 +3,7 @@ import { Minus, Plus, Trash2, ShoppingBag } from "lucide-react";
 import { StoreLayout } from "@/components/store/StoreLayout";
 import { cartTotals, useCart } from "@/lib/cart-store";
 import { formatBRL } from "@/lib/format";
+import { publicAttrValues } from "@/lib/catalog";
 
 export const Route = createFileRoute("/cart")({
   head: () => ({
@@ -66,9 +67,9 @@ function CartPage() {
                     <Link to="/products/$slug" params={{ slug: i.slug }} className="font-display text-base">
                       {i.name}
                     </Link>
-                    {i.attributes && Object.keys(i.attributes).length > 0 ? (
+                    {i.attributes && Object.keys(publicAttrValues(i.attributes)).length > 0 ? (
                       <p className="text-xs text-muted-foreground">
-                        {Object.entries(i.attributes)
+                        {Object.entries(publicAttrValues(i.attributes))
                           .map(([k, v]) => `${k}: ${v}`)
                           .join(" · ")}
                       </p>

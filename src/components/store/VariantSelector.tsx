@@ -1,4 +1,10 @@
-import { variantAttrValues, variantAttributes, variantStock, type ProductVariantDetail } from "@/lib/catalog";
+import {
+  isHiddenPublicAttribute,
+  variantAttrValues,
+  variantAttributes,
+  variantStock,
+  type ProductVariantDetail,
+} from "@/lib/catalog";
 
 type Props = {
   variants: ProductVariantDetail[];
@@ -9,15 +15,22 @@ type Props = {
 /**
  * Seletor de variações 100% dinâmico: os atributos e valores vêm exclusivamente
  * dos SKUs reais importados. Combinações inexistentes ou sem estoque ficam desabilitadas.
+ * Atributos de origem (Ships From / país / armazém) são ocultados apenas visualmente —
+ * continuam vinculados ao SKU escolhido para o fulfillment.
  */
 export function VariantSelector({ variants, selectedId, onSelect }: Props) {
-  const attributes = variantAttributes(variants);
+  const allAttributes = variantAttributes(variants);
+  const attributes = allAttributes.filter((a) => !isHiddenPublicAttribute(a.name));
   const selected = variants.find((v) => v.id === selectedId) ?? variants[0];
   if (!selected) return null;
+
+  // Só existem atributos de origem: nada para o cliente escolher.
+  if (attributes.length === 0 && allAttributes.length > 0) return null;
 
   // Sem atributos estruturados (produtos legados): lista simples de SKUs.
   if (attributes.length === 0) {
     if (variants.length <= 1) return null;
+
     return (
       <div className="mt-6">
         <p className="mb-2 text-sm font-medium">Escolha uma variação</p>

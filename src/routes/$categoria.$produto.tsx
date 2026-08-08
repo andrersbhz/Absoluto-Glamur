@@ -4,7 +4,7 @@ import { Heart, Star, ShoppingBag, ChevronLeft, Pencil } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { StoreLayout } from "@/components/store/StoreLayout";
-import { pickActivePrice, productDetailQuery, variantAttrValues, variantImage } from "@/lib/catalog";
+import { pickActivePrice, productDetailQuery, publicAttrValues, variantAttrValues, variantImage } from "@/lib/catalog";
 import { VariantSelector } from "@/components/store/VariantSelector";
 import { effectivePrice, formatBRL } from "@/lib/format";
 import { useCart } from "@/lib/cart-store";
@@ -272,7 +272,9 @@ function ProductPage() {
                     name: product.name,
                     variantName:
                       selectedVariant.name ??
-                      (Object.keys(attrs).length > 0 ? Object.values(attrs).join(" · ") : null),
+                      (Object.keys(publicAttrValues(attrs)).length > 0
+                        ? Object.values(publicAttrValues(attrs)).join(" · ")
+                        : null),
                     attributes: Object.keys(attrs).length > 0 ? attrs : null,
                     sku: selectedVariant.sku ?? null,
                     imageUrl:
