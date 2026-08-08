@@ -257,3 +257,34 @@ export function pickActivePrice(
   return active ?? null;
 }
 
+
+/**
+ * Atributos de origem/remetente (Ships From, país, armazém) do fornecedor.
+ * São ocultados APENAS na camada visual pública — os dados continuam
+ * íntegros no banco, no mapeamento de SKU e no fulfillment.
+ */
+const HIDDEN_PUBLIC_ATTR_PATTERNS = [
+  /ship\s*s?\s*from/i,
+  /ships?\s*to/i,
+  /envia\s*de/i,
+  /enviado\s*de/i,
+  /origem/i,
+  /pa[íi]s/i,
+  /country/i,
+  /warehouse/i,
+  /dep[óo]sito/i,
+  /armaz[ée]m/i,
+];
+
+export function isHiddenPublicAttribute(name: string): boolean {
+  return HIDDEN_PUBLIC_ATTR_PATTERNS.some((re) => re.test(name));
+}
+
+/** Copia o mapa de atributos removendo somente os de origem (uso visual). */
+export function publicAttrValues(attrs: Record<string, string> | null | undefined) {
+  const out: Record<string, string> = {};
+  for (const [k, v] of Object.entries(attrs ?? {})) {
+    if (!isHiddenPublicAttribute(k)) out[k] = v;
+  }
+  return out;
+}
