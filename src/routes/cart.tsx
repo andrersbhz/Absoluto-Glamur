@@ -66,9 +66,9 @@ function CartPage() {
                     <Link to="/products/$slug" params={{ slug: i.slug }} className="font-display text-base">
                       {i.name}
                     </Link>
-                    {i.attributes && Object.keys(i.attributes).length > 0 ? (
+                    {i.attributes && Object.keys(publicAttrValues(i.attributes)).length > 0 ? (
                       <p className="text-xs text-muted-foreground">
-                        {Object.entries(i.attributes)
+                        {Object.entries(publicAttrValues(i.attributes))
                           .map(([k, v]) => `${k}: ${v}`)
                           .join(" · ")}
                       </p>
