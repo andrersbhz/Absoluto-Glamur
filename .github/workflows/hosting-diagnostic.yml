@@ -1,0 +1,51 @@
+name: Hosting diagnostic
+
+on:
+  push:
+    branches: ["agent/hosting-diagnostic"]
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect production hosting
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            echo '=== DATE ==='
+            date -u
+            echo '=== DNS A ==='
+            dig +short absolutoglamur.com.br A || true
+            echo '=== DNS AAAA ==='
+            dig +short absolutoglamur.com.br AAAA || true
+            echo '=== DNS CNAME ==='
+            dig +short absolutoglamur.com.br CNAME || true
+            echo '=== WWW CNAME ==='
+            dig +short www.absolutoglamur.com.br CNAME || true
+            echo '=== NAMESERVERS ==='
+            dig +short absolutoglamur.com.br NS || true
+            echo '=== RESPONSE HEADERS ==='
+            curl -sSIL --max-time 20 https://absolutoglamur.com.br/ || true
+            echo '=== VERBOSE CONNECTION ==='
+            curl -sv --max-time 20 -o /tmp/prod.html https://absolutoglamur.com.br/ 2>&1 || true
+            echo '=== HTML ASSETS ==='
+            grep -Eo '(/assets/[^"'"' ]+\.(js|css))' /tmp/prod.html | sort -u || true
+            echo '=== TLS CERT ==='
+            echo | openssl s_client -connect absolutoglamur.com.br:443 -servername absolutoglamur.com.br 2>/dev/null | openssl x509 -noout -issuer -subject -dates 2>/dev/null || true
+          } | tee /tmp/hosting-diagnostic.txt
+      - name: Upload diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hosting-diagnostic
+          path: |
+            /tmp/hosting-diagnostic.txt
+            /tmp/prod.html
+          if-no-files-found: ignore
+          retention-days: 1
