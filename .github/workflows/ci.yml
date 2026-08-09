@@ -88,3 +88,34 @@ jobs:
             /tmp/home.html
           if-no-files-found: ignore
           retention-days: 1
+      - name: Production domain health check
+        if: github.ref == 'refs/heads/main'
+        shell: bash
+        run: |
+          set -euo pipefail
+          healthy=0
+          for i in $(seq 1 18); do
+            code=$(curl --max-time 10 -sS -L -o /tmp/production-home.html -w '%{http_code}' https://absolutoglamur.com.br/ || true)
+            echo "production attempt ${i}: HTTP ${code}"
+            if [ "$code" = "200" ] && grep -q "Absoluto Glamur" /tmp/production-home.html && ! grep -q "Algo não carregou" /tmp/production-home.html; then
+              healthy=1
+              break
+            fi
+            sleep 10
+          done
+          if [ "$healthy" -ne 1 ]; then
+            echo "Production domain is not serving a healthy storefront"
+            if [ -f /tmp/production-home.html ]; then
+              grep -o "Algo não carregou\|Absoluto Glamur" /tmp/production-home.html | head -20 || true
+            fi
+            exit 1
+          fi
+          echo "Production domain health check passed"
+      - name: Upload production response
+        if: always() && github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v4
+        with:
+          name: production-health
+          path: /tmp/production-home.html
+          if-no-files-found: ignore
+          retention-days: 1
