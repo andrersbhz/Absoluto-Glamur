@@ -113,7 +113,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         : []),
     ],
   }),
-  loader: async () => ({ gtmId: await getGtmContainerId() }),
+  loader: async () => {
+    try {
+      return { gtmId: await getGtmContainerId() };
+    } catch (error) {
+      console.error("[root-loader] getGtmContainerId failed", error);
+      return { gtmId: null as string | null };
+    }
+  },
   shellComponent: RootShell,
   component: RootComponent,
   notFoundComponent: NotFoundComponent,
@@ -121,7 +128,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 });
 
 function RootShell({ children }: { children: ReactNode }) {
-  const { gtmId } = Route.useLoaderData();
+  // shellComponent renders before/independently of the loader resolving, so
+  // loader data can legitimately be undefined here.
+  const loaderData = Route.useLoaderData() as { gtmId?: string | null } | undefined;
+  const gtmId = loaderData?.gtmId ?? null;
   return (
     <html lang="pt-BR">
       <head>

@@ -105,8 +105,11 @@ function HomeBuilderPage() {
   }
 
   async function patch(id: string, values: Record<string, unknown>) {
-    const { error } = await supabase.from("homepage_blocks").update(values).eq("id", id);
-    if (error) return toast.error(error.message);
+    const { error } = await supabase.from("homepage_blocks").update(values as never).eq("id", id);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
     refresh();
   }
 
@@ -122,7 +125,10 @@ function HomeBuilderPage() {
       supabase.from("homepage_blocks").update({ position: target.position }).eq("id", block.id),
       supabase.from("homepage_blocks").update({ position: block.position }).eq("id", target.id),
     ]);
-    if (e1 || e2) return toast.error(e1?.message ?? e2?.message ?? "Erro ao ordenar");
+    if (e1 || e2) {
+      toast.error(e1?.message ?? e2?.message ?? "Erro ao ordenar");
+      return;
+    }
     refresh();
   }
 
@@ -131,11 +137,14 @@ function HomeBuilderPage() {
       kind: block.kind,
       title: block.title ? `${block.title} — cópia` : "Cópia",
       subtitle: block.subtitle,
-      data: block.data,
+      data: (block.data ?? {}) as never,
       position: (ordered.at(-1)?.position ?? 0) + 10,
       is_active: false,
     });
-    if (error) return toast.error(error.message);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
     toast.success("Bloco duplicado como rascunho");
     refresh();
   }
@@ -143,7 +152,10 @@ function HomeBuilderPage() {
   async function remove(id: string) {
     if (!confirm("Remover este bloco da Home?")) return;
     const { error } = await supabase.from("homepage_blocks").delete().eq("id", id);
-    if (error) return toast.error(error.message);
+    if (error) {
+      toast.error(error.message);
+      return;
+    }
     toast.success("Bloco removido");
     refresh();
   }

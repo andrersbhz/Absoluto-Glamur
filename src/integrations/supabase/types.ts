@@ -14,6 +14,57 @@ export type Database = {
   }
   public: {
     Tables: {
+      abandoned_checkouts: {
+        Row: {
+          cart_snapshot: Json
+          email: string | null
+          first_seen_at: string
+          id: string
+          last_seen_at: string
+          phone: string | null
+          recovered_at: string | null
+          recovery_channel: string | null
+          session_id: string
+          source: string | null
+          subtotal_cents: number
+          total_cents: number
+          user_id: string | null
+          utm: Json
+        }
+        Insert: {
+          cart_snapshot?: Json
+          email?: string | null
+          first_seen_at?: string
+          id?: string
+          last_seen_at?: string
+          phone?: string | null
+          recovered_at?: string | null
+          recovery_channel?: string | null
+          session_id: string
+          source?: string | null
+          subtotal_cents?: number
+          total_cents?: number
+          user_id?: string | null
+          utm?: Json
+        }
+        Update: {
+          cart_snapshot?: Json
+          email?: string | null
+          first_seen_at?: string
+          id?: string
+          last_seen_at?: string
+          phone?: string | null
+          recovered_at?: string | null
+          recovery_channel?: string | null
+          session_id?: string
+          source?: string | null
+          subtotal_cents?: number
+          total_cents?: number
+          user_id?: string | null
+          utm?: Json
+        }
+        Relationships: []
+      }
       addresses: {
         Row: {
           city: string
@@ -310,6 +361,56 @@ export type Database = {
         }
         Relationships: []
       }
+      commerce_events: {
+        Row: {
+          campaign: string | null
+          channel: string | null
+          event_name: string
+          id: number
+          metadata: Json
+          occurred_at: string
+          order_id: string | null
+          product_id: string | null
+          session_id: string | null
+          user_id: string | null
+          value_cents: number | null
+        }
+        Insert: {
+          campaign?: string | null
+          channel?: string | null
+          event_name: string
+          id?: number
+          metadata?: Json
+          occurred_at?: string
+          order_id?: string | null
+          product_id?: string | null
+          session_id?: string | null
+          user_id?: string | null
+          value_cents?: number | null
+        }
+        Update: {
+          campaign?: string | null
+          channel?: string | null
+          event_name?: string
+          id?: number
+          metadata?: Json
+          occurred_at?: string
+          order_id?: string | null
+          product_id?: string | null
+          session_id?: string | null
+          user_id?: string | null
+          value_cents?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "commerce_events_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customer_push_subscriptions: {
         Row: {
           auth: string
@@ -459,6 +560,54 @@ export type Database = {
           updated_at?: string
           updated_by?: string | null
           webhook_token?: string | null
+        }
+        Relationships: []
+      }
+      marketing_spend_daily: {
+        Row: {
+          attributed_revenue_cents: number
+          campaign: string
+          channel: string
+          clicks: number
+          conversions: number
+          created_at: string
+          day: string
+          id: string
+          impressions: number
+          metadata: Json
+          source: string
+          spend_cents: number
+          updated_at: string
+        }
+        Insert: {
+          attributed_revenue_cents?: number
+          campaign?: string
+          channel: string
+          clicks?: number
+          conversions?: number
+          created_at?: string
+          day: string
+          id?: string
+          impressions?: number
+          metadata?: Json
+          source?: string
+          spend_cents?: number
+          updated_at?: string
+        }
+        Update: {
+          attributed_revenue_cents?: number
+          campaign?: string
+          channel?: string
+          clicks?: number
+          conversions?: number
+          created_at?: string
+          day?: string
+          id?: string
+          impressions?: number
+          metadata?: Json
+          source?: string
+          spend_cents?: number
+          updated_at?: string
         }
         Relationships: []
       }
@@ -890,6 +1039,63 @@ export type Database = {
           },
         ]
       }
+      pricing_profiles: {
+        Row: {
+          chargeback_pct: number
+          desired_margin_pct: number
+          enabled: boolean
+          fx_spread_pct: number
+          gateway_fixed_cents: number
+          gateway_pct: number
+          id: string
+          is_default: boolean
+          name: string
+          operational_pct: number
+          packaging_cents: number
+          returns_pct: number
+          shipping_subsidy_cents: number
+          target_ad_cost_pct: number
+          tax_pct: number
+          updated_at: string
+        }
+        Insert: {
+          chargeback_pct?: number
+          desired_margin_pct?: number
+          enabled?: boolean
+          fx_spread_pct?: number
+          gateway_fixed_cents?: number
+          gateway_pct?: number
+          id?: string
+          is_default?: boolean
+          name: string
+          operational_pct?: number
+          packaging_cents?: number
+          returns_pct?: number
+          shipping_subsidy_cents?: number
+          target_ad_cost_pct?: number
+          tax_pct?: number
+          updated_at?: string
+        }
+        Update: {
+          chargeback_pct?: number
+          desired_margin_pct?: number
+          enabled?: boolean
+          fx_spread_pct?: number
+          gateway_fixed_cents?: number
+          gateway_pct?: number
+          id?: string
+          is_default?: boolean
+          name?: string
+          operational_pct?: number
+          packaging_cents?: number
+          returns_pct?: number
+          shipping_subsidy_cents?: number
+          target_ad_cost_pct?: number
+          tax_pct?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       pricing_rules: {
         Row: {
           applies_to_brand_id: string | null
@@ -1148,6 +1354,74 @@ export type Database = {
           },
         ]
       }
+      product_market_metrics: {
+        Row: {
+          captured_at: string
+          competition_score: number | null
+          data_points: number
+          external_sales: number
+          growth_30d_pct: number | null
+          growth_7d_pct: number | null
+          growth_90d_pct: number | null
+          product_id: string
+          raw: Json
+          sales_30d: number
+          sales_7d: number
+          sales_90d: number
+          shipping_score: number | null
+          source: string
+          supplier_score: number | null
+          trend_score: number | null
+          updated_at: string
+        }
+        Insert: {
+          captured_at?: string
+          competition_score?: number | null
+          data_points?: number
+          external_sales?: number
+          growth_30d_pct?: number | null
+          growth_7d_pct?: number | null
+          growth_90d_pct?: number | null
+          product_id: string
+          raw?: Json
+          sales_30d?: number
+          sales_7d?: number
+          sales_90d?: number
+          shipping_score?: number | null
+          source?: string
+          supplier_score?: number | null
+          trend_score?: number | null
+          updated_at?: string
+        }
+        Update: {
+          captured_at?: string
+          competition_score?: number | null
+          data_points?: number
+          external_sales?: number
+          growth_30d_pct?: number | null
+          growth_7d_pct?: number | null
+          growth_90d_pct?: number | null
+          product_id?: string
+          raw?: Json
+          sales_30d?: number
+          sales_7d?: number
+          sales_90d?: number
+          shipping_score?: number | null
+          source?: string
+          supplier_score?: number | null
+          trend_score?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_market_metrics_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: true
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       product_media: {
         Row: {
           alt: string | null
@@ -1371,48 +1645,60 @@ export type Database = {
       }
       product_scores: {
         Row: {
+          commercial: number
           competitiveness: number
           computed_at: string
+          confidence: number
           created_at: string
           demand: number
           id: string
           label: string | null
           margin: number
+          opportunity: number
           overall: number
           product_id: string
           quality: number
           recommendation: string | null
           risk: number
+          trend: number
           updated_at: string
         }
         Insert: {
+          commercial?: number
           competitiveness?: number
           computed_at?: string
+          confidence?: number
           created_at?: string
           demand?: number
           id?: string
           label?: string | null
           margin?: number
+          opportunity?: number
           overall?: number
           product_id: string
           quality?: number
           recommendation?: string | null
           risk?: number
+          trend?: number
           updated_at?: string
         }
         Update: {
+          commercial?: number
           competitiveness?: number
           computed_at?: string
+          confidence?: number
           created_at?: string
           demand?: number
           id?: string
           label?: string | null
           margin?: number
+          opportunity?: number
           overall?: number
           product_id?: string
           quality?: number
           recommendation?: string | null
           risk?: number
+          trend?: number
           updated_at?: string
         }
         Relationships: [

@@ -25,14 +25,21 @@ import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/
 import { Route as AuthenticatedAccountRouteImport } from './routes/_authenticated/account'
 import { Route as CategoriaProdutoRouteImport } from './routes/$categoria.$produto'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin.index'
+import { Route as ApiPublicCommerceEventRouteImport } from './routes/api/public/commerce-event'
+import { Route as ApiPublicAbandonedCheckoutRouteImport } from './routes/api/public/abandoned-checkout'
 import { Route as AuthenticatedCheckoutOrderIdRouteImport } from './routes/_authenticated/checkout.$orderId'
 import { Route as AuthenticatedAdminUsersRouteImport } from './routes/_authenticated/admin.users'
 import { Route as AuthenticatedAdminUsageRouteImport } from './routes/_authenticated/admin.usage'
 import { Route as AuthenticatedAdminSettingsRouteImport } from './routes/_authenticated/admin.settings'
+import { Route as AuthenticatedAdminRecoveryRouteImport } from './routes/_authenticated/admin.recovery'
+import { Route as AuthenticatedAdminPricingRouteImport } from './routes/_authenticated/admin.pricing'
+import { Route as AuthenticatedAdminPerformanceRouteImport } from './routes/_authenticated/admin.performance'
 import { Route as AuthenticatedAdminOrdersRouteImport } from './routes/_authenticated/admin.orders'
+import { Route as AuthenticatedAdminOpportunitiesRouteImport } from './routes/_authenticated/admin.opportunities'
 import { Route as AuthenticatedAdminMarketingRouteImport } from './routes/_authenticated/admin.marketing'
 import { Route as AuthenticatedAdminIntegrationsRouteImport } from './routes/_authenticated/admin.integrations'
 import { Route as AuthenticatedAdminImportsRouteImport } from './routes/_authenticated/admin.imports'
+import { Route as AuthenticatedAdminHomeRouteImport } from './routes/_authenticated/admin.home'
 import { Route as AuthenticatedAdminDiscoverRouteImport } from './routes/_authenticated/admin.discover'
 import { Route as AuthenticatedAdminDashboardRouteImport } from './routes/_authenticated/admin.dashboard'
 import { Route as AuthenticatedAdminComplianceRouteImport } from './routes/_authenticated/admin.compliance'
@@ -43,6 +50,8 @@ import { Route as ApiPublicWebhooksPagbankRouteImport } from './routes/api/publi
 import { Route as ApiPublicWebhooksNupayRouteImport } from './routes/api/public/webhooks/nupay'
 import { Route as ApiPublicWebhooksAsaasRouteImport } from './routes/api/public/webhooks/asaas'
 import { Route as ApiPublicWebhooksAliexpressRouteImport } from './routes/api/public/webhooks/aliexpress'
+import { Route as ApiPublicFeedsMetaCatalogDotcsvRouteImport } from './routes/api/public/feeds/meta-catalog[.]csv'
+import { Route as ApiPublicFeedsGoogleMerchantDotxmlRouteImport } from './routes/api/public/feeds/google-merchant[.]xml'
 import { Route as ApiPublicCronAliexpressStockRouteImport } from './routes/api/public/cron/aliexpress-stock'
 import { Route as ApiPublicAliexpressStartRouteImport } from './routes/api/public/aliexpress.start'
 import { Route as AuthenticatedAdminIntelligenceIdRouteImport } from './routes/_authenticated/admin.intelligence.$id'
@@ -128,6 +137,17 @@ const AuthenticatedAdminIndexRoute = AuthenticatedAdminIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AuthenticatedAdminRoute,
 } as any)
+const ApiPublicCommerceEventRoute = ApiPublicCommerceEventRouteImport.update({
+  id: '/api/public/commerce-event',
+  path: '/api/public/commerce-event',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicAbandonedCheckoutRoute =
+  ApiPublicAbandonedCheckoutRouteImport.update({
+    id: '/api/public/abandoned-checkout',
+    path: '/api/public/abandoned-checkout',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const AuthenticatedCheckoutOrderIdRoute =
   AuthenticatedCheckoutOrderIdRouteImport.update({
     id: '/$orderId',
@@ -150,10 +170,34 @@ const AuthenticatedAdminSettingsRoute =
     path: '/settings',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
+const AuthenticatedAdminRecoveryRoute =
+  AuthenticatedAdminRecoveryRouteImport.update({
+    id: '/recovery',
+    path: '/recovery',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const AuthenticatedAdminPricingRoute =
+  AuthenticatedAdminPricingRouteImport.update({
+    id: '/pricing',
+    path: '/pricing',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const AuthenticatedAdminPerformanceRoute =
+  AuthenticatedAdminPerformanceRouteImport.update({
+    id: '/performance',
+    path: '/performance',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
 const AuthenticatedAdminOrdersRoute =
   AuthenticatedAdminOrdersRouteImport.update({
     id: '/orders',
     path: '/orders',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const AuthenticatedAdminOpportunitiesRoute =
+  AuthenticatedAdminOpportunitiesRouteImport.update({
+    id: '/opportunities',
+    path: '/opportunities',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
 const AuthenticatedAdminMarketingRoute =
@@ -174,6 +218,11 @@ const AuthenticatedAdminImportsRoute =
     path: '/imports',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
+const AuthenticatedAdminHomeRoute = AuthenticatedAdminHomeRouteImport.update({
+  id: '/home',
+  path: '/home',
+  getParentRoute: () => AuthenticatedAdminRoute,
+} as any)
 const AuthenticatedAdminDiscoverRoute =
   AuthenticatedAdminDiscoverRouteImport.update({
     id: '/discover',
@@ -231,6 +280,18 @@ const ApiPublicWebhooksAliexpressRoute =
     path: '/api/public/webhooks/aliexpress',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicFeedsMetaCatalogDotcsvRoute =
+  ApiPublicFeedsMetaCatalogDotcsvRouteImport.update({
+    id: '/api/public/feeds/meta-catalog.csv',
+    path: '/api/public/feeds/meta-catalog.csv',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicFeedsGoogleMerchantDotxmlRoute =
+  ApiPublicFeedsGoogleMerchantDotxmlRouteImport.update({
+    id: '/api/public/feeds/google-merchant.xml',
+    path: '/api/public/feeds/google-merchant.xml',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicCronAliexpressStockRoute =
   ApiPublicCronAliexpressStockRouteImport.update({
     id: '/api/public/cron/aliexpress-stock',
@@ -281,20 +342,29 @@ export interface FileRoutesByFullPath {
   '/admin/compliance': typeof AuthenticatedAdminComplianceRoute
   '/admin/dashboard': typeof AuthenticatedAdminDashboardRoute
   '/admin/discover': typeof AuthenticatedAdminDiscoverRoute
+  '/admin/home': typeof AuthenticatedAdminHomeRoute
   '/admin/imports': typeof AuthenticatedAdminImportsRouteWithChildren
   '/admin/integrations': typeof AuthenticatedAdminIntegrationsRoute
   '/admin/marketing': typeof AuthenticatedAdminMarketingRoute
+  '/admin/opportunities': typeof AuthenticatedAdminOpportunitiesRoute
   '/admin/orders': typeof AuthenticatedAdminOrdersRoute
+  '/admin/performance': typeof AuthenticatedAdminPerformanceRoute
+  '/admin/pricing': typeof AuthenticatedAdminPricingRoute
+  '/admin/recovery': typeof AuthenticatedAdminRecoveryRoute
   '/admin/settings': typeof AuthenticatedAdminSettingsRoute
   '/admin/usage': typeof AuthenticatedAdminUsageRoute
   '/admin/users': typeof AuthenticatedAdminUsersRoute
   '/checkout/$orderId': typeof AuthenticatedCheckoutOrderIdRoute
+  '/api/public/abandoned-checkout': typeof ApiPublicAbandonedCheckoutRoute
+  '/api/public/commerce-event': typeof ApiPublicCommerceEventRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
   '/admin/catalog/$id': typeof AuthenticatedAdminCatalogIdRoute
   '/admin/imports/$id': typeof AuthenticatedAdminImportsIdRoute
   '/admin/intelligence/$id': typeof AuthenticatedAdminIntelligenceIdRoute
   '/api/public/aliexpress/start': typeof ApiPublicAliexpressStartRoute
   '/api/public/cron/aliexpress-stock': typeof ApiPublicCronAliexpressStockRoute
+  '/api/public/feeds/google-merchant.xml': typeof ApiPublicFeedsGoogleMerchantDotxmlRoute
+  '/api/public/feeds/meta-catalog.csv': typeof ApiPublicFeedsMetaCatalogDotcsvRoute
   '/api/public/webhooks/aliexpress': typeof ApiPublicWebhooksAliexpressRoute
   '/api/public/webhooks/asaas': typeof ApiPublicWebhooksAsaasRoute
   '/api/public/webhooks/nupay': typeof ApiPublicWebhooksNupayRoute
@@ -320,20 +390,29 @@ export interface FileRoutesByTo {
   '/admin/compliance': typeof AuthenticatedAdminComplianceRoute
   '/admin/dashboard': typeof AuthenticatedAdminDashboardRoute
   '/admin/discover': typeof AuthenticatedAdminDiscoverRoute
+  '/admin/home': typeof AuthenticatedAdminHomeRoute
   '/admin/imports': typeof AuthenticatedAdminImportsRouteWithChildren
   '/admin/integrations': typeof AuthenticatedAdminIntegrationsRoute
   '/admin/marketing': typeof AuthenticatedAdminMarketingRoute
+  '/admin/opportunities': typeof AuthenticatedAdminOpportunitiesRoute
   '/admin/orders': typeof AuthenticatedAdminOrdersRoute
+  '/admin/performance': typeof AuthenticatedAdminPerformanceRoute
+  '/admin/pricing': typeof AuthenticatedAdminPricingRoute
+  '/admin/recovery': typeof AuthenticatedAdminRecoveryRoute
   '/admin/settings': typeof AuthenticatedAdminSettingsRoute
   '/admin/usage': typeof AuthenticatedAdminUsageRoute
   '/admin/users': typeof AuthenticatedAdminUsersRoute
   '/checkout/$orderId': typeof AuthenticatedCheckoutOrderIdRoute
+  '/api/public/abandoned-checkout': typeof ApiPublicAbandonedCheckoutRoute
+  '/api/public/commerce-event': typeof ApiPublicCommerceEventRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
   '/admin/catalog/$id': typeof AuthenticatedAdminCatalogIdRoute
   '/admin/imports/$id': typeof AuthenticatedAdminImportsIdRoute
   '/admin/intelligence/$id': typeof AuthenticatedAdminIntelligenceIdRoute
   '/api/public/aliexpress/start': typeof ApiPublicAliexpressStartRoute
   '/api/public/cron/aliexpress-stock': typeof ApiPublicCronAliexpressStockRoute
+  '/api/public/feeds/google-merchant.xml': typeof ApiPublicFeedsGoogleMerchantDotxmlRoute
+  '/api/public/feeds/meta-catalog.csv': typeof ApiPublicFeedsMetaCatalogDotcsvRoute
   '/api/public/webhooks/aliexpress': typeof ApiPublicWebhooksAliexpressRoute
   '/api/public/webhooks/asaas': typeof ApiPublicWebhooksAsaasRoute
   '/api/public/webhooks/nupay': typeof ApiPublicWebhooksNupayRoute
@@ -362,20 +441,29 @@ export interface FileRoutesById {
   '/_authenticated/admin/compliance': typeof AuthenticatedAdminComplianceRoute
   '/_authenticated/admin/dashboard': typeof AuthenticatedAdminDashboardRoute
   '/_authenticated/admin/discover': typeof AuthenticatedAdminDiscoverRoute
+  '/_authenticated/admin/home': typeof AuthenticatedAdminHomeRoute
   '/_authenticated/admin/imports': typeof AuthenticatedAdminImportsRouteWithChildren
   '/_authenticated/admin/integrations': typeof AuthenticatedAdminIntegrationsRoute
   '/_authenticated/admin/marketing': typeof AuthenticatedAdminMarketingRoute
+  '/_authenticated/admin/opportunities': typeof AuthenticatedAdminOpportunitiesRoute
   '/_authenticated/admin/orders': typeof AuthenticatedAdminOrdersRoute
+  '/_authenticated/admin/performance': typeof AuthenticatedAdminPerformanceRoute
+  '/_authenticated/admin/pricing': typeof AuthenticatedAdminPricingRoute
+  '/_authenticated/admin/recovery': typeof AuthenticatedAdminRecoveryRoute
   '/_authenticated/admin/settings': typeof AuthenticatedAdminSettingsRoute
   '/_authenticated/admin/usage': typeof AuthenticatedAdminUsageRoute
   '/_authenticated/admin/users': typeof AuthenticatedAdminUsersRoute
   '/_authenticated/checkout/$orderId': typeof AuthenticatedCheckoutOrderIdRoute
+  '/api/public/abandoned-checkout': typeof ApiPublicAbandonedCheckoutRoute
+  '/api/public/commerce-event': typeof ApiPublicCommerceEventRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
   '/_authenticated/admin/catalog/$id': typeof AuthenticatedAdminCatalogIdRoute
   '/_authenticated/admin/imports/$id': typeof AuthenticatedAdminImportsIdRoute
   '/_authenticated/admin/intelligence/$id': typeof AuthenticatedAdminIntelligenceIdRoute
   '/api/public/aliexpress/start': typeof ApiPublicAliexpressStartRoute
   '/api/public/cron/aliexpress-stock': typeof ApiPublicCronAliexpressStockRoute
+  '/api/public/feeds/google-merchant.xml': typeof ApiPublicFeedsGoogleMerchantDotxmlRoute
+  '/api/public/feeds/meta-catalog.csv': typeof ApiPublicFeedsMetaCatalogDotcsvRoute
   '/api/public/webhooks/aliexpress': typeof ApiPublicWebhooksAliexpressRoute
   '/api/public/webhooks/asaas': typeof ApiPublicWebhooksAsaasRoute
   '/api/public/webhooks/nupay': typeof ApiPublicWebhooksNupayRoute
@@ -404,20 +492,29 @@ export interface FileRouteTypes {
     | '/admin/compliance'
     | '/admin/dashboard'
     | '/admin/discover'
+    | '/admin/home'
     | '/admin/imports'
     | '/admin/integrations'
     | '/admin/marketing'
+    | '/admin/opportunities'
     | '/admin/orders'
+    | '/admin/performance'
+    | '/admin/pricing'
+    | '/admin/recovery'
     | '/admin/settings'
     | '/admin/usage'
     | '/admin/users'
     | '/checkout/$orderId'
+    | '/api/public/abandoned-checkout'
+    | '/api/public/commerce-event'
     | '/admin/'
     | '/admin/catalog/$id'
     | '/admin/imports/$id'
     | '/admin/intelligence/$id'
     | '/api/public/aliexpress/start'
     | '/api/public/cron/aliexpress-stock'
+    | '/api/public/feeds/google-merchant.xml'
+    | '/api/public/feeds/meta-catalog.csv'
     | '/api/public/webhooks/aliexpress'
     | '/api/public/webhooks/asaas'
     | '/api/public/webhooks/nupay'
@@ -443,20 +540,29 @@ export interface FileRouteTypes {
     | '/admin/compliance'
     | '/admin/dashboard'
     | '/admin/discover'
+    | '/admin/home'
     | '/admin/imports'
     | '/admin/integrations'
     | '/admin/marketing'
+    | '/admin/opportunities'
     | '/admin/orders'
+    | '/admin/performance'
+    | '/admin/pricing'
+    | '/admin/recovery'
     | '/admin/settings'
     | '/admin/usage'
     | '/admin/users'
     | '/checkout/$orderId'
+    | '/api/public/abandoned-checkout'
+    | '/api/public/commerce-event'
     | '/admin'
     | '/admin/catalog/$id'
     | '/admin/imports/$id'
     | '/admin/intelligence/$id'
     | '/api/public/aliexpress/start'
     | '/api/public/cron/aliexpress-stock'
+    | '/api/public/feeds/google-merchant.xml'
+    | '/api/public/feeds/meta-catalog.csv'
     | '/api/public/webhooks/aliexpress'
     | '/api/public/webhooks/asaas'
     | '/api/public/webhooks/nupay'
@@ -484,20 +590,29 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/compliance'
     | '/_authenticated/admin/dashboard'
     | '/_authenticated/admin/discover'
+    | '/_authenticated/admin/home'
     | '/_authenticated/admin/imports'
     | '/_authenticated/admin/integrations'
     | '/_authenticated/admin/marketing'
+    | '/_authenticated/admin/opportunities'
     | '/_authenticated/admin/orders'
+    | '/_authenticated/admin/performance'
+    | '/_authenticated/admin/pricing'
+    | '/_authenticated/admin/recovery'
     | '/_authenticated/admin/settings'
     | '/_authenticated/admin/usage'
     | '/_authenticated/admin/users'
     | '/_authenticated/checkout/$orderId'
+    | '/api/public/abandoned-checkout'
+    | '/api/public/commerce-event'
     | '/_authenticated/admin/'
     | '/_authenticated/admin/catalog/$id'
     | '/_authenticated/admin/imports/$id'
     | '/_authenticated/admin/intelligence/$id'
     | '/api/public/aliexpress/start'
     | '/api/public/cron/aliexpress-stock'
+    | '/api/public/feeds/google-merchant.xml'
+    | '/api/public/feeds/meta-catalog.csv'
     | '/api/public/webhooks/aliexpress'
     | '/api/public/webhooks/asaas'
     | '/api/public/webhooks/nupay'
@@ -514,8 +629,12 @@ export interface RootRouteChildren {
   ProductsRoute: typeof ProductsRouteWithChildren
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   CategoriaProdutoRoute: typeof CategoriaProdutoRoute
+  ApiPublicAbandonedCheckoutRoute: typeof ApiPublicAbandonedCheckoutRoute
+  ApiPublicCommerceEventRoute: typeof ApiPublicCommerceEventRoute
   ApiPublicAliexpressStartRoute: typeof ApiPublicAliexpressStartRoute
   ApiPublicCronAliexpressStockRoute: typeof ApiPublicCronAliexpressStockRoute
+  ApiPublicFeedsGoogleMerchantDotxmlRoute: typeof ApiPublicFeedsGoogleMerchantDotxmlRoute
+  ApiPublicFeedsMetaCatalogDotcsvRoute: typeof ApiPublicFeedsMetaCatalogDotcsvRoute
   ApiPublicWebhooksAliexpressRoute: typeof ApiPublicWebhooksAliexpressRoute
   ApiPublicWebhooksAsaasRoute: typeof ApiPublicWebhooksAsaasRoute
   ApiPublicWebhooksNupayRoute: typeof ApiPublicWebhooksNupayRoute
@@ -636,6 +755,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminIndexRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/api/public/commerce-event': {
+      id: '/api/public/commerce-event'
+      path: '/api/public/commerce-event'
+      fullPath: '/api/public/commerce-event'
+      preLoaderRoute: typeof ApiPublicCommerceEventRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/abandoned-checkout': {
+      id: '/api/public/abandoned-checkout'
+      path: '/api/public/abandoned-checkout'
+      fullPath: '/api/public/abandoned-checkout'
+      preLoaderRoute: typeof ApiPublicAbandonedCheckoutRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated/checkout/$orderId': {
       id: '/_authenticated/checkout/$orderId'
       path: '/$orderId'
@@ -664,11 +797,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminSettingsRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/_authenticated/admin/recovery': {
+      id: '/_authenticated/admin/recovery'
+      path: '/recovery'
+      fullPath: '/admin/recovery'
+      preLoaderRoute: typeof AuthenticatedAdminRecoveryRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/admin/pricing': {
+      id: '/_authenticated/admin/pricing'
+      path: '/pricing'
+      fullPath: '/admin/pricing'
+      preLoaderRoute: typeof AuthenticatedAdminPricingRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/admin/performance': {
+      id: '/_authenticated/admin/performance'
+      path: '/performance'
+      fullPath: '/admin/performance'
+      preLoaderRoute: typeof AuthenticatedAdminPerformanceRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
     '/_authenticated/admin/orders': {
       id: '/_authenticated/admin/orders'
       path: '/orders'
       fullPath: '/admin/orders'
       preLoaderRoute: typeof AuthenticatedAdminOrdersRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/admin/opportunities': {
+      id: '/_authenticated/admin/opportunities'
+      path: '/opportunities'
+      fullPath: '/admin/opportunities'
+      preLoaderRoute: typeof AuthenticatedAdminOpportunitiesRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
     '/_authenticated/admin/marketing': {
@@ -690,6 +851,13 @@ declare module '@tanstack/react-router' {
       path: '/imports'
       fullPath: '/admin/imports'
       preLoaderRoute: typeof AuthenticatedAdminImportsRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/admin/home': {
+      id: '/_authenticated/admin/home'
+      path: '/home'
+      fullPath: '/admin/home'
+      preLoaderRoute: typeof AuthenticatedAdminHomeRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
     '/_authenticated/admin/discover': {
@@ -762,6 +930,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicWebhooksAliexpressRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/feeds/meta-catalog.csv': {
+      id: '/api/public/feeds/meta-catalog.csv'
+      path: '/api/public/feeds/meta-catalog.csv'
+      fullPath: '/api/public/feeds/meta-catalog.csv'
+      preLoaderRoute: typeof ApiPublicFeedsMetaCatalogDotcsvRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/feeds/google-merchant.xml': {
+      id: '/api/public/feeds/google-merchant.xml'
+      path: '/api/public/feeds/google-merchant.xml'
+      fullPath: '/api/public/feeds/google-merchant.xml'
+      preLoaderRoute: typeof ApiPublicFeedsGoogleMerchantDotxmlRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/cron/aliexpress-stock': {
       id: '/api/public/cron/aliexpress-stock'
       path: '/api/public/cron/aliexpress-stock'
@@ -819,10 +1001,15 @@ interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminComplianceRoute: typeof AuthenticatedAdminComplianceRoute
   AuthenticatedAdminDashboardRoute: typeof AuthenticatedAdminDashboardRoute
   AuthenticatedAdminDiscoverRoute: typeof AuthenticatedAdminDiscoverRoute
+  AuthenticatedAdminHomeRoute: typeof AuthenticatedAdminHomeRoute
   AuthenticatedAdminImportsRoute: typeof AuthenticatedAdminImportsRouteWithChildren
   AuthenticatedAdminIntegrationsRoute: typeof AuthenticatedAdminIntegrationsRoute
   AuthenticatedAdminMarketingRoute: typeof AuthenticatedAdminMarketingRoute
+  AuthenticatedAdminOpportunitiesRoute: typeof AuthenticatedAdminOpportunitiesRoute
   AuthenticatedAdminOrdersRoute: typeof AuthenticatedAdminOrdersRoute
+  AuthenticatedAdminPerformanceRoute: typeof AuthenticatedAdminPerformanceRoute
+  AuthenticatedAdminPricingRoute: typeof AuthenticatedAdminPricingRoute
+  AuthenticatedAdminRecoveryRoute: typeof AuthenticatedAdminRecoveryRoute
   AuthenticatedAdminSettingsRoute: typeof AuthenticatedAdminSettingsRoute
   AuthenticatedAdminUsageRoute: typeof AuthenticatedAdminUsageRoute
   AuthenticatedAdminUsersRoute: typeof AuthenticatedAdminUsersRoute
@@ -838,10 +1025,15 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminComplianceRoute: AuthenticatedAdminComplianceRoute,
   AuthenticatedAdminDashboardRoute: AuthenticatedAdminDashboardRoute,
   AuthenticatedAdminDiscoverRoute: AuthenticatedAdminDiscoverRoute,
+  AuthenticatedAdminHomeRoute: AuthenticatedAdminHomeRoute,
   AuthenticatedAdminImportsRoute: AuthenticatedAdminImportsRouteWithChildren,
   AuthenticatedAdminIntegrationsRoute: AuthenticatedAdminIntegrationsRoute,
   AuthenticatedAdminMarketingRoute: AuthenticatedAdminMarketingRoute,
+  AuthenticatedAdminOpportunitiesRoute: AuthenticatedAdminOpportunitiesRoute,
   AuthenticatedAdminOrdersRoute: AuthenticatedAdminOrdersRoute,
+  AuthenticatedAdminPerformanceRoute: AuthenticatedAdminPerformanceRoute,
+  AuthenticatedAdminPricingRoute: AuthenticatedAdminPricingRoute,
+  AuthenticatedAdminRecoveryRoute: AuthenticatedAdminRecoveryRoute,
   AuthenticatedAdminSettingsRoute: AuthenticatedAdminSettingsRoute,
   AuthenticatedAdminUsageRoute: AuthenticatedAdminUsageRoute,
   AuthenticatedAdminUsersRoute: AuthenticatedAdminUsersRoute,
@@ -920,8 +1112,13 @@ const rootRouteChildren: RootRouteChildren = {
   ProductsRoute: ProductsRouteWithChildren,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   CategoriaProdutoRoute: CategoriaProdutoRoute,
+  ApiPublicAbandonedCheckoutRoute: ApiPublicAbandonedCheckoutRoute,
+  ApiPublicCommerceEventRoute: ApiPublicCommerceEventRoute,
   ApiPublicAliexpressStartRoute: ApiPublicAliexpressStartRoute,
   ApiPublicCronAliexpressStockRoute: ApiPublicCronAliexpressStockRoute,
+  ApiPublicFeedsGoogleMerchantDotxmlRoute:
+    ApiPublicFeedsGoogleMerchantDotxmlRoute,
+  ApiPublicFeedsMetaCatalogDotcsvRoute: ApiPublicFeedsMetaCatalogDotcsvRoute,
   ApiPublicWebhooksAliexpressRoute: ApiPublicWebhooksAliexpressRoute,
   ApiPublicWebhooksAsaasRoute: ApiPublicWebhooksAsaasRoute,
   ApiPublicWebhooksNupayRoute: ApiPublicWebhooksNupayRoute,

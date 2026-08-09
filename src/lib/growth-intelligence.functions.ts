@@ -40,6 +40,7 @@ export const saveMarketMetrics = createServerFn({ method: "POST" })
     );
     const { error } = await supabaseAdmin.from("product_market_metrics").upsert({
       ...data,
+      raw: (data.raw ?? {}) as never,
       trend_score: trend,
       captured_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
