@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { trackCommerce } from "@/lib/commerce-tracking";
 
 export type CartItem = {
   productId: string;
@@ -27,7 +28,12 @@ export const useCart = create<CartState>()(
   persist(
     (set) => ({
       items: [],
-      add: (item, qty = 1) =>
+      add: (item, qty = 1) => {
+        trackCommerce("add_to_cart", {
+          product_id: item.productId,
+          value_cents: item.unitCents * qty,
+          metadata: { variant_id: item.variantId, sku: item.sku ?? null, quantity: qty },
+        });
         set((s) => {
           const existing = s.items.find((i) => i.variantId === item.variantId);
           if (existing) {
@@ -38,15 +44,36 @@ export const useCart = create<CartState>()(
             };
           }
           return { items: [...s.items, { ...item, quantity: qty }] };
-        }),
+        });
+      },
       remove: (variantId) =>
-        set((s) => ({ items: s.items.filter((i) => i.variantId !== variantId) })),
+        set((s) => {
+          const removed = s.items.find((i) => i.variantId === variantId);
+          if (removed) {
+            trackCommerce("remove_from_cart", {
+              product_id: removed.productId,
+              value_cents: removed.unitCents * removed.quantity,
+              metadata: { variant_id: variantId, quantity: removed.quantity },
+            });
+          }
+          return { items: s.items.filter((i) => i.variantId !== variantId) };
+        }),
       setQuantity: (variantId, qty) =>
-        set((s) => ({
-          items: qty <= 0
-            ? s.items.filter((i) => i.variantId !== variantId)
-            : s.items.map((i) => (i.variantId === variantId ? { ...i, quantity: qty } : i)),
-        })),
+        set((s) => {
+          const item = s.items.find((i) => i.variantId === variantId);
+          if (item) {
+            trackCommerce("cart_change", {
+              product_id: item.productId,
+              value_cents: item.unitCents * Math.max(qty, 0),
+              metadata: { variant_id: variantId, from: item.quantity, to: qty },
+            });
+          }
+          return {
+            items: qty <= 0
+              ? s.items.filter((i) => i.variantId !== variantId)
+              : s.items.map((i) => (i.variantId === variantId ? { ...i, quantity: qty } : i)),
+          };
+        }),
       clear: () => set({ items: [] }),
     }),
     { name: "absoluto-glamur-cart-v1" },
