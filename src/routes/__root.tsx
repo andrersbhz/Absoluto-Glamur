@@ -128,7 +128,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 });
 
 function RootShell({ children }: { children: ReactNode }) {
-  const { gtmId } = Route.useLoaderData();
+  const loaderData = Route.useLoaderData({ structuralSharing: false } as never) as
+    | { gtmId?: string | null }
+    | undefined;
+  const gtmId = loaderData?.gtmId ?? null;
   return (
     <html lang="pt-BR">
       <head>
