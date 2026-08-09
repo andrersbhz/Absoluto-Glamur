@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabase } from "@/integrations/supabase/client";
 import { callAli } from "./aliexpress-discovery.functions";
 import { generateWithOwnKeys } from "./ai-translate.server";
@@ -52,6 +53,16 @@ type NormalizedOfficialReview = {
   images: string[];
   reviewed_at: string | null;
 };
+
+async function assertCatalog(context: any) {
+  const { data: adm } = await context.supabase.rpc("is_admin", { _user_id: context.userId });
+  if (adm) return;
+  const { data: hasCat } = await context.supabase.rpc("has_role", {
+    _user_id: context.userId,
+    _role: "catalog",
+  });
+  if (!hasCat) throw new Error("Acesso restrito a administradores ou equipe de catálogo");
+}
 
 function safeText(value: unknown, max = 8000): string | null {
   if (value == null) return null;
@@ -398,8 +409,10 @@ export const autoSyncLiveProductReviews = createServerFn({ method: "POST" })
   });
 
 export const forceSyncLiveProductReviews = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((value: unknown) => z.object({ product_id: z.string().uuid() }).parse(value))
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
+    await assertCatalog(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     return syncLiveReviewsInternal(supabaseAdmin, data.product_id, true);
   });
