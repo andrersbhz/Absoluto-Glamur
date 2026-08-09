@@ -2,6 +2,13 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
+// These values are public client configuration, not secrets. Supabase's publishable
+// key is intentionally shipped to the browser. Keeping a deterministic fallback
+// prevents the storefront from crashing when a hosting/build layer does not expose
+// VITE_* variables to the client bundle.
+const PUBLIC_SUPABASE_URL = 'https://bnbksevtmbmlirnwglqb.supabase.co';
+const PUBLIC_SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_LPohaeKkLFO_6PrEB7F-sQ_dflToR4l';
+
 function isNewSupabaseApiKey(value: string): boolean {
   return value.startsWith('sb_publishable_') || value.startsWith('sb_secret_');
 }
@@ -26,19 +33,30 @@ function createSupabaseFetch(supabaseKey: string): typeof fetch {
   };
 }
 
+function readServerEnv(name: 'SUPABASE_URL' | 'SUPABASE_PUBLISHABLE_KEY'): string | undefined {
+  if (typeof process === 'undefined' || !process.env) return undefined;
+  return process.env[name];
+}
 
 function createSupabaseClient() {
-  // Use import.meta.env for client-side (Vite build-time replacement)
-  // Fall back to process.env for SSR (server-side rendering)
-  const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
-  const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY || process.env.SUPABASE_PUBLISHABLE_KEY;
+  const viteEnv = import.meta.env as Record<string, string | undefined>;
+
+  const SUPABASE_URL =
+    viteEnv.VITE_SUPABASE_URL ||
+    readServerEnv('SUPABASE_URL') ||
+    PUBLIC_SUPABASE_URL;
+
+  const SUPABASE_PUBLISHABLE_KEY =
+    viteEnv.VITE_SUPABASE_PUBLISHABLE_KEY ||
+    readServerEnv('SUPABASE_PUBLISHABLE_KEY') ||
+    PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 
   if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
     const missing = [
       ...(!SUPABASE_URL ? ['SUPABASE_URL'] : []),
       ...(!SUPABASE_PUBLISHABLE_KEY ? ['SUPABASE_PUBLISHABLE_KEY'] : []),
     ];
-    const message = `Missing Supabase environment variable(s): ${missing.join(', ')}. Connect Supabase in Lovable Cloud.`;
+    const message = `Missing Supabase environment variable(s): ${missing.join(', ')}.`;
     console.error(`[Supabase] ${message}`);
     throw new Error(message);
   }
@@ -51,7 +69,7 @@ function createSupabaseClient() {
       storage: typeof window !== 'undefined' ? localStorage : undefined,
       persistSession: true,
       autoRefreshToken: true,
-    }
+    },
   });
 }
 
@@ -65,4 +83,3 @@ export const supabase = new Proxy({} as ReturnType<typeof createSupabaseClient>,
     return Reflect.get(_supabase, prop, receiver);
   },
 });
-
