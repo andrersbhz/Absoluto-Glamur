@@ -128,9 +128,9 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 });
 
 function RootShell({ children }: { children: ReactNode }) {
-  const loaderData = Route.useLoaderData({ structuralSharing: false } as never) as
-    | { gtmId?: string | null }
-    | undefined;
+  // shellComponent renders before/independently of the loader resolving, so
+  // loader data can legitimately be undefined here.
+  const loaderData = Route.useLoaderData() as { gtmId?: string | null } | undefined;
   const gtmId = loaderData?.gtmId ?? null;
   return (
     <html lang="pt-BR">
