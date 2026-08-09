@@ -39,6 +39,44 @@ export function trackCommerce(event_name: CommerceEventName, payload: {
   }
 }
 
+export function syncRecoverableCart(items: Array<{ productId: string; variantId: string; name: string; unitCents: number; quantity: number; sku?: string | null }>) {
+  if (typeof window === "undefined") return;
+  const id = sessionId();
+  if (!id) return;
+  const subtotal = items.reduce((sum, item) => sum + item.unitCents * item.quantity, 0);
+  const payload = JSON.stringify({
+    session_id: id,
+    cart_snapshot: items,
+    subtotal_cents: subtotal,
+    total_cents: subtotal,
+    source: "store",
+    utm: readUtm(),
+    recovered: false,
+  });
+  try {
+    void fetch("/api/public/abandoned-checkout", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: payload,
+      keepalive: true,
+    });
+  } catch {
+    // Recovery tracking must never interrupt shopping.
+  }
+}
+
+function readUtm(): Record<string, string> {
+  if (typeof window === "undefined") return {};
+  const params = new URLSearchParams(window.location.search);
+  const keys = ["utm_source", "utm_medium", "utm_campaign", "utm_content", "utm_term"];
+  const out: Record<string, string> = {};
+  for (const key of keys) {
+    const value = params.get(key);
+    if (value) out[key] = value;
+  }
+  return out;
+}
+
 export function getCommerceSessionId() {
   return sessionId();
 }
