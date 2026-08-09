@@ -113,7 +113,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         : []),
     ],
   }),
-  loader: async () => ({ gtmId: await getGtmContainerId() }),
+  loader: async () => {
+    try {
+      return { gtmId: await getGtmContainerId() };
+    } catch (error) {
+      console.error("[root-loader] getGtmContainerId failed", error);
+      return { gtmId: null as string | null };
+    }
+  },
   shellComponent: RootShell,
   component: RootComponent,
   notFoundComponent: NotFoundComponent,
