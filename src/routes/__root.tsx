@@ -113,7 +113,15 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         : []),
     ],
   }),
-  loader: async () => ({ gtmId: await getGtmContainerId() }),
+  // GTM is optional. A missing server-side Supabase key must never make the storefront unavailable.
+  loader: async () => {
+    try {
+      return { gtmId: await getGtmContainerId() };
+    } catch (error) {
+      console.warn("[root-loader] GTM unavailable; continuing without GTM", error);
+      return { gtmId: null as string | null };
+    }
+  },
   shellComponent: RootShell,
   component: RootComponent,
   notFoundComponent: NotFoundComponent,
@@ -121,7 +129,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 });
 
 function RootShell({ children }: { children: ReactNode }) {
-  const { gtmId } = Route.useLoaderData();
+  // The shell can render before root loader data is resolved during SSR.
+  // Never destructure loader data directly here.
+  const loaderData = Route.useLoaderData() as { gtmId?: string | null } | undefined;
+  const gtmId = loaderData?.gtmId ?? null;
+
   return (
     <html lang="pt-BR">
       <head>
