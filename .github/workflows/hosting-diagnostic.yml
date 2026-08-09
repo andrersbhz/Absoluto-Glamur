@@ -35,7 +35,15 @@ jobs:
             echo '=== VERBOSE CONNECTION ==='
             curl -sv --max-time 20 -o /tmp/prod.html https://absolutoglamur.com.br/ 2>&1 || true
             echo '=== HTML ASSETS ==='
-            grep -Eo '(/assets/[^"'"' ]+\.(js|css))' /tmp/prod.html | sort -u || true
+            python - <<'PY'
+          import re
+          from pathlib import Path
+          p = Path('/tmp/prod.html')
+          if p.exists():
+              html = p.read_text(errors='ignore')
+              for asset in sorted(set(re.findall(r'/assets/[^\"\'<> ]+\.(?:js|css)', html))):
+                  print(asset)
+          PY
             echo '=== TLS CERT ==='
             echo | openssl s_client -connect absolutoglamur.com.br:443 -servername absolutoglamur.com.br 2>/dev/null | openssl x509 -noout -issuer -subject -dates 2>/dev/null || true
           } | tee /tmp/hosting-diagnostic.txt
