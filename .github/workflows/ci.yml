@@ -34,13 +34,22 @@ jobs:
 
           ok=0
           HOME_URL=""
+          : > /tmp/listeners.txt
           for i in $(seq 1 60); do
-            for port in 5173 8080 4173; do
-              if curl -fsS "http://127.0.0.1:${port}/" -o /tmp/home.html 2>/dev/null; then
-                HOME_URL="http://127.0.0.1:${port}/"
-                ok=1
-                break 2
-              fi
+            ss -ltnp > /tmp/listeners.txt 2>&1 || true
+            ports=$(ss -ltnH 2>/dev/null | awk '{addr=$4; sub(/^.*:/,"",addr); if (addr ~ /^[0-9]+$/) print addr}' | sort -nu)
+            for port in $ports; do
+              for host in 127.0.0.1 localhost; do
+                url="http://${host}:${port}/"
+                if curl --max-time 2 -fsS "$url" -o /tmp/candidate.html 2>/dev/null; then
+                  if grep -q "Absoluto Glamur" /tmp/candidate.html; then
+                    cp /tmp/candidate.html /tmp/home.html
+                    HOME_URL="$url"
+                    ok=1
+                    break 3
+                  fi
+                fi
+              done
             done
             if ! kill -0 "$SERVER_PID" 2>/dev/null; then
               echo "SSR dev server exited before Home became available"
@@ -51,18 +60,31 @@ jobs:
           done
 
           if [ "$ok" -ne 1 ]; then
-            echo "Home did not become available on expected Vite/TanStack ports"
+            echo "Could not locate a healthy Home endpoint"
+            echo "--- listeners ---"
+            cat /tmp/listeners.txt || true
+            echo "--- server log ---"
             cat /tmp/dev-server.log || true
             exit 1
           fi
 
           echo "Testing ${HOME_URL}"
           test -s /tmp/home.html
-          grep -q "Absoluto Glamur" /tmp/home.html
           if grep -q "Algo não carregou" /tmp/home.html; then
             echo "Root error page detected in Home response"
             cat /tmp/dev-server.log || true
             exit 1
           fi
-
+          grep -q "Absoluto Glamur" /tmp/home.html
           echo "Home SSR smoke test passed"
+      - name: Upload SSR diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ssr-diagnostics
+          path: |
+            /tmp/dev-server.log
+            /tmp/listeners.txt
+            /tmp/home.html
+          if-no-files-found: ignore
+          retention-days: 1
