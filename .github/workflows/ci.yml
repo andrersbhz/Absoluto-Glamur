@@ -28,16 +28,15 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          # This project builds Nitro for Cloudflare; `vite preview` does not run that SSR output.
-          # The Vite dev server exercises the same TanStack Start root loader/shell and Home route,
-          # which is exactly where the production regression occurred.
-          bun run dev -- --host 127.0.0.1 --port 4173 > /tmp/dev-server.log 2>&1 &
+          # @lovable.dev/vite-tanstack-config controls the sandbox host/port and uses 8080.
+          # Start the same TanStack SSR runtime used during development and request the Home.
+          bun run dev > /tmp/dev-server.log 2>&1 &
           SERVER_PID=$!
           trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
 
           ok=0
           for i in $(seq 1 45); do
-            if curl -fsS http://127.0.0.1:4173/ -o /tmp/home.html; then
+            if curl -fsS http://127.0.0.1:8080/ -o /tmp/home.html; then
               ok=1
               break
             fi
@@ -50,7 +49,7 @@ jobs:
           done
 
           if [ "$ok" -ne 1 ]; then
-            echo "Home did not become available"
+            echo "Home did not become available on port 8080"
             cat /tmp/dev-server.log || true
             exit 1
           fi
