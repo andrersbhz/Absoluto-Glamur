@@ -24,26 +24,34 @@ jobs:
         continue-on-error: true
       - name: Build (required)
         run: bun run build
-      - name: Home smoke test (required)
+      - name: Home SSR smoke test (required)
         shell: bash
         run: |
           set -euo pipefail
-          bun run preview -- --host 127.0.0.1 --port 4173 > /tmp/preview.log 2>&1 &
-          PREVIEW_PID=$!
-          trap 'kill "$PREVIEW_PID" 2>/dev/null || true' EXIT
+          # This project builds Nitro for Cloudflare; `vite preview` does not run that SSR output.
+          # The Vite dev server exercises the same TanStack Start root loader/shell and Home route,
+          # which is exactly where the production regression occurred.
+          bun run dev -- --host 127.0.0.1 --port 4173 > /tmp/dev-server.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
 
           ok=0
-          for i in $(seq 1 30); do
+          for i in $(seq 1 45); do
             if curl -fsS http://127.0.0.1:4173/ -o /tmp/home.html; then
               ok=1
               break
+            fi
+            if ! kill -0 "$SERVER_PID" 2>/dev/null; then
+              echo "SSR dev server exited before Home became available"
+              cat /tmp/dev-server.log || true
+              exit 1
             fi
             sleep 1
           done
 
           if [ "$ok" -ne 1 ]; then
             echo "Home did not become available"
-            cat /tmp/preview.log || true
+            cat /tmp/dev-server.log || true
             exit 1
           fi
 
@@ -51,7 +59,8 @@ jobs:
           grep -q "Absoluto Glamur" /tmp/home.html
           if grep -q "Algo não carregou" /tmp/home.html; then
             echo "Root error page detected in Home response"
+            cat /tmp/dev-server.log || true
             exit 1
           fi
 
-          echo "Home smoke test passed"
+          echo "Home SSR smoke test passed"
