@@ -28,18 +28,20 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          # @lovable.dev/vite-tanstack-config controls the sandbox host/port and uses 8080.
-          # Start the same TanStack SSR runtime used during development and request the Home.
           bun run dev > /tmp/dev-server.log 2>&1 &
           SERVER_PID=$!
           trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
 
           ok=0
-          for i in $(seq 1 45); do
-            if curl -fsS http://127.0.0.1:8080/ -o /tmp/home.html; then
-              ok=1
-              break
-            fi
+          HOME_URL=""
+          for i in $(seq 1 60); do
+            for port in 5173 8080 4173; do
+              if curl -fsS "http://127.0.0.1:${port}/" -o /tmp/home.html 2>/dev/null; then
+                HOME_URL="http://127.0.0.1:${port}/"
+                ok=1
+                break 2
+              fi
+            done
             if ! kill -0 "$SERVER_PID" 2>/dev/null; then
               echo "SSR dev server exited before Home became available"
               cat /tmp/dev-server.log || true
@@ -49,11 +51,12 @@ jobs:
           done
 
           if [ "$ok" -ne 1 ]; then
-            echo "Home did not become available on port 8080"
+            echo "Home did not become available on expected Vite/TanStack ports"
             cat /tmp/dev-server.log || true
             exit 1
           fi
 
+          echo "Testing ${HOME_URL}"
           test -s /tmp/home.html
           grep -q "Absoluto Glamur" /tmp/home.html
           if grep -q "Algo não carregou" /tmp/home.html; then
