@@ -2,7 +2,7 @@ import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import {
   BarChart3, Boxes, Compass, ExternalLink, Gauge, LayoutDashboard, LogOut, Megaphone, Moon, Package,
-  Plug, Settings, ShieldCheck, ShoppingCart, Sparkles, Store, Sun, Users, Zap,
+  PanelsTopLeft, Plug, Settings, ShieldCheck, ShoppingCart, Sparkles, Store, Sun, Users, Zap,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
@@ -14,6 +14,7 @@ type NavItem = { label: string; icon: typeof LayoutDashboard; to?: string; phase
 
 const nav: NavItem[] = [
   { label: "Visão geral", icon: LayoutDashboard, to: "/admin", phase: 1 },
+  { label: "Home Builder", icon: PanelsTopLeft, to: "/admin/home", phase: 2 },
   { label: "Integrações", icon: Plug, to: "/admin/integrations", phase: 1 },
   { label: "Pedidos", icon: ShoppingCart, to: "/admin/orders", phase: 3 },
   { label: "Catálogo", icon: Package, to: "/admin/catalog", phase: 2 },
@@ -89,7 +90,7 @@ export function AdminLayout({ children }: { children: ReactNode }) {
       <div className="flex flex-1 flex-col">
         <header className="flex h-16 items-center justify-between border-b border-border bg-card/50 px-6 backdrop-blur">
           <div>
-            <p className="text-xs uppercase tracking-widest text-muted-foreground">Painel administrativo</p>
+            <p className="text-xs uppercase tracking-widest text-muted-foreground">Painel administrativo · v1.2</p>
             <p className="text-sm text-foreground">{user?.email}</p>
           </div>
           <div className="flex items-center gap-3">
