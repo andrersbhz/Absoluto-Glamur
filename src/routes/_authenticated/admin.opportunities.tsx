@@ -18,7 +18,7 @@ export const Route = createFileRoute("/_authenticated/admin/opportunities")({
   component: OpportunitiesPage,
 });
 
-type OpportunityRow = Awaited<ReturnType<ReturnType<typeof listGrowthOpportunities>["handler"]>>;
+type OpportunityRow = Awaited<ReturnType<typeof listGrowthOpportunities>>;
 
 function OpportunitiesPage() {
   const list = useServerFn(listGrowthOpportunities);
