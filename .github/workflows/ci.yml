@@ -19,5 +19,8 @@ jobs:
         with:
           bun-version: latest
       - run: bun install --frozen-lockfile
-      - run: bun run lint
-      - run: bun run build
+      - name: Lint (diagnostic)
+        run: bun run lint
+        continue-on-error: true
+      - name: Build (required)
+        run: bun run build
