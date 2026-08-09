@@ -1,0 +1,137 @@
+name: Browser hydration diagnostic
+
+on:
+  push:
+    branches: ["agent/browser-hydration-diagnostic"]
+
+permissions:
+  contents: read
+
+jobs:
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Capture production browser runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          CHROME=$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || command -v chromium-browser || true)
+          if [ -z "$CHROME" ]; then
+            echo "Chrome/Chromium not found" | tee /tmp/browser-runtime.log
+            exit 1
+          fi
+          echo "Chrome: $CHROME" | tee /tmp/browser-runtime.log
+          python -m pip install --quiet websocket-client
+          "$CHROME" \
+            --headless=new \
+            --no-sandbox \
+            --disable-gpu \
+            --disable-dev-shm-usage \
+            --remote-debugging-port=9222 \
+            --remote-allow-origins='*' \
+            about:blank >/tmp/chrome-stdout.log 2>/tmp/chrome-stderr.log &
+          CHROME_PID=$!
+          trap 'kill "$CHROME_PID" 2>/dev/null || true' EXIT
+
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:9222/json/list >/tmp/chrome-tabs.json 2>/dev/null; then
+              break
+            fi
+            sleep 1
+          done
+
+          python - <<'PY'
+          import json, time, urllib.request
+          import websocket
+
+          URL = "https://absolutoglamur.com.br/"
+          with urllib.request.urlopen("http://127.0.0.1:9222/json/list", timeout=5) as r:
+              tabs = json.load(r)
+          page = tabs[0]
+          ws = websocket.create_connection(page["webSocketDebuggerUrl"], timeout=2, origin="http://127.0.0.1:9222")
+          next_id = 0
+          events = []
+
+          def send(method, params=None):
+              global next_id
+              next_id += 1
+              ws.send(json.dumps({"id": next_id, "method": method, "params": params or {}}))
+              return next_id
+
+          send("Runtime.enable")
+          send("Log.enable")
+          send("Page.enable")
+          send("Network.enable")
+          nav_id = send("Page.navigate", {"url": URL})
+
+          started = time.time()
+          while time.time() - started < 18:
+              try:
+                  raw = ws.recv()
+              except Exception:
+                  continue
+              try:
+                  msg = json.loads(raw)
+              except Exception:
+                  continue
+              method = msg.get("method")
+              if method in {
+                  "Runtime.exceptionThrown",
+                  "Runtime.consoleAPICalled",
+                  "Log.entryAdded",
+                  "Network.loadingFailed",
+                  "Page.javascriptDialogOpening",
+              }:
+                  events.append(msg)
+
+          eval_id = send("Runtime.evaluate", {"expression": "document.documentElement.outerHTML", "returnByValue": True})
+          body_id = send("Runtime.evaluate", {"expression": "document.body ? document.body.innerText : ''", "returnByValue": True})
+          html = ""
+          body = ""
+          deadline = time.time() + 5
+          while time.time() < deadline and (not html or not body):
+              try:
+                  msg = json.loads(ws.recv())
+              except Exception:
+                  continue
+              if msg.get("id") == eval_id:
+                  html = msg.get("result", {}).get("result", {}).get("value", "")
+              elif msg.get("id") == body_id:
+                  body = msg.get("result", {}).get("result", {}).get("value", "")
+
+          with open("/tmp/browser-events.json", "w", encoding="utf-8") as f:
+              json.dump(events, f, ensure_ascii=False, indent=2)
+          with open("/tmp/browser-dom.html", "w", encoding="utf-8") as f:
+              f.write(html)
+          with open("/tmp/browser-body.txt", "w", encoding="utf-8") as f:
+              f.write(body)
+
+          print("BODY_START")
+          print(body[:5000])
+          print("BODY_END")
+          print(f"Captured {len(events)} browser events")
+          print("ERROR_PAGE=", "Algo não carregou" in body)
+          ws.close()
+          PY
+
+          echo "--- Chrome stderr ---" >> /tmp/browser-runtime.log
+          tail -200 /tmp/chrome-stderr.log >> /tmp/browser-runtime.log || true
+          echo "--- Final body ---" >> /tmp/browser-runtime.log
+          cat /tmp/browser-body.txt >> /tmp/browser-runtime.log || true
+
+      - name: Upload browser diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-hydration-diagnostic
+          path: |
+            /tmp/browser-runtime.log
+            /tmp/browser-events.json
+            /tmp/browser-dom.html
+            /tmp/browser-body.txt
+            /tmp/chrome-stderr.log
+            /tmp/chrome-stdout.log
+          if-no-files-found: ignore
+          retention-days: 1
