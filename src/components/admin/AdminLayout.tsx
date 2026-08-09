@@ -2,7 +2,7 @@ import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import {
   BarChart3, Boxes, Compass, ExternalLink, Gauge, LayoutDashboard, LogOut, Megaphone, Moon, Package,
-  PanelsTopLeft, Plug, Settings, ShieldCheck, ShoppingCart, Sparkles, Store, Sun, Target, Users, WalletCards, Zap,
+  PanelsTopLeft, Plug, RotateCcw, Settings, ShieldCheck, ShoppingCart, Sparkles, Store, Sun, Target, Users, WalletCards, Zap,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
@@ -17,6 +17,7 @@ const nav: NavItem[] = [
   { label: "Home Builder", icon: PanelsTopLeft, to: "/admin/home", phase: 2 },
   { label: "Integrações", icon: Plug, to: "/admin/integrations", phase: 1 },
   { label: "Pedidos", icon: ShoppingCart, to: "/admin/orders", phase: 3 },
+  { label: "Recuperação de carrinho", icon: RotateCcw, to: "/admin/recovery", phase: 3 },
   { label: "Catálogo", icon: Package, to: "/admin/catalog", phase: 2 },
   { label: "Importador AliExpress", icon: Boxes, to: "/admin/imports", phase: 4 },
   { label: "Descobrir produtos", icon: Compass, to: "/admin/discover", phase: 4 },
