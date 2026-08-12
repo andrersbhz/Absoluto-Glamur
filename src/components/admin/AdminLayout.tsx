@@ -9,6 +9,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useTheme } from "@/hooks/use-theme";
 import { Badge } from "@/components/ui/badge";
 import { AdminPushToggle } from "@/components/admin/AdminPushToggle";
+import "@/admin-blog.css";
 
 type NavItem = { label: string; icon: typeof LayoutDashboard; to?: string; phase: number };
 
