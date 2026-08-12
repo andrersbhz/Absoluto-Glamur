@@ -5,6 +5,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
 import { categoriesQuery } from "@/lib/catalog";
 import { useCart } from "@/lib/cart-store";
+import { LatestBlogCarousel } from "@/components/store/LatestBlogCarousel";
 import "@/storefront-minimal.css";
 import "@/blog.css";
 
@@ -130,6 +131,8 @@ export function StoreLayout({ children }: { children: ReactNode }) {
       </header>
 
       <main className="flex-1">{children}</main>
+
+      {kind === "home" && <LatestBlogCarousel />}
 
       <footer className="store-footer mt-20 border-t">
         <div className="mx-auto grid max-w-7xl gap-10 px-4 py-14 sm:grid-cols-2 sm:px-6 lg:grid-cols-[1.4fr_1fr_1fr_1fr] lg:px-8 lg:py-16">
