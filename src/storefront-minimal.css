@@ -1,0 +1,325 @@
+/*
+ * Absoluto Glamur — storefront minimal layer
+ * Escopo exclusivo da loja pública. Não altera o painel administrativo.
+ * Mantém a estrutura/funcionalidade existente e moderniza somente a apresentação.
+ */
+
+.storefront-shell {
+  --background: #fbfaf8;
+  --foreground: #171716;
+  --card: #ffffff;
+  --card-foreground: #171716;
+  --popover: #ffffff;
+  --popover-foreground: #171716;
+  --primary: #171716;
+  --primary-foreground: #ffffff;
+  --secondary: #f2f0ec;
+  --secondary-foreground: #272522;
+  --muted: #f2f0ec;
+  --muted-foreground: #76716b;
+  --accent: #d8c8b7;
+  --accent-foreground: #211f1d;
+  --border: #e7e3de;
+  --input: #ded9d3;
+  --ring: #171716;
+  --plum: #827468;
+  --berry: #a88f7d;
+  --lavender: #c9c2bd;
+  --champagne: #b79779;
+  --success: #426452;
+  --warning: #9b7445;
+  --radius: 0.5rem;
+  --font-serif: "Inter", ui-sans-serif, system-ui, sans-serif;
+
+  background: var(--background);
+  color: var(--foreground);
+  letter-spacing: -0.008em;
+}
+
+.storefront-shell ::selection {
+  background: #171716;
+  color: #ffffff;
+}
+
+.storefront-shell .font-display,
+.storefront-shell h1,
+.storefront-shell h2,
+.storefront-shell h3 {
+  font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+  font-weight: 500;
+  letter-spacing: -0.035em;
+}
+
+.storefront-shell a,
+.storefront-shell button,
+.storefront-shell input,
+.storefront-shell textarea,
+.storefront-shell select {
+  transition-duration: 180ms;
+}
+
+.storefront-shell input,
+.storefront-shell textarea,
+.storefront-shell select {
+  border-color: var(--border);
+  background: #ffffff;
+  box-shadow: none;
+}
+
+.storefront-shell input:focus,
+.storefront-shell textarea:focus,
+.storefront-shell select:focus {
+  border-color: #171716;
+  box-shadow: 0 0 0 1px #171716;
+  outline: none;
+}
+
+.storefront-shell .store-header {
+  background: rgba(251, 250, 248, 0.94);
+  border-color: rgba(23, 23, 22, 0.1);
+  backdrop-filter: blur(18px);
+}
+
+.storefront-shell .store-logo {
+  color: #171716;
+  font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+  font-weight: 600;
+  letter-spacing: -0.055em;
+}
+
+.storefront-shell .store-nav-link {
+  color: #68645f;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+
+.storefront-shell .store-nav-link:hover {
+  color: #171716;
+}
+
+.storefront-shell .store-icon-button {
+  border: 1px solid transparent;
+  color: #171716;
+}
+
+.storefront-shell .store-icon-button:hover {
+  border-color: #ded9d3;
+  background: #ffffff;
+}
+
+.storefront-shell .store-search-panel {
+  background: rgba(251, 250, 248, 0.98);
+}
+
+.storefront-shell .store-search-input {
+  min-height: 46px;
+  border-radius: 999px;
+  padding-inline: 1.15rem;
+  font-size: 0.875rem;
+}
+
+.storefront-shell .store-footer {
+  background: #f3f1ed;
+  border-color: #ded9d3;
+}
+
+.storefront-shell .store-footer-title {
+  color: #171716;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+/* ---------- Carrinho ---------- */
+.storefront-shell[data-store-page="cart"] main > div {
+  max-width: 1180px;
+  padding-top: clamp(2.5rem, 5vw, 5rem);
+  padding-bottom: clamp(4rem, 7vw, 7rem);
+}
+
+.storefront-shell[data-store-page="cart"] main h1 {
+  font-size: clamp(2.25rem, 4vw, 3.8rem);
+  font-weight: 500;
+}
+
+.storefront-shell[data-store-page="cart"] main ul > li {
+  border-radius: 0;
+  border-width: 0 0 1px 0;
+  border-color: #e2ded8;
+  background: transparent;
+  box-shadow: none;
+  padding: 1.25rem 0;
+}
+
+.storefront-shell[data-store-page="cart"] main ul > li:first-child {
+  border-top-width: 1px;
+}
+
+.storefront-shell[data-store-page="cart"] main ul > li > a:first-child {
+  width: 104px;
+  height: 120px;
+  border-radius: 0.65rem;
+  background: #f1efeb;
+}
+
+.storefront-shell[data-store-page="cart"] main aside {
+  position: sticky;
+  top: 6.5rem;
+  border: 1px solid #dfdad3;
+  border-radius: 0.8rem;
+  background: #f4f2ee;
+  box-shadow: none;
+  padding: 1.65rem;
+}
+
+.storefront-shell[data-store-page="cart"] main aside > a {
+  min-height: 50px;
+  border-radius: 0.45rem;
+  background: #171716;
+  box-shadow: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  letter-spacing: 0.015em;
+}
+
+.storefront-shell[data-store-page="cart"] main button[aria-label="Diminuir"],
+.storefront-shell[data-store-page="cart"] main button[aria-label="Aumentar"],
+.storefront-shell[data-store-page="cart"] main button[aria-label="Remover"] {
+  border-color: #d9d4cd;
+  background: transparent;
+  border-radius: 999px;
+}
+
+/* ---------- Checkout ---------- */
+.storefront-shell[data-store-page="checkout"] main > div {
+  max-width: 1180px;
+  padding-top: clamp(2.5rem, 5vw, 4.5rem);
+  padding-bottom: clamp(4rem, 7vw, 7rem);
+}
+
+.storefront-shell[data-store-page="checkout"] main h1 {
+  font-size: clamp(2.25rem, 4vw, 3.65rem);
+  font-weight: 500;
+}
+
+.storefront-shell[data-store-page="checkout"] fieldset {
+  border: 1px solid #e1ddd7;
+  border-radius: 0.75rem;
+  background: #ffffff;
+  box-shadow: none;
+  padding: clamp(1.25rem, 3vw, 1.75rem);
+}
+
+.storefront-shell[data-store-page="checkout"] fieldset legend {
+  padding: 0 0.45rem;
+  color: #171716;
+  font-size: 0.92rem;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+.storefront-shell[data-store-page="checkout"] fieldset input:not([type="checkbox"]),
+.storefront-shell[data-store-page="checkout"] fieldset textarea {
+  min-height: 46px;
+  border-radius: 0.4rem;
+  background: #fbfaf8;
+}
+
+.storefront-shell[data-store-page="checkout"] fieldset textarea {
+  min-height: 92px;
+}
+
+.storefront-shell[data-store-page="checkout"] fieldset button {
+  border-radius: 0.55rem;
+  box-shadow: none;
+}
+
+.storefront-shell[data-store-page="checkout"] fieldset button.ring-2 {
+  border-color: #171716;
+  background: #f4f2ee;
+  box-shadow: inset 0 0 0 1px #171716;
+}
+
+.storefront-shell[data-store-page="checkout"] main aside {
+  position: sticky;
+  top: 6.5rem;
+  border: 1px solid #dfdad3;
+  border-radius: 0.8rem;
+  background: #f4f2ee;
+  box-shadow: none;
+  padding: 1.65rem;
+}
+
+.storefront-shell[data-store-page="checkout"] main aside > button[type="submit"] {
+  min-height: 52px;
+  border-radius: 0.45rem;
+  background: #171716;
+  box-shadow: none;
+}
+
+/* ---------- Produto ---------- */
+.storefront-shell[data-store-page="product"] main > div {
+  max-width: 1240px;
+  padding-top: clamp(2rem, 4vw, 3.75rem);
+  padding-bottom: clamp(4rem, 7vw, 7rem);
+}
+
+.storefront-shell[data-store-page="product"] main .aspect-square.rounded-3xl {
+  border-radius: 0.8rem;
+  background: #f1efeb;
+}
+
+.storefront-shell[data-store-page="product"] main h1 {
+  font-size: clamp(2.15rem, 4vw, 3.55rem);
+  line-height: 1.04;
+}
+
+.storefront-shell[data-store-page="product"] main button.bg-primary {
+  min-height: 50px;
+  border-radius: 0.45rem;
+  box-shadow: none;
+}
+
+.storefront-shell[data-store-page="product"] #avaliacoes {
+  margin-top: clamp(4rem, 8vw, 7rem);
+  border-top-color: #dcd7d0;
+  padding-top: clamp(2.25rem, 4vw, 3.5rem);
+}
+
+.storefront-shell[data-store-page="product"] #avaliacoes .rounded-2xl,
+.storefront-shell[data-store-page="product"] #avaliacoes .rounded-xl {
+  border-radius: 0.65rem;
+}
+
+.storefront-shell[data-store-page="product"] #avaliacoes .shadow-soft {
+  box-shadow: none;
+}
+
+/* ---------- Responsividade ---------- */
+@media (max-width: 1023px) {
+  .storefront-shell[data-store-page="cart"] main aside,
+  .storefront-shell[data-store-page="checkout"] main aside {
+    position: static;
+  }
+}
+
+@media (max-width: 640px) {
+  .storefront-shell[data-store-page="cart"] main ul > li {
+    gap: 0.85rem;
+  }
+
+  .storefront-shell[data-store-page="cart"] main ul > li > a:first-child {
+    width: 86px;
+    height: 104px;
+  }
+
+  .storefront-shell[data-store-page="cart"] main aside,
+  .storefront-shell[data-store-page="checkout"] main aside,
+  .storefront-shell[data-store-page="checkout"] fieldset {
+    padding: 1.15rem;
+  }
+}
