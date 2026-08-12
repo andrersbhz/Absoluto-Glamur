@@ -1,7 +1,7 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import {
-  BarChart3, Boxes, Compass, ExternalLink, Gauge, LayoutDashboard, LogOut, Megaphone, Moon, Package,
+  BarChart3, BookOpen, Boxes, Compass, ExternalLink, Gauge, LayoutDashboard, LogOut, Megaphone, Moon, Package,
   PanelsTopLeft, Plug, RotateCcw, Settings, ShieldCheck, ShoppingCart, Sparkles, Store, Sun, Target, Users, WalletCards, Zap,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -25,6 +25,7 @@ const nav: NavItem[] = [
   { label: "Oportunidades v1.2", icon: Target, to: "/admin/opportunities", phase: 5 },
   { label: "Precificação v1.2", icon: WalletCards, to: "/admin/pricing", phase: 5 },
   { label: "Marketing & SEO", icon: Megaphone, to: "/admin/marketing", phase: 6 },
+  { label: "Blog SEO & Social", icon: BookOpen, to: "/admin/blog", phase: 6 },
   { label: "Performance v1.2", icon: BarChart3, to: "/admin/performance", phase: 8 },
   { label: "IA (OpenAI/Gemini)", icon: Zap, to: "/admin/ai", phase: 7 },
   { label: "Dashboard executivo", icon: BarChart3, to: "/admin/dashboard", phase: 8 },
