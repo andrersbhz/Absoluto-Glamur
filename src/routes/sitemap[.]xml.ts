@@ -4,7 +4,6 @@ import { createClient } from "@supabase/supabase-js";
 
 const BASE_URL = "https://absolutoglamur.com.br";
 
-
 type Entry = {
   path: string;
   lastmod?: string;
@@ -18,7 +17,7 @@ async function fetchDynamic(): Promise<Entry[]> {
   if (!url || !key) return [];
   const client = createClient(url, key, { auth: { persistSession: false } });
 
-  const [products, categories, collections] = await Promise.all([
+  const [products, categories, collections, blogPosts] = await Promise.all([
     client
       .from("products")
       .select("slug, updated_at, category:categories(slug)")
@@ -26,6 +25,13 @@ async function fetchDynamic(): Promise<Entry[]> {
       .limit(5000),
     client.from("categories").select("slug, updated_at").limit(500),
     client.from("collections").select("slug, updated_at").eq("is_featured", true).limit(200),
+    (client as any)
+      .from("blog_posts")
+      .select("slug,updated_at,published_at")
+      .eq("status", "published")
+      .lte("published_at", new Date().toISOString())
+      .order("published_at", { ascending: false })
+      .limit(5000),
   ]);
 
   const out: Entry[] = [];
@@ -39,6 +45,14 @@ async function fetchDynamic(): Promise<Entry[]> {
   for (const c of collections.data ?? []) {
     out.push({ path: `/products?collection=${c.slug}`, lastmod: c.updated_at, changefreq: "weekly", priority: "0.6" });
   }
+  for (const post of blogPosts.data ?? []) {
+    out.push({
+      path: `/blog/${post.slug}`,
+      lastmod: post.updated_at ?? post.published_at,
+      changefreq: "weekly",
+      priority: "0.75",
+    });
+  }
   return out;
 }
 
@@ -49,6 +63,7 @@ export const Route = createFileRoute("/sitemap.xml")({
         const staticEntries: Entry[] = [
           { path: "/", changefreq: "weekly", priority: "1.0" },
           { path: "/products", changefreq: "daily", priority: "0.9" },
+          { path: "/blog", changefreq: "daily", priority: "0.85" },
           { path: "/cart", changefreq: "monthly", priority: "0.3" },
           { path: "/auth", changefreq: "monthly", priority: "0.3" },
         ];
@@ -86,7 +101,7 @@ export const Route = createFileRoute("/sitemap.xml")({
         return new Response(xml, {
           headers: {
             "Content-Type": "application/xml",
-            "Cache-Control": "public, max-age=3600",
+            "Cache-Control": "public, max-age=1800",
           },
         });
       },
