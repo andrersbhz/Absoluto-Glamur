@@ -1,0 +1,87 @@
+.storefront-shell .blog-prose {
+  color: #3a3036;
+  font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+  font-size: 1rem;
+  line-height: 1.9;
+}
+
+.storefront-shell .blog-prose > * + * {
+  margin-top: 1.25rem;
+}
+
+.storefront-shell .blog-prose h2,
+.storefront-shell .blog-prose h3,
+.storefront-shell .blog-prose h4 {
+  scroll-margin-top: 7rem;
+  color: #251e23;
+  font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+  font-weight: 650;
+  line-height: 1.2;
+  letter-spacing: -0.025em;
+}
+
+.storefront-shell .blog-prose h2 {
+  margin-top: 2.75rem;
+  font-size: clamp(1.65rem, 3vw, 2.25rem);
+}
+
+.storefront-shell .blog-prose h3 {
+  margin-top: 2.1rem;
+  font-size: clamp(1.3rem, 2vw, 1.65rem);
+}
+
+.storefront-shell .blog-prose h4 {
+  margin-top: 1.75rem;
+  font-size: 1.15rem;
+}
+
+.storefront-shell .blog-prose p,
+.storefront-shell .blog-prose li {
+  color: #51454c;
+}
+
+.storefront-shell .blog-prose ul,
+.storefront-shell .blog-prose ol {
+  margin-left: 1.3rem;
+  padding-left: 0.7rem;
+}
+
+.storefront-shell .blog-prose ul { list-style: disc; }
+.storefront-shell .blog-prose ol { list-style: decimal; }
+
+.storefront-shell .blog-prose li + li {
+  margin-top: 0.5rem;
+}
+
+.storefront-shell .blog-prose strong {
+  color: #3c2d36;
+  font-weight: 700;
+}
+
+.storefront-shell .blog-prose a {
+  color: #a84c69;
+  font-weight: 600;
+  text-decoration: underline;
+  text-decoration-color: rgba(198, 75, 118, 0.35);
+  text-underline-offset: 0.2em;
+}
+
+.storefront-shell .blog-prose a:hover {
+  color: #c64b76;
+  text-decoration-color: currentColor;
+}
+
+.storefront-shell .blog-prose blockquote {
+  margin: 2rem 0;
+  border-left: 3px solid #d7b47a;
+  border-radius: 0 0.75rem 0.75rem 0;
+  background: #f7efee;
+  padding: 1rem 1.25rem;
+  color: #6d405f;
+}
+
+.storefront-shell .blog-prose hr {
+  margin: 2.5rem 0;
+  border: 0;
+  border-top: 1px solid #e9dddf;
+}
