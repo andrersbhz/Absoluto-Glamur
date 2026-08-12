@@ -5,7 +5,9 @@ import { useAuth } from "@/hooks/use-auth";
 import { useQuery } from "@tanstack/react-query";
 import { categoriesQuery } from "@/lib/catalog";
 import { useCart } from "@/lib/cart-store";
+import { LatestBlogCarousel } from "@/components/store/LatestBlogCarousel";
 import "@/storefront-minimal.css";
+import "@/blog.css";
 
 function pageKind(pathname: string): "home" | "cart" | "checkout" | "catalog" | "product" | "store" {
   if (pathname === "/") return "home";
@@ -13,7 +15,7 @@ function pageKind(pathname: string): "home" | "cart" | "checkout" | "catalog" | 
   if (pathname === "/checkout" || pathname.startsWith("/checkout/")) return "checkout";
   if (pathname === "/products" || pathname.startsWith("/products/")) return "catalog";
   const segments = pathname.split("/").filter(Boolean);
-  if (segments.length === 2) return "product";
+  if (segments.length === 2 && !pathname.startsWith("/blog/")) return "product";
   return "store";
 }
 
@@ -56,7 +58,7 @@ export function StoreLayout({ children }: { children: ReactNode }) {
             absoluto glamur<span className="text-plum">.</span>
           </Link>
 
-          <nav className="hidden items-center gap-7 md:flex">
+          <nav className="hidden items-center gap-6 md:flex">
             {categories.slice(0, 5).map((c) => (
               <Link
                 key={c.id}
@@ -67,6 +69,9 @@ export function StoreLayout({ children }: { children: ReactNode }) {
                 {c.name}
               </Link>
             ))}
+            <Link to="/blog" search={{} as never} className="store-nav-link">
+              Blog
+            </Link>
           </nav>
 
           <div className="flex items-center gap-0.5 sm:gap-1">
@@ -127,6 +132,8 @@ export function StoreLayout({ children }: { children: ReactNode }) {
 
       <main className="flex-1">{children}</main>
 
+      {kind === "home" && <LatestBlogCarousel />}
+
       <footer className="store-footer mt-20 border-t">
         <div className="mx-auto grid max-w-7xl gap-10 px-4 py-14 sm:grid-cols-2 sm:px-6 lg:grid-cols-[1.4fr_1fr_1fr_1fr] lg:px-8 lg:py-16">
           <div>
@@ -138,13 +145,14 @@ export function StoreLayout({ children }: { children: ReactNode }) {
           <div>
             <p className="store-footer-title">Loja</p>
             <ul className="mt-4 space-y-2.5 text-sm text-muted-foreground">
-              {categories.slice(0, 5).map((c) => (
+              {categories.slice(0, 4).map((c) => (
                 <li key={c.id}>
                   <Link to="/products" search={{ category: c.slug } as never} className="hover:text-foreground">
                     {c.name}
                   </Link>
                 </li>
               ))}
+              <li><Link to="/blog" search={{} as never} className="hover:text-foreground">Blog de beleza</Link></li>
             </ul>
           </div>
           <div>
