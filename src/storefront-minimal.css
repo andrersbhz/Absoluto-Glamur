@@ -29,13 +29,13 @@
   --success: #2f8b6d;
   --warning: #d3943a;
   --radius: 0.625rem;
-  --font-serif: "Inter", ui-sans-serif, system-ui, sans-serif;
 
   background:
     radial-gradient(circle at 8% 0%, rgba(198, 75, 118, 0.075), transparent 30rem),
     radial-gradient(circle at 92% 14%, rgba(215, 180, 122, 0.09), transparent 28rem),
     var(--background);
   color: var(--foreground);
+  font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
   letter-spacing: -0.008em;
 }
 
@@ -44,14 +44,34 @@
   color: #ffffff;
 }
 
+/*
+ * Regra tipográfica da loja:
+ * Fraunces fica EXCLUSIVAMENTE na marca/logo.
+ * Títulos, subtítulos, cards, botões, filtros, avaliações e formulários usam Inter.
+ */
 .storefront-shell .font-display,
 .storefront-shell h1,
 .storefront-shell h2,
-.storefront-shell h3 {
+.storefront-shell h3,
+.storefront-shell h4,
+.storefront-shell h5,
+.storefront-shell h6 {
   font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
-  font-weight: 500;
+  font-weight: 600;
   letter-spacing: -0.035em;
   color: #251e23;
+}
+
+.storefront-shell a,
+.storefront-shell button,
+.storefront-shell input,
+.storefront-shell textarea,
+.storefront-shell select,
+.storefront-shell label,
+.storefront-shell p,
+.storefront-shell span,
+.storefront-shell li {
+  font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
 }
 
 .storefront-shell a,
@@ -130,11 +150,18 @@
   box-shadow: 0 6px 24px rgba(109, 64, 95, 0.04);
 }
 
+/* Único ponto do storefront que usa a fonte de marca. */
+.storefront-shell .store-logo,
+.storefront-shell .store-logo *,
+.storefront-shell .brand-font,
+.storefront-shell .brand-font * {
+  font-family: "Fraunces", ui-serif, Georgia, serif !important;
+}
+
 .storefront-shell .store-logo {
   color: #6d405f;
-  font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
-  font-weight: 700;
-  letter-spacing: -0.055em;
+  font-weight: 600;
+  letter-spacing: -0.045em;
 }
 
 .storefront-shell .store-logo .text-plum,
@@ -211,6 +238,32 @@
   border-color: rgba(198, 75, 118, 0.3);
 }
 
+/*
+ * Páginas internas da loja — mantém a mesma identidade da Home.
+ * O gradiente é suave para não competir com fotos e informações do produto.
+ */
+.storefront-shell:not([data-store-page="home"]) main {
+  background:
+    radial-gradient(circle at 0% 0%, rgba(168, 144, 174, 0.07), transparent 26rem),
+    radial-gradient(circle at 100% 10%, rgba(215, 180, 122, 0.08), transparent 28rem),
+    linear-gradient(180deg, #fff8f7 0%, #fffdfc 48%, #fff8f7 100%);
+}
+
+.storefront-shell:not([data-store-page="home"]) main .bg-card,
+.storefront-shell:not([data-store-page="home"]) main [data-slot="card"] {
+  border-color: #eadcdf;
+  background-color: #ffffff;
+}
+
+.storefront-shell:not([data-store-page="home"]) main .bg-secondary,
+.storefront-shell:not([data-store-page="home"]) main .bg-muted {
+  background-color: #f7efee;
+}
+
+.storefront-shell:not([data-store-page="home"]) main a:not(.bg-primary):hover {
+  color: #c64b76;
+}
+
 /* ---------- Carrinho ---------- */
 .storefront-shell[data-store-page="cart"] main > div {
   max-width: 1180px;
@@ -220,7 +273,7 @@
 
 .storefront-shell[data-store-page="cart"] main h1 {
   font-size: clamp(2.25rem, 4vw, 3.8rem);
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .storefront-shell[data-store-page="cart"] main ul > li {
@@ -295,7 +348,7 @@
 
 .storefront-shell[data-store-page="checkout"] main h1 {
   font-size: clamp(2.25rem, 4vw, 3.65rem);
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .storefront-shell[data-store-page="checkout"] fieldset {
