@@ -29,6 +29,12 @@ export function StoreLayout({ children }: { children: ReactNode }) {
   const kind = pageKind(location.pathname);
 
   useEffect(() => {
+    // A loja pública usa sempre a identidade visual clara da marca.
+    // O modo escuro pertence somente ao painel administrativo e não pode vazar para o storefront.
+    document.documentElement.classList.remove("dark");
+  }, []);
+
+  useEffect(() => {
     if (!openSearch) return;
     const timer = setTimeout(() => {
       if (q.trim().length >= 2) {
@@ -93,7 +99,7 @@ export function StoreLayout({ children }: { children: ReactNode }) {
             >
               <ShoppingBag className="h-[18px] w-[18px]" />
               {cartCount > 0 && (
-                <span className="absolute -right-0.5 -top-0.5 inline-flex h-[17px] min-w-[17px] items-center justify-center rounded-full bg-foreground px-1 text-[9px] font-semibold text-background">
+                <span className="absolute -right-0.5 -top-0.5 inline-flex h-[17px] min-w-[17px] items-center justify-center rounded-full bg-primary px-1 text-[9px] font-semibold text-primary-foreground">
                   {cartCount}
                 </span>
               )}

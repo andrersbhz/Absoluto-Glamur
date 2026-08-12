@@ -1,43 +1,46 @@
 /*
- * Absoluto Glamur — storefront minimal layer
+ * Absoluto Glamur — storefront brand layer
  * Escopo exclusivo da loja pública. Não altera o painel administrativo.
- * Mantém a estrutura/funcionalidade existente e moderniza somente a apresentação.
+ * Mantém a estrutura/funcionalidade existente e aplica a identidade feminina premium.
  */
 
 .storefront-shell {
-  --background: #fbfaf8;
-  --foreground: #171716;
+  --background: #fff8f7;
+  --foreground: #251e23;
   --card: #ffffff;
-  --card-foreground: #171716;
+  --card-foreground: #251e23;
   --popover: #ffffff;
-  --popover-foreground: #171716;
-  --primary: #171716;
+  --popover-foreground: #251e23;
+  --primary: #c64b76;
   --primary-foreground: #ffffff;
-  --secondary: #f2f0ec;
-  --secondary-foreground: #272522;
-  --muted: #f2f0ec;
-  --muted-foreground: #76716b;
-  --accent: #d8c8b7;
-  --accent-foreground: #211f1d;
-  --border: #e7e3de;
-  --input: #ded9d3;
-  --ring: #171716;
-  --plum: #827468;
-  --berry: #a88f7d;
-  --lavender: #c9c2bd;
-  --champagne: #b79779;
-  --success: #426452;
-  --warning: #9b7445;
-  --radius: 0.5rem;
+  --secondary: #f7efee;
+  --secondary-foreground: #6d405f;
+  --muted: #f7efee;
+  --muted-foreground: #70636b;
+  --accent: #d7b47a;
+  --accent-foreground: #4d3728;
+  --border: #e9dddf;
+  --input: #e9dddf;
+  --ring: #c64b76;
+  --plum: #6d405f;
+  --berry: #a84c69;
+  --lavender: #a890ae;
+  --champagne: #d7b47a;
+  --success: #2f8b6d;
+  --warning: #d3943a;
+  --radius: 0.625rem;
   --font-serif: "Inter", ui-sans-serif, system-ui, sans-serif;
 
-  background: var(--background);
+  background:
+    radial-gradient(circle at 8% 0%, rgba(198, 75, 118, 0.075), transparent 30rem),
+    radial-gradient(circle at 92% 14%, rgba(215, 180, 122, 0.09), transparent 28rem),
+    var(--background);
   color: var(--foreground);
   letter-spacing: -0.008em;
 }
 
 .storefront-shell ::selection {
-  background: #171716;
+  background: #c64b76;
   color: #ffffff;
 }
 
@@ -48,6 +51,7 @@
   font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
   font-weight: 500;
   letter-spacing: -0.035em;
+  color: #251e23;
 }
 
 .storefront-shell a,
@@ -63,54 +67,106 @@
 .storefront-shell select {
   border-color: var(--border);
   background: #ffffff;
+  color: var(--foreground);
   box-shadow: none;
 }
 
 .storefront-shell input:focus,
 .storefront-shell textarea:focus,
 .storefront-shell select:focus {
-  border-color: #171716;
-  box-shadow: 0 0 0 1px #171716;
+  border-color: #c64b76;
+  box-shadow: 0 0 0 3px rgba(198, 75, 118, 0.12);
   outline: none;
 }
 
+.storefront-shell .bg-primary {
+  background-color: #c64b76;
+}
+
+.storefront-shell .text-primary {
+  color: #c64b76;
+}
+
+.storefront-shell .border-primary {
+  border-color: #c64b76;
+}
+
+.storefront-shell .bg-secondary {
+  background-color: #f7efee;
+}
+
+.storefront-shell .text-plum {
+  color: #6d405f;
+}
+
+.storefront-shell .text-berry {
+  color: #a84c69;
+}
+
+.storefront-shell .text-champagne {
+  color: #d7b47a;
+}
+
+.storefront-shell .fill-champagne {
+  fill: #d7b47a;
+}
+
+.storefront-shell button.bg-primary,
+.storefront-shell a.bg-primary {
+  color: #ffffff;
+  box-shadow: 0 8px 22px rgba(198, 75, 118, 0.18);
+}
+
+.storefront-shell button.bg-primary:hover,
+.storefront-shell a.bg-primary:hover {
+  background-color: #a84c69;
+  box-shadow: 0 10px 26px rgba(168, 76, 105, 0.24);
+}
+
 .storefront-shell .store-header {
-  background: rgba(251, 250, 248, 0.94);
-  border-color: rgba(23, 23, 22, 0.1);
+  background: rgba(255, 248, 247, 0.94);
+  border-color: rgba(109, 64, 95, 0.12);
   backdrop-filter: blur(18px);
+  box-shadow: 0 6px 24px rgba(109, 64, 95, 0.04);
 }
 
 .storefront-shell .store-logo {
-  color: #171716;
+  color: #6d405f;
   font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: -0.055em;
 }
 
+.storefront-shell .store-logo .text-plum,
+.storefront-shell .store-logo span {
+  color: #c64b76;
+}
+
 .storefront-shell .store-nav-link {
-  color: #68645f;
+  color: #6d405f;
   font-size: 0.72rem;
-  font-weight: 600;
+  font-weight: 650;
   letter-spacing: 0.11em;
   text-transform: uppercase;
 }
 
 .storefront-shell .store-nav-link:hover {
-  color: #171716;
+  color: #c64b76;
 }
 
 .storefront-shell .store-icon-button {
   border: 1px solid transparent;
-  color: #171716;
+  color: #6d405f;
 }
 
 .storefront-shell .store-icon-button:hover {
-  border-color: #ded9d3;
-  background: #ffffff;
+  border-color: rgba(198, 75, 118, 0.22);
+  background: #f7efee;
+  color: #c64b76;
 }
 
 .storefront-shell .store-search-panel {
-  background: rgba(251, 250, 248, 0.98);
+  background: rgba(255, 248, 247, 0.985);
 }
 
 .storefront-shell .store-search-input {
@@ -121,16 +177,38 @@
 }
 
 .storefront-shell .store-footer {
-  background: #f3f1ed;
-  border-color: #ded9d3;
+  background: linear-gradient(180deg, #f9f1f1 0%, #f7efee 100%);
+  border-color: #e9dddf;
 }
 
 .storefront-shell .store-footer-title {
-  color: #171716;
+  color: #6d405f;
   font-size: 0.72rem;
   font-weight: 700;
   letter-spacing: 0.12em;
   text-transform: uppercase;
+}
+
+.storefront-shell .store-footer a:hover {
+  color: #c64b76;
+}
+
+.storefront-shell .rounded-xl.bg-card,
+.storefront-shell .rounded-2xl.bg-card,
+.storefront-shell .rounded-3xl.bg-card {
+  border-color: #eadcdf;
+  box-shadow: 0 10px 30px rgba(109, 64, 95, 0.055);
+}
+
+.storefront-shell [class*="bg-primary/10"],
+.storefront-shell [class*="bg-primary/5"] {
+  color: #a84c69;
+}
+
+.storefront-shell [class*="border-primary/40"],
+.storefront-shell [class*="border-primary/30"],
+.storefront-shell [class*="border-primary/20"] {
+  border-color: rgba(198, 75, 118, 0.3);
 }
 
 /* ---------- Carrinho ---------- */
@@ -148,7 +226,7 @@
 .storefront-shell[data-store-page="cart"] main ul > li {
   border-radius: 0;
   border-width: 0 0 1px 0;
-  border-color: #e2ded8;
+  border-color: #e9dddf;
   background: transparent;
   box-shadow: none;
   padding: 1.25rem 0;
@@ -162,36 +240,50 @@
   width: 104px;
   height: 120px;
   border-radius: 0.65rem;
-  background: #f1efeb;
+  background: #f7efee;
 }
 
 .storefront-shell[data-store-page="cart"] main aside {
   position: sticky;
   top: 6.5rem;
-  border: 1px solid #dfdad3;
+  border: 1px solid #e9dddf;
   border-radius: 0.8rem;
-  background: #f4f2ee;
-  box-shadow: none;
+  background: linear-gradient(180deg, #ffffff 0%, #fff8f7 100%);
+  box-shadow: 0 18px 45px rgba(109, 64, 95, 0.08);
   padding: 1.65rem;
 }
 
 .storefront-shell[data-store-page="cart"] main aside > a {
   min-height: 50px;
-  border-radius: 0.45rem;
-  background: #171716;
-  box-shadow: none;
+  border-radius: 0.55rem;
+  background: #c64b76;
+  color: #ffffff;
+  box-shadow: 0 10px 24px rgba(198, 75, 118, 0.2);
   display: flex;
   align-items: center;
   justify-content: center;
   letter-spacing: 0.015em;
 }
 
+.storefront-shell[data-store-page="cart"] main aside > a:hover {
+  background: #a84c69;
+}
+
 .storefront-shell[data-store-page="cart"] main button[aria-label="Diminuir"],
 .storefront-shell[data-store-page="cart"] main button[aria-label="Aumentar"],
 .storefront-shell[data-store-page="cart"] main button[aria-label="Remover"] {
-  border-color: #d9d4cd;
-  background: transparent;
+  border-color: #e2d1d6;
+  background: #ffffff;
+  color: #6d405f;
   border-radius: 999px;
+}
+
+.storefront-shell[data-store-page="cart"] main button[aria-label="Diminuir"]:hover,
+.storefront-shell[data-store-page="cart"] main button[aria-label="Aumentar"]:hover,
+.storefront-shell[data-store-page="cart"] main button[aria-label="Remover"]:hover {
+  border-color: #c64b76;
+  background: #f7efee;
+  color: #c64b76;
 }
 
 /* ---------- Checkout ---------- */
@@ -207,26 +299,26 @@
 }
 
 .storefront-shell[data-store-page="checkout"] fieldset {
-  border: 1px solid #e1ddd7;
+  border: 1px solid #e9dddf;
   border-radius: 0.75rem;
   background: #ffffff;
-  box-shadow: none;
+  box-shadow: 0 12px 34px rgba(109, 64, 95, 0.055);
   padding: clamp(1.25rem, 3vw, 1.75rem);
 }
 
 .storefront-shell[data-store-page="checkout"] fieldset legend {
   padding: 0 0.45rem;
-  color: #171716;
+  color: #6d405f;
   font-size: 0.92rem;
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: -0.02em;
 }
 
 .storefront-shell[data-store-page="checkout"] fieldset input:not([type="checkbox"]),
 .storefront-shell[data-store-page="checkout"] fieldset textarea {
   min-height: 46px;
-  border-radius: 0.4rem;
-  background: #fbfaf8;
+  border-radius: 0.45rem;
+  background: #fffafa;
 }
 
 .storefront-shell[data-store-page="checkout"] fieldset textarea {
@@ -239,26 +331,32 @@
 }
 
 .storefront-shell[data-store-page="checkout"] fieldset button.ring-2 {
-  border-color: #171716;
-  background: #f4f2ee;
-  box-shadow: inset 0 0 0 1px #171716;
+  border-color: #c64b76;
+  background: #f7efee;
+  color: #6d405f;
+  box-shadow: inset 0 0 0 1px #c64b76;
 }
 
 .storefront-shell[data-store-page="checkout"] main aside {
   position: sticky;
   top: 6.5rem;
-  border: 1px solid #dfdad3;
+  border: 1px solid #e9dddf;
   border-radius: 0.8rem;
-  background: #f4f2ee;
-  box-shadow: none;
+  background: linear-gradient(180deg, #ffffff 0%, #fff8f7 100%);
+  box-shadow: 0 18px 45px rgba(109, 64, 95, 0.08);
   padding: 1.65rem;
 }
 
 .storefront-shell[data-store-page="checkout"] main aside > button[type="submit"] {
   min-height: 52px;
-  border-radius: 0.45rem;
-  background: #171716;
-  box-shadow: none;
+  border-radius: 0.55rem;
+  background: #c64b76;
+  color: #ffffff;
+  box-shadow: 0 10px 24px rgba(198, 75, 118, 0.2);
+}
+
+.storefront-shell[data-store-page="checkout"] main aside > button[type="submit"]:hover {
+  background: #a84c69;
 }
 
 /* ---------- Produto ---------- */
@@ -270,23 +368,30 @@
 
 .storefront-shell[data-store-page="product"] main .aspect-square.rounded-3xl {
   border-radius: 0.8rem;
-  background: #f1efeb;
+  background: linear-gradient(145deg, #fffafa 0%, #f7efee 100%);
 }
 
 .storefront-shell[data-store-page="product"] main h1 {
   font-size: clamp(2.15rem, 4vw, 3.55rem);
   line-height: 1.04;
+  color: #4e3046;
 }
 
 .storefront-shell[data-store-page="product"] main button.bg-primary {
   min-height: 50px;
-  border-radius: 0.45rem;
-  box-shadow: none;
+  border-radius: 0.55rem;
+  background: #c64b76;
+  color: #ffffff;
+  box-shadow: 0 10px 26px rgba(198, 75, 118, 0.22);
+}
+
+.storefront-shell[data-store-page="product"] main button.bg-primary:hover {
+  background: #a84c69;
 }
 
 .storefront-shell[data-store-page="product"] #avaliacoes {
   margin-top: clamp(4rem, 8vw, 7rem);
-  border-top-color: #dcd7d0;
+  border-top-color: #e5d3d8;
   padding-top: clamp(2.25rem, 4vw, 3.5rem);
 }
 
@@ -296,7 +401,34 @@
 }
 
 .storefront-shell[data-store-page="product"] #avaliacoes .shadow-soft {
-  box-shadow: none;
+  box-shadow: 0 10px 30px rgba(109, 64, 95, 0.05);
+}
+
+.storefront-shell[data-store-page="product"] #avaliacoes [class*="bg-[#ff4747]"] {
+  background: rgba(198, 75, 118, 0.1) !important;
+  color: #a84c69 !important;
+}
+
+/* ---------- Catálogo e cards ---------- */
+.storefront-shell[data-store-page="catalog"] .bg-card,
+.storefront-shell[data-store-page="home"] .bg-card,
+.storefront-shell[data-store-page="store"] .bg-card {
+  border-color: #eadcdf;
+}
+
+.storefront-shell[data-store-page="catalog"] .bg-card:hover,
+.storefront-shell[data-store-page="home"] .bg-card:hover,
+.storefront-shell[data-store-page="store"] .bg-card:hover {
+  border-color: rgba(198, 75, 118, 0.32);
+  box-shadow: 0 16px 38px rgba(109, 64, 95, 0.09);
+}
+
+.storefront-shell .text-muted-foreground {
+  color: #70636b;
+}
+
+.storefront-shell .border-border {
+  border-color: #e9dddf;
 }
 
 /* ---------- Responsividade ---------- */
