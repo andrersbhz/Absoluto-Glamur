@@ -2,7 +2,6 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
-
 /* eslint-disable @typescript-eslint/no-explicit-any */
 async function assertCatalog(context: any) {
   const { data: adm } = await context.supabase.rpc("is_admin", { _user_id: context.userId });
@@ -14,17 +13,20 @@ async function assertCatalog(context: any) {
   if (!hasCat) throw new Error("Acesso restrito a administradores ou equipe de catálogo");
 }
 
-const SYSTEM_COPY = `Você é copywriter sênior de beleza e cosméticos da Absoluto Glamur (Brasil), especialista em SEO e copy persuasivo com gatilhos mentais (dor, prova social, autoridade, transformação).
+const SYSTEM_COPY = `Você é copywriter sênior de beleza e cosméticos da Absoluto Glamur (Brasil), especialista em SEO, UX de conteúdo e copy persuasiva para e-commerce.
 
 Diretrizes obrigatórias:
-- SEMPRE em português do Brasil, tom acolhedor, sofisticado e feminino.
-- TÍTULO curto, objetivo, otimizado para SEO (ideal 45-60 caracteres, MÁXIMO 65). Estrutura: [tipo de produto] + [diferencial/ativo principal] + [benefício-chave]. Exemplo: "Creme Gel Hidratante Facial com Ácido Hialurônico". Nada de storytelling, promessa exagerada ou CTA no título.
-- PROIBIDO no título e em todos os textos: emojis, emoticons, símbolos decorativos (✨★☆✅❤♥☀🌸💫⭐🔥😱 etc.), asteriscos soltos, setas, hashtags, "!!", reticências, ALL CAPS.
-- Foco na dor real: rugas, flacidez, manchas, olheiras, ressecamento, cabelo sem vida, autoestima, envelhecimento, textura, poros.
-- Prometa transformação SENSORIAL e ESTÉTICA (viço, luminosidade, firmeza aparente). NUNCA prometa cura, tratamento médico, resultado clínico, "elimina rugas 100%", "botox natural", "milagre".
-- Nunca invente ingredientes, certificações ou aprovação da ANVISA. Use termos genéricos ("ativos hidratantes", "antioxidantes") se faltar dado.
-- Evite clichê vazio ("o melhor do mundo"). Prefira imagens sensoriais.
-- Nunca cite concorrentes ou fontes (AliExpress, Shopee, etc.).
+- SEMPRE em português do Brasil, tom acolhedor, sofisticado, claro e feminino.
+- TÍTULO curto, objetivo, otimizado para SEO (ideal 45-60 caracteres, MÁXIMO 65). Estrutura: [tipo de produto] + [diferencial/ativo principal somente se conhecido] + [benefício-chave]. Exemplo: "Creme Gel Hidratante Facial com Ácido Hialurônico". Nada de storytelling, promessa exagerada ou CTA no título.
+- PROIBIDO no título e em todos os textos: emojis, emoticons, símbolos decorativos, asteriscos soltos, setas, hashtags, "!!", reticências e ALL CAPS.
+- Use gatilhos mentais éticos: identificação com a necessidade, especificidade, clareza, conveniência, pertencimento, autocuidado e transformação sensorial/estética plausível.
+- NUNCA invente prova social, avaliações, número de vendas, autoridade, certificação, estudo, escassez, urgência ou recomendação profissional.
+- Trabalhe apenas dores e necessidades coerentes com os dados recebidos. Não atribua ao produto uma função que não esteja sustentada pelo contexto.
+- Prometa apenas transformação SENSORIAL e ESTÉTICA plausível. NUNCA prometa cura, tratamento médico, resultado clínico, "elimina rugas 100%", "botox natural" ou "milagre".
+- Nunca invente ingredientes, composição, concentração, certificações, fabricante, origem ou aprovação da ANVISA. Se faltar informação, escreva de forma neutra sem criar fatos.
+- Evite clichês vazios. Prefira benefício compreensível, experiência de uso e orientação prática.
+- Nunca cite concorrentes ou fontes como AliExpress, Shopee ou marketplaces.
+- A descrição longa deve ser ESCANEÁVEL: parágrafos curtos, subtítulos objetivos, listas e sequência lógica. Nada de bloco único de texto.
 - SAÍDA: apenas JSON válido, sem markdown, sem \`\`\`json, sem comentários. Strings limpas em PT-BR, sem símbolos decorativos.`;
 
 function extractJson(text: string): any {
@@ -37,6 +39,37 @@ function extractJson(text: string): any {
   const end = cleaned.lastIndexOf("}");
   if (start === -1 || end === -1) throw new Error("IA não retornou JSON");
   return JSON.parse(cleaned.slice(start, end + 1));
+}
+
+const DESCRIPTION_ALLOWED_TAGS = new Set(["p", "br", "strong", "em", "h2", "h3", "ul", "ol", "li"]);
+
+function sanitizeGeneratedDescriptionHtml(raw: string, emojiRe: RegExp, decorRe: RegExp) {
+  let html = raw
+    .replace(emojiRe, "")
+    .replace(decorRe, "")
+    .replace(/<(script|style|iframe|object|embed)[\s\S]*?<\/\1>/gi, "")
+    .replace(/<!--([\s\S]*?)-->/g, "")
+    .replace(/\u0000/g, "");
+
+  html = html.replace(/<\/?([a-zA-Z0-9]+)(\s[^>]*)?>/g, (full, rawTag: string) => {
+    const tag = rawTag.toLowerCase();
+    if (!DESCRIPTION_ALLOWED_TAGS.has(tag)) return "";
+    if (full.startsWith("</")) return `</${tag}>`;
+    if (tag === "br") return "<br>";
+    return `<${tag}>`;
+  });
+
+  // Converte rótulos antigos em subtítulos quando o provider ainda seguir o formato anterior.
+  html = html
+    .replace(/<strong>\s*(Benefícios[^<:]*(?::)?|Benefícios que você sente(?::)?)\s*<\/strong>/gi, (_m, label: string) => `<h2>${label.replace(/:$/, "")}</h2>`)
+    .replace(/<strong>\s*(Modo de uso(?::)?|Como usar(?::)?)\s*<\/strong>/gi, (_m, label: string) => `<h2>${label.replace(/:$/, "")}</h2>`)
+    .replace(/<strong>\s*(Para quem[^<:]*(?::)?)\s*<\/strong>/gi, (_m, label: string) => `<h2>${label.replace(/:$/, "")}</h2>`)
+    .replace(/<p>\s*<\/p>/gi, "")
+    .replace(/[ \t]+/g, " ")
+    .replace(/>\s+</g, "><")
+    .trim();
+
+  return html;
 }
 
 export const optimizeProductCopy = createServerFn({ method: "POST" })
@@ -76,28 +109,31 @@ export const optimizeProductCopy = createServerFn({ method: "POST" })
 CATEGORIA: ${category?.name ?? "beleza"}
 MARCA: ${brand?.name ?? "—"}
 TAGS: ${(prod.tags ?? []).join(", ") || "—"}
-RESUMO ATUAL: ${stripHtml(prod.short_description).slice(0, 400) || "—"}
-DESCRIÇÃO ATUAL: ${stripHtml(prod.description).slice(0, 1200) || "—"}`;
+RESUMO ATUAL: ${stripHtml(prod.short_description).slice(0, 500) || "—"}
+DESCRIÇÃO ATUAL: ${stripHtml(prod.description).slice(0, 1800) || "—"}`;
 
-    const prompt = `Analise o produto abaixo e reescreva TODO o copy para maximizar conversão em e-commerce de beleza.
+    const prompt = `Analise o produto abaixo e reescreva TODO o copy para conversão, clareza e SEO de e-commerce de beleza.
 
 ${contextBlock}
 
 Retorne JSON com esta estrutura EXATA:
 {
-  "name": "título CURTO e OBJETIVO em PT-BR, 45-60 caracteres (máx 65), focado em SEO. Estrutura: [tipo de produto] + [ativo/diferencial] + [benefício-chave]. Ex.: 'Creme Gel Hidratante Facial com Ácido Hialurônico'. Sem emojis, sem símbolos, sem promessa, sem CTA, sem ALL CAPS.",
-  "short_description": "resumo persuasivo em 1-2 frases (máx 220 caracteres) que gera desejo, sem emojis/símbolos",
-  "description_html": "HTML pronto com <p>, <strong>, <ul><li>. Estrutura: (1) parágrafo de abertura tocando a DOR e prometendo transformação sensorial; (2) parágrafo com a experiência de uso; (3) <strong>Benefícios que você sente:</strong> seguido de <ul> com 5 <li> curtos e emocionais; (4) <strong>Modo de uso:</strong> seguido de <ol> com 3 passos; (5) parágrafo final de fechamento com gatilho de pertencimento/autoestima. Nunca prometer cura ou resultado médico. Sem emojis/símbolos decorativos.",
+  "name": "título CURTO e OBJETIVO em PT-BR, 45-60 caracteres (máx 65), focado em SEO. Estrutura: [tipo de produto] + [ativo/diferencial somente se conhecido] + [benefício-chave]. Sem emojis, sem símbolos, sem promessa, sem CTA, sem ALL CAPS.",
+  "short_description": "resumo persuasivo em 1-2 frases, ideal 140-220 caracteres, explicando claramente o principal benefício/experiência sem inventar fatos",
+  "description_html": "HTML semântico e bem organizado seguindo EXATAMENTE esta ordem: <p>abertura de 2-3 frases apresentando a necessidade e o valor do produto sem exagero</p><h2>Por que incluir na sua rotina</h2><p>experiência, textura, praticidade ou contexto de uso SOMENTE com dados sustentados; se não houver informação específica, mantenha linguagem neutra</p><h2>Benefícios para sua rotina</h2><ul><li>4 a 6 benefícios curtos, distintos, realistas e fáceis de escanear</li></ul><h2>Como usar</h2><ol><li>3 passos simples; se o modo exato não for conhecido, use orientação genérica segura como aplicar conforme a finalidade e seguir as instruções da embalagem</li></ol><h2>Para quem faz sentido</h2><p>perfil de uso ou necessidade compatível com os dados, sem diagnóstico</p><p>fechamento curto com autocuidado, pertencimento ou conveniência, sem urgência artificial</p>. Use SOMENTE <p>, <strong>, <em>, <h2>, <h3>, <ul>, <ol>, <li> e <br>. Não use atributos, estilos inline, links, tabelas ou divs.",
   "seo_title": "título SEO em PT-BR, MÁXIMO 60 caracteres, com palavra-chave principal no início. Sem emojis/símbolos.",
-  "seo_description": "meta description em PT-BR até 155 caracteres com CTA sutil, sem emojis/símbolos",
-  "keywords": ["5 a 8 palavras-chave em pt-br, minúsculas, sem símbolos"]
+  "seo_description": "meta description em PT-BR até 155 caracteres, clara e útil, com CTA sutil, sem clickbait",
+  "keywords": ["5 a 8 palavras-chave em pt-br, minúsculas, relevantes, sem símbolos"]
 }
 
 Regras finais:
 - Título curto é PRIORIDADE. Se passar de 65 caracteres, encurte removendo adjetivos.
-- Foque em rugas, rejuvenescimento aparente, luminosidade, firmeza sentida, autoestima, ritual de autocuidado — conforme a categoria.
-- ZERO emojis, ZERO símbolos decorativos em qualquer campo.
-- Nada de menções a AliExpress, Shopee, importado, "produto chinês".
+- A descrição longa precisa ter subtítulos e listas. Nunca devolva um único bloco de texto.
+- Cada parágrafo deve ter no máximo 3 frases e cada item de lista deve conter uma única ideia.
+- Só mencione rugas, rejuvenescimento, manchas, firmeza, oleosidade, ressecamento, cabelo, maquiagem ou outras necessidades quando forem coerentes com a categoria/dados recebidos.
+- Se não houver informação suficiente sobre ingrediente, textura, frequência, região de aplicação ou resultado, NÃO invente; escreva de forma neutra.
+- ZERO emojis e ZERO símbolos decorativos.
+- Nada de menções a AliExpress, Shopee, importado ou origem do fornecedor.
 - Responda SOMENTE o JSON.`;
 
     const { generateWithOwnKeys } = await import("./ai-translate.server");
@@ -145,8 +181,6 @@ Regras finais:
       return { ok: false as const, error: message };
     }
 
-
-
     const parsed = extractJson(raw);
 
     // Remove emojis, símbolos decorativos e ruído tipográfico dos textos curtos.
@@ -163,16 +197,9 @@ Regras finais:
         .replace(/\s+/g, " ")
         .trim();
 
-    const cleanHtml = (s: string) =>
-      s
-        .replace(EMOJI_RE, "")
-        .replace(DECOR_RE, "")
-        .replace(/[ \t]+/g, " ")
-        .trim();
-
     // Encurta título mantendo palavras inteiras (alvo 60, teto 65).
-    const shortenTitle = (raw: string, target = 60, hardMax = 65) => {
-      const clean = cleanText(raw);
+    const shortenTitle = (rawTitle: string, target = 60, hardMax = 65) => {
+      const clean = cleanText(rawTitle);
       if (clean.length <= hardMax) return clean;
       const words = clean.split(" ");
       const out: string[] = [];
@@ -188,7 +215,7 @@ Regras finais:
     const result = {
       name: shortenTitle(String(parsed.name ?? prod.name), 60, 65),
       short_description: cleanText(String(parsed.short_description ?? "")).slice(0, 400),
-      description_html: cleanHtml(String(parsed.description_html ?? "")),
+      description_html: sanitizeGeneratedDescriptionHtml(String(parsed.description_html ?? ""), EMOJI_RE, DECOR_RE),
       seo_title: shortenTitle(String(parsed.seo_title ?? parsed.name ?? ""), 58, 60),
       seo_description: cleanText(String(parsed.seo_description ?? "")).slice(0, 160),
       keywords: Array.isArray(parsed.keywords)
