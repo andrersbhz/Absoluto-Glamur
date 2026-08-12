@@ -6,6 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import { categoriesQuery } from "@/lib/catalog";
 import { useCart } from "@/lib/cart-store";
 import { LatestBlogCarousel } from "@/components/store/LatestBlogCarousel";
+import { ProductRelatedBlog } from "@/components/store/ProductRelatedBlog";
 import "@/storefront-minimal.css";
 import "@/blog.css";
 
@@ -29,6 +30,8 @@ export function StoreLayout({ children }: { children: ReactNode }) {
   const [q, setQ] = useState("");
   const [openSearch, setOpenSearch] = useState(false);
   const kind = pageKind(location.pathname);
+  const pathSegments = location.pathname.split("/").filter(Boolean);
+  const productSlug = kind === "product" ? decodeURIComponent(pathSegments[1] ?? "") : "";
 
   useEffect(() => {
     // A loja pública usa sempre a identidade visual clara da marca.
@@ -132,6 +135,7 @@ export function StoreLayout({ children }: { children: ReactNode }) {
 
       <main className="flex-1">{children}</main>
 
+      {kind === "product" && productSlug && <ProductRelatedBlog productSlug={productSlug} />}
       {kind === "home" && <LatestBlogCarousel />}
 
       <footer className="store-footer mt-20 border-t">
