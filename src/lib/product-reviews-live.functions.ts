@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabase } from "@/integrations/supabase/client";
-import { callAli } from "./aliexpress-discovery.functions";
+import { callAliTopPublic } from "./aliexpress-top-public.server";
 import { generateWithOwnKeys } from "./ai-translate.server";
 import { syncReviewsForProductInternal } from "./product-reviews.functions";
 
@@ -132,7 +132,7 @@ function hashText(input: string): string {
 }
 
 function findEvaluationRows(payload: unknown, depth = 0): any[] {
-  if (depth > 7 || payload == null) return [];
+  if (depth > 9 || payload == null) return [];
   if (Array.isArray(payload)) {
     if (
       payload.some(
@@ -188,6 +188,21 @@ function normalizeOfficialReview(raw: any, sourceProductId: string): NormalizedO
   };
 }
 
+function normalizeAliProductId(sourceId: string): string | null {
+  const raw = sourceId.trim();
+  if (/^\d{5,}$/.test(raw)) return raw;
+  const patterns = [
+    /\/item\/(\d{5,})(?:\.html)?/i,
+    /[?&](?:productId|product_id)=(\d{5,})/i,
+    /\b(\d{8,})\b/,
+  ];
+  for (const pattern of patterns) {
+    const match = raw.match(pattern);
+    if (match?.[1]) return match[1];
+  }
+  return null;
+}
+
 async function findAliSourceId(admin: any, productId: string): Promise<string | null> {
   const { data } = await admin
     .from("product_imports")
@@ -235,13 +250,17 @@ async function translateBatch(
   }
 }
 
-async function fetchOfficialReviews(sourceId: string): Promise<NormalizedOfficialReview[]> {
+async function fetchOfficialReviews(sourceId: string): Promise<{ reviews: NormalizedOfficialReview[]; productId: string }> {
+  const productId = normalizeAliProductId(sourceId);
+  if (!productId) {
+    throw new Error(`ID do produto AliExpress inválido na importação: ${sourceId.slice(0, 120)}`);
+  }
+
   const collected = new Map<string, NormalizedOfficialReview>();
 
   for (let page = 1; page <= OFFICIAL_SYNC_PAGES; page += 1) {
-    const payload = await callAli<any>("aliexpress.social.product.evaluation.query", {
-      product_id: sourceId,
-      country_code: "BR",
+    const payload = await callAliTopPublic<any>("aliexpress.social.product.evaluation.query", {
+      product_id: productId,
       page,
       page_size: OFFICIAL_SYNC_PAGE_SIZE,
     });
@@ -249,13 +268,13 @@ async function fetchOfficialReviews(sourceId: string): Promise<NormalizedOfficia
     if (!rows.length) break;
 
     for (const raw of rows) {
-      const review = normalizeOfficialReview(raw, sourceId);
+      const review = normalizeOfficialReview(raw, productId);
       if (review) collected.set(review.source_review_id, review);
     }
     if (rows.length < OFFICIAL_SYNC_PAGE_SIZE) break;
   }
 
-  return [...collected.values()];
+  return { reviews: [...collected.values()], productId };
 }
 
 async function persistOfficialReviews(admin: any, productId: string, reviews: NormalizedOfficialReview[]) {
@@ -370,15 +389,24 @@ async function syncLiveReviewsInternal(admin: any, productId: string, force = fa
 
   const sourceId = await findAliSourceId(admin, productId);
   if (!sourceId) {
-    return { fetched: 0, upserted: 0, translated: translatedBacklog, skipped: true, source: "none" as const, error: null };
+    return {
+      fetched: 0,
+      upserted: 0,
+      translated: translatedBacklog,
+      skipped: true,
+      source: "none" as const,
+      error: "Este produto não possui um ID de origem do AliExpress vinculado à importação.",
+    };
   }
 
+  let officialIssue: string | null = null;
+  const normalizedSourceId = normalizeAliProductId(sourceId) ?? sourceId;
   try {
     const official = await fetchOfficialReviews(sourceId);
-    if (official.length) {
-      const saved = await persistOfficialReviews(admin, productId, official);
+    if (official.reviews.length) {
+      const saved = await persistOfficialReviews(admin, productId, official.reviews);
       return {
-        fetched: official.length,
+        fetched: official.reviews.length,
         upserted: saved.upserted,
         translated: translatedBacklog + saved.translated,
         skipped: false,
@@ -386,18 +414,25 @@ async function syncLiveReviewsInternal(admin: any, productId: string, force = fa
         error: null,
       };
     }
+    officialIssue = `A API oficial do AliExpress retornou 0 avaliações globais para o produto ${official.productId}.`;
   } catch (error) {
-    console.warn("[reviews] API oficial indisponível; usando fallback compatível", error);
+    officialIssue = error instanceof Error ? error.message : String(error);
+    console.warn("[reviews] API TOP oficial indisponível; tentando fallback compatível", error);
   }
 
-  const fallback = await syncReviewsForProductInternal(admin, productId, sourceId, 0);
+  const fallback = await syncReviewsForProductInternal(admin, productId, normalizedSourceId, 0);
+  const fallbackWorked = fallback.fetched > 0 || fallback.upserted > 0;
+  const combinedError = fallbackWorked
+    ? null
+    : [officialIssue, fallback.error && `Fallback: ${fallback.error}`].filter(Boolean).join(" | ").slice(0, 1200) || null;
+
   return {
     fetched: fallback.fetched,
     upserted: fallback.upserted,
     translated: translatedBacklog + fallback.translated,
     skipped: false,
     source: "feedback_fallback" as const,
-    error: fallback.error,
+    error: combinedError,
   };
 }
 
