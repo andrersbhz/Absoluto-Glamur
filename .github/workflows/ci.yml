@@ -24,7 +24,7 @@ jobs:
         continue-on-error: true
       - name: Build (required)
         run: bun run build
-      - name: Home SSR smoke test (required)
+      - name: Storefront + Blog SSR smoke test (required)
         shell: bash
         run: |
           set -euo pipefail
@@ -68,15 +68,28 @@ jobs:
             exit 1
           fi
 
-          echo "Testing ${HOME_URL}"
+          BASE_URL="${HOME_URL%/}"
+          echo "Testing storefront SSR at ${BASE_URL}"
           test -s /tmp/home.html
-          if grep -q "Algo não carregou" /tmp/home.html; then
-            echo "Root error page detected in Home response"
-            cat /tmp/dev-server.log || true
-            exit 1
-          fi
+          ! grep -q "Algo não carregou" /tmp/home.html
           grep -q "Absoluto Glamur" /tmp/home.html
-          echo "Home SSR smoke test passed"
+
+          echo "Testing Blog SSR"
+          curl --max-time 10 -fsS "${BASE_URL}/blog" -o /tmp/blog.html
+          ! grep -q "Algo não carregou" /tmp/blog.html
+          grep -Eq "Conteúdo Absoluto Glamur|Beleza com informação|Blog de beleza" /tmp/blog.html
+
+          echo "Testing Blog RSS"
+          curl --max-time 10 -fsS "${BASE_URL}/blog/feed.xml" -o /tmp/blog-feed.xml
+          grep -q '<rss' /tmp/blog-feed.xml
+          grep -q '<channel>' /tmp/blog-feed.xml
+
+          echo "Testing sitemap"
+          curl --max-time 10 -fsS "${BASE_URL}/sitemap.xml" -o /tmp/sitemap.xml
+          grep -q '<urlset' /tmp/sitemap.xml
+          grep -q '/blog' /tmp/sitemap.xml
+
+          echo "Storefront + Blog SSR smoke tests passed"
       - name: Upload SSR diagnostics
         if: always()
         uses: actions/upload-artifact@v4
@@ -86,27 +99,67 @@ jobs:
             /tmp/dev-server.log
             /tmp/listeners.txt
             /tmp/home.html
+            /tmp/blog.html
+            /tmp/blog-feed.xml
+            /tmp/sitemap.xml
           if-no-files-found: ignore
           retention-days: 1
-      - name: Production domain HTTP check
+      - name: Production storefront + Blog HTTP check
         if: github.ref == 'refs/heads/main'
         shell: bash
         run: |
           set -euo pipefail
-          healthy=0
-          for i in $(seq 1 18); do
-            code=$(curl --max-time 10 -sS -L -o /tmp/production-home.html -w '%{http_code}' https://absolutoglamur.com.br/ || true)
-            echo "production HTTP attempt ${i}: HTTP ${code}"
-            if [ "$code" = "200" ] && grep -q "Absoluto Glamur" /tmp/production-home.html; then
-              healthy=1
-              break
+
+          check_html() {
+            local url="$1"
+            local output="$2"
+            local pattern="$3"
+            local label="$4"
+            local healthy=0
+            for i in $(seq 1 18); do
+              code=$(curl --max-time 12 -sS -L -o "$output" -w '%{http_code}' "$url" || true)
+              echo "${label} attempt ${i}: HTTP ${code}"
+              if [ "$code" = "200" ] && grep -Eq "$pattern" "$output" && ! grep -q "Algo não carregou" "$output"; then
+                healthy=1
+                break
+              fi
+              sleep 10
+            done
+            if [ "$healthy" -ne 1 ]; then
+              echo "${label} failed: ${url}"
+              head -c 1200 "$output" 2>/dev/null || true
+              exit 1
             fi
-            sleep 10
-          done
-          if [ "$healthy" -ne 1 ]; then
-            echo "Production domain is not returning storefront HTML"
-            exit 1
-          fi
+          }
+
+          check_xml() {
+            local url="$1"
+            local output="$2"
+            local pattern="$3"
+            local label="$4"
+            local healthy=0
+            for i in $(seq 1 12); do
+              code=$(curl --max-time 12 -sS -L -o "$output" -w '%{http_code}' "$url" || true)
+              echo "${label} attempt ${i}: HTTP ${code}"
+              if [ "$code" = "200" ] && grep -q "$pattern" "$output"; then
+                healthy=1
+                break
+              fi
+              sleep 10
+            done
+            if [ "$healthy" -ne 1 ]; then
+              echo "${label} failed: ${url}"
+              head -c 1200 "$output" 2>/dev/null || true
+              exit 1
+            fi
+          }
+
+          check_html "https://absolutoglamur.com.br/" /tmp/production-home.html "Absoluto Glamur" "Home"
+          check_html "https://absolutoglamur.com.br/blog" /tmp/production-blog.html "Conteúdo Absoluto Glamur|Beleza com informação|Blog de beleza" "Blog"
+          check_xml "https://absolutoglamur.com.br/blog/feed.xml" /tmp/production-blog-feed.xml '<rss' "Blog RSS"
+          check_xml "https://absolutoglamur.com.br/sitemap.xml" /tmp/production-sitemap.xml '<urlset' "Sitemap"
+          grep -q '/blog' /tmp/production-sitemap.xml
+          echo "Production storefront + Blog HTTP checks passed"
       - name: Production browser hydration check
         if: github.ref == 'refs/heads/main'
         shell: bash
@@ -118,46 +171,65 @@ jobs:
             exit 1
           fi
 
-          healthy=0
-          : > /tmp/production-browser.log
-          for i in $(seq 1 12); do
-            echo "browser attempt ${i}" | tee -a /tmp/production-browser.log
-            set +e
-            timeout 45s "$CHROME" \
-              --headless=new \
-              --no-sandbox \
-              --disable-gpu \
-              --disable-dev-shm-usage \
-              --virtual-time-budget=12000 \
-              --enable-logging=stderr \
-              --v=0 \
-              --dump-dom \
-              https://absolutoglamur.com.br/ \
-              >/tmp/production-browser.html 2>/tmp/production-browser-stderr.log
-            chrome_exit=$?
-            set -e
+          browser_check() {
+            local url="$1"
+            local output="$2"
+            local stderr_file="$3"
+            local expected="$4"
+            local label="$5"
+            local healthy=0
+            for i in $(seq 1 12); do
+              echo "${label} browser attempt ${i}" | tee -a /tmp/production-browser.log
+              set +e
+              timeout 45s "$CHROME" \
+                --headless=new \
+                --no-sandbox \
+                --disable-gpu \
+                --disable-dev-shm-usage \
+                --virtual-time-budget=12000 \
+                --enable-logging=stderr \
+                --v=0 \
+                --dump-dom \
+                "$url" \
+                >"$output" 2>"$stderr_file"
+              chrome_exit=$?
+              set -e
 
-            echo "Chrome exit ${chrome_exit}; DOM bytes $(wc -c </tmp/production-browser.html 2>/dev/null || echo 0)" | tee -a /tmp/production-browser.log
+              echo "${label}: Chrome exit ${chrome_exit}; DOM bytes $(wc -c <"$output" 2>/dev/null || echo 0)" | tee -a /tmp/production-browser.log
+              if [ -s "$output" ] \
+                && grep -Eq "$expected" "$output" \
+                && ! grep -q "Algo não carregou" "$output" \
+                && ! grep -q "Missing Supabase environment variable" "$output"; then
+                healthy=1
+                break
+              fi
 
-            if [ -s /tmp/production-browser.html ] \
-              && grep -q "Absoluto Glamur" /tmp/production-browser.html \
-              && ! grep -q "Algo não carregou" /tmp/production-browser.html \
-              && ! grep -q "Missing Supabase environment variable" /tmp/production-browser.html; then
-              healthy=1
-              break
+              grep -Ei "CONSOLE|Missing Supabase|TypeError|ReferenceError|Uncaught|Failed to load|ERR_" "$stderr_file" | tail -80 >> /tmp/production-browser.log || true
+              sleep 10
+            done
+
+            if [ "$healthy" -ne 1 ]; then
+              echo "${label} fails after browser hydration"
+              grep -o "Algo não carregou\|Missing Supabase environment variable[^<]*\|Absoluto Glamur" "$output" | head -30 || true
+              cat /tmp/production-browser.log || true
+              exit 1
             fi
+          }
 
-            grep -Ei "CONSOLE|Missing Supabase|TypeError|ReferenceError|Uncaught|Failed to load|ERR_" /tmp/production-browser-stderr.log | tail -80 >> /tmp/production-browser.log || true
-            sleep 10
-          done
-
-          if [ "$healthy" -ne 1 ]; then
-            echo "Production storefront fails after browser hydration"
-            grep -o "Algo não carregou\|Missing Supabase environment variable[^<]*\|Absoluto Glamur" /tmp/production-browser.html | head -30 || true
-            cat /tmp/production-browser.log || true
-            exit 1
-          fi
-          echo "Production browser hydration check passed"
+          : > /tmp/production-browser.log
+          browser_check \
+            "https://absolutoglamur.com.br/" \
+            /tmp/production-browser.html \
+            /tmp/production-browser-stderr.log \
+            "Absoluto Glamur" \
+            "Home"
+          browser_check \
+            "https://absolutoglamur.com.br/blog" \
+            /tmp/production-blog-browser.html \
+            /tmp/production-blog-browser-stderr.log \
+            "Conteúdo Absoluto Glamur|Beleza com informação|Blog de beleza" \
+            "Blog"
+          echo "Production browser hydration checks passed"
       - name: Upload production diagnostics
         if: always() && github.ref == 'refs/heads/main'
         uses: actions/upload-artifact@v4
@@ -165,8 +237,13 @@ jobs:
           name: production-health
           path: |
             /tmp/production-home.html
+            /tmp/production-blog.html
+            /tmp/production-blog-feed.xml
+            /tmp/production-sitemap.xml
             /tmp/production-browser.html
+            /tmp/production-blog-browser.html
             /tmp/production-browser.log
             /tmp/production-browser-stderr.log
+            /tmp/production-blog-browser-stderr.log
           if-no-files-found: ignore
           retention-days: 1
