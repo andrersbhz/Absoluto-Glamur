@@ -5,8 +5,22 @@ import { supabase } from "@/integrations/supabase/client";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-async function fetchRelatedPosts(productId: string) {
+async function fetchProductIdBySlug(productSlug: string): Promise<string | null> {
+  const { data, error } = await (supabase as any)
+    .from("products")
+    .select("id")
+    .eq("slug", productSlug)
+    .eq("status", "active")
+    .maybeSingle();
+  if (error) throw error;
+  return data?.id ? String(data.id) : null;
+}
+
+async function fetchRelatedPosts(productSlug: string) {
   const db = supabase as any;
+  const productId = await fetchProductIdBySlug(productSlug);
+  if (!productId) return [];
+
   const { data, error } = await db
     .from("blog_post_products")
     .select("position,post:blog_posts(id,slug,title,excerpt,featured_image_url,featured_image_alt,published_at,read_time_minutes,category:blog_categories(name,slug))")
@@ -25,16 +39,17 @@ function dateLabel(value: string | null) {
   return new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short", year: "numeric" }).format(new Date(value));
 }
 
-export function ProductRelatedBlog({ productId }: { productId: string }) {
+export function ProductRelatedBlog({ productSlug }: { productSlug: string }) {
   const { data: posts = [], isLoading } = useQuery({
-    queryKey: ["product-related-blog", productId],
-    queryFn: () => fetchRelatedPosts(productId),
+    queryKey: ["product-related-blog", productSlug],
+    queryFn: () => fetchRelatedPosts(productSlug),
+    enabled: !!productSlug,
     staleTime: 5 * 60_000,
   });
 
   if (isLoading) {
     return (
-      <section className="mt-14 border-t border-border pt-9" aria-label="Conteúdos relacionados">
+      <section className="mx-auto mt-14 max-w-7xl border-t border-border px-4 pt-9 sm:px-6 lg:px-8" aria-label="Conteúdos relacionados">
         <div className="h-6 w-56 animate-pulse rounded bg-secondary" />
         <div className="mt-5 grid gap-4 md:grid-cols-3">
           {[1, 2, 3].map((item) => <div key={item} className="h-64 animate-pulse rounded-2xl bg-secondary" />)}
@@ -46,7 +61,7 @@ export function ProductRelatedBlog({ productId }: { productId: string }) {
   if (!posts.length) return null;
 
   return (
-    <section className="mt-14 border-t border-border pt-9" aria-labelledby="related-content-title">
+    <section className="mx-auto mt-14 max-w-7xl border-t border-border px-4 pt-9 sm:px-6 lg:px-8" aria-labelledby="related-content-title">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
           <p className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-primary">
