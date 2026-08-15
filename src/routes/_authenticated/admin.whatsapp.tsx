@@ -71,6 +71,8 @@ function WhatsAppAdmin() {
           }
           if (payload.new.direction === "inbound") {
             playAlert();
+            toast.info("Nova mensagem recebida no WhatsApp");
+            fetchConversations();
           }
         }
       )
@@ -92,7 +94,7 @@ function WhatsAppAdmin() {
   async function fetchConversations() {
     const { data } = await supabase
       .from("whatsapp_conversations")
-      .select("*, contacts:contact_id(*)")
+      .select("*, contacts:whatsapp_contacts(*)")
       .order("last_message_at", { ascending: false });
     if (data) setConversations(data);
   }
@@ -107,10 +109,11 @@ function WhatsAppAdmin() {
   }
 
   const playAlert = () => {
-    if (!audioRef.current) {
-      audioRef.current = new Audio("/sounds/new-message.mp3"); // Need to ensure file exists or use synth
+    const audio = document.getElementById("whatsapp-alert") as HTMLAudioElement;
+    if (audio) {
+      audio.currentTime = 0;
+      audio.play().catch(e => console.log("Audio play blocked by browser policy"));
     }
-    audioRef.current.play().catch(() => {});
   };
 
   const handleSend = async () => {
