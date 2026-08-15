@@ -17,6 +17,11 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ProductsSlugRouteImport } from './routes/products.$slug'
+import { Route as ComplianceTermsRouteImport } from './routes/compliance/terms'
+import { Route as ComplianceReturnsRouteImport } from './routes/compliance/returns'
+import { Route as CompliancePrivacyRouteImport } from './routes/compliance/privacy'
+import { Route as ComplianceCookiesRouteImport } from './routes/compliance/cookies'
+import { Route as ComplianceAdsRouteImport } from './routes/compliance/ads'
 import { Route as BlogFeedDotxmlRouteImport } from './routes/blog.feed[.]xml'
 import { Route as BlogSlugRouteImport } from './routes/blog.$slug'
 import { Route as AuthResetPasswordRouteImport } from './routes/auth.reset-password'
@@ -100,6 +105,31 @@ const ProductsSlugRoute = ProductsSlugRouteImport.update({
   id: '/$slug',
   path: '/$slug',
   getParentRoute: () => ProductsRoute,
+} as any)
+const ComplianceTermsRoute = ComplianceTermsRouteImport.update({
+  id: '/compliance/terms',
+  path: '/compliance/terms',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ComplianceReturnsRoute = ComplianceReturnsRouteImport.update({
+  id: '/compliance/returns',
+  path: '/compliance/returns',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CompliancePrivacyRoute = CompliancePrivacyRouteImport.update({
+  id: '/compliance/privacy',
+  path: '/compliance/privacy',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ComplianceCookiesRoute = ComplianceCookiesRouteImport.update({
+  id: '/compliance/cookies',
+  path: '/compliance/cookies',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ComplianceAdsRoute = ComplianceAdsRouteImport.update({
+  id: '/compliance/ads',
+  path: '/compliance/ads',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const BlogFeedDotxmlRoute = BlogFeedDotxmlRouteImport.update({
   id: '/feed.xml',
@@ -364,6 +394,11 @@ export interface FileRoutesByFullPath {
   '/auth/reset-password': typeof AuthResetPasswordRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/blog/feed.xml': typeof BlogFeedDotxmlRoute
+  '/compliance/ads': typeof ComplianceAdsRoute
+  '/compliance/cookies': typeof ComplianceCookiesRoute
+  '/compliance/privacy': typeof CompliancePrivacyRoute
+  '/compliance/returns': typeof ComplianceReturnsRoute
+  '/compliance/terms': typeof ComplianceTermsRoute
   '/products/$slug': typeof ProductsSlugRoute
   '/admin/ai': typeof AuthenticatedAdminAiRoute
   '/admin/blog': typeof AuthenticatedAdminBlogRoute
@@ -416,6 +451,11 @@ export interface FileRoutesByTo {
   '/auth/reset-password': typeof AuthResetPasswordRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/blog/feed.xml': typeof BlogFeedDotxmlRoute
+  '/compliance/ads': typeof ComplianceAdsRoute
+  '/compliance/cookies': typeof ComplianceCookiesRoute
+  '/compliance/privacy': typeof CompliancePrivacyRoute
+  '/compliance/returns': typeof ComplianceReturnsRoute
+  '/compliance/terms': typeof ComplianceTermsRoute
   '/products/$slug': typeof ProductsSlugRoute
   '/admin/ai': typeof AuthenticatedAdminAiRoute
   '/admin/blog': typeof AuthenticatedAdminBlogRoute
@@ -471,6 +511,11 @@ export interface FileRoutesById {
   '/auth/reset-password': typeof AuthResetPasswordRoute
   '/blog/$slug': typeof BlogSlugRoute
   '/blog/feed.xml': typeof BlogFeedDotxmlRoute
+  '/compliance/ads': typeof ComplianceAdsRoute
+  '/compliance/cookies': typeof ComplianceCookiesRoute
+  '/compliance/privacy': typeof CompliancePrivacyRoute
+  '/compliance/returns': typeof ComplianceReturnsRoute
+  '/compliance/terms': typeof ComplianceTermsRoute
   '/products/$slug': typeof ProductsSlugRoute
   '/_authenticated/admin/ai': typeof AuthenticatedAdminAiRoute
   '/_authenticated/admin/blog': typeof AuthenticatedAdminBlogRoute
@@ -526,6 +571,11 @@ export interface FileRouteTypes {
     | '/auth/reset-password'
     | '/blog/$slug'
     | '/blog/feed.xml'
+    | '/compliance/ads'
+    | '/compliance/cookies'
+    | '/compliance/privacy'
+    | '/compliance/returns'
+    | '/compliance/terms'
     | '/products/$slug'
     | '/admin/ai'
     | '/admin/blog'
@@ -578,6 +628,11 @@ export interface FileRouteTypes {
     | '/auth/reset-password'
     | '/blog/$slug'
     | '/blog/feed.xml'
+    | '/compliance/ads'
+    | '/compliance/cookies'
+    | '/compliance/privacy'
+    | '/compliance/returns'
+    | '/compliance/terms'
     | '/products/$slug'
     | '/admin/ai'
     | '/admin/blog'
@@ -632,6 +687,11 @@ export interface FileRouteTypes {
     | '/auth/reset-password'
     | '/blog/$slug'
     | '/blog/feed.xml'
+    | '/compliance/ads'
+    | '/compliance/cookies'
+    | '/compliance/privacy'
+    | '/compliance/returns'
+    | '/compliance/terms'
     | '/products/$slug'
     | '/_authenticated/admin/ai'
     | '/_authenticated/admin/blog'
@@ -678,6 +738,11 @@ export interface RootRouteChildren {
   ProductsRoute: typeof ProductsRouteWithChildren
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   CategoriaProdutoRoute: typeof CategoriaProdutoRoute
+  ComplianceAdsRoute: typeof ComplianceAdsRoute
+  ComplianceCookiesRoute: typeof ComplianceCookiesRoute
+  CompliancePrivacyRoute: typeof CompliancePrivacyRoute
+  ComplianceReturnsRoute: typeof ComplianceReturnsRoute
+  ComplianceTermsRoute: typeof ComplianceTermsRoute
   ApiPublicAbandonedCheckoutRoute: typeof ApiPublicAbandonedCheckoutRoute
   ApiPublicCommerceEventRoute: typeof ApiPublicCommerceEventRoute
   ApiPublicAliexpressStartRoute: typeof ApiPublicAliexpressStartRoute
@@ -747,6 +812,41 @@ declare module '@tanstack/react-router' {
       fullPath: '/products/$slug'
       preLoaderRoute: typeof ProductsSlugRouteImport
       parentRoute: typeof ProductsRoute
+    }
+    '/compliance/terms': {
+      id: '/compliance/terms'
+      path: '/compliance/terms'
+      fullPath: '/compliance/terms'
+      preLoaderRoute: typeof ComplianceTermsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/compliance/returns': {
+      id: '/compliance/returns'
+      path: '/compliance/returns'
+      fullPath: '/compliance/returns'
+      preLoaderRoute: typeof ComplianceReturnsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/compliance/privacy': {
+      id: '/compliance/privacy'
+      path: '/compliance/privacy'
+      fullPath: '/compliance/privacy'
+      preLoaderRoute: typeof CompliancePrivacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/compliance/cookies': {
+      id: '/compliance/cookies'
+      path: '/compliance/cookies'
+      fullPath: '/compliance/cookies'
+      preLoaderRoute: typeof ComplianceCookiesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/compliance/ads': {
+      id: '/compliance/ads'
+      path: '/compliance/ads'
+      fullPath: '/compliance/ads'
+      preLoaderRoute: typeof ComplianceAdsRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/blog/feed.xml': {
       id: '/blog/feed.xml'
@@ -1204,6 +1304,11 @@ const rootRouteChildren: RootRouteChildren = {
   ProductsRoute: ProductsRouteWithChildren,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   CategoriaProdutoRoute: CategoriaProdutoRoute,
+  ComplianceAdsRoute: ComplianceAdsRoute,
+  ComplianceCookiesRoute: ComplianceCookiesRoute,
+  CompliancePrivacyRoute: CompliancePrivacyRoute,
+  ComplianceReturnsRoute: ComplianceReturnsRoute,
+  ComplianceTermsRoute: ComplianceTermsRoute,
   ApiPublicAbandonedCheckoutRoute: ApiPublicAbandonedCheckoutRoute,
   ApiPublicCommerceEventRoute: ApiPublicCommerceEventRoute,
   ApiPublicAliexpressStartRoute: ApiPublicAliexpressStartRoute,
