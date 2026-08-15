@@ -1,7 +1,7 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import {
-  BarChart3, BookOpen, Boxes, Compass, ExternalLink, Gauge, LayoutDashboard, LogOut, Megaphone, Moon, Package,
+  BarChart3, BookOpen, Boxes, Compass, ExternalLink, Gauge, LayoutDashboard, LogOut, Megaphone, MessageSquare, Moon, Package,
   PanelsTopLeft, Plug, RotateCcw, Settings, ShieldCheck, ShoppingCart, Sparkles, Store, Sun, Target, Users, WalletCards, Zap,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
