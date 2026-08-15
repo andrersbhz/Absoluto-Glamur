@@ -17,6 +17,7 @@ const nav: NavItem[] = [
   { label: "Visão geral", icon: LayoutDashboard, to: "/admin", phase: 1 },
   { label: "Home Builder", icon: PanelsTopLeft, to: "/admin/home", phase: 2 },
   { label: "Integrações", icon: Plug, to: "/admin/integrations", phase: 1 },
+  { label: "Atendimento WhatsApp", icon: MessageSquare, to: "/admin/whatsapp", phase: 9 },
   { label: "Pedidos", icon: ShoppingCart, to: "/admin/orders", phase: 3 },
   { label: "Recuperação de carrinho", icon: RotateCcw, to: "/admin/recovery", phase: 3 },
   { label: "Catálogo", icon: Package, to: "/admin/catalog", phase: 2 },

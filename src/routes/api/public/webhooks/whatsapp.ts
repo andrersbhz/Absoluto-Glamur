@@ -35,23 +35,27 @@ export const Route = createFileRoute('/api/public/webhooks/whatsapp')({
           }
 
           // 3. Find active conversation or create new one
-          let { data: conversation } = await supabase
+          let conversation: { id: string; status?: string } | null = null;
+          
+          const { data: existingConv } = await supabase
             .from("whatsapp_conversations")
-            .select("id, status, assigned_user_id")
+            .select("id, status")
             .eq("contact_id", contact.id)
             .in("status", ["waiting", "in_service"])
             .order("created_at", { ascending: false })
             .limit(1)
-            .single();
+            .maybeSingle();
 
-          if (!conversation || conversation.status === "finished") {
+          conversation = existingConv;
+
+          if (!conversation) {
             const { data: newConv, error: convError } = await supabase
               .from("whatsapp_conversations")
               .insert({
                 contact_id: contact.id,
                 status: "waiting"
               })
-              .select("id")
+              .select("id, status")
               .single();
             if (convError) throw convError;
             conversation = newConv;

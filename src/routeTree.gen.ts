@@ -55,6 +55,7 @@ import { Route as AuthenticatedAdminBlogRouteImport } from './routes/_authentica
 import { Route as AuthenticatedAdminAiRouteImport } from './routes/_authenticated/admin.ai'
 import { Route as AuthenticatedAdminIntelligenceIndexRouteImport } from './routes/_authenticated/admin.intelligence.index'
 import { Route as AuthenticatedAdminCatalogIndexRouteImport } from './routes/_authenticated/admin.catalog.index'
+import { Route as ApiPublicWebhooksWhatsappRouteImport } from './routes/api/public/webhooks/whatsapp'
 import { Route as ApiPublicWebhooksPagbankRouteImport } from './routes/api/public/webhooks/pagbank'
 import { Route as ApiPublicWebhooksNupayRouteImport } from './routes/api/public/webhooks/nupay'
 import { Route as ApiPublicWebhooksAsaasRouteImport } from './routes/api/public/webhooks/asaas'
@@ -312,6 +313,12 @@ const AuthenticatedAdminCatalogIndexRoute =
     path: '/catalog/',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
+const ApiPublicWebhooksWhatsappRoute =
+  ApiPublicWebhooksWhatsappRouteImport.update({
+    id: '/api/public/webhooks/whatsapp',
+    path: '/api/public/webhooks/whatsapp',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicWebhooksPagbankRoute =
   ApiPublicWebhooksPagbankRouteImport.update({
     id: '/api/public/webhooks/pagbank',
@@ -432,6 +439,7 @@ export interface FileRoutesByFullPath {
   '/api/public/webhooks/asaas': typeof ApiPublicWebhooksAsaasRoute
   '/api/public/webhooks/nupay': typeof ApiPublicWebhooksNupayRoute
   '/api/public/webhooks/pagbank': typeof ApiPublicWebhooksPagbankRoute
+  '/api/public/webhooks/whatsapp': typeof ApiPublicWebhooksWhatsappRoute
   '/admin/catalog/': typeof AuthenticatedAdminCatalogIndexRoute
   '/admin/intelligence/': typeof AuthenticatedAdminIntelligenceIndexRoute
 }
@@ -489,6 +497,7 @@ export interface FileRoutesByTo {
   '/api/public/webhooks/asaas': typeof ApiPublicWebhooksAsaasRoute
   '/api/public/webhooks/nupay': typeof ApiPublicWebhooksNupayRoute
   '/api/public/webhooks/pagbank': typeof ApiPublicWebhooksPagbankRoute
+  '/api/public/webhooks/whatsapp': typeof ApiPublicWebhooksWhatsappRoute
   '/admin/catalog': typeof AuthenticatedAdminCatalogIndexRoute
   '/admin/intelligence': typeof AuthenticatedAdminIntelligenceIndexRoute
 }
@@ -549,6 +558,7 @@ export interface FileRoutesById {
   '/api/public/webhooks/asaas': typeof ApiPublicWebhooksAsaasRoute
   '/api/public/webhooks/nupay': typeof ApiPublicWebhooksNupayRoute
   '/api/public/webhooks/pagbank': typeof ApiPublicWebhooksPagbankRoute
+  '/api/public/webhooks/whatsapp': typeof ApiPublicWebhooksWhatsappRoute
   '/_authenticated/admin/catalog/': typeof AuthenticatedAdminCatalogIndexRoute
   '/_authenticated/admin/intelligence/': typeof AuthenticatedAdminIntelligenceIndexRoute
 }
@@ -609,6 +619,7 @@ export interface FileRouteTypes {
     | '/api/public/webhooks/asaas'
     | '/api/public/webhooks/nupay'
     | '/api/public/webhooks/pagbank'
+    | '/api/public/webhooks/whatsapp'
     | '/admin/catalog/'
     | '/admin/intelligence/'
   fileRoutesByTo: FileRoutesByTo
@@ -666,6 +677,7 @@ export interface FileRouteTypes {
     | '/api/public/webhooks/asaas'
     | '/api/public/webhooks/nupay'
     | '/api/public/webhooks/pagbank'
+    | '/api/public/webhooks/whatsapp'
     | '/admin/catalog'
     | '/admin/intelligence'
   id:
@@ -725,6 +737,7 @@ export interface FileRouteTypes {
     | '/api/public/webhooks/asaas'
     | '/api/public/webhooks/nupay'
     | '/api/public/webhooks/pagbank'
+    | '/api/public/webhooks/whatsapp'
     | '/_authenticated/admin/catalog/'
     | '/_authenticated/admin/intelligence/'
   fileRoutesById: FileRoutesById
@@ -753,6 +766,7 @@ export interface RootRouteChildren {
   ApiPublicWebhooksAsaasRoute: typeof ApiPublicWebhooksAsaasRoute
   ApiPublicWebhooksNupayRoute: typeof ApiPublicWebhooksNupayRoute
   ApiPublicWebhooksPagbankRoute: typeof ApiPublicWebhooksPagbankRoute
+  ApiPublicWebhooksWhatsappRoute: typeof ApiPublicWebhooksWhatsappRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -1079,6 +1093,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminCatalogIndexRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/api/public/webhooks/whatsapp': {
+      id: '/api/public/webhooks/whatsapp'
+      path: '/api/public/webhooks/whatsapp'
+      fullPath: '/api/public/webhooks/whatsapp'
+      preLoaderRoute: typeof ApiPublicWebhooksWhatsappRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/webhooks/pagbank': {
       id: '/api/public/webhooks/pagbank'
       path: '/api/public/webhooks/pagbank'
@@ -1320,6 +1341,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicWebhooksAsaasRoute: ApiPublicWebhooksAsaasRoute,
   ApiPublicWebhooksNupayRoute: ApiPublicWebhooksNupayRoute,
   ApiPublicWebhooksPagbankRoute: ApiPublicWebhooksPagbankRoute,
+  ApiPublicWebhooksWhatsappRoute: ApiPublicWebhooksWhatsappRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
