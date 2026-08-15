@@ -36,6 +36,7 @@ import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authentic
 import { Route as ApiPublicCommerceEventRouteImport } from './routes/api/public/commerce-event'
 import { Route as ApiPublicAbandonedCheckoutRouteImport } from './routes/api/public/abandoned-checkout'
 import { Route as AuthenticatedCheckoutOrderIdRouteImport } from './routes/_authenticated/checkout.$orderId'
+import { Route as AuthenticatedAdminWhatsappRouteImport } from './routes/_authenticated/admin.whatsapp'
 import { Route as AuthenticatedAdminUsersRouteImport } from './routes/_authenticated/admin.users'
 import { Route as AuthenticatedAdminUsageRouteImport } from './routes/_authenticated/admin.usage'
 import { Route as AuthenticatedAdminSettingsRouteImport } from './routes/_authenticated/admin.settings'
@@ -203,6 +204,12 @@ const AuthenticatedCheckoutOrderIdRoute =
     id: '/$orderId',
     path: '/$orderId',
     getParentRoute: () => AuthenticatedCheckoutRoute,
+  } as any)
+const AuthenticatedAdminWhatsappRoute =
+  AuthenticatedAdminWhatsappRouteImport.update({
+    id: '/whatsapp',
+    path: '/whatsapp',
+    getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
 const AuthenticatedAdminUsersRoute = AuthenticatedAdminUsersRouteImport.update({
   id: '/users',
@@ -424,6 +431,7 @@ export interface FileRoutesByFullPath {
   '/admin/settings': typeof AuthenticatedAdminSettingsRoute
   '/admin/usage': typeof AuthenticatedAdminUsageRoute
   '/admin/users': typeof AuthenticatedAdminUsersRoute
+  '/admin/whatsapp': typeof AuthenticatedAdminWhatsappRoute
   '/checkout/$orderId': typeof AuthenticatedCheckoutOrderIdRoute
   '/api/public/abandoned-checkout': typeof ApiPublicAbandonedCheckoutRoute
   '/api/public/commerce-event': typeof ApiPublicCommerceEventRoute
@@ -482,6 +490,7 @@ export interface FileRoutesByTo {
   '/admin/settings': typeof AuthenticatedAdminSettingsRoute
   '/admin/usage': typeof AuthenticatedAdminUsageRoute
   '/admin/users': typeof AuthenticatedAdminUsersRoute
+  '/admin/whatsapp': typeof AuthenticatedAdminWhatsappRoute
   '/checkout/$orderId': typeof AuthenticatedCheckoutOrderIdRoute
   '/api/public/abandoned-checkout': typeof ApiPublicAbandonedCheckoutRoute
   '/api/public/commerce-event': typeof ApiPublicCommerceEventRoute
@@ -543,6 +552,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/settings': typeof AuthenticatedAdminSettingsRoute
   '/_authenticated/admin/usage': typeof AuthenticatedAdminUsageRoute
   '/_authenticated/admin/users': typeof AuthenticatedAdminUsersRoute
+  '/_authenticated/admin/whatsapp': typeof AuthenticatedAdminWhatsappRoute
   '/_authenticated/checkout/$orderId': typeof AuthenticatedCheckoutOrderIdRoute
   '/api/public/abandoned-checkout': typeof ApiPublicAbandonedCheckoutRoute
   '/api/public/commerce-event': typeof ApiPublicCommerceEventRoute
@@ -604,6 +614,7 @@ export interface FileRouteTypes {
     | '/admin/settings'
     | '/admin/usage'
     | '/admin/users'
+    | '/admin/whatsapp'
     | '/checkout/$orderId'
     | '/api/public/abandoned-checkout'
     | '/api/public/commerce-event'
@@ -662,6 +673,7 @@ export interface FileRouteTypes {
     | '/admin/settings'
     | '/admin/usage'
     | '/admin/users'
+    | '/admin/whatsapp'
     | '/checkout/$orderId'
     | '/api/public/abandoned-checkout'
     | '/api/public/commerce-event'
@@ -722,6 +734,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/settings'
     | '/_authenticated/admin/usage'
     | '/_authenticated/admin/users'
+    | '/_authenticated/admin/whatsapp'
     | '/_authenticated/checkout/$orderId'
     | '/api/public/abandoned-checkout'
     | '/api/public/commerce-event'
@@ -959,6 +972,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/checkout/$orderId'
       preLoaderRoute: typeof AuthenticatedCheckoutOrderIdRouteImport
       parentRoute: typeof AuthenticatedCheckoutRoute
+    }
+    '/_authenticated/admin/whatsapp': {
+      id: '/_authenticated/admin/whatsapp'
+      path: '/whatsapp'
+      fullPath: '/admin/whatsapp'
+      preLoaderRoute: typeof AuthenticatedAdminWhatsappRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
     }
     '/_authenticated/admin/users': {
       id: '/_authenticated/admin/users'
@@ -1212,6 +1232,7 @@ interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminSettingsRoute: typeof AuthenticatedAdminSettingsRoute
   AuthenticatedAdminUsageRoute: typeof AuthenticatedAdminUsageRoute
   AuthenticatedAdminUsersRoute: typeof AuthenticatedAdminUsersRoute
+  AuthenticatedAdminWhatsappRoute: typeof AuthenticatedAdminWhatsappRoute
   AuthenticatedAdminIndexRoute: typeof AuthenticatedAdminIndexRoute
   AuthenticatedAdminCatalogIdRoute: typeof AuthenticatedAdminCatalogIdRoute
   AuthenticatedAdminIntelligenceIdRoute: typeof AuthenticatedAdminIntelligenceIdRoute
@@ -1237,6 +1258,7 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminSettingsRoute: AuthenticatedAdminSettingsRoute,
   AuthenticatedAdminUsageRoute: AuthenticatedAdminUsageRoute,
   AuthenticatedAdminUsersRoute: AuthenticatedAdminUsersRoute,
+  AuthenticatedAdminWhatsappRoute: AuthenticatedAdminWhatsappRoute,
   AuthenticatedAdminIndexRoute: AuthenticatedAdminIndexRoute,
   AuthenticatedAdminCatalogIdRoute: AuthenticatedAdminCatalogIdRoute,
   AuthenticatedAdminIntelligenceIdRoute: AuthenticatedAdminIntelligenceIdRoute,

@@ -23,6 +23,7 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "sonner";
+import { useServerFn } from "@tanstack/react-start";
 import { 
   claimConversation, 
   sendWhatsAppMessage, 
@@ -44,6 +45,11 @@ function WhatsAppAdmin() {
   const [filter, setFilter] = useState("all");
   const scrollRef = useRef<HTMLDivElement>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  const claimConvFn = useServerFn(claimConversation);
+  const sendMessageFn = useServerFn(sendWhatsAppMessage);
+  const finishConvFn = useServerFn(finishConversation);
+  const addNoteFn = useServerFn(addInternalNote);
 
   // Load conversations
   useEffect(() => {
@@ -110,7 +116,7 @@ function WhatsAppAdmin() {
   const handleSend = async () => {
     if (!input.trim() || !activeId) return;
     try {
-      await sendWhatsAppMessage({ conversationId: activeId, content: input });
+      await sendMessageFn({ data: { conversationId: activeId, content: input } });
       setInput("");
       toast.success("Mensagem enviada");
     } catch (err) {
@@ -120,7 +126,7 @@ function WhatsAppAdmin() {
 
   const handleClaim = async (id: string) => {
     try {
-      await claimConversation({ conversationId: id });
+      await claimConvFn({ data: { conversationId: id } });
       setActiveId(id);
       toast.success("Atendimento assumido");
     } catch (err: any) {
@@ -192,7 +198,7 @@ function WhatsAppAdmin() {
                     <Button size="sm" onClick={() => handleClaim(activeConv.id)}>Atender</Button>
                   )}
                   {activeConv?.status === 'in_service' && (
-                    <Button size="sm" variant="outline" onClick={() => finishConversation({ conversationId: activeConv.id })}>
+                    <Button size="sm" variant="outline" onClick={() => finishConvFn({ data: { conversationId: activeConv.id } })}>
                       Finalizar
                     </Button>
                   )}
@@ -201,8 +207,8 @@ function WhatsAppAdmin() {
               </div>
 
               {/* Messages */}
-              <ScrollArea className="flex-1 p-6" viewportRef={scrollRef}>
-                <div className="flex flex-col gap-4">
+              <ScrollArea className="flex-1 p-6">
+                <div ref={scrollRef} className="flex flex-col gap-4">
                   {messages.map((msg) => (
                     <div
                       key={msg.id}
