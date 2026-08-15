@@ -162,18 +162,18 @@ export function StoreLayout({ children }: { children: ReactNode }) {
           <div>
             <p className="store-footer-title">Atendimento</p>
             <ul className="mt-4 space-y-2.5 text-sm text-muted-foreground">
-              <li>Central de ajuda</li>
-              <li>Contato</li>
-              <li>Trocas e devoluções</li>
+              <li><Link to="/compliance/privacy" className="hover:text-foreground">Central de ajuda</Link></li>
+              <li><Link to="/compliance/privacy" className="hover:text-foreground">Contato</Link></li>
+              <li><Link to="/compliance/returns" className="hover:text-foreground">Trocas e devoluções</Link></li>
             </ul>
           </div>
           <div>
             <p className="store-footer-title">Institucional</p>
             <ul className="mt-4 space-y-2.5 text-sm text-muted-foreground">
-              <li>Políticas</li>
-              <li>Termos de uso</li>
-              <li>Privacidade</li>
-              <li>Cookies</li>
+              <li><Link to="/compliance/ads" className="hover:text-foreground">Políticas de Anúncios</Link></li>
+              <li><Link to="/compliance/terms" className="hover:text-foreground">Termos de uso</Link></li>
+              <li><Link to="/compliance/privacy" className="hover:text-foreground">Privacidade</Link></li>
+              <li><Link to="/compliance/cookies" className="hover:text-foreground">Cookies</Link></li>
             </ul>
           </div>
         </div>
