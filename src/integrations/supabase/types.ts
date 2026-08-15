@@ -251,6 +251,279 @@ export type Database = {
         }
         Relationships: []
       }
+      blog_categories: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          meta_description: string | null
+          name: string
+          position: number
+          seo_title: string | null
+          slug: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          meta_description?: string | null
+          name: string
+          position?: number
+          seo_title?: string | null
+          slug: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          meta_description?: string | null
+          name?: string
+          position?: number
+          seo_title?: string | null
+          slug?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      blog_post_products: {
+        Row: {
+          position: number
+          post_id: string
+          product_id: string
+        }
+        Insert: {
+          position?: number
+          post_id: string
+          product_id: string
+        }
+        Update: {
+          position?: number
+          post_id?: string
+          product_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "blog_post_products_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "blog_posts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "blog_post_products_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: false
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      blog_post_revisions: {
+        Row: {
+          content_html: string
+          created_at: string
+          created_by: string | null
+          excerpt: string | null
+          id: string
+          post_id: string
+          seo_snapshot: Json
+          title: string
+        }
+        Insert: {
+          content_html: string
+          created_at?: string
+          created_by?: string | null
+          excerpt?: string | null
+          id?: string
+          post_id: string
+          seo_snapshot?: Json
+          title: string
+        }
+        Update: {
+          content_html?: string
+          created_at?: string
+          created_by?: string | null
+          excerpt?: string | null
+          id?: string
+          post_id?: string
+          seo_snapshot?: Json
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "blog_post_revisions_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "blog_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      blog_posts: {
+        Row: {
+          ai_model: string | null
+          ai_prompt_version: string | null
+          ai_provider: string | null
+          author_id: string | null
+          canonical_url: string | null
+          category_id: string | null
+          content_html: string
+          created_at: string
+          excerpt: string | null
+          faq: Json
+          featured_image_alt: string | null
+          featured_image_url: string | null
+          focus_keyword: string | null
+          id: string
+          meta_description: string | null
+          published_at: string | null
+          read_time_minutes: number
+          secondary_keywords: string[]
+          seo_checks: Json
+          seo_score: number
+          seo_title: string | null
+          slug: string
+          social_caption_facebook: string | null
+          social_caption_instagram: string | null
+          social_hashtags: string[]
+          status: string
+          tags: string[]
+          title: string
+          updated_at: string
+          word_count: number
+        }
+        Insert: {
+          ai_model?: string | null
+          ai_prompt_version?: string | null
+          ai_provider?: string | null
+          author_id?: string | null
+          canonical_url?: string | null
+          category_id?: string | null
+          content_html?: string
+          created_at?: string
+          excerpt?: string | null
+          faq?: Json
+          featured_image_alt?: string | null
+          featured_image_url?: string | null
+          focus_keyword?: string | null
+          id?: string
+          meta_description?: string | null
+          published_at?: string | null
+          read_time_minutes?: number
+          secondary_keywords?: string[]
+          seo_checks?: Json
+          seo_score?: number
+          seo_title?: string | null
+          slug: string
+          social_caption_facebook?: string | null
+          social_caption_instagram?: string | null
+          social_hashtags?: string[]
+          status?: string
+          tags?: string[]
+          title: string
+          updated_at?: string
+          word_count?: number
+        }
+        Update: {
+          ai_model?: string | null
+          ai_prompt_version?: string | null
+          ai_provider?: string | null
+          author_id?: string | null
+          canonical_url?: string | null
+          category_id?: string | null
+          content_html?: string
+          created_at?: string
+          excerpt?: string | null
+          faq?: Json
+          featured_image_alt?: string | null
+          featured_image_url?: string | null
+          focus_keyword?: string | null
+          id?: string
+          meta_description?: string | null
+          published_at?: string | null
+          read_time_minutes?: number
+          secondary_keywords?: string[]
+          seo_checks?: Json
+          seo_score?: number
+          seo_title?: string | null
+          slug?: string
+          social_caption_facebook?: string | null
+          social_caption_instagram?: string | null
+          social_hashtags?: string[]
+          status?: string
+          tags?: string[]
+          title?: string
+          updated_at?: string
+          word_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "blog_posts_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "blog_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      blog_social_publications: {
+        Row: {
+          attempts: number
+          created_at: string
+          error: string | null
+          external_id: string | null
+          external_url: string | null
+          id: string
+          payload: Json
+          platform: string
+          post_id: string
+          published_at: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          attempts?: number
+          created_at?: string
+          error?: string | null
+          external_id?: string | null
+          external_url?: string | null
+          id?: string
+          payload?: Json
+          platform: string
+          post_id: string
+          published_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          attempts?: number
+          created_at?: string
+          error?: string | null
+          external_id?: string | null
+          external_url?: string | null
+          id?: string
+          payload?: Json
+          platform?: string
+          post_id?: string
+          published_at?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "blog_social_publications_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "blog_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       brands: {
         Row: {
           created_at: string
