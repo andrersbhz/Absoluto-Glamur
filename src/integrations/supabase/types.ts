@@ -2308,6 +2308,222 @@ export type Database = {
         }
         Relationships: []
       }
+      whatsapp_contacts: {
+        Row: {
+          created_at: string | null
+          id: string
+          name: string | null
+          phone: string
+          profile_picture: string | null
+          updated_at: string | null
+          whatsapp_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          name?: string | null
+          phone: string
+          profile_picture?: string | null
+          updated_at?: string | null
+          whatsapp_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          name?: string | null
+          phone?: string
+          profile_picture?: string | null
+          updated_at?: string | null
+          whatsapp_id?: string | null
+        }
+        Relationships: []
+      }
+      whatsapp_conversation_tags: {
+        Row: {
+          conversation_id: string
+          tag_id: string
+        }
+        Insert: {
+          conversation_id: string
+          tag_id: string
+        }
+        Update: {
+          conversation_id?: string
+          tag_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_conversation_tags_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_conversation_tags_tag_id_fkey"
+            columns: ["tag_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_tags"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      whatsapp_conversations: {
+        Row: {
+          assigned_at: string | null
+          assigned_user_id: string | null
+          contact_id: string
+          created_at: string | null
+          finished_at: string | null
+          id: string
+          last_message_at: string | null
+          priority: number | null
+          started_at: string | null
+          status: Database["public"]["Enums"]["whatsapp_conversation_status"]
+          updated_at: string | null
+        }
+        Insert: {
+          assigned_at?: string | null
+          assigned_user_id?: string | null
+          contact_id: string
+          created_at?: string | null
+          finished_at?: string | null
+          id?: string
+          last_message_at?: string | null
+          priority?: number | null
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["whatsapp_conversation_status"]
+          updated_at?: string | null
+        }
+        Update: {
+          assigned_at?: string | null
+          assigned_user_id?: string | null
+          contact_id?: string
+          created_at?: string | null
+          finished_at?: string | null
+          id?: string
+          last_message_at?: string | null
+          priority?: number | null
+          started_at?: string | null
+          status?: Database["public"]["Enums"]["whatsapp_conversation_status"]
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_conversations_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_contacts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      whatsapp_internal_notes: {
+        Row: {
+          content: string
+          conversation_id: string
+          created_at: string | null
+          id: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          conversation_id: string
+          created_at?: string | null
+          id?: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          conversation_id?: string
+          created_at?: string | null
+          id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_internal_notes_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      whatsapp_messages: {
+        Row: {
+          content: string | null
+          conversation_id: string
+          created_at: string | null
+          delivered_at: string | null
+          direction: Database["public"]["Enums"]["whatsapp_message_direction"]
+          id: string
+          media_url: string | null
+          read_at: string | null
+          sent_at: string | null
+          status: Database["public"]["Enums"]["whatsapp_message_status"] | null
+          type: string | null
+          whatsapp_message_id: string | null
+        }
+        Insert: {
+          content?: string | null
+          conversation_id: string
+          created_at?: string | null
+          delivered_at?: string | null
+          direction: Database["public"]["Enums"]["whatsapp_message_direction"]
+          id?: string
+          media_url?: string | null
+          read_at?: string | null
+          sent_at?: string | null
+          status?: Database["public"]["Enums"]["whatsapp_message_status"] | null
+          type?: string | null
+          whatsapp_message_id?: string | null
+        }
+        Update: {
+          content?: string | null
+          conversation_id?: string
+          created_at?: string | null
+          delivered_at?: string | null
+          direction?: Database["public"]["Enums"]["whatsapp_message_direction"]
+          id?: string
+          media_url?: string | null
+          read_at?: string | null
+          sent_at?: string | null
+          status?: Database["public"]["Enums"]["whatsapp_message_status"] | null
+          type?: string | null
+          whatsapp_message_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_conversations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      whatsapp_tags: {
+        Row: {
+          color: string | null
+          created_at: string | null
+          id: string
+          name: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string | null
+          id?: string
+          name: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string | null
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -2356,6 +2572,13 @@ export type Database = {
         | "cancelled"
         | "failed"
       product_status: "draft" | "active" | "archived"
+      whatsapp_conversation_status:
+        | "waiting"
+        | "in_service"
+        | "finished"
+        | "transferred"
+      whatsapp_message_direction: "inbound" | "outbound"
+      whatsapp_message_status: "sent" | "delivered" | "read" | "failed"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -2518,6 +2741,14 @@ export const Constants = {
         "failed",
       ],
       product_status: ["draft", "active", "archived"],
+      whatsapp_conversation_status: [
+        "waiting",
+        "in_service",
+        "finished",
+        "transferred",
+      ],
+      whatsapp_message_direction: ["inbound", "outbound"],
+      whatsapp_message_status: ["sent", "delivered", "read", "failed"],
     },
   },
 } as const
