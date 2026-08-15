@@ -1,7 +1,7 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import {
-  BarChart3, BookOpen, Boxes, Compass, ExternalLink, Gauge, LayoutDashboard, LogOut, Megaphone, Moon, Package,
+  BarChart3, BookOpen, Boxes, Compass, ExternalLink, Gauge, LayoutDashboard, LogOut, Megaphone, MessageSquare, Moon, Package,
   PanelsTopLeft, Plug, RotateCcw, Settings, ShieldCheck, ShoppingCart, Sparkles, Store, Sun, Target, Users, WalletCards, Zap,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -17,6 +17,7 @@ const nav: NavItem[] = [
   { label: "Visão geral", icon: LayoutDashboard, to: "/admin", phase: 1 },
   { label: "Home Builder", icon: PanelsTopLeft, to: "/admin/home", phase: 2 },
   { label: "Integrações", icon: Plug, to: "/admin/integrations", phase: 1 },
+  { label: "Atendimento WhatsApp", icon: MessageSquare, to: "/admin/whatsapp", phase: 9 },
   { label: "Pedidos", icon: ShoppingCart, to: "/admin/orders", phase: 3 },
   { label: "Recuperação de carrinho", icon: RotateCcw, to: "/admin/recovery", phase: 3 },
   { label: "Catálogo", icon: Package, to: "/admin/catalog", phase: 2 },

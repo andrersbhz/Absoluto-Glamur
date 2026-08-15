@@ -36,6 +36,7 @@ import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authentic
 import { Route as ApiPublicCommerceEventRouteImport } from './routes/api/public/commerce-event'
 import { Route as ApiPublicAbandonedCheckoutRouteImport } from './routes/api/public/abandoned-checkout'
 import { Route as AuthenticatedCheckoutOrderIdRouteImport } from './routes/_authenticated/checkout.$orderId'
+import { Route as AuthenticatedAdminWhatsappRouteImport } from './routes/_authenticated/admin.whatsapp'
 import { Route as AuthenticatedAdminUsersRouteImport } from './routes/_authenticated/admin.users'
 import { Route as AuthenticatedAdminUsageRouteImport } from './routes/_authenticated/admin.usage'
 import { Route as AuthenticatedAdminSettingsRouteImport } from './routes/_authenticated/admin.settings'
@@ -55,6 +56,7 @@ import { Route as AuthenticatedAdminBlogRouteImport } from './routes/_authentica
 import { Route as AuthenticatedAdminAiRouteImport } from './routes/_authenticated/admin.ai'
 import { Route as AuthenticatedAdminIntelligenceIndexRouteImport } from './routes/_authenticated/admin.intelligence.index'
 import { Route as AuthenticatedAdminCatalogIndexRouteImport } from './routes/_authenticated/admin.catalog.index'
+import { Route as ApiPublicWebhooksWhatsappRouteImport } from './routes/api/public/webhooks/whatsapp'
 import { Route as ApiPublicWebhooksPagbankRouteImport } from './routes/api/public/webhooks/pagbank'
 import { Route as ApiPublicWebhooksNupayRouteImport } from './routes/api/public/webhooks/nupay'
 import { Route as ApiPublicWebhooksAsaasRouteImport } from './routes/api/public/webhooks/asaas'
@@ -203,6 +205,12 @@ const AuthenticatedCheckoutOrderIdRoute =
     path: '/$orderId',
     getParentRoute: () => AuthenticatedCheckoutRoute,
   } as any)
+const AuthenticatedAdminWhatsappRoute =
+  AuthenticatedAdminWhatsappRouteImport.update({
+    id: '/whatsapp',
+    path: '/whatsapp',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
 const AuthenticatedAdminUsersRoute = AuthenticatedAdminUsersRouteImport.update({
   id: '/users',
   path: '/users',
@@ -312,6 +320,12 @@ const AuthenticatedAdminCatalogIndexRoute =
     path: '/catalog/',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
+const ApiPublicWebhooksWhatsappRoute =
+  ApiPublicWebhooksWhatsappRouteImport.update({
+    id: '/api/public/webhooks/whatsapp',
+    path: '/api/public/webhooks/whatsapp',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicWebhooksPagbankRoute =
   ApiPublicWebhooksPagbankRouteImport.update({
     id: '/api/public/webhooks/pagbank',
@@ -417,6 +431,7 @@ export interface FileRoutesByFullPath {
   '/admin/settings': typeof AuthenticatedAdminSettingsRoute
   '/admin/usage': typeof AuthenticatedAdminUsageRoute
   '/admin/users': typeof AuthenticatedAdminUsersRoute
+  '/admin/whatsapp': typeof AuthenticatedAdminWhatsappRoute
   '/checkout/$orderId': typeof AuthenticatedCheckoutOrderIdRoute
   '/api/public/abandoned-checkout': typeof ApiPublicAbandonedCheckoutRoute
   '/api/public/commerce-event': typeof ApiPublicCommerceEventRoute
@@ -432,6 +447,7 @@ export interface FileRoutesByFullPath {
   '/api/public/webhooks/asaas': typeof ApiPublicWebhooksAsaasRoute
   '/api/public/webhooks/nupay': typeof ApiPublicWebhooksNupayRoute
   '/api/public/webhooks/pagbank': typeof ApiPublicWebhooksPagbankRoute
+  '/api/public/webhooks/whatsapp': typeof ApiPublicWebhooksWhatsappRoute
   '/admin/catalog/': typeof AuthenticatedAdminCatalogIndexRoute
   '/admin/intelligence/': typeof AuthenticatedAdminIntelligenceIndexRoute
 }
@@ -474,6 +490,7 @@ export interface FileRoutesByTo {
   '/admin/settings': typeof AuthenticatedAdminSettingsRoute
   '/admin/usage': typeof AuthenticatedAdminUsageRoute
   '/admin/users': typeof AuthenticatedAdminUsersRoute
+  '/admin/whatsapp': typeof AuthenticatedAdminWhatsappRoute
   '/checkout/$orderId': typeof AuthenticatedCheckoutOrderIdRoute
   '/api/public/abandoned-checkout': typeof ApiPublicAbandonedCheckoutRoute
   '/api/public/commerce-event': typeof ApiPublicCommerceEventRoute
@@ -489,6 +506,7 @@ export interface FileRoutesByTo {
   '/api/public/webhooks/asaas': typeof ApiPublicWebhooksAsaasRoute
   '/api/public/webhooks/nupay': typeof ApiPublicWebhooksNupayRoute
   '/api/public/webhooks/pagbank': typeof ApiPublicWebhooksPagbankRoute
+  '/api/public/webhooks/whatsapp': typeof ApiPublicWebhooksWhatsappRoute
   '/admin/catalog': typeof AuthenticatedAdminCatalogIndexRoute
   '/admin/intelligence': typeof AuthenticatedAdminIntelligenceIndexRoute
 }
@@ -534,6 +552,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/settings': typeof AuthenticatedAdminSettingsRoute
   '/_authenticated/admin/usage': typeof AuthenticatedAdminUsageRoute
   '/_authenticated/admin/users': typeof AuthenticatedAdminUsersRoute
+  '/_authenticated/admin/whatsapp': typeof AuthenticatedAdminWhatsappRoute
   '/_authenticated/checkout/$orderId': typeof AuthenticatedCheckoutOrderIdRoute
   '/api/public/abandoned-checkout': typeof ApiPublicAbandonedCheckoutRoute
   '/api/public/commerce-event': typeof ApiPublicCommerceEventRoute
@@ -549,6 +568,7 @@ export interface FileRoutesById {
   '/api/public/webhooks/asaas': typeof ApiPublicWebhooksAsaasRoute
   '/api/public/webhooks/nupay': typeof ApiPublicWebhooksNupayRoute
   '/api/public/webhooks/pagbank': typeof ApiPublicWebhooksPagbankRoute
+  '/api/public/webhooks/whatsapp': typeof ApiPublicWebhooksWhatsappRoute
   '/_authenticated/admin/catalog/': typeof AuthenticatedAdminCatalogIndexRoute
   '/_authenticated/admin/intelligence/': typeof AuthenticatedAdminIntelligenceIndexRoute
 }
@@ -594,6 +614,7 @@ export interface FileRouteTypes {
     | '/admin/settings'
     | '/admin/usage'
     | '/admin/users'
+    | '/admin/whatsapp'
     | '/checkout/$orderId'
     | '/api/public/abandoned-checkout'
     | '/api/public/commerce-event'
@@ -609,6 +630,7 @@ export interface FileRouteTypes {
     | '/api/public/webhooks/asaas'
     | '/api/public/webhooks/nupay'
     | '/api/public/webhooks/pagbank'
+    | '/api/public/webhooks/whatsapp'
     | '/admin/catalog/'
     | '/admin/intelligence/'
   fileRoutesByTo: FileRoutesByTo
@@ -651,6 +673,7 @@ export interface FileRouteTypes {
     | '/admin/settings'
     | '/admin/usage'
     | '/admin/users'
+    | '/admin/whatsapp'
     | '/checkout/$orderId'
     | '/api/public/abandoned-checkout'
     | '/api/public/commerce-event'
@@ -666,6 +689,7 @@ export interface FileRouteTypes {
     | '/api/public/webhooks/asaas'
     | '/api/public/webhooks/nupay'
     | '/api/public/webhooks/pagbank'
+    | '/api/public/webhooks/whatsapp'
     | '/admin/catalog'
     | '/admin/intelligence'
   id:
@@ -710,6 +734,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/settings'
     | '/_authenticated/admin/usage'
     | '/_authenticated/admin/users'
+    | '/_authenticated/admin/whatsapp'
     | '/_authenticated/checkout/$orderId'
     | '/api/public/abandoned-checkout'
     | '/api/public/commerce-event'
@@ -725,6 +750,7 @@ export interface FileRouteTypes {
     | '/api/public/webhooks/asaas'
     | '/api/public/webhooks/nupay'
     | '/api/public/webhooks/pagbank'
+    | '/api/public/webhooks/whatsapp'
     | '/_authenticated/admin/catalog/'
     | '/_authenticated/admin/intelligence/'
   fileRoutesById: FileRoutesById
@@ -753,6 +779,7 @@ export interface RootRouteChildren {
   ApiPublicWebhooksAsaasRoute: typeof ApiPublicWebhooksAsaasRoute
   ApiPublicWebhooksNupayRoute: typeof ApiPublicWebhooksNupayRoute
   ApiPublicWebhooksPagbankRoute: typeof ApiPublicWebhooksPagbankRoute
+  ApiPublicWebhooksWhatsappRoute: typeof ApiPublicWebhooksWhatsappRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -946,6 +973,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedCheckoutOrderIdRouteImport
       parentRoute: typeof AuthenticatedCheckoutRoute
     }
+    '/_authenticated/admin/whatsapp': {
+      id: '/_authenticated/admin/whatsapp'
+      path: '/whatsapp'
+      fullPath: '/admin/whatsapp'
+      preLoaderRoute: typeof AuthenticatedAdminWhatsappRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
     '/_authenticated/admin/users': {
       id: '/_authenticated/admin/users'
       path: '/users'
@@ -1079,6 +1113,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminCatalogIndexRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/api/public/webhooks/whatsapp': {
+      id: '/api/public/webhooks/whatsapp'
+      path: '/api/public/webhooks/whatsapp'
+      fullPath: '/api/public/webhooks/whatsapp'
+      preLoaderRoute: typeof ApiPublicWebhooksWhatsappRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/webhooks/pagbank': {
       id: '/api/public/webhooks/pagbank'
       path: '/api/public/webhooks/pagbank'
@@ -1191,6 +1232,7 @@ interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminSettingsRoute: typeof AuthenticatedAdminSettingsRoute
   AuthenticatedAdminUsageRoute: typeof AuthenticatedAdminUsageRoute
   AuthenticatedAdminUsersRoute: typeof AuthenticatedAdminUsersRoute
+  AuthenticatedAdminWhatsappRoute: typeof AuthenticatedAdminWhatsappRoute
   AuthenticatedAdminIndexRoute: typeof AuthenticatedAdminIndexRoute
   AuthenticatedAdminCatalogIdRoute: typeof AuthenticatedAdminCatalogIdRoute
   AuthenticatedAdminIntelligenceIdRoute: typeof AuthenticatedAdminIntelligenceIdRoute
@@ -1216,6 +1258,7 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminSettingsRoute: AuthenticatedAdminSettingsRoute,
   AuthenticatedAdminUsageRoute: AuthenticatedAdminUsageRoute,
   AuthenticatedAdminUsersRoute: AuthenticatedAdminUsersRoute,
+  AuthenticatedAdminWhatsappRoute: AuthenticatedAdminWhatsappRoute,
   AuthenticatedAdminIndexRoute: AuthenticatedAdminIndexRoute,
   AuthenticatedAdminCatalogIdRoute: AuthenticatedAdminCatalogIdRoute,
   AuthenticatedAdminIntelligenceIdRoute: AuthenticatedAdminIntelligenceIdRoute,
@@ -1320,6 +1363,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicWebhooksAsaasRoute: ApiPublicWebhooksAsaasRoute,
   ApiPublicWebhooksNupayRoute: ApiPublicWebhooksNupayRoute,
   ApiPublicWebhooksPagbankRoute: ApiPublicWebhooksPagbankRoute,
+  ApiPublicWebhooksWhatsappRoute: ApiPublicWebhooksWhatsappRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

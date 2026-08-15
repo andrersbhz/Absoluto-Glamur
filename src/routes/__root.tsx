@@ -174,6 +174,7 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       <Outlet />
       <CustomerPushPrompt />
+      <audio id="whatsapp-alert" src="https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3" preload="auto" />
       <Toaster richColors position="top-right" />
     </QueryClientProvider>
   );
