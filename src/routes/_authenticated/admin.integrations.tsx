@@ -14,6 +14,7 @@ import {
   type IntegrationDTO,
   type SaveIntegrationInput,
 } from "@/lib/integrations.functions";
+import { createAliExpressAuthorizationUrl } from "@/lib/aliexpress-oauth.functions";
 import {
   listAdminRouting,
   updateRouting,
@@ -95,7 +96,7 @@ function IntegrationsPage() {
         </div>
 
         <p className="mt-10 text-xs text-muted-foreground">
-          As chaves são armazenadas no banco e nunca expostas ao navegador — todas as chamadas passam por server functions com role de serviço.
+          As chaves e tokens sensíveis permanecem no servidor; o painel recebe apenas valores mascarados e configurações não secretas.
         </p>
         <div className="mt-6 text-sm">
           <Link to="/admin" className="text-primary hover:underline">
@@ -111,6 +112,7 @@ function IntegrationCard({ integration }: { integration: Integration }) {
   const qc = useQueryClient();
   const save = useServerFn(saveIntegration);
   const test = useServerFn(testIntegration);
+  const beginAliExpressOAuth = useServerFn(createAliExpressAuthorizationUrl);
 
   const [open, setOpen] = useState(false);
   const [apiKey, setApiKey] = useState("");
@@ -137,6 +139,15 @@ function IntegrationCard({ integration }: { integration: Integration }) {
     onSuccess: (r) => {
       toast.success(`Conectado a ${r.info?.name ?? "provedor"}`);
       qc.invalidateQueries({ queryKey: ["integrations"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const oauthMut = useMutation({
+    mutationFn: () =>
+      beginAliExpressOAuth({ data: { origin: window.location.origin } }),
+    onSuccess: ({ authUrl }) => {
+      window.open(authUrl, "_blank", "noopener,noreferrer");
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -206,7 +217,7 @@ function IntegrationCard({ integration }: { integration: Integration }) {
       keyLabel: "Console AliExpress Open",
       docsUrl: "https://openservice.aliexpress.com/doc/doc.htm",
       instructions:
-        "1) Em openservice.aliexpress.com → Console → seu app, cole a URL de Callback exibida abaixo no campo 'Callback URL'. 2) Copie App Key e App Secret e cole nos campos 'API Key' (App Key) e 'Webhook Token' (App Secret). Salve. 3) Clique em 'Autorizar AliExpress' (link abaixo) — você será redirecionado para autorizar e o sistema troca o code por access/refresh token automaticamente.",
+        "1) Em openservice.aliexpress.com → Console → seu app, cole a URL de Callback exibida abaixo no campo 'Callback URL'. 2) Copie App Key e App Secret e cole nos campos 'API Key' (App Key) e 'Webhook Token' (App Secret). Salve. 3) Clique em 'Autorizar AliExpress' — o sistema gera um state temporário vinculado ao administrador antes de abrir o AliExpress.",
     },
     "17track": {
       keyUrl: "https://features.17track.net/en/api",
@@ -231,6 +242,18 @@ function IntegrationCard({ integration }: { integration: Integration }) {
   const currentMerchantKey =
     (integration.config as { merchant_key?: string } | null)?.merchant_key ?? "";
 
+  const authorizeAliExpress = (
+    <button
+      type="button"
+      onClick={() => oauthMut.mutate()}
+      disabled={oauthMut.isPending || !integration.has_api_key || !integration.has_webhook_token}
+      className="inline-flex items-center gap-2 rounded-lg border border-primary/40 bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary/20 disabled:cursor-not-allowed disabled:opacity-50"
+      title={!integration.has_api_key || !integration.has_webhook_token ? "Salve App Key e App Secret antes de autorizar" : "Autorizar conta AliExpress"}
+    >
+      <ExternalLink className="h-3.5 w-3.5" />
+      {oauthMut.isPending ? "Preparando autorização…" : "Autorizar AliExpress"}
+    </button>
+  );
 
   return (
     <div className="rounded-2xl border border-border bg-card p-5 shadow-soft">
@@ -266,24 +289,11 @@ function IntegrationCard({ integration }: { integration: Integration }) {
         <div className="mt-4 rounded-xl border border-destructive/40 bg-destructive/10 p-3 text-sm">
           <p className="font-medium text-destructive">Reautorização necessária</p>
           <p className="mt-1 text-xs text-destructive/90">
-            O refresh_token do AliExpress expirou ou foi invalidado. Clique em{" "}
-            <b>Autorizar AliExpress</b> abaixo (após confirmar App Key, App Secret e Callback URL)
-            para gerar novos tokens. Enquanto isso, sincronizações de estoque, importação e
-            fulfillment ficam suspensas.
+            O refresh_token do AliExpress expirou ou foi invalidado. Clique em <b>Autorizar AliExpress</b> abaixo (após confirmar App Key, App Secret e Callback URL) para gerar novos tokens. Enquanto isso, sincronizações de estoque, importação e fulfillment ficam suspensas.
           </p>
-          <a
-            href="/api/public/aliexpress/start"
-            target="_blank"
-            rel="noreferrer noopener"
-            className="mt-2 inline-flex items-center gap-2 rounded-lg bg-destructive px-3 py-1.5 text-xs font-medium text-white hover:opacity-90"
-          >
-            <ExternalLink className="h-3.5 w-3.5" />
-            Reautorizar agora
-          </a>
+          <div className="mt-2">{authorizeAliExpress}</div>
         </div>
       )}
-
-
 
       <div className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
         <div>
@@ -393,7 +403,6 @@ function IntegrationCard({ integration }: { integration: Integration }) {
             </div>
           )}
           <div className="grid gap-3 sm:grid-cols-2">
-
             <label className="text-sm">
               <span className="mb-1 block text-xs text-muted-foreground">Ambiente</span>
               <select
@@ -519,20 +528,10 @@ function IntegrationCard({ integration }: { integration: Integration }) {
                   </button>
                 </div>
                 <span className="mt-1 block text-[11px] text-muted-foreground">
-                  Erro "Redirect uri does not match the callback url of the APP" = esta URL
-                  diverge da registrada no AliExpress. Cole exatamente a mesma string dos dois lados
-                  (com/sem www, http/https, sem barra final).
+                  Erro "Redirect uri does not match the callback url of the APP" = esta URL diverge da registrada no AliExpress. Cole exatamente a mesma string dos dois lados (com/sem www, http/https, sem barra final).
                 </span>
               </label>
-              <a
-                href="/api/public/aliexpress/start"
-                target="_blank"
-                rel="noreferrer noopener"
-                className="inline-flex items-center gap-2 rounded-lg border border-primary/40 bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary/20"
-              >
-                <ExternalLink className="h-3.5 w-3.5" />
-                Autorizar AliExpress (após salvar App Key + App Secret + Callback URL)
-              </a>
+              {authorizeAliExpress}
             </>
           )}
           <div className="flex justify-end gap-2">
@@ -570,6 +569,13 @@ const PROVIDER_OPTIONS: { id: string; label: string }[] = [
   { id: "stripe", label: "Stripe" },
   { id: "mercadopago", label: "Mercado Pago" },
 ];
+
+const SUPPORTED_PROVIDERS_BY_METHOD: Record<PaymentMethodKey, string[]> = {
+  pix: ["asaas", "pagbank"],
+  credit_card: ["pagbank"],
+  boleto: ["asaas", "pagbank"],
+  nubank_redirect: ["nupay"],
+};
 
 const METHOD_LABELS: Record<PaymentMethodKey, string> = {
   pix: "PIX",
@@ -609,7 +615,7 @@ function RoutingPanel() {
         </h2>
       </div>
       <p className="mt-1 text-xs text-muted-foreground">
-        Escolha qual provedor processa cada método. Configuração híbrida — ex.: PIX via Asaas + cartão via Stripe + Nubank via NuPay.
+        Escolha somente provedores que já possuem adapter ativo no checkout — por exemplo, PIX via Asaas ou PagBank, cartão via PagBank e Nubank via NuPay.
       </p>
       <div className="mt-3 overflow-hidden rounded-2xl border border-border bg-card shadow-soft">
         <table className="w-full text-sm">
@@ -632,7 +638,9 @@ function RoutingPanel() {
                     }
                     className="rounded-md border border-border bg-background px-2 py-1 text-sm"
                   >
-                    {PROVIDER_OPTIONS.map((p) => (
+                    {PROVIDER_OPTIONS.filter((p) =>
+                      SUPPORTED_PROVIDERS_BY_METHOD[r.method].includes(p.id),
+                    ).map((p) => (
                       <option key={p.id} value={p.id}>
                         {p.label}
                       </option>
@@ -710,4 +718,3 @@ function StatusLight({
     </span>
   );
 }
-
