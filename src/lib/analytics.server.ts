@@ -1,9 +1,9 @@
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 type AuthContext = {
-  supabase: {
-    rpc: (name: string, args: Record<string, string>) => Promise<{ data: boolean | null; error: unknown }>;
-  };
+  // The authenticated middleware supplies the generated, strongly typed client.
+  // Keep this boundary structural because its generic RPC signature is invariant.
+  supabase: any;
   userId: string;
 };
 
@@ -83,7 +83,7 @@ export async function buildAnalyticsCsv(context: AuthContext, period: AnalyticsP
 
   const header = ["Data", "Evento", "Página", "Produto", "Valor (R$)", "ID Visitante"];
   const rows = (data ?? []).map((row) => [
-    new Date(row.created_at).toLocaleString("pt-BR"),
+    row.created_at ? new Date(row.created_at).toLocaleString("pt-BR") : "",
     row.event_name,
     row.page_path,
     row.product_name ?? "",
