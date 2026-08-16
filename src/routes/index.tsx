@@ -41,7 +41,6 @@ export const Route = createFileRoute("/")({
   component: Index,
 });
 
-
 const ICON_MAP: Record<string, ComponentType<{ className?: string }>> = {
   sparkles: Sparkles,
   shield: ShieldCheck,
@@ -82,6 +81,10 @@ function Index() {
   const manifesto = home.manifesto ?? {};
   const pillars = home.pillars ?? {};
   const pillarItems = pillars.items ?? [];
+  const sliderActive = heroSlider.enabled !== false && heroSlides.length > 0;
+
+  const hasCategoryGridBlock = blocks.some((block) => block.kind === "category_grid");
+  const hasCategoryProductsBlock = blocks.some((block) => block.kind === "category_products");
 
   const primaryHref = hero.cta_primary_href ?? "/products";
   const secondaryHref = hero.cta_secondary_href ?? "/products?collection=promocoes";
@@ -99,7 +102,6 @@ function Index() {
       : dynamicHeroProduct?.media?.find((m) => m.kind !== "video")?.url ??
         dynamicHeroProduct?.media?.[0]?.url ??
         null;
-  const heroProductName = !hero.image_url ? dynamicHeroProduct?.name ?? null : null;
 
   return (
     <StoreLayout>
@@ -109,12 +111,12 @@ function Index() {
       ) : null}
 
       {/* Hero Slider (editável) */}
-      {heroSlider.enabled !== false && heroSlides.length > 0 ? (
+      {sliderActive ? (
         <HeroSlider slides={heroSlides} autoplayMs={heroSlider.autoplay_ms ?? 6000} />
       ) : null}
 
       {/* HERO — apenas quando o slider não está ativo/preenchido */}
-      {!(heroSlider.enabled !== false && heroSlides.length > 0) && (
+      {!sliderActive && (
       <section
         className="relative isolate overflow-hidden min-h-[420px] lg:min-h-[500px] flex items-center"
         style={
@@ -193,42 +195,25 @@ function Index() {
       </section>
       )}
 
+      {/* Fallback legado: instalações sem os blocos estruturais da v1.2 mantêm a ordem anterior. */}
+      {!hasCategoryGridBlock && <CategoryGridSection categories={categories} />}
 
-      {/* Categorias */}
-      {categories.length > 0 && (
-        <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
-          <GoldRule />
-          <div className="mt-6 flex flex-wrap justify-center gap-3">
-            {categories.map((c) => (
-              <Link
-                key={c.id}
-                to="/products"
-                search={{ category: c.slug } as never}
-                className="rounded-full border border-border bg-card px-5 py-2 text-xs uppercase tracking-[0.22em] text-foreground shadow-soft transition hover:border-champagne hover:text-primary"
-              >
-                {c.name}
-              </Link>
-            ))}
-          </div>
-        </section>
-      )}
-      {blocks.map((b) => (
-        <CustomBlock key={b.id} block={b} />
-      ))}
+      {/* A ordem abaixo vem diretamente de homepage_blocks.position, incluindo categorias e vitrines. */}
+      {blocks.map((block) => {
+        if (block.kind === "category_grid") {
+          return <CategoryGridSection key={block.id} categories={categories} />;
+        }
+        if (block.kind === "category_products") {
+          return <CategoryProductsSections key={block.id} rows={byCategory} />;
+        }
+        return <CustomBlock key={block.id} block={block} />;
+      })}
 
       {featuredCollections.map((c) => (
         <FeaturedCollectionSection key={c.id} slug={c.slug} name={c.name} description={c.description} />
       ))}
 
-      {byCategory.map((row) => (
-        <FeaturedSection
-          key={row.category.id}
-          title={row.category.name}
-          subtitle="Novidades e mais vendidos"
-          link={{ label: "Ver todos", search: { category: row.category.slug } }}
-          products={row.products}
-        />
-      ))}
+      {!hasCategoryProductsBlock && <CategoryProductsSections rows={byCategory} />}
 
       {newArrivals.length > 0 && (
         <FeaturedSection
@@ -303,6 +288,53 @@ function Index() {
   );
 }
 
+function CategoryGridSection({
+  categories,
+}: {
+  categories: Array<{ id: string; name: string; slug: string }>;
+}) {
+  if (categories.length === 0) return null;
+  return (
+    <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+      <GoldRule />
+      <div className="mt-6 flex flex-wrap justify-center gap-3">
+        {categories.map((category) => (
+          <Link
+            key={category.id}
+            to="/products"
+            search={{ category: category.slug } as never}
+            className="rounded-full border border-border bg-card px-5 py-2 text-xs uppercase tracking-[0.22em] text-foreground shadow-soft transition hover:border-champagne hover:text-primary"
+          >
+            {category.name}
+          </Link>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function CategoryProductsSections({
+  rows,
+}: {
+  rows: Array<{
+    category: { id: string; name: string; slug: string };
+    products: Parameters<typeof ProductCard>[0]["product"][];
+  }>;
+}) {
+  return (
+    <>
+      {rows.map((row) => (
+        <FeaturedSection
+          key={row.category.id}
+          title={row.category.name}
+          subtitle="Novidades e mais vendidos"
+          link={{ label: "Ver todos", search: { category: row.category.slug } }}
+          products={row.products}
+        />
+      ))}
+    </>
+  );
+}
 
 function CustomBlock({ block }: { block: HomepageBlock }) {
   const data = (block.data ?? {}) as Record<string, string | number | string[] | undefined>;
@@ -468,7 +500,6 @@ function AnnouncementBar({
       <span className="pointer-events-none absolute -left-24 top-1/2 h-40 w-40 -translate-y-1/2 rounded-full bg-champagne/25 blur-3xl" />
       <span className="pointer-events-none absolute -right-24 top-1/2 h-40 w-40 -translate-y-1/2 rounded-full bg-primary/40 blur-3xl" />
       <div className="relative mx-auto grid max-w-7xl grid-cols-1 items-center gap-4 px-4 py-3 sm:grid-cols-[1fr_auto] sm:px-6 sm:py-3.5 lg:px-8">
-        {/* DIV 1 — produto */}
         <div className="flex min-w-0 items-center gap-4">
           <div className="relative shrink-0">
             <span className="absolute inset-0 -m-1 rounded-full bg-champagne/30 blur-md" />
@@ -494,7 +525,6 @@ function AnnouncementBar({
           </div>
         </div>
 
-        {/* DIV 2 — CTA */}
         <div className="flex items-center justify-end">
           <a
             href={href}
