@@ -14,6 +14,22 @@ function mask(v: string | null): string | null {
   return v.slice(0, 4) + "••••" + v.slice(-4);
 }
 
+function sanitizeIntegrationConfig(value: unknown): Record<string, unknown> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  const config = { ...(value as Record<string, unknown>) };
+  const sensitiveKeys = [
+    "access_token",
+    "refresh_token",
+    "app_secret",
+    "client_secret",
+    "merchant_token",
+    "secret",
+    "token",
+  ];
+  for (const key of sensitiveKeys) delete config[key];
+  return config;
+}
+
 export type IntegrationDTO = {
   provider: string;
   category: string;
@@ -54,7 +70,7 @@ export const listIntegrations = createServerFn({ method: "GET" })
       description: i.description,
       enabled: i.enabled,
       mode: (i.mode as "sandbox" | "production") ?? "sandbox",
-      config: i.config,
+      config: sanitizeIntegrationConfig(i.config),
       last_verified_at: i.last_verified_at,
       last_status: i.last_status,
       last_error: i.last_error,
