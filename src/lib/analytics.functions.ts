@@ -97,18 +97,17 @@ export const exportAnalyticsCsv = createServerFn({ method: "POST" })
       r.product_name || "",
       ((r.value_cents || 0) / 100).toFixed(2),
       r.visitor_id
-    ].map(s => `"${String(s).replace(/"/g, '""')}"`).join(","));
+    ].map(s => `"${String(s || '').replace(/"/g, '""')}"`).join(","));
 
     return { csv: [header.join(","), ...rows].join("\n"), filename: `analytics-${input.period}-${new Date().toISOString().slice(0, 10)}.csv` };
   });
 
 export const getOperatorNotifications = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
+  .handler(async ({ context }): Promise<any[]> => {
     await assertAdmin(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data } = await supabaseAdmin
-      .from("operator_notifications")
+    const { data } = await (supabaseAdmin.from("operator_notifications") as any)
       .select("*, session:visitor_sessions(*)")
       .eq("is_read", false)
       .order("created_at", { ascending: false })
@@ -122,8 +121,7 @@ export const markNotificationRead = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    await supabaseAdmin
-      .from("operator_notifications")
+    await (supabaseAdmin.from("operator_notifications") as any)
       .update({ is_read: true })
       .eq("id", data.id);
     return { success: true };
