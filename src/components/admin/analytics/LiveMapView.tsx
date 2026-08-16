@@ -48,7 +48,7 @@ import {
   ZoomableGroup
 } from "react-simple-maps";
 
-// URL para o TopoJSON do Brasil (estados)
+// URL para o GeoJSON do Brasil (estados)
 const geoUrl = "https://raw.githubusercontent.com/codeforamerica/click_that_hood/master/public/data/brazil-states.geojson";
 
 interface VisitorSession {
@@ -349,28 +349,35 @@ export default function LiveMapView() {
             <ComposableMap
               projection="geoMercator"
               projectionConfig={{
-                scale: 650,
+                scale: 800,
                 center: [-55, -15] 
               }}
               style={{ width: "100%", height: "100%" }}
             >
-              <ZoomableGroup zoom={1} maxZoom={8}>
+              <ZoomableGroup 
+                zoom={1} 
+                maxZoom={8}
+              >
                 <Geographies geography={geoUrl}>
                   {({ geographies }) =>
-                    geographies.map((geo) => (
-                      <Geography
-                        key={geo.rsmKey}
-                        geography={geo}
-                        fill="transparent"
-                        stroke="hsl(var(--primary))"
-                        strokeWidth={1}
-                        style={{
-                          default: { outline: "none" },
-                          hover: { fill: "hsl(var(--primary) / 0.05)", outline: "none" },
-                          pressed: { outline: "none" },
-                        }}
-                      />
-                    ))
+                    geographies && geographies.length > 0 ? (
+                      geographies.map((geo) => (
+                        <Geography
+                          key={geo.rsmKey}
+                          geography={geo}
+                          fill="rgba(0,0,0,0.01)"
+                          stroke="hsl(var(--primary))"
+                          strokeWidth={1.5}
+                          style={{
+                            default: { outline: "none" },
+                            hover: { fill: "hsl(var(--primary) / 0.1)", outline: "none" },
+                            pressed: { outline: "none" },
+                          }}
+                        />
+                      ))
+                    ) : (
+                      <rect width="100%" height="100%" fill="transparent" />
+                    )
                   }
                 </Geographies>
 
