@@ -26,13 +26,11 @@ function slugify(v: string): string {
     .slice(0, 80);
 }
 
-// -------------------- Types --------------------
-
 export type NormalizedProduct = {
   title: string;
   description: string | null;
   images: string[];
-  price_original: number | null; // in currency units (not cents), source currency
+  price_original: number | null;
   currency: string | null;
   sku: string | null;
   weight_grams: number | null;
@@ -53,16 +51,14 @@ export type ImportRow = {
   updated_at: string;
 };
 
-// -------------------- Settings (persisted via integrations table) --------------------
-
 const SettingsSchema = z.object({
-  markup_percent: z.number().min(0).max(1000).default(150), // e.g. 150 = +150%
+  markup_percent: z.number().min(0).max(1000).default(150),
   markup_fixed_cents: z.number().int().min(0).default(0),
   round_to_99: z.boolean().default(true),
   default_status: z.enum(["draft", "active"]).default("draft"),
   default_category_id: z.string().uuid().nullable().optional(),
   default_brand_id: z.string().uuid().nullable().optional(),
-  fx_rate: z.number().positive().default(5.5), // 1 USD -> BRL (fallback if source currency not BRL)
+  fx_rate: z.number().positive().default(5.5),
 });
 export type ImportSettings = z.infer<typeof SettingsSchema>;
 
@@ -114,9 +110,6 @@ export const saveImportSettings = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-
-// -------------------- Pricing helpers --------------------
-
 export function computeSalePriceCents(
   originalPrice: number | null,
   currency: string | null,
@@ -132,8 +125,6 @@ export function computeSalePriceCents(
   }
   return withMarkup;
 }
-
-// -------------------- Scraping (URL) --------------------
 
 function extractAliexpressId(url: string): string | null {
   const m = url.match(/\/item\/(\d+)\.html/) || url.match(/\/(\d{10,})\.html/);
@@ -211,23 +202,15 @@ async function scrapeViaFirecrawl(url: string): Promise<NormalizedProduct> {
   };
 }
 
-// -------------------- Translation + FX --------------------
-
-// Remove menções à marca AliExpress (e variações) do conteúdo importado, para
-// que descrições, títulos e tags não exponham a origem do produto na loja.
 export function stripBrandMentions(input: string | null | undefined): string | null {
   if (!input) return input ?? null;
   let out = String(input);
-  // remove "aliexpress", "ali express", "ali-express", "ali_express" (case-insensitive)
   out = out.replace(/ali[\s\-_]?express/gi, "");
-  // colapsa espaços/pontuação órfã deixados pela remoção
   out = out.replace(/[ \t]{2,}/g, " ").replace(/\s+([.,;:!?])/g, "$1");
   out = out.replace(/^[\s\-–—·•|,.:;]+|[\s\-–—·•|,.:;]+$/g, "");
   return out.trim() || null;
 }
 
-// Gera tags a partir do nome do produto + atributos (categoria, marca, extras).
-// Remove stopwords em pt-BR, normaliza acentos e limita a ~10 tags únicas.
 const TAG_STOPWORDS = new Set([
   "a","o","as","os","de","da","do","das","dos","e","em","para","com","sem","por",
   "um","uma","uns","umas","no","na","nos","nas","ao","aos","the","and","for","of",
@@ -265,11 +248,6 @@ export function buildProductTags(input: {
   return Array.from(out).slice(0, 10);
 }
 
-
-
-// Converte texto/HTML em HTML com parágrafos <p>. Se o conteúdo já tiver tags
-// de bloco (<p>, <br>, <ul>, <h*>, <div>), sanitiza e devolve. Caso contrário,
-// quebra por linhas em branco e envolve cada bloco em <p>.
 export function toParagraphHtml(text: string | null | undefined): string | null {
   if (!text) return null;
   const raw = String(text).trim();
@@ -350,8 +328,6 @@ export const scrapeUrlPreview = createServerFn({ method: "POST" })
   .handler(async ({ data, context }): Promise<NormalizedProduct> => {
     await assertCatalog(context);
     const raw = await scrapeViaFirecrawl(data.url);
-
-    // Load user-configured fx_rate as override
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: cfg } = await supabaseAdmin
       .from("integrations")
@@ -363,11 +339,8 @@ export const scrapeUrlPreview = createServerFn({ method: "POST" })
     const settingsParsed = SettingsSchema.safeParse(settingsRaw);
     const settings: ImportSettings = settingsParsed.success ? settingsParsed.data : DEFAULT_SETTINGS;
 
-
-    // Translate to pt-BR
     const translated = await translateToPtBr({ title: raw.title, description: raw.description });
 
-    // Convert price to BRL
     let priceBrl: number | null = raw.price_original;
     const srcCurrency = (raw.currency ?? "BRL").toUpperCase();
     if (raw.price_original != null && srcCurrency !== "BRL") {
@@ -385,8 +358,6 @@ export const scrapeUrlPreview = createServerFn({ method: "POST" })
     };
   });
 
-// -------------------- Draft CRUD --------------------
-
 const DraftSchema = z.object({
   source: z.enum(["aliexpress_url", "aliexpress_api", "csv", "json", "manual"]),
   source_url: z.string().url().nullable().optional(),
@@ -402,7 +373,6 @@ const DraftSchema = z.object({
   }),
 });
 
-// Shared helper: load settings from integrations table
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function loadSettings(admin: any): Promise<ImportSettings> {
   const { data } = await admin
@@ -413,15 +383,14 @@ async function loadSettings(admin: any): Promise<ImportSettings> {
   const raw = (data?.config as Record<string, unknown> | null)?.import_settings ?? data?.config ?? null;
   const parsed = SettingsSchema.safeParse(raw);
   return parsed.success ? parsed.data : DEFAULT_SETTINGS;
-
 }
 
-// Shared helper: create real product from an import row
-/**
- * Sincroniza variações reais e registra o resultado técnico na importação.
- * O produto continua válido mesmo se as variações falharem, mas a falha
- * NUNCA é silenciosa: fica gravada em product_imports.error para o admin.
- */
+function assertPublishablePrice(status: "draft" | "active", priceCents: number) {
+  if (status === "active" && (!Number.isInteger(priceCents) || priceCents < 100)) {
+    throw new Error("Defina um preço válido de pelo menos R$ 1,00 antes de publicar o produto.");
+  }
+}
+
 async function syncVariantsAndRecord(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   admin: any,
@@ -445,7 +414,6 @@ async function syncVariantsAndRecord(
   if (warning) {
     await admin
       .from("product_imports")
-      // status permanece "imported" (produto existe); o aviso técnico fica em `error`.
       .update({ error: warning })
       .eq("id", importId);
   }
@@ -473,6 +441,7 @@ async function commitImportRow(
   const priceCents =
     opts.sale_price_cents_override ??
     computeSalePriceCents(norm.price_original, norm.currency, effective);
+  assertPublishablePrice(opts.status, priceCents);
 
   const slug = slugify(norm.title) + "-" + (norm.source_id ?? Math.random().toString(36).slice(2, 8));
   const sku = norm.sku || (norm.source_id ? `AE-${norm.source_id}` : `IMP-${Date.now()}`);
@@ -534,15 +503,13 @@ async function commitImportRow(
     .update({ status: "imported", product_id: productId, error: null })
     .eq("id", importId);
 
-  // Best-effort: pull AliExpress reviews (rating >= 4.5) for the new product.
   if (norm.source_id) {
     try {
       const { syncReviewsForProductInternal } = await import("./product-reviews.functions");
       void syncReviewsForProductInternal(admin, productId, String(norm.source_id), 4.5);
     } catch {
-      // ignore — reviews are non-critical
+      // reviews are non-critical
     }
-    // Variações/SKUs reais: falha é registrada na importação (nunca silenciosa).
     await syncVariantsAndRecord(admin, importId, productId, String(norm.source_id), settings);
   }
 
@@ -595,7 +562,6 @@ export const saveImportDraft = createServerFn({ method: "POST" })
       .single();
     if (error) throw new Error(error.message);
 
-    // Auto-create draft product in catalog so it appears immediately
     const settings = await loadSettings(supabaseAdmin);
     try {
       const { productId } = await commitImportRow(supabaseAdmin, created.id, norm, settings, {
@@ -765,8 +731,6 @@ export const deleteImport = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-// -------------------- Commit: create real product --------------------
-
 const CommitSchema = z.object({
   id: z.string().uuid(),
   status: z.enum(["draft", "active"]).default("draft"),
@@ -811,8 +775,8 @@ export const commitImport = createServerFn({ method: "POST" })
     const priceCents =
       data.sale_price_cents_override ??
       computeSalePriceCents(norm.price_original, norm.currency, effective);
+    assertPublishablePrice(data.status, priceCents);
 
-    // If a product was already auto-created for this import, update it instead of creating a duplicate
     if (imp.product_id) {
       const { error: upErr } = await supabaseAdmin
         .from("products")
@@ -827,31 +791,42 @@ export const commitImport = createServerFn({ method: "POST" })
         .eq("id", imp.product_id);
       if (upErr) throw new Error(upErr.message);
 
-      const { data: vrow } = await supabaseAdmin
+      const { data: vrow, error: vrowError } = await supabaseAdmin
         .from("product_variants")
         .select("id")
         .eq("product_id", imp.product_id)
         .eq("is_default", true)
         .maybeSingle();
-      if (vrow?.id) {
-        await supabaseAdmin
-          .from("product_prices")
-          .update({ is_active: false })
-          .eq("variant_id", vrow.id);
-        await supabaseAdmin.from("product_prices").insert({
-          variant_id: vrow.id,
-          list_price_cents: priceCents,
-          sale_price_cents: null,
-          is_active: true,
-        });
-        await supabaseAdmin
-          .from("product_inventory")
-          .upsert({ variant_id: vrow.id, stock: data.stock }, { onConflict: "variant_id" });
+      if (vrowError) throw new Error(vrowError.message);
+      if (!vrow?.id) {
+        throw new Error("Produto importado sem variação padrão. Corrija o catálogo antes de publicar.");
       }
-      await supabaseAdmin
+
+      const { error: disablePriceError } = await supabaseAdmin
+        .from("product_prices")
+        .update({ is_active: false })
+        .eq("variant_id", vrow.id);
+      if (disablePriceError) throw new Error(disablePriceError.message);
+
+      const { error: newPriceError } = await supabaseAdmin.from("product_prices").insert({
+        variant_id: vrow.id,
+        list_price_cents: priceCents,
+        sale_price_cents: null,
+        is_active: true,
+      });
+      if (newPriceError) throw new Error(newPriceError.message);
+
+      const { error: stockError } = await supabaseAdmin
+        .from("product_inventory")
+        .upsert({ variant_id: vrow.id, stock: data.stock }, { onConflict: "variant_id" });
+      if (stockError) throw new Error(stockError.message);
+
+      const { error: importUpdateError } = await supabaseAdmin
         .from("product_imports")
         .update({ status: "imported", error: null })
         .eq("id", data.id);
+      if (importUpdateError) throw new Error(importUpdateError.message);
+
       if (norm.source_id) {
         await syncVariantsAndRecord(
           supabaseAdmin,
@@ -861,11 +836,12 @@ export const commitImport = createServerFn({ method: "POST" })
           settings,
         );
       }
-      const { data: p } = await supabaseAdmin
+      const { data: p, error: productError } = await supabaseAdmin
         .from("products")
         .select("slug")
         .eq("id", imp.product_id)
         .maybeSingle();
+      if (productError) throw new Error(productError.message);
       return { id: imp.product_id, slug: p?.slug ?? "", price_cents: priceCents };
     }
 
@@ -930,10 +906,11 @@ export const commitImport = createServerFn({ method: "POST" })
       if (me) throw new Error(me.message);
     }
 
-    await supabaseAdmin
+    const { error: importUpdateError } = await supabaseAdmin
       .from("product_imports")
       .update({ status: "imported", product_id: productId, error: null })
       .eq("id", data.id);
+    if (importUpdateError) throw new Error(importUpdateError.message);
 
     if (norm.source_id) {
       await syncVariantsAndRecord(
