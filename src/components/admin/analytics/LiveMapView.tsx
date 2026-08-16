@@ -226,26 +226,88 @@ export default function LiveMapView() {
         />
       </div>
 
-      <div className="flex-1 grid grid-cols-1 lg:grid-cols-4 overflow-hidden">
+      <div className="flex-1 grid grid-cols-1 lg:grid-cols-4 overflow-hidden relative">
+        {/* Notificações Floating (Direita superior do mapa) */}
+        {notifications && notifications.length > 0 && (
+          <div className="absolute top-4 right-4 z-50 w-80 max-h-[400px] overflow-hidden rounded-2xl border border-primary/20 bg-background/80 backdrop-blur-xl shadow-2xl flex flex-col">
+            <div className="p-3 border-b border-border bg-primary/5 flex items-center justify-between">
+              <h4 className="text-[10px] font-bold uppercase tracking-wider flex items-center gap-2">
+                <Bell className="h-3 w-3 text-primary" /> Alertas Operador
+              </h4>
+              <Badge variant="secondary" className="text-[9px] h-4">{notifications.length}</Badge>
+            </div>
+            <ScrollArea className="flex-1">
+              <div className="p-2 space-y-1">
+                {notifications.map((n: any) => (
+                  <div key={n.id} className="p-2 rounded-lg border border-border bg-card/50 hover:bg-card transition-colors group relative">
+                    <div className="flex gap-3">
+                      <div className={`mt-1 h-2 w-2 rounded-full shrink-0 ${
+                        n.type === 'cart_active' ? 'bg-yellow-500' : 
+                        n.type === 'checkout_active' ? 'bg-blue-500' : 'bg-primary'
+                      }`} />
+                      <div className="flex-1 overflow-hidden">
+                        <p className="text-[10px] font-semibold leading-tight">{n.title}</p>
+                        <p className="text-[9px] text-muted-foreground line-clamp-2 mt-0.5">{n.content}</p>
+                        <div className="mt-2 flex items-center gap-2">
+                          <Button 
+                            variant="link" 
+                            size="sm" 
+                            className="h-auto p-0 text-[9px] text-primary"
+                            onClick={() => setSelectedVisitorId(n.session_id)}
+                          >
+                            Ver no Mapa
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="h-auto p-0 text-[9px] text-muted-foreground hover:text-foreground"
+                            onClick={() => markReadMutation.mutate(n.id)}
+                          >
+                            <Check className="h-3 w-3 mr-0.5" /> Lida
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </ScrollArea>
+          </div>
+        )}
+
         {/* Sidebar: Activity Stream */}
         <div className="lg:col-span-1 border-r border-border flex flex-col h-full bg-card/20 overflow-hidden">
           <div className="p-4 border-b border-border flex items-center justify-between bg-card/50">
-            <h3 className="font-semibold text-xs uppercase tracking-wider flex items-center gap-2">
-              <LayoutGrid className="h-3 w-3" /> Fluxo ao Vivo
-            </h3>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" className="h-7 text-[10px] gap-1">
-                  <Filter className="h-3 w-3" /> {period.toUpperCase()} <ChevronDown className="h-3 w-3" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => setPeriod("today")}>Hoje</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setPeriod("24h")}>Últimas 24h</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setPeriod("7d")}>Últimos 7 dias</DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setPeriod("30d")}>Últimos 30 dias</DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <div className="flex flex-col">
+              <h3 className="font-semibold text-xs uppercase tracking-wider flex items-center gap-2">
+                <LayoutGrid className="h-3 w-3" /> Fluxo ao Vivo
+              </h3>
+              <p className="text-[9px] text-muted-foreground mt-0.5">{visitors.length} usuários online</p>
+            </div>
+            <div className="flex items-center gap-1">
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="h-7 w-7" 
+                title="Exportar dados do período"
+                onClick={handleExport}
+              >
+                <Download className="h-3 w-3" />
+              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-7 text-[10px] gap-1">
+                    <Filter className="h-3 w-3" /> {period.toUpperCase()}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => setPeriod("today")}>Hoje</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setPeriod("24h")}>24h</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setPeriod("7d")}>7d</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setPeriod("30d")}>30d</DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           </div>
           
           <div className="flex-1 overflow-y-auto p-3 space-y-2">
