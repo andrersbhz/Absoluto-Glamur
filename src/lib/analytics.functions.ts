@@ -83,14 +83,13 @@ export const exportAnalyticsCsv = createServerFn({ method: "POST" })
     else if (input.period === "7d") since.setDate(since.getDate() - 7);
     else if (input.period === "30d") since.setDate(since.getDate() - 30);
 
-    const { data } = await supabaseAdmin
-      .from("analytics_events")
+    const { data } = await (supabaseAdmin.from("analytics_events") as any)
       .select("created_at, event_name, page_path, product_name, value_cents, visitor_id")
       .gte("created_at", since.toISOString())
       .order("created_at", { ascending: false });
 
     const header = ["Data", "Evento", "Página", "Produto", "Valor (R$)", "ID Visitante"];
-    const rows = (data ?? []).map(r => [
+    const rows = (data ?? []).map((r: any) => [
       new Date(r.created_at).toLocaleString('pt-BR'),
       r.event_name,
       r.page_path,
@@ -107,7 +106,7 @@ export const getOperatorNotifications = createServerFn({ method: "GET" })
   .handler(async ({ context }): Promise<any[]> => {
     await assertAdmin(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data } = await (supabaseAdmin.from("operator_notifications") as any)
+    const { data } = await (supabaseAdmin.from("operator_notifications" as any) as any)
       .select("*, session:visitor_sessions(*)")
       .eq("is_read", false)
       .order("created_at", { ascending: false })
@@ -121,7 +120,7 @@ export const markNotificationRead = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    await (supabaseAdmin.from("operator_notifications") as any)
+    await (supabaseAdmin.from("operator_notifications" as any) as any)
       .update({ is_read: true })
       .eq("id", data.id);
     return { success: true };
