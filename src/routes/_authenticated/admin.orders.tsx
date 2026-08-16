@@ -113,7 +113,7 @@ function AdminOrdersPage() {
   });
 
   const eligible = (q.data ?? []).filter(
-    (o) => (o.status === "paid" || o.status === "processing") && o.fulfillment_status !== "sent",
+    (o) => o.status === "paid" && o.fulfillment_status !== "sent",
   );
   const allSelected = eligible.length > 0 && eligible.every((o) => selected.has(o.id));
 
@@ -135,7 +135,7 @@ function AdminOrdersPage() {
           <div>
             <h1 className="font-display text-3xl">Pedidos</h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              Últimos 100 pedidos. Envie pagos ao AliExpress individualmente ou em massa.
+              Últimos 100 pedidos. Envie somente pedidos com pagamento confirmado ao AliExpress, individualmente ou em massa.
             </p>
           </div>
           <Button
@@ -170,9 +170,7 @@ function AdminOrdersPage() {
             </thead>
             <tbody className="divide-y divide-border">
               {q.data?.map((o) => {
-                const canSend =
-                  (o.status === "paid" || o.status === "processing") &&
-                  o.fulfillment_status !== "sent";
+                const canSend = o.status === "paid" && o.fulfillment_status !== "sent";
                 return (
                   <tr key={o.id} className="hover:bg-secondary/30">
                     <td className="px-3 py-3">
@@ -225,10 +223,7 @@ function AdminOrdersPage() {
         </div>
 
         <p className="mt-3 text-xs text-muted-foreground">
-          Só pedidos <strong>pagos</strong> ou <strong>em separação</strong> que ainda não foram
-          enviados podem ser selecionados. O envio usa o AliExpress Dropshipping API com o endereço
-          e CPF do cliente. Se a variação não estiver mapeada, o pedido falha e a mensagem aparece
-          na coluna de envio.
+          Só pedidos com status <strong>paid</strong> e ainda não enviados podem ser selecionados. O envio usa o AliExpress Dropshipping API com o endereço e CPF do cliente. Se a variação não estiver mapeada, o pedido falha e a mensagem aparece na coluna de envio.
         </p>
 
         <div className="mt-6 text-sm">
