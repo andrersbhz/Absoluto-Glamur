@@ -379,21 +379,33 @@ export default function LiveMapView() {
                       className={`cursor-pointer transition-all duration-300 ${selectedVisitorId && c.ids.includes(selectedVisitorId) ? 'scale-150' : ''}`}
                       onClick={() => setSelectedVisitorId(c.ids[0])}
                     >
+                      {/* Efeito de radar/ping ao redor da bolinha */}
+                      <circle
+                        r={8 + (Math.min(c.count, 5))}
+                        fill={
+                          c.stage === 'purchased' ? 'rgba(34, 197, 94, 0.4)' : 
+                          c.stage === 'checkout' ? 'rgba(59, 130, 246, 0.4)' :
+                          c.stage === 'cart' ? 'rgba(234, 179, 8, 0.4)' : 'rgba(217, 70, 239, 0.3)'
+                        }
+                        className="animate-ping"
+                      />
+                      
                       <circle
                         r={6 + (Math.min(c.count, 5))}
                         fill={
-                          c.stage === 'purchased' ? 'rgba(34, 197, 94, 0.7)' : 
-                          c.stage === 'checkout' ? 'rgba(59, 130, 246, 0.7)' :
-                          c.stage === 'cart' ? 'rgba(234, 179, 8, 0.7)' : 'rgba(217, 70, 239, 0.5)'
+                          c.stage === 'purchased' ? 'rgb(34, 197, 94)' : 
+                          c.stage === 'checkout' ? 'rgb(59, 130, 246)' :
+                          c.stage === 'cart' ? 'rgb(234, 179, 8)' : 'rgb(217, 70, 239)'
                         }
                         stroke="#fff"
-                        strokeWidth={1}
-                        className={selectedVisitorId && c.ids.includes(selectedVisitorId) ? 'animate-bounce' : 'animate-pulse'}
+                        strokeWidth={1.5}
+                        className={selectedVisitorId && c.ids.includes(selectedVisitorId) ? 'animate-bounce' : ''}
                       />
+                      
                       <text
                         textAnchor="middle"
-                        y={2}
-                        style={{ fontSize: "7px", fill: "#fff", fontWeight: "bold", pointerEvents: "none" }}
+                        y={2.5}
+                        style={{ fontSize: "8px", fill: "#fff", fontWeight: "bold", pointerEvents: "none" }}
                       >
                         {c.count}
                       </text>
