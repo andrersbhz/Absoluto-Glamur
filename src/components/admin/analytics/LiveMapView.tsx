@@ -341,17 +341,18 @@ export default function LiveMapView() {
                {clusters.map((c, i) => (
                  <div 
                    key={i}
-                   className="absolute group transition-all duration-500"
+                   className={`absolute group transition-all duration-500 cursor-pointer ${selectedVisitorId && c.ids.includes(selectedVisitorId) ? 'scale-150 z-50' : ''}`}
                    style={{ 
                      left: `${50 + (c.lon * 0.5)}%`, 
                      top: `${50 - (c.lat * 0.8)}%` 
                    }}
+                   onClick={() => setSelectedVisitorId(c.ids[0])}
                  >
                    <div className={`relative flex items-center justify-center h-8 w-8 rounded-full border border-white/20 backdrop-blur-md shadow-lg ${
                      c.stage === 'purchased' ? 'bg-green-500/60' : 
                      c.stage === 'checkout' ? 'bg-blue-500/60' :
                      c.stage === 'cart' ? 'bg-yellow-500/60' : 'bg-primary/40'
-                   } animate-pulse`}>
+                   } ${selectedVisitorId && c.ids.includes(selectedVisitorId) ? 'ring-2 ring-white animate-bounce' : 'animate-pulse'}`}>
                      <span className="text-[10px] font-bold text-white">{c.count}</span>
                    </div>
                  </div>
