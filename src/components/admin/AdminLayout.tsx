@@ -15,6 +15,7 @@ type NavItem = { label: string; icon: typeof LayoutDashboard; to?: string; phase
 
 const nav: NavItem[] = [
   { label: "Visão geral", icon: LayoutDashboard, to: "/admin", phase: 1 },
+  { label: "Mapa ao Vivo", icon: Compass, to: "/admin/map", phase: 9 },
   { label: "Home Builder", icon: PanelsTopLeft, to: "/admin/home", phase: 2 },
   { label: "Integrações", icon: Plug, to: "/admin/integrations", phase: 1 },
   { label: "Atendimento WhatsApp", icon: MessageSquare, to: "/admin/whatsapp", phase: 9 },
