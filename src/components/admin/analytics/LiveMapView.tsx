@@ -394,9 +394,9 @@ export default function LiveMapView() {
                       <Geography
                         key={geo.rsmKey}
                         geography={geo}
-                        fill="rgba(0,0,0,0.01)"
-                        stroke="hsl(var(--primary))"
-                        strokeWidth={2}
+                        fill="rgba(255,255,255,0.03)"
+                        stroke="#FFFFFF"
+                        strokeWidth={1.5}
                         style={{
                           default: { outline: "none" },
                           hover: { fill: "hsl(var(--primary) / 0.1)", outline: "none" },
