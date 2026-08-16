@@ -12,9 +12,20 @@ export type CheckoutMethodDTO = {
   sort_order: number;
 };
 
+const SUPPORTED_PAYMENT_ROUTES: Record<PaymentMethodKey, readonly string[]> = {
+  pix: ["asaas", "pagbank"],
+  credit_card: ["pagbank"],
+  boleto: ["asaas", "pagbank"],
+  nubank_redirect: ["nupay"],
+};
+
+function isSupportedPaymentRoute(method: PaymentMethodKey, provider: string) {
+  return SUPPORTED_PAYMENT_ROUTES[method].includes(provider);
+}
+
 /**
  * Lista métodos habilitados (uso público, checkout).
- * Não requer auth; leitura via policy `public read routing enabled`.
+ * Além do flag do banco, só expõe combinações que possuem adapter implementado.
  */
 export const listCheckoutMethods = createServerFn({ method: "GET" }).handler(
   async (): Promise<CheckoutMethodDTO[]> => {
@@ -25,16 +36,17 @@ export const listCheckoutMethods = createServerFn({ method: "GET" }).handler(
       .eq("enabled", true)
       .order("sort_order");
     if (error) throw new Error(error.message);
-    return (data ?? []).map((r) => ({
-      method: r.method as PaymentMethodKey,
-      provider: r.provider,
-      label: r.display_label ?? r.method,
-      enabled: r.enabled,
-      sort_order: r.sort_order,
-    }));
+    return (data ?? [])
+      .filter((r) => isSupportedPaymentRoute(r.method as PaymentMethodKey, r.provider))
+      .map((r) => ({
+        method: r.method as PaymentMethodKey,
+        provider: r.provider,
+        label: r.display_label ?? r.method,
+        enabled: r.enabled,
+        sort_order: r.sort_order,
+      }));
   },
 );
-
 
 /** Admin: lista completo (habilitados e desabilitados) */
 export const listAdminRouting = createServerFn({ method: "GET" })
@@ -77,6 +89,25 @@ export const updateRouting = createServerFn({ method: "POST" })
     });
     if (!adm) throw new Error("Acesso restrito a administradores");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    let provider = data.provider;
+    if (!provider && data.enabled === true) {
+      const { data: current, error: currentError } = await supabaseAdmin
+        .from("payment_method_routing")
+        .select("provider")
+        .eq("method", data.method)
+        .maybeSingle();
+      if (currentError) throw new Error(currentError.message);
+      provider = current?.provider;
+    }
+
+    if (provider && !isSupportedPaymentRoute(data.method, provider)) {
+      const supported = SUPPORTED_PAYMENT_ROUTES[data.method].join(", ");
+      throw new Error(
+        `A combinação ${data.method} + ${provider} ainda não possui adapter implementado. Use: ${supported}.`,
+      );
+    }
+
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const patch: any = { updated_by: context.userId };
     if (data.provider) patch.provider = data.provider;
