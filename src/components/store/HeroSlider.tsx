@@ -14,21 +14,27 @@ export function HeroSlider({
   const count = slides.length;
 
   useEffect(() => {
+    if (count === 0) return;
+    setState(([current, currentDir]) => [Math.min(current, count - 1), currentDir]);
+  }, [count]);
+
+  useEffect(() => {
     if (count <= 1 || autoplayMs <= 0) return;
     const t = setInterval(() => {
       setState(([i]) => [(i + 1) % count, 1]);
     }, autoplayMs);
     return () => clearInterval(t);
-  }, [count, autoplayMs, idx]);
+  }, [count, autoplayMs]);
 
   if (count === 0) return null;
 
+  const safeIdx = Math.min(idx, count - 1);
   const go = (n: number) => {
     const next = (n + count) % count;
     setState(([i]) => [next, next > i ? 1 : -1]);
   };
 
-  const slide = slides[idx];
+  const slide = slides[safeIdx];
   const align = slide.align ?? "center";
   const alignCls =
     align === "left"
@@ -44,7 +50,7 @@ export function HeroSlider({
     >
       <AnimatePresence initial={false} custom={dir} mode="popLayout">
         <motion.div
-          key={idx}
+          key={safeIdx}
           custom={dir}
           initial={{ opacity: 0, x: dir > 0 ? 80 : -80, scale: 1.05 }}
           animate={{ opacity: 1, x: 0, scale: 1 }}
@@ -118,7 +124,7 @@ export function HeroSlider({
           <button
             type="button"
             aria-label="Anterior"
-            onClick={() => go(idx - 1)}
+            onClick={() => go(safeIdx - 1)}
             className="absolute left-4 top-1/2 z-20 -translate-y-1/2 rounded-full bg-black/40 p-2 text-white backdrop-blur transition hover:bg-black/60 hover:scale-110"
           >
             <ChevronLeft className="h-5 w-5" />
@@ -126,14 +132,14 @@ export function HeroSlider({
           <button
             type="button"
             aria-label="Próximo"
-            onClick={() => go(idx + 1)}
+            onClick={() => go(safeIdx + 1)}
             className="absolute right-4 top-1/2 z-20 -translate-y-1/2 rounded-full bg-black/40 p-2 text-white backdrop-blur transition hover:bg-black/60 hover:scale-110"
           >
             <ChevronRight className="h-5 w-5" />
           </button>
           <div className="absolute bottom-6 left-1/2 z-20 flex -translate-x-1/2 items-center gap-3">
             {slides.map((_, i) => {
-              const active = i === idx;
+              const active = i === safeIdx;
               return (
                 <button
                   key={i}
@@ -146,7 +152,7 @@ export function HeroSlider({
                 >
                   {active && autoplayMs > 0 && (
                     <motion.span
-                      key={`fill-${idx}`}
+                      key={`fill-${safeIdx}`}
                       className="absolute inset-y-0 left-0 rounded-full bg-champagne"
                       initial={{ width: "0%" }}
                       animate={{ width: "100%" }}
