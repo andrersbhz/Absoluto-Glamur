@@ -110,14 +110,19 @@ export default function LiveMapView() {
         (payload) => {
           if (payload.eventType === "INSERT") {
             const newV = payload.new as any;
-            if (newV.is_online) setVisitors(prev => [newV, ...prev]);
+            if (newV.is_online) {
+              setVisitors(prev => {
+                if (prev.some(v => v.id === newV.id)) return prev;
+                return [newV, ...prev];
+              });
+            }
           } else if (payload.eventType === "UPDATE") {
             const updated = payload.new as any;
             if (!updated.is_online) {
               setVisitors(prev => prev.filter(v => v.id !== updated.id));
             } else {
               setVisitors(prev => {
-                const exists = prev.find(v => v.id === updated.id);
+                const exists = prev.some(v => v.id === updated.id);
                 if (exists) return prev.map(v => v.id === updated.id ? { ...v, ...updated } : v);
                 return [updated, ...prev];
               });
