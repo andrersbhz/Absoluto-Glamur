@@ -69,12 +69,7 @@ export function HomeBuilderPreview({ device, onDeviceChange, focus, home, blocks
           </div>
         </div>
       </div>
-      <a
-        href="/"
-        target="_blank"
-        rel="noreferrer"
-        className="mt-3 flex items-center justify-center rounded-xl border border-border bg-card px-4 py-2.5 text-xs font-semibold text-plum transition hover:bg-secondary"
-      >
+      <a href="/" target="_blank" rel="noreferrer" className="mt-3 flex items-center justify-center rounded-xl border border-border bg-card px-4 py-2.5 text-xs font-semibold text-plum transition hover:bg-secondary">
         Abrir Home publicada em nova aba ↗
       </a>
     </aside>
@@ -82,11 +77,7 @@ export function HomeBuilderPreview({ device, onDeviceChange, focus, home, blocks
 }
 
 function DeviceButton({ active, title, onClick, children }: { active: boolean; title: string; onClick: () => void; children: React.ReactNode }) {
-  return (
-    <button type="button" title={title} onClick={onClick} className={`rounded-md p-1.5 transition ${active ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-secondary"}`}>
-      {children}
-    </button>
-  );
+  return <button type="button" title={title} onClick={onClick} className={`rounded-md p-1.5 transition ${active ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:bg-secondary"}`}>{children}</button>;
 }
 
 function PreviewNotice({ text }: { text: string }) {
@@ -95,148 +86,42 @@ function PreviewNotice({ text }: { text: string }) {
 
 function AnnouncementPreview({ value }: { value: HomeContent["announcement"] }) {
   const product = value?.product;
-  return (
-    <div className="bg-[#6d405f] px-3 py-3 text-white">
-      <div className="mx-auto flex max-w-4xl items-center gap-3">
-        {product?.image_url && <img src={product.image_url} alt="" className="h-9 w-9 rounded-full object-cover ring-1 ring-[#d7b47a]" />}
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-[8px] uppercase tracking-[0.2em] text-[#ead6af]">{product?.eyebrow || value?.text || "Barra de anúncio"}</p>
-          {product?.name && <p className="truncate text-xs font-semibold">{product.name}</p>}
-        </div>
-        {product?.cta_label && <span className="rounded-full bg-[#d7b47a] px-3 py-1 text-[8px] font-semibold uppercase tracking-wider text-[#6d405f]">{product.cta_label}</span>}
-      </div>
-    </div>
-  );
+  return <div className="bg-[#6d405f] px-3 py-3 text-white"><div className="mx-auto flex max-w-4xl items-center gap-3">{product?.image_url && <img src={product.image_url} alt="" className="h-9 w-9 rounded-full object-cover ring-1 ring-[#d7b47a]" />}<div className="min-w-0 flex-1"><p className="truncate text-[8px] uppercase tracking-[0.2em] text-[#ead6af]">{product?.eyebrow || value?.text || "Barra de anúncio"}</p>{product?.name && <p className="truncate text-xs font-semibold">{product.name}</p>}</div>{product?.cta_label && <span className="rounded-full bg-[#d7b47a] px-3 py-1 text-[8px] font-semibold uppercase tracking-wider text-[#6d405f]">{product.cta_label}</span>}</div></div>;
 }
 
 function HeroPreview({ value }: { value: NonNullable<HomeContent["hero"]> }) {
-  return (
-    <div
-      className="relative flex min-h-[330px] items-center overflow-hidden bg-gradient-to-br from-[#f7efee] to-[#ead7dd] bg-cover bg-center px-7 py-10"
-      style={value.image_url ? { backgroundImage: `url(${value.image_url})` } : undefined}
-    >
-      {value.image_url && <div className="absolute inset-0 bg-black/40" />}
-      <div className={`relative z-10 max-w-[72%] ${value.image_url ? "text-white" : "text-[#251e23]"}`}>
-        {value.badge && <span className="rounded-full border border-[#d7b47a]/60 px-3 py-1 text-[8px] uppercase tracking-[0.22em]">{value.badge}</span>}
-        <h2 className="mt-4 text-3xl font-semibold leading-[1.02]">
-          {value.title_line1 || "Título principal"}<br />
-          <span className="text-[#d7b47a]">{value.title_highlight || "destaque"}</span>
-        </h2>
-        {value.subtitle && <p className={`mt-4 text-[11px] leading-5 ${value.image_url ? "text-white/90" : "text-[#70636b]"}`}>{value.subtitle}</p>}
-        <div className="mt-5 flex flex-wrap gap-2">
-          {value.cta_primary_label && <span className="rounded-full bg-[#c64b76] px-4 py-2 text-[8px] font-semibold uppercase tracking-wider text-white">{value.cta_primary_label}</span>}
-          {value.cta_secondary_label && <span className="rounded-full border border-current px-4 py-2 text-[8px] font-semibold uppercase tracking-wider">{value.cta_secondary_label}</span>}
-        </div>
-      </div>
-    </div>
-  );
+  return <div className="relative flex min-h-[330px] items-center overflow-hidden bg-gradient-to-br from-[#f7efee] to-[#ead7dd] bg-cover bg-center px-7 py-10" style={value.image_url ? { backgroundImage: `url(${value.image_url})` } : undefined}>{value.image_url && <div className="absolute inset-0 bg-black/40" />}<div className={`relative z-10 max-w-[72%] ${value.image_url ? "text-white" : "text-[#251e23]"}`}>{value.badge && <span className="rounded-full border border-[#d7b47a]/60 px-3 py-1 text-[8px] uppercase tracking-[0.22em]">{value.badge}</span>}<h2 className="mt-4 text-3xl font-semibold leading-[1.02]">{value.title_line1 || "Título principal"}<br /><span className="text-[#d7b47a]">{value.title_highlight || "destaque"}</span></h2>{value.subtitle && <p className={`mt-4 text-[11px] leading-5 ${value.image_url ? "text-white/90" : "text-[#70636b]"}`}>{value.subtitle}</p>}<div className="mt-5 flex flex-wrap gap-2">{value.cta_primary_label && <span className="rounded-full bg-[#c64b76] px-4 py-2 text-[8px] font-semibold uppercase tracking-wider text-white">{value.cta_primary_label}</span>}{value.cta_secondary_label && <span className="rounded-full border border-current px-4 py-2 text-[8px] font-semibold uppercase tracking-wider">{value.cta_secondary_label}</span>}</div></div></div>;
 }
 
 function SlidePreview({ slide, index }: { slide: NonNullable<NonNullable<HomeContent["hero_slider"]>["slides"]>[number] | undefined; index: number }) {
   if (!slide) return <EmptyPreview text="Selecione ou crie um slide." />;
   const align = slide.align ?? "center";
   const alignment = align === "left" ? "items-start text-left" : align === "right" ? "items-end text-right ml-auto" : "items-center text-center mx-auto";
-  return (
-    <div className="relative flex min-h-[330px] items-center bg-[#ead7dd] bg-cover bg-center px-7 py-10" style={slide.image_url ? { backgroundImage: `url(${slide.image_url})` } : undefined}>
-      <div className="absolute inset-0 bg-black/40" />
-      <div className={`relative z-10 flex max-w-[75%] flex-col text-white ${alignment}`}>
-        <p className="text-[8px] uppercase tracking-[0.25em] text-[#ead6af]">Slide {index + 1}</p>
-        <h2 className="mt-2 text-3xl font-semibold leading-tight">{slide.title || "Título do slide"}</h2>
-        {slide.subtitle && <p className="mt-3 text-[11px] leading-5 text-white/85">{slide.subtitle}</p>}
-        {slide.cta_label && <span className="mt-5 rounded-full bg-[#c64b76] px-4 py-2 text-[8px] font-semibold uppercase tracking-wider">{slide.cta_label}</span>}
-      </div>
-    </div>
-  );
+  return <div className="relative flex min-h-[330px] items-center bg-[#ead7dd] bg-cover bg-center px-7 py-10" style={slide.image_url ? { backgroundImage: `url(${slide.image_url})` } : undefined}><div className="absolute inset-0 bg-black/40" /><div className={`relative z-10 flex max-w-[75%] flex-col text-white ${alignment}`}><p className="text-[8px] uppercase tracking-[0.25em] text-[#ead6af]">Slide {index + 1}</p><h2 className="mt-2 text-3xl font-semibold leading-tight">{slide.title || "Título do slide"}</h2>{slide.subtitle && <p className="mt-3 text-[11px] leading-5 text-white/85">{slide.subtitle}</p>}{slide.cta_label && <span className="mt-5 rounded-full bg-[#c64b76] px-4 py-2 text-[8px] font-semibold uppercase tracking-wider">{slide.cta_label}</span>}</div></div>;
 }
 
 function CategoriesPreview({ categories, device }: { categories: Category[]; device: PreviewDevice }) {
   const cols = device === "mobile" ? "grid-cols-1" : device === "tablet" ? "grid-cols-2" : "grid-cols-3";
-  return (
-    <div className="p-6">
-      <p className="text-[8px] uppercase tracking-[0.25em] text-[#a84c69]">Ordem na Home</p>
-      <h2 className="mt-2 text-2xl font-semibold text-[#251e23]">Categorias</h2>
-      <div className={`mt-5 grid gap-2 ${cols}`}>
-        {categories.map((category, index) => (
-          <div key={category.id} className="rounded-xl border border-[#e9dddf] bg-white p-3">
-            <span className="text-[9px] font-semibold text-[#c64b76]">#{index + 1}</span>
-            <p className="mt-1 text-xs font-semibold text-[#251e23]">{category.name}</p>
-            <p className="text-[8px] text-[#70636b]">Novidades e mais vendidos</p>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
+  return <div className="p-6"><p className="text-[8px] uppercase tracking-[0.25em] text-[#a84c69]">Ordem na Home</p><h2 className="mt-2 text-2xl font-semibold text-[#251e23]">Categorias</h2><div className={`mt-5 grid gap-2 ${cols}`}>{categories.map((category, index) => <div key={category.id} className="rounded-xl border border-[#e9dddf] bg-white p-3"><span className="text-[9px] font-semibold text-[#c64b76]">#{index + 1}</span><p className="mt-1 text-xs font-semibold text-[#251e23]">{category.name}</p><p className="text-[8px] text-[#70636b]">Novidades e mais vendidos</p></div>)}</div></div>;
 }
 
 function BlockPreview({ block, categories }: { block: HomepageBlock; categories: Category[] }) {
   const data = (block.data ?? {}) as Record<string, any>;
-  if (!block.is_active) {
-    return <div className="border-b border-dashed border-[#d0c2c5] bg-[#f7efee] px-5 py-2 text-center text-[9px] uppercase tracking-wider text-[#70636b]">Bloco oculto · preview administrativo</div>;
-  }
-  if (block.kind === "banner") {
-    return (
-      <div className="p-5">
-        <div className="overflow-hidden rounded-2xl border border-[#e9dddf] bg-white">
-          {data.image_url ? <img src={String(data.image_url)} alt="" className="aspect-[16/6] w-full object-cover" /> : <div className="flex aspect-[16/6] items-center justify-center bg-[#f7efee] text-xs text-[#70636b]">Banner sem imagem</div>}
-          {!data.image_url && (block.title || block.subtitle) && <div className="p-4"><p className="text-lg font-semibold">{block.title}</p><p className="text-xs text-[#70636b]">{block.subtitle}</p></div>}
-        </div>
-      </div>
-    );
-  }
-  if (block.kind === "hero") {
-    return (
-      <div className="p-5">
-        <div className="relative flex min-h-64 items-center overflow-hidden rounded-2xl bg-gradient-to-br from-[#c64b76] to-[#6d405f] bg-cover bg-center p-7 text-white" style={data.image_url ? { backgroundImage: `url(${String(data.image_url)})` } : undefined}>
-          {data.image_url && <div className="absolute inset-0 bg-black/35" />}
-          <div className="relative z-10 max-w-[75%]">
-            <p className="text-[8px] uppercase tracking-[0.2em] text-[#ead6af]">{block.subtitle}</p>
-            <h2 className="mt-2 text-2xl font-semibold">{block.title || "Hero complementar"}</h2>
-            {data.cta_label && <span className="mt-4 inline-block rounded-full bg-white px-4 py-2 text-[8px] font-semibold uppercase text-[#6d405f]">{String(data.cta_label)}</span>}
-          </div>
-        </div>
-      </div>
-    );
-  }
-  if (block.kind === "text") {
-    return <div className="p-8 text-center"><p className="text-2xl font-semibold text-[#251e23]">{block.title}</p><p className="mt-3 whitespace-pre-line text-xs leading-5 text-[#70636b]">{String(data.body ?? block.subtitle ?? "")}</p></div>;
-  }
-  if (block.kind === "collection") {
-    return <div className="p-6"><p className="text-[8px] uppercase tracking-[0.2em] text-[#d7b47a]">{block.subtitle || "Coleção"}</p><h2 className="mt-1 text-2xl font-semibold text-[#251e23]">{block.title || "Coleção em destaque"}</h2><div className="mt-4 grid grid-cols-4 gap-2">{[1,2,3,4].map((n) => <div key={n} className="aspect-[3/4] rounded-lg bg-[#f7efee]" />)}</div></div>;
-  }
+  if (!block.is_active) return <div className="border-b border-dashed border-[#d0c2c5] bg-[#f7efee] px-5 py-2 text-center text-[9px] uppercase tracking-wider text-[#70636b]">Bloco oculto · preview administrativo</div>;
+  if (block.kind === "banner") return <div className="p-5"><div className="overflow-hidden rounded-2xl border border-[#e9dddf] bg-white">{data.image_url ? <img src={String(data.image_url)} alt="" className="aspect-[16/6] w-full object-cover" /> : <div className="flex aspect-[16/6] items-center justify-center bg-[#f7efee] text-xs text-[#70636b]">Banner sem imagem</div>}{!data.image_url && (block.title || block.subtitle) && <div className="p-4"><p className="text-lg font-semibold">{block.title}</p><p className="text-xs text-[#70636b]">{block.subtitle}</p></div>}</div></div>;
+  if (block.kind === "hero") return <div className="p-5"><div className="relative flex min-h-64 items-center overflow-hidden rounded-2xl bg-gradient-to-br from-[#c64b76] to-[#6d405f] bg-cover bg-center p-7 text-white" style={data.image_url ? { backgroundImage: `url(${String(data.image_url)})` } : undefined}>{data.image_url && <div className="absolute inset-0 bg-black/35" />}<div className="relative z-10 max-w-[75%]"><p className="text-[8px] uppercase tracking-[0.2em] text-[#ead6af]">{block.subtitle}</p><h2 className="mt-2 text-2xl font-semibold">{block.title || "Hero complementar"}</h2>{data.cta_label && <span className="mt-4 inline-block rounded-full bg-white px-4 py-2 text-[8px] font-semibold uppercase text-[#6d405f]">{String(data.cta_label)}</span>}</div></div></div>;
+  if (block.kind === "text") return <div className="p-8 text-center"><p className="text-2xl font-semibold text-[#251e23]">{block.title}</p><p className="mt-3 whitespace-pre-line text-xs leading-5 text-[#70636b]">{String(data.body ?? block.subtitle ?? "")}</p></div>;
+  if (block.kind === "collection") return <div className="p-6"><p className="text-[8px] uppercase tracking-[0.2em] text-[#d7b47a]">{block.subtitle || "Coleção"}</p><h2 className="mt-1 text-2xl font-semibold text-[#251e23]">{block.title || "Coleção em destaque"}</h2><div className="mt-4 grid grid-cols-4 gap-2">{[1,2,3,4].map((n) => <div key={n} className="aspect-[3/4] rounded-lg bg-[#f7efee]" />)}</div></div>;
   if (block.kind === "category_grid") {
-    const selected = data.mode === "all"
-      ? categories.map((category) => category.slug)
-      : Array.isArray(data.categories) ? data.categories : [];
+    const selected = data.mode === "all" ? categories.map((category) => category.slug) : Array.isArray(data.categories) ? data.categories : [];
     const names = selected.map((slug: string) => categories.find((category) => category.slug === slug)?.name ?? slug);
     return <div className="p-6"><p className="text-[8px] uppercase tracking-[0.2em] text-[#a84c69]">{block.subtitle || "Explore por categoria"}</p><p className="mt-1 text-2xl font-semibold text-[#251e23]">{block.title || "Categorias"}</p><div className="mt-4 flex flex-wrap gap-2">{names.map((name: string) => <span key={name} className="rounded-full border border-[#e9dddf] bg-white px-3 py-2 text-[9px]">{name}</span>)}</div></div>;
   }
   if (block.kind === "category_products") {
     const limit = typeof data.limit === "number" ? Math.max(1, Math.min(8, data.limit)) : 4;
-    return (
-      <div className="p-6">
-        <p className="text-[8px] uppercase tracking-[0.2em] text-[#d7b47a]">{block.subtitle || "Novidades e mais vendidos"}</p>
-        <h2 className="mt-1 text-2xl font-semibold text-[#251e23]">{block.title || "Todas as categorias"}</h2>
-        <div className="mt-5 space-y-4">
-          {categories.slice(0, 3).map((category) => (
-            <div key={category.id}>
-              <p className="mb-2 text-[10px] font-semibold text-[#6d405f]">{category.name}</p>
-              <div className="grid grid-cols-4 gap-2">
-                {Array.from({ length: Math.min(limit, 4) }, (_, index) => <div key={index} className="aspect-[3/4] rounded-lg bg-[#f7efee]" />)}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
+    return <div className="p-6"><p className="text-[8px] uppercase tracking-[0.2em] text-[#d7b47a]">{block.subtitle || "Novidades e mais vendidos"}</p><h2 className="mt-1 text-2xl font-semibold text-[#251e23]">{block.title || "Todas as categorias"}</h2><div className="mt-5 space-y-4">{categories.slice(0, 3).map((category) => <div key={category.id}><p className="mb-2 text-[10px] font-semibold text-[#6d405f]">{category.name}</p><div className="grid grid-cols-4 gap-2">{Array.from({ length: Math.min(limit, 4) }, (_, index) => <div key={index} className="aspect-[3/4] rounded-lg bg-[#f7efee]" />)}</div></div>)}</div></div>;
   }
-  return (
-    <div className="p-7">
-      <div className="rounded-xl border border-dashed border-[#d0c2c5] bg-white p-5 text-center">
-        <p className="text-xs font-semibold text-[#251e23]">{block.title || block.kind}</p>
-        <p className="mt-1 text-[9px] text-[#70636b]">Bloco existente: {block.kind}. O Builder preserva seus dados sem alterar sua função.</p>
-      </div>
-    </div>
-  );
+  return <div className="p-7"><div className="rounded-xl border border-dashed border-[#d0c2c5] bg-white p-5 text-center"><p className="text-xs font-semibold text-[#251e23]">{block.title || block.kind}</p><p className="mt-1 text-[9px] text-[#70636b]">Bloco existente: {block.kind}. O Builder preserva seus dados sem alterar sua função.</p></div></div>;
 }
 
 function EmptyPreview({ text }: { text: string }) {
