@@ -362,26 +362,48 @@ export default function LiveMapView() {
                 maxZoom={8}
               >
                 <Geographies geography={geoUrl}>
-                  {({ geographies }) =>
-                    geographies && geographies.length > 0 ? (
-                      geographies.map((geo) => (
-                        <Geography
-                          key={geo.rsmKey}
-                          geography={geo}
-                          fill="rgba(0,0,0,0.01)"
-                          stroke="hsl(var(--primary))"
-                          strokeWidth={1.5}
-                          style={{
-                            default: { outline: "none" },
-                            hover: { fill: "hsl(var(--primary) / 0.1)", outline: "none" },
-                            pressed: { outline: "none" },
-                          }}
-                        />
-                      ))
-                    ) : (
-                      <rect width="100%" height="100%" fill="transparent" />
-                    )
-                  }
+                  {({ geographies, error }) => {
+                    // Se houver erro ou não houver geografias, renderizamos um fallback visual
+                    if (error || !geographies || geographies.length === 0) {
+                      return (
+                        <g>
+                          {/* Fallback visual simplificado do Brasil */}
+                          <path
+                            d={BRAZIL_SVG_PATH}
+                            transform="translate(100, 50) scale(2.5)"
+                            fill="transparent"
+                            stroke="hsl(var(--primary))"
+                            strokeWidth={1}
+                            opacity={0.3}
+                          />
+                          <text
+                            x="250"
+                            y="250"
+                            textAnchor="middle"
+                            fill="hsl(var(--primary))"
+                            style={{ fontSize: "12px", opacity: 0.5 }}
+                          >
+                            Mapa indisponível (Modo Offline)
+                          </text>
+                        </g>
+                      );
+                    }
+                    
+                    return geographies.map((geo) => (
+                      <Geography
+                        key={geo.rsmKey}
+                        geography={geo}
+                        fill="rgba(0,0,0,0.01)"
+                        stroke="hsl(var(--primary))"
+                        strokeWidth={1.5}
+                        style={{
+                          default: { outline: "none" },
+                          hover: { fill: "hsl(var(--primary) / 0.1)", outline: "none" },
+                          pressed: { outline: "none" },
+                        }}
+                      />
+                    ));
+                  }}
                 </Geographies>
 
                 {clusters.map((c, i) => (
