@@ -2,30 +2,53 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
+const onlyDigits = (value: string) => value.replace(/\D/g, "");
+
 const AddressSchema = z.object({
-  zipCode: z.string().min(8),
+  zipCode: z.string().refine((value) => onlyDigits(value).length === 8, "CEP inválido"),
   street: z.string().min(2),
   number: z.string().min(1),
   complement: z.string().nullable().optional(),
   district: z.string().min(2),
   city: z.string().min(2),
-  state: z.string().length(2),
+  state: z.string().regex(/^[A-Za-z]{2}$/, "UF inválida"),
 });
 
+const CheckoutItemsSchema = z
+  .array(
+    z.object({
+      variantId: z.string().uuid(),
+      quantity: z.number().int().min(1).max(99),
+    }),
+  )
+  .min(1)
+  .superRefine((items, ctx) => {
+    const seen = new Set<string>();
+    items.forEach((item, index) => {
+      if (seen.has(item.variantId)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "A mesma variação não pode aparecer duplicada no checkout.",
+          path: [index, "variantId"],
+        });
+      }
+      seen.add(item.variantId);
+    });
+  });
+
 const CheckoutSchema = z.object({
-  items: z
-    .array(
-      z.object({
-        variantId: z.string().uuid(),
-        quantity: z.number().int().min(1).max(99),
-      }),
-    )
-    .min(1),
+  items: CheckoutItemsSchema,
   customer: z.object({
-    name: z.string().min(2),
-    email: z.string().email(),
-    document: z.string().min(11),
-    phone: z.string().min(8),
+    name: z.string().trim().min(2),
+    email: z.string().trim().email(),
+    document: z.string().refine((value) => {
+      const size = onlyDigits(value).length;
+      return size === 11 || size === 14;
+    }, "CPF/CNPJ inválido"),
+    phone: z.string().refine((value) => {
+      const size = onlyDigits(value).length;
+      return size === 10 || size === 11;
+    }, "Celular inválido"),
   }),
   address: AddressSchema,
   saveAddress: z.boolean().optional(),
@@ -85,6 +108,11 @@ export const createCheckout = createServerFn({ method: "POST" })
     if (!integ?.enabled || !integ.api_key) {
       throw new Error(
         `Provedor "${provider}" não está configurado. Peça ao administrador para configurá-lo em Admin → Integrações.`,
+      );
+    }
+    if (["asaas", "nupay", "pagbank"].includes(provider) && !integ.webhook_token) {
+      throw new Error(
+        `Configure o Token do webhook de ${provider} em Admin → Integrações antes de receber pagamentos.`,
       );
     }
 
@@ -205,8 +233,8 @@ export const createCheckout = createServerFn({ method: "POST" })
 
     const { data: codeData } = await supabaseAdmin.rpc("generate_order_code");
     const code = (codeData as unknown as string) ?? `BL-${Date.now()}`;
-    const document = data.customer.document.replace(/\D/g, "");
-    const phone = data.customer.phone.replace(/\D/g, "");
+    const document = onlyDigits(data.customer.document);
+    const phone = onlyDigits(data.customer.phone);
 
     const { data: order, error: orderErr } = await supabaseAdmin
       .from("orders")
@@ -221,7 +249,7 @@ export const createCheckout = createServerFn({ method: "POST" })
         customer_email: data.customer.email,
         customer_document: document,
         customer_phone: phone,
-        shipping_address: data.address,
+        shipping_address: { ...data.address, zipCode: onlyDigits(data.address.zipCode), state: data.address.state.toUpperCase() },
         notes: data.notes ?? null,
       })
       .select("id, code")
@@ -239,17 +267,22 @@ export const createCheckout = createServerFn({ method: "POST" })
         recipient_name: data.customer.name,
         document,
         phone,
-        zip_code: data.address.zipCode,
+        zip_code: onlyDigits(data.address.zipCode),
         street: data.address.street,
         number: data.address.number,
         complement: data.address.complement ?? null,
         district: data.address.district,
         city: data.address.city,
-        state: data.address.state,
+        state: data.address.state.toUpperCase(),
       });
     }
 
-    const ctx: OrderContext = { orderId: order.id, code: order.code, total, document, phone, data };
+    const normalizedData: CheckoutInput = {
+      ...data,
+      customer: { ...data.customer, document, phone },
+      address: { ...data.address, zipCode: onlyDigits(data.address.zipCode), state: data.address.state.toUpperCase() },
+    };
+    const ctx: OrderContext = { orderId: order.id, code: order.code, total, document, phone, data: normalizedData };
 
     try {
       if (provider === "asaas" && method === "pix") {
@@ -314,6 +347,9 @@ async function handleAsaasPix(ctx: OrderContext, integ: any) {
     cfg,
     `/payments/${charge.id}/pixQrCode`,
   );
+  if (!pix.encodedImage || !pix.payload) {
+    throw new Error("Asaas não retornou QR Code PIX válido.");
+  }
 
   const { error } = await supabaseAdmin.from("payments").insert({
     order_id: ctx.orderId,
@@ -366,6 +402,8 @@ async function handleAsaasBoleto(ctx: OrderContext, integ: any) {
       }),
     },
   );
+  const boletoUrl = charge.bankSlipUrl ?? charge.invoiceUrl ?? null;
+  if (!boletoUrl) throw new Error("Asaas não retornou URL do boleto.");
 
   const { error } = await supabaseAdmin.from("payments").insert({
     order_id: ctx.orderId,
@@ -375,8 +413,8 @@ async function handleAsaasBoleto(ctx: OrderContext, integ: any) {
     amount_cents: ctx.total,
     external_id: charge.id,
     external_customer_id: customer.id,
-    invoice_url: charge.bankSlipUrl ?? charge.invoiceUrl ?? null,
-    redirect_url: charge.bankSlipUrl ?? charge.invoiceUrl ?? null,
+    invoice_url: boletoUrl,
+    redirect_url: boletoUrl,
     raw: charge as any,
   });
   if (error) throw new Error(error.message);
@@ -422,6 +460,7 @@ async function handleNuPayRedirect(ctx: OrderContext, integ: any) {
   });
 
   const redirect = session.redirect_url ?? session.redirectUrl ?? null;
+  if (!redirect) throw new Error("NuPay não retornou URL de pagamento.");
 
   const { error } = await supabaseAdmin.from("payments").insert({
     order_id: ctx.orderId,
@@ -506,6 +545,7 @@ async function handlePagBankCheckout(ctx: OrderContext, integ: any, method: stri
     session.links?.find((l) => l.rel === "PAY" || l.rel === "CHECKOUT")?.href ??
     session.links?.[0]?.href ??
     null;
+  if (!redirect) throw new Error("PagBank não retornou URL de pagamento.");
 
   const { error } = await supabaseAdmin.from("payments").insert({
     order_id: ctx.orderId,
