@@ -374,7 +374,7 @@ export default function LiveMapView() {
                             transform="translate(100, 50) scale(2.5)"
                             fill="rgba(255,255,255,0.05)"
                             stroke="#FFFFFF"
-                            strokeWidth={2}
+                            strokeWidth={0.5}
                             opacity={1}
                           />
                           <text
