@@ -28,6 +28,8 @@ const WIDTH: Record<PreviewDevice, string> = {
 
 export function HomeBuilderPreview({ device, onDeviceChange, focus, home, blocks, categories }: Props) {
   const selectedBlock = focus.type === "block" ? blocks.find((block) => block.id === focus.id) ?? null : null;
+  const sliderActive = home.hero_slider?.enabled !== false && (home.hero_slider?.slides?.length ?? 0) > 0;
+
   return (
     <aside className="xl:sticky xl:top-5 xl:self-start">
       <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-soft">
@@ -50,8 +52,18 @@ export function HomeBuilderPreview({ device, onDeviceChange, focus, home, blocks
               <span className="text-[9px] uppercase tracking-widest text-[#70636b]">preview</span>
             </div>
             {focus.type === "announcement" && <AnnouncementPreview value={home.announcement} />}
-            {focus.type === "hero" && <HeroPreview value={home.hero ?? {}} />}
-            {focus.type === "slider" && <SlidePreview slide={home.hero_slider?.slides?.[focus.index]} index={focus.index} />}
+            {focus.type === "hero" && (
+              <>
+                {sliderActive && <PreviewNotice text="O Hero está salvo, mas o Slider está ativo e é o destaque publicado na Home." />}
+                <HeroPreview value={home.hero ?? {}} />
+              </>
+            )}
+            {focus.type === "slider" && (
+              <>
+                {!sliderActive && <PreviewNotice text="O Slider está desativado ou sem slides; o Hero principal será publicado no lugar dele." />}
+                <SlidePreview slide={home.hero_slider?.slides?.[focus.index]} index={focus.index} />
+              </>
+            )}
             {focus.type === "categories" && <CategoriesPreview categories={categories} device={device} />}
             {focus.type === "block" && selectedBlock && <BlockPreview block={selectedBlock} categories={categories} />}
           </div>
@@ -75,6 +87,10 @@ function DeviceButton({ active, title, onClick, children }: { active: boolean; t
       {children}
     </button>
   );
+}
+
+function PreviewNotice({ text }: { text: string }) {
+  return <div className="border-b border-[#e4cfa2] bg-[#fff4d8] px-4 py-2 text-[10px] font-medium leading-4 text-[#76581f]">{text}</div>;
 }
 
 function AnnouncementPreview({ value }: { value: HomeContent["announcement"] }) {
@@ -188,9 +204,30 @@ function BlockPreview({ block, categories }: { block: HomepageBlock; categories:
     return <div className="p-6"><p className="text-[8px] uppercase tracking-[0.2em] text-[#d7b47a]">{block.subtitle || "Coleção"}</p><h2 className="mt-1 text-2xl font-semibold text-[#251e23]">{block.title || "Coleção em destaque"}</h2><div className="mt-4 grid grid-cols-4 gap-2">{[1,2,3,4].map((n) => <div key={n} className="aspect-[3/4] rounded-lg bg-[#f7efee]" />)}</div></div>;
   }
   if (block.kind === "category_grid") {
-    const selected = Array.isArray(data.categories) ? data.categories : [];
+    const selected = data.mode === "all"
+      ? categories.map((category) => category.slug)
+      : Array.isArray(data.categories) ? data.categories : [];
     const names = selected.map((slug: string) => categories.find((category) => category.slug === slug)?.name ?? slug);
-    return <div className="p-6"><p className="text-2xl font-semibold text-[#251e23]">{block.title || "Categorias"}</p><div className="mt-4 flex flex-wrap gap-2">{names.map((name: string) => <span key={name} className="rounded-full border border-[#e9dddf] bg-white px-3 py-2 text-[9px]">{name}</span>)}</div></div>;
+    return <div className="p-6"><p className="text-[8px] uppercase tracking-[0.2em] text-[#a84c69]">{block.subtitle || "Explore por categoria"}</p><p className="mt-1 text-2xl font-semibold text-[#251e23]">{block.title || "Categorias"}</p><div className="mt-4 flex flex-wrap gap-2">{names.map((name: string) => <span key={name} className="rounded-full border border-[#e9dddf] bg-white px-3 py-2 text-[9px]">{name}</span>)}</div></div>;
+  }
+  if (block.kind === "category_products") {
+    const limit = typeof data.limit === "number" ? Math.max(1, Math.min(8, data.limit)) : 4;
+    return (
+      <div className="p-6">
+        <p className="text-[8px] uppercase tracking-[0.2em] text-[#d7b47a]">{block.subtitle || "Novidades e mais vendidos"}</p>
+        <h2 className="mt-1 text-2xl font-semibold text-[#251e23]">{block.title || "Todas as categorias"}</h2>
+        <div className="mt-5 space-y-4">
+          {categories.slice(0, 3).map((category) => (
+            <div key={category.id}>
+              <p className="mb-2 text-[10px] font-semibold text-[#6d405f]">{category.name}</p>
+              <div className="grid grid-cols-4 gap-2">
+                {Array.from({ length: Math.min(limit, 4) }, (_, index) => <div key={index} className="aspect-[3/4] rounded-lg bg-[#f7efee]" />)}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
   }
   return (
     <div className="p-7">
