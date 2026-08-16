@@ -64,8 +64,8 @@ interface VisitorSession {
   is_online: boolean;
   device_type: string | null;
   last_seen_at: string;
-  latitude: number | null;
-  longitude: number | null;
+  latitude_approx: number | null;
+  longitude_approx: number | null;
 }
 
 export default function LiveMapView() {
@@ -186,18 +186,26 @@ export default function LiveMapView() {
   const clusters = useMemo(() => {
     const map = new Map<string, { lat: number, lon: number, count: number, stage: string, ids: string[] }>();
     visitors.forEach(v => {
-      if (!v.latitude || !v.longitude) return;
-      // Precisão menor para agrupar melhor
-      const lat = Math.round(v.latitude * 10) / 10;
-      const lon = Math.round(v.longitude * 10) / 10;
-      const key = `${lat}-${lon}`;
-      const cur = map.get(key) || { lat, lon, count: 0, stage: v.funnel_stage, ids: [] };
-      cur.count += 1;
-      cur.ids.push(v.id);
-      if (['purchased', 'checkout', 'cart'].indexOf(v.funnel_stage) > ['purchased', 'checkout', 'cart'].indexOf(cur.stage)) {
-        cur.stage = v.funnel_stage;
+      // Se tiver coordenadas reais aproximadas, usa elas
+      if (v.latitude_approx && v.longitude_approx) {
+        const lat = Math.round(v.latitude_approx * 10) / 10;
+        const lon = Math.round(v.longitude_approx * 10) / 10;
+        const key = `${lat}-${lon}`;
+        const cur = map.get(key) || { lat, lon, count: 0, stage: v.funnel_stage, ids: [] };
+        cur.count += 1;
+        cur.ids.push(v.id);
+        if (['purchased', 'checkout', 'cart'].indexOf(v.funnel_stage) > ['purchased', 'checkout', 'cart'].indexOf(cur.stage)) {
+          cur.stage = v.funnel_stage;
+        }
+        map.set(key, cur);
+      } else if (v.country === 'BR') {
+        // Fallback dinâmico para o Brasil central se não houver coordenadas, mas o país for BR
+        const key = `br-fallback`;
+        const cur = map.get(key) || { lat: -15.7801, lon: -47.9292, count: 0, stage: v.funnel_stage, ids: [] };
+        cur.count += 1;
+        cur.ids.push(v.id);
+        map.set(key, cur);
       }
-      map.set(key, cur);
     });
     return Array.from(map.values());
   }, [visitors]);
@@ -352,8 +360,9 @@ export default function LiveMapView() {
             <ComposableMap
               projection="geoMercator"
               projectionConfig={{
-                scale: 140,
-                center: [0, 0] 
+                scale: 650,
+                center: [-55, -15] 
+
               }}
               style={{ width: "100%", height: "100%" }}
             >
