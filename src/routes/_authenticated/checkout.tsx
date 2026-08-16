@@ -168,7 +168,6 @@ function CheckoutPage() {
       saveAddress: form.saveAddress,
       notes: form.notes.trim() || null,
       method,
-      returnUrl: `${window.location.origin}/checkout/pending`,
     });
   }
 
