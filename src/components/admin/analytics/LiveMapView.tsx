@@ -372,10 +372,10 @@ export default function LiveMapView() {
                           <path
                             d={BRAZIL_SVG_PATH}
                             transform="translate(100, 50) scale(2.5)"
-                            fill="transparent"
-                            stroke="hsl(var(--primary))"
+                            fill="rgba(255,255,255,0.05)"
+                            stroke="#FFFFFF"
                             strokeWidth={2}
-                            opacity={0.3}
+                            opacity={1}
                           />
                           <text
                             x="250"
@@ -394,9 +394,9 @@ export default function LiveMapView() {
                       <Geography
                         key={geo.rsmKey}
                         geography={geo}
-                        fill="rgba(0,0,0,0.01)"
-                        stroke="hsl(var(--primary))"
-                        strokeWidth={2}
+                        fill="rgba(255,255,255,0.03)"
+                        stroke="#FFFFFF"
+                        strokeWidth={1.5}
                         style={{
                           default: { outline: "none" },
                           hover: { fill: "hsl(var(--primary) / 0.1)", outline: "none" },
