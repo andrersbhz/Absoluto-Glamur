@@ -357,20 +357,25 @@ export default function LiveMapView() {
               <ZoomableGroup zoom={1} maxZoom={8}>
                 <Geographies geography={geoUrl}>
                   {({ geographies }) =>
-                    geographies.map((geo) => (
-                      <Geography
-                        key={geo.rsmKey}
-                        geography={geo}
-                        fill="transparent"
-                        stroke="hsl(var(--primary))"
-                        strokeWidth={1}
-                        style={{
-                          default: { outline: "none" },
-                          hover: { fill: "hsl(var(--primary) / 0.05)", outline: "none" },
-                          pressed: { outline: "none" },
-                        }}
-                      />
-                    ))
+                    geographies && geographies.length > 0 ? (
+                      geographies.map((geo) => (
+                        <Geography
+                          key={geo.rsmKey}
+                          geography={geo}
+                          fill="transparent"
+                          stroke="hsl(var(--primary))"
+                          strokeWidth={1}
+                          style={{
+                            default: { outline: "none" },
+                            hover: { fill: "hsl(var(--primary) / 0.05)", outline: "none" },
+                            pressed: { outline: "none" },
+                          }}
+                        />
+                      ))
+                    ) : (
+                      // Fallback visual caso o GeoJSON demore a carregar
+                      <rect width="100%" height="100%" fill="transparent" />
+                    )
                   }
                 </Geographies>
 
