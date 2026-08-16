@@ -357,10 +357,6 @@ export default function LiveMapView() {
               <ZoomableGroup 
                 zoom={1} 
                 maxZoom={8}
-                translateExtent={[
-                  [0, 0],
-                  [800, 600]
-                ]}
               >
                 <Geographies geography={geoUrl}>
                   {({ geographies }) =>
@@ -369,7 +365,7 @@ export default function LiveMapView() {
                         <Geography
                           key={geo.rsmKey}
                           geography={geo}
-                          fill="transparent"
+                          fill="rgba(0,0,0,0.01)"
                           stroke="hsl(var(--primary))"
                           strokeWidth={1.5}
                           style={{
@@ -379,7 +375,9 @@ export default function LiveMapView() {
                           }}
                         />
                       ))
-                    ) : null
+                    ) : (
+                      <rect width="100%" height="100%" fill="transparent" />
+                    )
                   }
                 </Geographies>
 
