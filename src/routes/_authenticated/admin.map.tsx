@@ -13,7 +13,7 @@ export const Route = createFileRoute("/_authenticated/admin/map")({
 function AdminMapPage() {
   return (
     <AdminLayout>
-      <div className="flex h-full flex-col space-y-4 p-6">
+      <div className="flex h-[calc(100vh-64px)] flex-col space-y-4 p-6 overflow-hidden">
         <div>
           <h1 className="text-2xl font-semibold text-foreground">Mapa ao Vivo</h1>
           <p className="text-muted-foreground">Monitoramento de visitantes e atividade em tempo real.</p>
