@@ -9,11 +9,11 @@ async function assertAdmin(context: any) {
 
 export const getAnalyticsStats = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .input(z.object({
+  .validator((data) => z.object({
     period: z.enum(["today", "24h", "7d", "30d"]).default("today"),
     dimension: z.string().optional()
-  }))
-  .handler(async ({ input, context }) => {
+  }).parse(data))
+  .handler(async ({ data: input, context }) => {
     await assertAdmin(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     
