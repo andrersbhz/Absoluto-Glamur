@@ -416,7 +416,7 @@ export default function LiveMapView() {
                         geography={geo}
                         fill="rgba(255,255,255,0.03)"
                         stroke="#FFFFFF"
-                        strokeWidth={0.8}
+                        strokeWidth={0.5}
                         style={{
                           default: { outline: "none" },
                           hover: { fill: "hsl(var(--primary) / 0.1)", outline: "none" },
