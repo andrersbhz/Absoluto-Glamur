@@ -136,7 +136,7 @@ export function AdminLayout({ children }: { children: ReactNode }) {
             </button>
           </div>
         </header>
-        <main className="flex-1 p-6 lg:p-10">{children}</main>
+        <main className="flex-1 p-4 lg:p-6 overflow-hidden flex flex-col">{children}</main>
       </div>
     </div>
   );
