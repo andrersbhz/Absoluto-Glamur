@@ -1,7 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
-import { assertAdmin } from "./analytics-guard.server";
 
 
 export const getAnalyticsStats = createServerFn({ method: "POST" })
@@ -11,6 +10,7 @@ export const getAnalyticsStats = createServerFn({ method: "POST" })
     dimension: z.string().optional()
   }).parse(data))
   .handler(async ({ data: input, context }) => {
+    const { assertAdmin } = await import("./analytics-guard.server");
     await assertAdmin(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     
@@ -71,6 +71,7 @@ export const exportAnalyticsCsv = createServerFn({ method: "POST" })
     period: z.enum(["today", "24h", "7d", "30d"]).default("today")
   }).parse(data))
   .handler(async ({ data: input, context }) => {
+    const { assertAdmin } = await import("./analytics-guard.server");
     await assertAdmin(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     
@@ -101,6 +102,7 @@ export const exportAnalyticsCsv = createServerFn({ method: "POST" })
 export const getOperatorNotifications = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<any[]> => {
+    const { assertAdmin } = await import("./analytics-guard.server");
     await assertAdmin(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data } = await (supabaseAdmin.from("operator_notifications" as any) as any)
@@ -115,6 +117,7 @@ export const markNotificationRead = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data) => z.object({ id: z.string() }).parse(data))
   .handler(async ({ data, context }) => {
+    const { assertAdmin } = await import("./analytics-guard.server");
     await assertAdmin(context);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     await (supabaseAdmin.from("operator_notifications" as any) as any)
