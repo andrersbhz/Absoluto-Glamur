@@ -48,7 +48,7 @@ import {
   ZoomableGroup
 } from "react-simple-maps";
 
-// URL para o TopoJSON do Brasil (estados)
+// URL para o GeoJSON do Brasil (estados)
 const geoUrl = "https://raw.githubusercontent.com/codeforamerica/click_that_hood/master/public/data/brazil-states.geojson";
 
 interface VisitorSession {
