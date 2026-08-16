@@ -11,6 +11,18 @@ export type HomepageBlock = {
   is_active: boolean;
 };
 
+function normalizeHomepageBlock(block: HomepageBlock): HomepageBlock {
+  const data = { ...(block.data ?? {}) } as Record<string, unknown>;
+
+  // Compatibilidade com blocos criados antes do Home Builder atual.
+  // O storefront usa `slug`; versões antigas podiam persistir `collection_slug`.
+  if (block.kind === "collection" && !data.slug && typeof data.collection_slug === "string") {
+    data.slug = data.collection_slug;
+  }
+
+  return { ...block, data };
+}
+
 export function homepageBlocksQuery() {
   return queryOptions({
     queryKey: ["homepage-blocks"],
@@ -21,7 +33,7 @@ export function homepageBlocksQuery() {
         .eq("is_active", true)
         .order("position", { ascending: true });
       if (error) throw error;
-      return (data ?? []) as HomepageBlock[];
+      return ((data ?? []) as HomepageBlock[]).map(normalizeHomepageBlock);
     },
   });
 }
@@ -35,7 +47,7 @@ export function homepageBlocksAdminQuery() {
         .select("id, kind, title, subtitle, data, position, is_active")
         .order("position", { ascending: true });
       if (error) throw error;
-      return (data ?? []) as HomepageBlock[];
+      return ((data ?? []) as HomepageBlock[]).map(normalizeHomepageBlock);
     },
   });
 }
@@ -134,4 +146,3 @@ export function homeContentQuery() {
     staleTime: 60_000,
   });
 }
-

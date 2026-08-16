@@ -28,16 +28,13 @@ export const Route = createFileRoute("/api/public/webhooks/pagbank")({
           .eq("provider", "pagbank")
           .maybeSingle();
 
-        // PagBank envia notificações POST com header x-authenticity-token (quando configurado)
-        // ou você pode validar via HMAC. Aceita também Authorization: Bearer <token>.
         const provided =
           request.headers.get("x-authenticity-token") ??
           request.headers.get("x-pagbank-signature") ??
           request.headers.get("authorization")?.replace(/^Bearer\s+/i, "") ??
           "";
 
-        // Token opcional — se configurado, exige match. Se vazio, aceita (útil em sandbox).
-        if (integ?.webhook_token && provided !== integ.webhook_token) {
+        if (!integ?.webhook_token || provided !== integ.webhook_token) {
           return new Response("unauthorized", { status: 401 });
         }
 

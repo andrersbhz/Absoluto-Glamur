@@ -8,8 +8,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { formatBRL } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/checkout/$orderId")({
-  head: () => ({ meta: [{ title: "Pagamento PIX · Absoluto Glamur" }] }),
-  component: PixPage,
+  head: () => ({ meta: [{ title: "Pagamento · Absoluto Glamur" }] }),
+  component: PaymentPage,
 });
 
 type OrderWithPayment = {
@@ -31,7 +31,7 @@ type OrderWithPayment = {
   }[];
 };
 
-function PixPage() {
+function PaymentPage() {
   const { orderId } = Route.useParams();
 
   const q = useQuery({
@@ -103,7 +103,7 @@ function PaidState({ orderCode }: { orderCode: string }) {
       </div>
       <h2 className="mt-4 font-display text-2xl">Pagamento confirmado!</h2>
       <p className="mt-2 text-sm text-muted-foreground">
-        Recebemos o PIX do pedido {orderCode}. Você receberá o rastreamento em breve.
+        Recebemos o pagamento do pedido {orderCode}. Você receberá o rastreamento em breve.
       </p>
       <div className="mt-6 flex justify-center gap-3">
         <Link

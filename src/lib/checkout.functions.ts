@@ -2,30 +2,53 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
+const onlyDigits = (value: string) => value.replace(/\D/g, "");
+
 const AddressSchema = z.object({
-  zipCode: z.string().min(8),
+  zipCode: z.string().refine((value) => onlyDigits(value).length === 8, "CEP inválido"),
   street: z.string().min(2),
   number: z.string().min(1),
   complement: z.string().nullable().optional(),
   district: z.string().min(2),
   city: z.string().min(2),
-  state: z.string().length(2),
+  state: z.string().regex(/^[A-Za-z]{2}$/, "UF inválida"),
 });
 
+const CheckoutItemsSchema = z
+  .array(
+    z.object({
+      variantId: z.string().uuid(),
+      quantity: z.number().int().min(1).max(99),
+    }),
+  )
+  .min(1)
+  .superRefine((items, ctx) => {
+    const seen = new Set<string>();
+    items.forEach((item, index) => {
+      if (seen.has(item.variantId)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "A mesma variação não pode aparecer duplicada no checkout.",
+          path: [index, "variantId"],
+        });
+      }
+      seen.add(item.variantId);
+    });
+  });
+
 const CheckoutSchema = z.object({
-  items: z
-    .array(
-      z.object({
-        variantId: z.string().uuid(),
-        quantity: z.number().int().min(1).max(99),
-      }),
-    )
-    .min(1),
+  items: CheckoutItemsSchema,
   customer: z.object({
-    name: z.string().min(2),
-    email: z.string().email(),
-    document: z.string().min(11),
-    phone: z.string().min(8),
+    name: z.string().trim().min(2),
+    email: z.string().trim().email(),
+    document: z.string().refine((value) => {
+      const size = onlyDigits(value).length;
+      return size === 11 || size === 14;
+    }, "CPF/CNPJ inválido"),
+    phone: z.string().refine((value) => {
+      const size = onlyDigits(value).length;
+      return size === 10 || size === 11;
+    }, "Celular inválido"),
   }),
   address: AddressSchema,
   saveAddress: z.boolean().optional(),
@@ -65,7 +88,6 @@ export const createCheckout = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const method = data.method ?? "pix";
 
-    // 1) Resolver provedor via routing table
     const { data: route } = await supabaseAdmin
       .from("payment_method_routing")
       .select("provider, enabled")
@@ -78,7 +100,6 @@ export const createCheckout = createServerFn({ method: "POST" })
     }
     const provider = route.provider;
 
-    // 2) Carrega credenciais do provedor
     const { data: integ } = await supabaseAdmin
       .from("integrations")
       .select("api_key, mode, enabled, webhook_token, config")
@@ -89,8 +110,12 @@ export const createCheckout = createServerFn({ method: "POST" })
         `Provedor "${provider}" não está configurado. Peça ao administrador para configurá-lo em Admin → Integrações.`,
       );
     }
+    if (["asaas", "nupay", "pagbank"].includes(provider) && !integ.webhook_token) {
+      throw new Error(
+        `Configure o Token do webhook de ${provider} em Admin → Integrações antes de receber pagamentos.`,
+      );
+    }
 
-    // 3) Preços autoritativos + itens
     const variantIds = data.items.map((i) => i.variantId);
     const { data: variants, error: varErr } = await supabaseAdmin
       .from("product_variants")
@@ -98,6 +123,7 @@ export const createCheckout = createServerFn({ method: "POST" })
         `id, name, sku, external_sku_id, external_sku_attr, options, is_available,
          product:products!inner(id, slug, name, status),
          prices:product_prices(list_price_cents, sale_price_cents, is_active),
+         inventory:product_inventory(stock, reserved),
          media:product_media(url, position, kind)`,
       )
       .in("id", variantIds);
@@ -119,13 +145,12 @@ export const createCheckout = createServerFn({ method: "POST" })
       prices:
         | { list_price_cents: number; sale_price_cents: number | null; is_active: boolean }[]
         | null;
+      inventory: { stock: number; reserved: number } | null;
       media: { url: string; position: number | null; kind: string | null }[] | null;
     };
     const vmap = new Map<string, VariantRow>();
     (variants as unknown as VariantRow[] | null)?.forEach((v) => vmap.set(v.id, v));
 
-    // Fallback seguro: product_id externo (AliExpress) pelo import do produto,
-    // usado apenas quando a variação não guardou options.source_id.
     const productIds = Array.from(
       new Set(
         Array.from(vmap.values())
@@ -156,6 +181,14 @@ export const createCheckout = createServerFn({ method: "POST" })
       }
       if (v.is_available === false) {
         throw new Error(`A variação escolhida de ${v.product.name} não está mais disponível.`);
+      }
+      const availableStock = Math.max(0, (v.inventory?.stock ?? 0) - (v.inventory?.reserved ?? 0));
+      if (availableStock < i.quantity) {
+        throw new Error(
+          availableStock > 0
+            ? `Estoque insuficiente para ${v.product.name}. Disponível: ${availableStock}.`
+            : `${v.product.name} está fora de estoque.`,
+        );
       }
       const price = (v.prices ?? []).find((p) => p.is_active) ?? v.prices?.[0];
       if (!price) throw new Error(`Preço não configurado para ${v.product.name}`);
@@ -188,7 +221,6 @@ export const createCheckout = createServerFn({ method: "POST" })
         unit_cents: unit,
         quantity: i.quantity,
         total_cents: unit * i.quantity,
-        // Congela o mapeamento exato da variação escolhida para o fulfillment.
         aliexpress_product_id: externalProductId,
         aliexpress_sku_attr: v.external_sku_attr ?? null,
       };
@@ -199,11 +231,10 @@ export const createCheckout = createServerFn({ method: "POST" })
     const total = subtotal + shipping;
     if (total < 100) throw new Error("Valor mínimo do pedido é R$ 1,00.");
 
-    // 4) Cria pedido
     const { data: codeData } = await supabaseAdmin.rpc("generate_order_code");
     const code = (codeData as unknown as string) ?? `BL-${Date.now()}`;
-    const document = data.customer.document.replace(/\D/g, "");
-    const phone = data.customer.phone.replace(/\D/g, "");
+    const document = onlyDigits(data.customer.document);
+    const phone = onlyDigits(data.customer.phone);
 
     const { data: order, error: orderErr } = await supabaseAdmin
       .from("orders")
@@ -218,7 +249,7 @@ export const createCheckout = createServerFn({ method: "POST" })
         customer_email: data.customer.email,
         customer_document: document,
         customer_phone: phone,
-        shipping_address: data.address,
+        shipping_address: { ...data.address, zipCode: onlyDigits(data.address.zipCode), state: data.address.state.toUpperCase() },
         notes: data.notes ?? null,
       })
       .select("id, code")
@@ -236,19 +267,23 @@ export const createCheckout = createServerFn({ method: "POST" })
         recipient_name: data.customer.name,
         document,
         phone,
-        zip_code: data.address.zipCode,
+        zip_code: onlyDigits(data.address.zipCode),
         street: data.address.street,
         number: data.address.number,
         complement: data.address.complement ?? null,
         district: data.address.district,
         city: data.address.city,
-        state: data.address.state,
+        state: data.address.state.toUpperCase(),
       });
     }
 
-    const ctx: OrderContext = { orderId: order.id, code: order.code, total, document, phone, data };
+    const normalizedData: CheckoutInput = {
+      ...data,
+      customer: { ...data.customer, document, phone },
+      address: { ...data.address, zipCode: onlyDigits(data.address.zipCode), state: data.address.state.toUpperCase() },
+    };
+    const ctx: OrderContext = { orderId: order.id, code: order.code, total, document, phone, data: normalizedData };
 
-    // 5) Dispatch para o adapter certo
     try {
       if (provider === "asaas" && method === "pix") {
         return await handleAsaasPix(ctx, integ);
@@ -275,10 +310,7 @@ export const createCheckout = createServerFn({ method: "POST" })
     }
   });
 
-/** Backward-compat: rota antiga /checkout continua chamando createPixCheckout. */
 export const createPixCheckout = createCheckout;
-
-// ------------ Adapters ------------
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function handleAsaasPix(ctx: OrderContext, integ: any) {
@@ -315,6 +347,9 @@ async function handleAsaasPix(ctx: OrderContext, integ: any) {
     cfg,
     `/payments/${charge.id}/pixQrCode`,
   );
+  if (!pix.encodedImage || !pix.payload) {
+    throw new Error("Asaas não retornou QR Code PIX válido.");
+  }
 
   const { error } = await supabaseAdmin.from("payments").insert({
     order_id: ctx.orderId,
@@ -328,7 +363,6 @@ async function handleAsaasPix(ctx: OrderContext, integ: any) {
     pix_payload: pix.payload,
     pix_expires_at: pix.expirationDate ? new Date(pix.expirationDate).toISOString() : null,
     invoice_url: charge.invoiceUrl ?? null,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     raw: charge as any,
   });
   if (error) throw new Error(error.message);
@@ -368,6 +402,8 @@ async function handleAsaasBoleto(ctx: OrderContext, integ: any) {
       }),
     },
   );
+  const boletoUrl = charge.bankSlipUrl ?? charge.invoiceUrl ?? null;
+  if (!boletoUrl) throw new Error("Asaas não retornou URL do boleto.");
 
   const { error } = await supabaseAdmin.from("payments").insert({
     order_id: ctx.orderId,
@@ -377,9 +413,8 @@ async function handleAsaasBoleto(ctx: OrderContext, integ: any) {
     amount_cents: ctx.total,
     external_id: charge.id,
     external_customer_id: customer.id,
-    invoice_url: charge.bankSlipUrl ?? charge.invoiceUrl ?? null,
-    redirect_url: charge.bankSlipUrl ?? charge.invoiceUrl ?? null,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    invoice_url: boletoUrl,
+    redirect_url: boletoUrl,
     raw: charge as any,
   });
   if (error) throw new Error(error.message);
@@ -402,7 +437,6 @@ async function handleNuPayRedirect(ctx: OrderContext, integ: any) {
   };
 
   const returnUrl = ctx.data.returnUrl ?? `https://absolutoglamur.com.br/checkout/${ctx.orderId}`;
-  // Docs: POST /checkout/v1/orders → cria sessão + URL de redirecionamento
   const session = await nupayFetch<{
     id: string;
     session_id?: string;
@@ -426,6 +460,7 @@ async function handleNuPayRedirect(ctx: OrderContext, integ: any) {
   });
 
   const redirect = session.redirect_url ?? session.redirectUrl ?? null;
+  if (!redirect) throw new Error("NuPay não retornou URL de pagamento.");
 
   const { error } = await supabaseAdmin.from("payments").insert({
     order_id: ctx.orderId,
@@ -437,7 +472,6 @@ async function handleNuPayRedirect(ctx: OrderContext, integ: any) {
     session_id: session.session_id ?? session.id,
     redirect_url: redirect,
     return_url: returnUrl,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     raw: session as any,
   });
   if (error) throw new Error(error.message);
@@ -466,8 +500,6 @@ async function handlePagBankCheckout(ctx: OrderContext, integ: any, method: stri
 
   const pmType = pagbankMethodType(method as "pix" | "credit_card" | "boleto");
 
-  // POST /checkouts — cria sessão de checkout hospedado.
-  // Docs: https://developer.pagbank.com.br/reference/criar-checkout
   const session = await pagbankFetch<{
     id: string;
     checkout_url?: string;
@@ -513,11 +545,11 @@ async function handlePagBankCheckout(ctx: OrderContext, integ: any, method: stri
     session.links?.find((l) => l.rel === "PAY" || l.rel === "CHECKOUT")?.href ??
     session.links?.[0]?.href ??
     null;
+  if (!redirect) throw new Error("PagBank não retornou URL de pagamento.");
 
   const { error } = await supabaseAdmin.from("payments").insert({
     order_id: ctx.orderId,
     provider: "pagbank",
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     method: method as any,
     status: "pending",
     amount_cents: ctx.total,
@@ -526,7 +558,6 @@ async function handlePagBankCheckout(ctx: OrderContext, integ: any, method: stri
     redirect_url: redirect,
     return_url: returnUrl,
     invoice_url: redirect,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     raw: session as any,
   });
   if (error) throw new Error(error.message);

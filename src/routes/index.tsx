@@ -41,7 +41,6 @@ export const Route = createFileRoute("/")({
   component: Index,
 });
 
-
 const ICON_MAP: Record<string, ComponentType<{ className?: string }>> = {
   sparkles: Sparkles,
   shield: ShieldCheck,
@@ -64,13 +63,45 @@ function GoldRule() {
   );
 }
 
+type StructureBlockData = {
+  mode?: string;
+  categories?: string[];
+  category_slug?: string;
+  limit?: number;
+  columns?: number;
+};
+
+function blockData(block: HomepageBlock): StructureBlockData {
+  const raw = (block.data ?? {}) as Record<string, unknown>;
+  return {
+    mode: typeof raw.mode === "string" ? raw.mode : undefined,
+    categories: Array.isArray(raw.categories)
+      ? raw.categories.filter((value): value is string => typeof value === "string" && value.length > 0)
+      : undefined,
+    category_slug: typeof raw.category_slug === "string" ? raw.category_slug : undefined,
+    limit: typeof raw.limit === "number" && Number.isFinite(raw.limit) ? raw.limit : undefined,
+    columns: typeof raw.columns === "number" && Number.isFinite(raw.columns) ? raw.columns : undefined,
+  };
+}
+
+function selectedSlugs(data: StructureBlockData): string[] {
+  const list = [...(data.categories ?? [])];
+  if (data.category_slug && !list.includes(data.category_slug)) list.unshift(data.category_slug);
+  return list;
+}
+
+function clampInt(value: number | undefined, fallback: number, min: number, max: number) {
+  if (value == null) return fallback;
+  return Math.min(max, Math.max(min, Math.round(value)));
+}
+
 function Index() {
   const { data: bestsellers = [] } = useQuery(featuredProductsQuery("mais-vendidos"));
   const { data: newArrivals = [] } = useQuery(featuredProductsQuery("lancamentos"));
   const { data: categories = [] } = useQuery(categoriesQuery());
   const { data: blocks = [] } = useQuery(homepageBlocksQuery());
   const { data: collections = [] } = useQuery(collectionsQuery());
-  const { data: byCategory = [] } = useQuery(productsByCategoryQuery(4));
+  const { data: byCategory = [] } = useQuery(productsByCategoryQuery(8));
   const { data: home = {} } = useQuery(homeContentQuery());
   const featuredCollections = collections.filter((c) => c.is_featured);
 
@@ -82,12 +113,14 @@ function Index() {
   const manifesto = home.manifesto ?? {};
   const pillars = home.pillars ?? {};
   const pillarItems = pillars.items ?? [];
+  const sliderActive = heroSlider.enabled !== false && heroSlides.length > 0;
+
+  const hasCategoryGridBlock = blocks.some((block) => block.kind === "category_grid");
+  const hasCategoryProductsBlock = blocks.some((block) => block.kind === "category_products");
 
   const primaryHref = hero.cta_primary_href ?? "/products";
   const secondaryHref = hero.cta_secondary_href ?? "/products?collection=promocoes";
 
-  // Fallback dinâmico: se não houver imagem configurada no hero, usa a capa
-  // do primeiro produto em destaque (mais vendidos → lançamentos → categorias).
   const dynamicHeroProduct =
     bestsellers[0] ??
     newArrivals[0] ??
@@ -99,22 +132,18 @@ function Index() {
       : dynamicHeroProduct?.media?.find((m) => m.kind !== "video")?.url ??
         dynamicHeroProduct?.media?.[0]?.url ??
         null;
-  const heroProductName = !hero.image_url ? dynamicHeroProduct?.name ?? null : null;
 
   return (
     <StoreLayout>
-      {/* Announcement bar */}
       {announcement.enabled !== false && (announcement.text || announcement.product?.slug) ? (
         <AnnouncementBar announcement={announcement} />
       ) : null}
 
-      {/* Hero Slider (editável) */}
-      {heroSlider.enabled !== false && heroSlides.length > 0 ? (
+      {sliderActive ? (
         <HeroSlider slides={heroSlides} autoplayMs={heroSlider.autoplay_ms ?? 6000} />
       ) : null}
 
-      {/* HERO — apenas quando o slider não está ativo/preenchido */}
-      {!(heroSlider.enabled !== false && heroSlides.length > 0) && (
+      {!sliderActive && (
       <section
         className="relative isolate overflow-hidden min-h-[420px] lg:min-h-[500px] flex items-center"
         style={
@@ -193,42 +222,23 @@ function Index() {
       </section>
       )}
 
+      {!hasCategoryGridBlock && <CategoryGridSection categories={categories} />}
 
-      {/* Categorias */}
-      {categories.length > 0 && (
-        <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
-          <GoldRule />
-          <div className="mt-6 flex flex-wrap justify-center gap-3">
-            {categories.map((c) => (
-              <Link
-                key={c.id}
-                to="/products"
-                search={{ category: c.slug } as never}
-                className="rounded-full border border-border bg-card px-5 py-2 text-xs uppercase tracking-[0.22em] text-foreground shadow-soft transition hover:border-champagne hover:text-primary"
-              >
-                {c.name}
-              </Link>
-            ))}
-          </div>
-        </section>
-      )}
-      {blocks.map((b) => (
-        <CustomBlock key={b.id} block={b} />
-      ))}
+      {blocks.map((block) => {
+        if (block.kind === "category_grid") {
+          return <CategoryGridBlock key={block.id} block={block} categories={categories} />;
+        }
+        if (block.kind === "category_products") {
+          return <CategoryProductsBlock key={block.id} block={block} rows={byCategory} />;
+        }
+        return <CustomBlock key={block.id} block={block} />;
+      })}
 
       {featuredCollections.map((c) => (
         <FeaturedCollectionSection key={c.id} slug={c.slug} name={c.name} description={c.description} />
       ))}
 
-      {byCategory.map((row) => (
-        <FeaturedSection
-          key={row.category.id}
-          title={row.category.name}
-          subtitle="Novidades e mais vendidos"
-          link={{ label: "Ver todos", search: { category: row.category.slug } }}
-          products={row.products}
-        />
-      ))}
+      {!hasCategoryProductsBlock && <CategoryProductsSections rows={byCategory} productLimit={4} />}
 
       {newArrivals.length > 0 && (
         <FeaturedSection
@@ -248,7 +258,6 @@ function Index() {
         />
       )}
 
-      {/* Manifesto */}
       {manifesto.enabled !== false && manifesto.body ? (
         <section className="mx-auto my-10 max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-plum via-berry to-primary px-8 py-16 text-primary-foreground shadow-elegant sm:px-16 sm:py-24">
@@ -267,7 +276,6 @@ function Index() {
         </section>
       ) : null}
 
-      {/* Pilares */}
       {pillars.enabled !== false && pillarItems.length > 0 ? (
         <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
           <div className="mb-12 text-center">
@@ -303,6 +311,95 @@ function Index() {
   );
 }
 
+function CategoryGridBlock({
+  block,
+  categories,
+}: {
+  block: HomepageBlock;
+  categories: Array<{ id: string; name: string; slug: string }>;
+}) {
+  const data = blockData(block);
+  const slugs = selectedSlugs(data);
+  let visible = categories;
+  if (data.mode === "selected" && slugs.length > 0) {
+    const bySlug = new Map(categories.map((category) => [category.slug, category]));
+    visible = slugs.map((slug) => bySlug.get(slug)).filter((value): value is (typeof categories)[number] => !!value);
+  }
+  const limit = clampInt(data.limit, visible.length || categories.length, 1, 50);
+  return <CategoryGridSection categories={visible.slice(0, limit)} />;
+}
+
+function CategoryGridSection({
+  categories,
+}: {
+  categories: Array<{ id: string; name: string; slug: string }>;
+}) {
+  if (categories.length === 0) return null;
+  return (
+    <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+      <GoldRule />
+      <div className="mt-6 flex flex-wrap justify-center gap-3">
+        {categories.map((category) => (
+          <Link
+            key={category.id}
+            to="/products"
+            search={{ category: category.slug } as never}
+            className="rounded-full border border-border bg-card px-5 py-2 text-xs uppercase tracking-[0.22em] text-foreground shadow-soft transition hover:border-champagne hover:text-primary"
+          >
+            {category.name}
+          </Link>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function CategoryProductsBlock({
+  block,
+  rows,
+}: {
+  block: HomepageBlock;
+  rows: Array<{
+    category: { id: string; name: string; slug: string };
+    products: Parameters<typeof ProductCard>[0]["product"][];
+  }>;
+}) {
+  const data = blockData(block);
+  const slugs = selectedSlugs(data);
+  let visible = rows;
+  if (data.mode === "selected" && slugs.length > 0) {
+    const bySlug = new Map(rows.map((row) => [row.category.slug, row]));
+    visible = slugs.map((slug) => bySlug.get(slug)).filter((value): value is (typeof rows)[number] => !!value);
+  }
+  const productLimit = clampInt(data.limit, 4, 1, 8);
+  return <CategoryProductsSections rows={visible} productLimit={productLimit} />;
+}
+
+function CategoryProductsSections({
+  rows,
+  productLimit = 4,
+}: {
+  rows: Array<{
+    category: { id: string; name: string; slug: string };
+    products: Parameters<typeof ProductCard>[0]["product"][];
+  }>;
+  productLimit?: number;
+}) {
+  return (
+    <>
+      {rows.map((row) => (
+        <FeaturedSection
+          key={row.category.id}
+          title={row.category.name}
+          subtitle="Novidades e mais vendidos"
+          link={{ label: "Ver todos", search: { category: row.category.slug } }}
+          products={row.products}
+          productLimit={productLimit}
+        />
+      ))}
+    </>
+  );
+}
 
 function CustomBlock({ block }: { block: HomepageBlock }) {
   const data = (block.data ?? {}) as Record<string, string | number | string[] | undefined>;
@@ -385,6 +482,19 @@ function CustomBlock({ block }: { block: HomepageBlock }) {
     );
   }
 
+  if (block.kind === "divider") {
+    return (
+      <section className="mx-auto max-w-7xl px-4 py-4 sm:px-6 lg:px-8">
+        <div className="border-t border-champagne/30" />
+      </section>
+    );
+  }
+
+  if (block.kind === "spacer") {
+    const height = clampInt(typeof data.height === "number" ? data.height : undefined, 32, 8, 160);
+    return <div aria-hidden style={{ height }} />;
+  }
+
   return null;
 }
 
@@ -406,11 +516,13 @@ function FeaturedSection({
   subtitle,
   link,
   products,
+  productLimit = 4,
 }: {
   title: string;
   subtitle: string;
   link: { label: string; search: Record<string, string> };
   products: Parameters<typeof ProductCard>[0]["product"][];
+  productLimit?: number;
 }) {
   return (
     <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
@@ -428,7 +540,7 @@ function FeaturedSection({
         </Link>
       </div>
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        {products.slice(0, 4).map((p) => (
+        {products.slice(0, productLimit).map((p) => (
           <ProductCard key={p.id} product={p} />
         ))}
       </div>
@@ -468,7 +580,6 @@ function AnnouncementBar({
       <span className="pointer-events-none absolute -left-24 top-1/2 h-40 w-40 -translate-y-1/2 rounded-full bg-champagne/25 blur-3xl" />
       <span className="pointer-events-none absolute -right-24 top-1/2 h-40 w-40 -translate-y-1/2 rounded-full bg-primary/40 blur-3xl" />
       <div className="relative mx-auto grid max-w-7xl grid-cols-1 items-center gap-4 px-4 py-3 sm:grid-cols-[1fr_auto] sm:px-6 sm:py-3.5 lg:px-8">
-        {/* DIV 1 — produto */}
         <div className="flex min-w-0 items-center gap-4">
           <div className="relative shrink-0">
             <span className="absolute inset-0 -m-1 rounded-full bg-champagne/30 blur-md" />
@@ -494,7 +605,6 @@ function AnnouncementBar({
           </div>
         </div>
 
-        {/* DIV 2 — CTA */}
         <div className="flex items-center justify-end">
           <a
             href={href}
