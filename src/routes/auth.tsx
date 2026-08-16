@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate, useSearch } from "@tanstack/react-router";
+import { createFileRoute, Link, Outlet, useLocation, useNavigate, useSearch } from "@tanstack/react-router";
 import { useState } from "react";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -32,8 +32,16 @@ export const Route = createFileRoute("/auth")({
     ],
     links: [{ rel: "canonical", href: "https://absolutoglamur.com.br/auth" }],
   }),
-  component: AuthPage,
+  component: AuthRoute,
 });
+
+function AuthRoute() {
+  const location = useLocation();
+  if (location.pathname !== "/auth" && location.pathname !== "/auth/") {
+    return <Outlet />;
+  }
+  return <AuthPage />;
+}
 
 function AuthPage() {
   const navigate = useNavigate();
@@ -136,9 +144,9 @@ function AuthPage() {
               <div>
                 <Label htmlFor="pw">Senha</Label>
                 <Input id="pw" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} />
-                <a href="/auth/forgot" className="mt-1 inline-block text-xs text-primary hover:underline">
+                <Link to="/auth/forgot" className="mt-1 inline-block text-xs text-primary hover:underline">
                   Esqueci minha senha
-                </a>
+                </Link>
               </div>
               <Button type="submit" disabled={loading} className="w-full">
                 {loading ? "Entrando…" : "Entrar"}
