@@ -362,9 +362,10 @@ export default function LiveMapView() {
                 maxZoom={8}
               >
                 <Geographies geography={geoUrl}>
-                  {({ geographies, error }) => {
-                    // Se houver erro ou não houver geografias, renderizamos um fallback visual
-                    if (error || !geographies || geographies.length === 0) {
+                  {(props) => {
+                    const { geographies } = props;
+                    // @ts-ignore - react-simple-maps tipagem pode variar, verificamos a existência de dados
+                    if (!geographies || geographies.length === 0) {
                       return (
                         <g>
                           {/* Fallback visual simplificado do Brasil */}
