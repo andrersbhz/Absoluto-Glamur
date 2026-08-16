@@ -47,9 +47,10 @@ import {
   Marker,
   ZoomableGroup
 } from "react-simple-maps";
+import { feature } from "topojson-client";
 
-// GeoJSON do Brasil com estados
-const geoUrl = "/data/brazil-states.json";
+// URL do TopoJSON otimizado
+const geoUrl = "/data/brazil-states.topo.json";
 
 // SVG estático do Brasil como fallback (path simplificado do contorno do Brasil)
 const BRAZIL_SVG_PATH = "M120,40 L130,45 L145,45 L160,55 L175,70 L185,90 L195,110 L205,135 L210,165 L205,190 L190,215 L170,235 L145,250 L120,260 L95,265 L70,260 L50,250 L35,235 L25,215 L20,190 L20,165 L25,140 L35,115 L50,95 L70,75 L95,55 Z";
@@ -372,11 +373,11 @@ export default function LiveMapView() {
                 <Geographies geography={geoUrl}>
                   {(props) => {
                     const { geographies } = props;
-                    // @ts-ignore - react-simple-maps tipagem pode variar, verificamos a existência de dados
+                    
+                    // Se o carregamento do TopoJSON falhar ou retornar vazio
                     if (!geographies || geographies.length === 0) {
                       return (
                         <g>
-                          {/* Fallback visual simplificado do Brasil */}
                           <path
                             d={BRAZIL_SVG_PATH}
                             transform="translate(100, 50) scale(2.5)"
@@ -398,9 +399,20 @@ export default function LiveMapView() {
                       );
                     }
                     
-                    return geographies.map((geo) => (
+                    // Converter TopoJSON para GeoJSON features
+                    // react-simple-maps geralmente lida com strings de URL automaticamente, 
+                    // mas se passarmos o objeto ele precisa de processamento.
+                    // Aqui a lib lida internamente com a URL se for GeoJSON, mas TopoJSON
+                    // ela espera que convertamos ou que ela suporte (versões recentes suportam).
+                    // Para garantir performance máxima, verificamos se é FeatureCollection.
+                    const topoData = (props as any).geographies;
+                    const features = topoData.type === "Topology" 
+                      ? (feature(topoData, topoData.objects["brazil-states"]) as any).features 
+                      : topoData;
+
+                    return (features || geographies).map((geo: any) => (
                       <Geography
-                        key={geo.rsmKey}
+                        key={geo.rsmKey || geo.id || Math.random()}
                         geography={geo}
                         fill="rgba(255,255,255,0.03)"
                         stroke="#FFFFFF"
