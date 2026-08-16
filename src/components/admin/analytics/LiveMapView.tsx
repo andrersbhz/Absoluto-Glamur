@@ -372,11 +372,14 @@ export default function LiveMapView() {
   );
 }
 
-function KpiCard({ label, value, icon: Icon, sub, color = "text-foreground", trend, alert }: any) {
+function KpiCard({ label, value, icon: Icon, sub, color = "text-foreground", trend, alert, onClick }: any) {
   return (
-    <Card className="rounded-none border-none shadow-none bg-card/40 hover:bg-card/60 transition-colors">
+    <Card 
+      className={`rounded-none border-none shadow-none bg-card/40 hover:bg-card/60 transition-colors cursor-pointer group`}
+      onClick={onClick}
+    >
       <CardContent className="p-4 flex flex-col items-center text-center">
-        <div className={`mb-2 p-2 rounded-full bg-background/50 border border-border/50 ${color}`}>
+        <div className={`mb-2 p-2 rounded-full bg-background/50 border border-border/50 ${color} group-hover:scale-110 transition-transform`}>
           <Icon className={`h-4 w-4 ${trend === 'pulse' ? 'animate-pulse' : ''}`} />
         </div>
         <p className="text-[10px] uppercase tracking-widest text-muted-foreground mb-1">{label}</p>
