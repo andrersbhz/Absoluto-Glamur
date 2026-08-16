@@ -103,7 +103,7 @@ export default function LiveMapView() {
 
   const { data: notifications } = useQuery({
     queryKey: ["operator-notifications"],
-    queryFn: () => notificationsFn({ data: undefined }),
+    queryFn: () => notificationsFn(),
     enabled: hasSession,
     retry: false,
     refetchInterval: 5000
