@@ -75,7 +75,19 @@ export default function LiveMapView() {
   const [period, setPeriod] = useState<"today" | "24h" | "7d" | "30d">("today");
   const [selectedVisitorId, setSelectedVisitorId] = useState<string | null>(null);
   const queryClient = useQueryClient();
-  
+  const [hasSession, setHasSession] = useState(false);
+
+  useEffect(() => {
+    let active = true;
+    supabase.auth.getSession().then(({ data }) => {
+      if (active) setHasSession(!!data.session);
+    });
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
+      setHasSession(!!session);
+    });
+    return () => { active = false; sub.subscription.unsubscribe(); };
+  }, []);
+
   const statsFn = useServerFn(getAnalyticsStats);
   const notificationsFn = useServerFn(getOperatorNotifications);
   const markReadFn = useServerFn(markNotificationRead);
@@ -84,12 +96,16 @@ export default function LiveMapView() {
   const { data: stats } = useQuery({
     queryKey: ["analytics-stats", period],
     queryFn: () => statsFn({ data: { period } }),
+    enabled: hasSession,
+    retry: false,
     refetchInterval: 10000 
   });
 
   const { data: notifications } = useQuery({
     queryKey: ["operator-notifications"],
     queryFn: () => notificationsFn({ data: undefined }),
+    enabled: hasSession,
+    retry: false,
     refetchInterval: 5000
   });
 
