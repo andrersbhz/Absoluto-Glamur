@@ -51,6 +51,9 @@ import {
 // URL para o GeoJSON do Brasil (estados)
 const geoUrl = "https://raw.githubusercontent.com/codeforamerica/click_that_hood/master/public/data/brazil-states.geojson";
 
+// SVG estático do Brasil como fallback (path simplificado do contorno do Brasil)
+const BRAZIL_SVG_PATH = "M120,40 L130,45 L145,45 L160,55 L175,70 L185,90 L195,110 L205,135 L210,165 L205,190 L190,215 L170,235 L145,250 L120,260 L95,265 L70,260 L50,250 L35,235 L25,215 L20,190 L20,165 L25,140 L35,115 L50,95 L70,75 L95,55 Z";
+
 interface VisitorSession {
   id: string;
   city: string | null;
@@ -359,26 +362,49 @@ export default function LiveMapView() {
                 maxZoom={8}
               >
                 <Geographies geography={geoUrl}>
-                  {({ geographies }) =>
-                    geographies && geographies.length > 0 ? (
-                      geographies.map((geo) => (
-                        <Geography
-                          key={geo.rsmKey}
-                          geography={geo}
-                          fill="rgba(0,0,0,0.01)"
-                          stroke="hsl(var(--primary))"
-                          strokeWidth={1.5}
-                          style={{
-                            default: { outline: "none" },
-                            hover: { fill: "hsl(var(--primary) / 0.1)", outline: "none" },
-                            pressed: { outline: "none" },
-                          }}
-                        />
-                      ))
-                    ) : (
-                      <rect width="100%" height="100%" fill="transparent" />
-                    )
-                  }
+                  {(props) => {
+                    const { geographies } = props;
+                    // @ts-ignore - react-simple-maps tipagem pode variar, verificamos a existência de dados
+                    if (!geographies || geographies.length === 0) {
+                      return (
+                        <g>
+                          {/* Fallback visual simplificado do Brasil */}
+                          <path
+                            d={BRAZIL_SVG_PATH}
+                            transform="translate(100, 50) scale(2.5)"
+                            fill="transparent"
+                            stroke="hsl(var(--primary))"
+                            strokeWidth={1}
+                            opacity={0.3}
+                          />
+                          <text
+                            x="250"
+                            y="250"
+                            textAnchor="middle"
+                            fill="hsl(var(--primary))"
+                            style={{ fontSize: "12px", opacity: 0.5 }}
+                          >
+                            Mapa indisponível (Modo Offline)
+                          </text>
+                        </g>
+                      );
+                    }
+                    
+                    return geographies.map((geo) => (
+                      <Geography
+                        key={geo.rsmKey}
+                        geography={geo}
+                        fill="rgba(0,0,0,0.01)"
+                        stroke="hsl(var(--primary))"
+                        strokeWidth={1.5}
+                        style={{
+                          default: { outline: "none" },
+                          hover: { fill: "hsl(var(--primary) / 0.1)", outline: "none" },
+                          pressed: { outline: "none" },
+                        }}
+                      />
+                    ));
+                  }}
                 </Geographies>
 
                 {clusters.map((c, i) => (
