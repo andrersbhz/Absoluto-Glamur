@@ -65,7 +65,6 @@ export const createCheckout = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const method = data.method ?? "pix";
 
-    // 1) Resolver provedor via routing table
     const { data: route } = await supabaseAdmin
       .from("payment_method_routing")
       .select("provider, enabled")
@@ -78,7 +77,6 @@ export const createCheckout = createServerFn({ method: "POST" })
     }
     const provider = route.provider;
 
-    // 2) Carrega credenciais do provedor
     const { data: integ } = await supabaseAdmin
       .from("integrations")
       .select("api_key, mode, enabled, webhook_token, config")
@@ -90,7 +88,6 @@ export const createCheckout = createServerFn({ method: "POST" })
       );
     }
 
-    // 3) Preços autoritativos + itens
     const variantIds = data.items.map((i) => i.variantId);
     const { data: variants, error: varErr } = await supabaseAdmin
       .from("product_variants")
@@ -98,6 +95,7 @@ export const createCheckout = createServerFn({ method: "POST" })
         `id, name, sku, external_sku_id, external_sku_attr, options, is_available,
          product:products!inner(id, slug, name, status),
          prices:product_prices(list_price_cents, sale_price_cents, is_active),
+         inventory:product_inventory(stock, reserved),
          media:product_media(url, position, kind)`,
       )
       .in("id", variantIds);
@@ -119,13 +117,12 @@ export const createCheckout = createServerFn({ method: "POST" })
       prices:
         | { list_price_cents: number; sale_price_cents: number | null; is_active: boolean }[]
         | null;
+      inventory: { stock: number; reserved: number } | null;
       media: { url: string; position: number | null; kind: string | null }[] | null;
     };
     const vmap = new Map<string, VariantRow>();
     (variants as unknown as VariantRow[] | null)?.forEach((v) => vmap.set(v.id, v));
 
-    // Fallback seguro: product_id externo (AliExpress) pelo import do produto,
-    // usado apenas quando a variação não guardou options.source_id.
     const productIds = Array.from(
       new Set(
         Array.from(vmap.values())
@@ -156,6 +153,14 @@ export const createCheckout = createServerFn({ method: "POST" })
       }
       if (v.is_available === false) {
         throw new Error(`A variação escolhida de ${v.product.name} não está mais disponível.`);
+      }
+      const availableStock = Math.max(0, (v.inventory?.stock ?? 0) - (v.inventory?.reserved ?? 0));
+      if (availableStock < i.quantity) {
+        throw new Error(
+          availableStock > 0
+            ? `Estoque insuficiente para ${v.product.name}. Disponível: ${availableStock}.`
+            : `${v.product.name} está fora de estoque.`,
+        );
       }
       const price = (v.prices ?? []).find((p) => p.is_active) ?? v.prices?.[0];
       if (!price) throw new Error(`Preço não configurado para ${v.product.name}`);
@@ -188,7 +193,6 @@ export const createCheckout = createServerFn({ method: "POST" })
         unit_cents: unit,
         quantity: i.quantity,
         total_cents: unit * i.quantity,
-        // Congela o mapeamento exato da variação escolhida para o fulfillment.
         aliexpress_product_id: externalProductId,
         aliexpress_sku_attr: v.external_sku_attr ?? null,
       };
@@ -199,7 +203,6 @@ export const createCheckout = createServerFn({ method: "POST" })
     const total = subtotal + shipping;
     if (total < 100) throw new Error("Valor mínimo do pedido é R$ 1,00.");
 
-    // 4) Cria pedido
     const { data: codeData } = await supabaseAdmin.rpc("generate_order_code");
     const code = (codeData as unknown as string) ?? `BL-${Date.now()}`;
     const document = data.customer.document.replace(/\D/g, "");
@@ -248,7 +251,6 @@ export const createCheckout = createServerFn({ method: "POST" })
 
     const ctx: OrderContext = { orderId: order.id, code: order.code, total, document, phone, data };
 
-    // 5) Dispatch para o adapter certo
     try {
       if (provider === "asaas" && method === "pix") {
         return await handleAsaasPix(ctx, integ);
@@ -275,10 +277,7 @@ export const createCheckout = createServerFn({ method: "POST" })
     }
   });
 
-/** Backward-compat: rota antiga /checkout continua chamando createPixCheckout. */
 export const createPixCheckout = createCheckout;
-
-// ------------ Adapters ------------
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function handleAsaasPix(ctx: OrderContext, integ: any) {
@@ -328,7 +327,6 @@ async function handleAsaasPix(ctx: OrderContext, integ: any) {
     pix_payload: pix.payload,
     pix_expires_at: pix.expirationDate ? new Date(pix.expirationDate).toISOString() : null,
     invoice_url: charge.invoiceUrl ?? null,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     raw: charge as any,
   });
   if (error) throw new Error(error.message);
@@ -379,7 +377,6 @@ async function handleAsaasBoleto(ctx: OrderContext, integ: any) {
     external_customer_id: customer.id,
     invoice_url: charge.bankSlipUrl ?? charge.invoiceUrl ?? null,
     redirect_url: charge.bankSlipUrl ?? charge.invoiceUrl ?? null,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     raw: charge as any,
   });
   if (error) throw new Error(error.message);
@@ -402,7 +399,6 @@ async function handleNuPayRedirect(ctx: OrderContext, integ: any) {
   };
 
   const returnUrl = ctx.data.returnUrl ?? `https://absolutoglamur.com.br/checkout/${ctx.orderId}`;
-  // Docs: POST /checkout/v1/orders → cria sessão + URL de redirecionamento
   const session = await nupayFetch<{
     id: string;
     session_id?: string;
@@ -437,7 +433,6 @@ async function handleNuPayRedirect(ctx: OrderContext, integ: any) {
     session_id: session.session_id ?? session.id,
     redirect_url: redirect,
     return_url: returnUrl,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     raw: session as any,
   });
   if (error) throw new Error(error.message);
@@ -466,8 +461,6 @@ async function handlePagBankCheckout(ctx: OrderContext, integ: any, method: stri
 
   const pmType = pagbankMethodType(method as "pix" | "credit_card" | "boleto");
 
-  // POST /checkouts — cria sessão de checkout hospedado.
-  // Docs: https://developer.pagbank.com.br/reference/criar-checkout
   const session = await pagbankFetch<{
     id: string;
     checkout_url?: string;
@@ -517,7 +510,6 @@ async function handlePagBankCheckout(ctx: OrderContext, integ: any, method: stri
   const { error } = await supabaseAdmin.from("payments").insert({
     order_id: ctx.orderId,
     provider: "pagbank",
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     method: method as any,
     status: "pending",
     amount_cents: ctx.total,
@@ -526,7 +518,6 @@ async function handlePagBankCheckout(ctx: OrderContext, integ: any, method: stri
     redirect_url: redirect,
     return_url: returnUrl,
     invoice_url: redirect,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     raw: session as any,
   });
   if (error) throw new Error(error.message);
