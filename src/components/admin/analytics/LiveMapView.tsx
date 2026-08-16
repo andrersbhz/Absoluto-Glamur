@@ -374,7 +374,7 @@ export default function LiveMapView() {
                             transform="translate(100, 50) scale(2.5)"
                             fill="transparent"
                             stroke="hsl(var(--primary))"
-                            strokeWidth={1}
+                            strokeWidth={2}
                             opacity={0.3}
                           />
                           <text
@@ -396,7 +396,7 @@ export default function LiveMapView() {
                         geography={geo}
                         fill="rgba(0,0,0,0.01)"
                         stroke="hsl(var(--primary))"
-                        strokeWidth={1.5}
+                        strokeWidth={2}
                         style={{
                           default: { outline: "none" },
                           hover: { fill: "hsl(var(--primary) / 0.1)", outline: "none" },
