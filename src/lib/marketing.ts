@@ -14,8 +14,6 @@ export type HomepageBlock = {
 function normalizeHomepageBlock(block: HomepageBlock): HomepageBlock {
   const data = { ...(block.data ?? {}) } as Record<string, unknown>;
 
-  // Compatibilidade com blocos criados antes do Home Builder atual.
-  // O storefront usa `slug`; versões antigas podiam persistir `collection_slug`.
   if (block.kind === "collection" && !data.slug && typeof data.collection_slug === "string") {
     data.slug = data.collection_slug;
   }
@@ -80,8 +78,28 @@ export type HeroSlide = {
   subtitle?: string;
   cta_label?: string;
   cta_href?: string;
+  cta_target?: "_self" | "_blank";
   image_url?: string;
+  image_mobile_url?: string;
   align?: "left" | "center" | "right";
+  vertical_align?: "top" | "center" | "bottom";
+  title_color?: string;
+  subtitle_color?: string;
+  title_size_desktop?: number;
+  title_size_mobile?: number;
+  subtitle_size_desktop?: number;
+  subtitle_size_mobile?: number;
+  button_bg?: string;
+  button_color?: string;
+  button_hover_bg?: string;
+  button_radius?: number;
+  overlay_color?: string;
+  overlay_opacity?: number;
+  image_position_x?: number;
+  image_position_y?: number;
+  height_desktop?: number;
+  height_mobile?: number;
+  content_max_width?: number;
 };
 
 export type AnnouncementProduct = {
@@ -114,12 +132,33 @@ export type HomeContent = {
     subtitle?: string;
     cta_primary_label?: string;
     cta_primary_href?: string;
+    cta_primary_target?: "_self" | "_blank";
     cta_secondary_label?: string;
     cta_secondary_href?: string;
     monogram?: string;
     seal_left?: string;
     seal_right?: string;
     image_url?: string;
+    image_mobile_url?: string;
+    align?: "left" | "center" | "right";
+    vertical_align?: "top" | "center" | "bottom";
+    title_color?: string;
+    highlight_color?: string;
+    subtitle_color?: string;
+    title_size_desktop?: number;
+    title_size_mobile?: number;
+    subtitle_size_desktop?: number;
+    subtitle_size_mobile?: number;
+    button_bg?: string;
+    button_color?: string;
+    button_hover_bg?: string;
+    overlay_color?: string;
+    overlay_opacity?: number;
+    image_position_x?: number;
+    image_position_y?: number;
+    height_desktop?: number;
+    height_mobile?: number;
+    content_max_width?: number;
   };
   trust_badges?: { label: string }[];
   manifesto?: { enabled?: boolean; eyebrow?: string; body?: string; signature?: string };
