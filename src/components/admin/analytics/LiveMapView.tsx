@@ -48,8 +48,8 @@ import {
   ZoomableGroup
 } from "react-simple-maps";
 
-// URL para o GeoJSON do Brasil (estados)
-const geoUrl = "https://raw.githubusercontent.com/codeforamerica/click_that_hood/master/public/data/brazil-states.geojson";
+// URL para o GeoJSON do Mundo
+const geoUrl = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json";
 
 // SVG estático do Brasil como fallback (path simplificado do contorno do Brasil)
 const BRAZIL_SVG_PATH = "M120,40 L130,45 L145,45 L160,55 L175,70 L185,90 L195,110 L205,135 L210,165 L205,190 L190,215 L170,235 L145,250 L120,260 L95,265 L70,260 L50,250 L35,235 L25,215 L20,190 L20,165 L25,140 L35,115 L50,95 L70,75 L95,55 Z";
@@ -352,8 +352,8 @@ export default function LiveMapView() {
             <ComposableMap
               projection="geoMercator"
               projectionConfig={{
-                scale: 800,
-                center: [-55, -15] 
+                scale: 140,
+                center: [0, 0] 
               }}
               style={{ width: "100%", height: "100%" }}
             >
@@ -374,7 +374,7 @@ export default function LiveMapView() {
                             transform="translate(100, 50) scale(2.5)"
                             fill="rgba(255,255,255,0.05)"
                             stroke="#FFFFFF"
-                            strokeWidth={2}
+                            strokeWidth={0.5}
                             opacity={1}
                           />
                           <text
@@ -396,7 +396,7 @@ export default function LiveMapView() {
                         geography={geo}
                         fill="rgba(255,255,255,0.03)"
                         stroke="#FFFFFF"
-                        strokeWidth={1.5}
+                        strokeWidth={0.5}
                         style={{
                           default: { outline: "none" },
                           hover: { fill: "hsl(var(--primary) / 0.1)", outline: "none" },
