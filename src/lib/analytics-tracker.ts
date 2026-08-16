@@ -20,7 +20,6 @@ export function useAnalyticsTracker() {
         utm_campaign: new URLSearchParams(window.location.search).get("utm_campaign"),
         browser: navigator.userAgent,
         device_type: /Mobi|Android/i.test(navigator.userAgent) ? "mobile" : "desktop",
-        referrer: document.referrer,
       }
     });
 
@@ -35,6 +34,7 @@ export function useAnalyticsTracker() {
         metadata: {
           path: window.location.pathname,
           device_type: /Mobi|Android/i.test(navigator.userAgent) ? "mobile" : "desktop",
+          referrer: document.referrer,
         }
       });
 
