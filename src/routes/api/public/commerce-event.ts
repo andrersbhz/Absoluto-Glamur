@@ -44,6 +44,8 @@ export const Route = createFileRoute("/api/public/commerce-event")({
             const country = request.headers.get("cf-ipcountry");
             const city = request.headers.get("cf-ipcity");
             const region = request.headers.get("cf-region");
+            const lat = request.headers.get("cf-iplatitude");
+            const lon = request.headers.get("cf-iplongitude");
             
             const { data: newSession } = await db.from("visitor_sessions").insert({
                visitor_id: parsed.visitor_id || parsed.session_id,
@@ -52,6 +54,10 @@ export const Route = createFileRoute("/api/public/commerce-event")({
                country,
                city,
                state: region,
+               latitude: lat ? parseFloat(lat) : null,
+               longitude: lon ? parseFloat(lon) : null,
+               referrer: parsed.metadata?.referrer as string,
+               entry_path: parsed.current_page || (parsed.metadata?.path as string),
                is_online: true,
                last_seen_at: now,
                device_type: parsed.metadata?.device_type as string,

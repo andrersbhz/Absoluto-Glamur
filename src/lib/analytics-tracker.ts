@@ -34,6 +34,7 @@ export function useAnalyticsTracker() {
         metadata: {
           path: window.location.pathname,
           device_type: /Mobi|Android/i.test(navigator.userAgent) ? "mobile" : "desktop",
+          referrer: document.referrer,
         }
       });
 
