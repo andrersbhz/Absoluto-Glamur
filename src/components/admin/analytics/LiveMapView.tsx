@@ -373,11 +373,11 @@ export default function LiveMapView() {
                 <Geographies geography={geoUrl}>
                   {(props) => {
                     const { geographies } = props;
-                    // @ts-ignore - react-simple-maps tipagem pode variar, verificamos a existência de dados
+                    
+                    // Se o carregamento do TopoJSON falhar ou retornar vazio
                     if (!geographies || geographies.length === 0) {
                       return (
                         <g>
-                          {/* Fallback visual simplificado do Brasil */}
                           <path
                             d={BRAZIL_SVG_PATH}
                             transform="translate(100, 50) scale(2.5)"
@@ -399,9 +399,20 @@ export default function LiveMapView() {
                       );
                     }
                     
-                    return geographies.map((geo) => (
+                    // Converter TopoJSON para GeoJSON features
+                    // react-simple-maps geralmente lida com strings de URL automaticamente, 
+                    // mas se passarmos o objeto ele precisa de processamento.
+                    // Aqui a lib lida internamente com a URL se for GeoJSON, mas TopoJSON
+                    // ela espera que convertamos ou que ela suporte (versões recentes suportam).
+                    // Para garantir performance máxima, verificamos se é FeatureCollection.
+                    const topoData = (props as any).geographies;
+                    const features = topoData.type === "Topology" 
+                      ? (feature(topoData, topoData.objects["brazil-states"]) as any).features 
+                      : topoData;
+
+                    return (features || geographies).map((geo: any) => (
                       <Geography
-                        key={geo.rsmKey}
+                        key={geo.rsmKey || geo.id || Math.random()}
                         geography={geo}
                         fill="rgba(255,255,255,0.03)"
                         stroke="#FFFFFF"
