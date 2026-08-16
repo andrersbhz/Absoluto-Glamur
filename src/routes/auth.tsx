@@ -35,7 +35,6 @@ export const Route = createFileRoute("/auth")({
   component: AuthPage,
 });
 
-
 function AuthPage() {
   const navigate = useNavigate();
   const { next } = useSearch({ from: "/auth" });
@@ -137,9 +136,9 @@ function AuthPage() {
               <div>
                 <Label htmlFor="pw">Senha</Label>
                 <Input id="pw" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} />
-                <Link to="/auth/forgot" className="mt-1 inline-block text-xs text-primary hover:underline">
+                <a href="/auth/forgot" className="mt-1 inline-block text-xs text-primary hover:underline">
                   Esqueci minha senha
-                </Link>
+                </a>
               </div>
               <Button type="submit" disabled={loading} className="w-full">
                 {loading ? "Entrando…" : "Entrar"}
