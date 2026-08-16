@@ -48,8 +48,8 @@ import {
   ZoomableGroup
 } from "react-simple-maps";
 
-// URL para o TopoJSON do mundo
-const geoUrl = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json";
+// URL para o TopoJSON do Brasil (estados)
+const geoUrl = "https://raw.githubusercontent.com/codeforamerica/click_that_hood/master/public/data/brazil-states.geojson";
 
 interface VisitorSession {
   id: string;
@@ -347,9 +347,10 @@ export default function LiveMapView() {
 
           <div className="flex-1 relative">
             <ComposableMap
+              projection="geoMercator"
               projectionConfig={{
-                scale: 180,
-                center: [-50, -15] // Focado na América do Sul/Brasil inicialmente
+                scale: 650,
+                center: [-55, -15] 
               }}
               style={{ width: "100%", height: "100%" }}
             >
@@ -360,12 +361,12 @@ export default function LiveMapView() {
                       <Geography
                         key={geo.rsmKey}
                         geography={geo}
-                        fill="#1a1a1a"
-                        stroke="#333"
-                        strokeWidth={0.5}
+                        fill="transparent"
+                        stroke="hsl(var(--primary))"
+                        strokeWidth={1}
                         style={{
                           default: { outline: "none" },
-                          hover: { fill: "#222", outline: "none" },
+                          hover: { fill: "hsl(var(--primary) / 0.05)", outline: "none" },
                           pressed: { outline: "none" },
                         }}
                       />
