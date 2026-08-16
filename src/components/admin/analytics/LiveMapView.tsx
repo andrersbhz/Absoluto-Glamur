@@ -48,8 +48,8 @@ import {
   ZoomableGroup
 } from "react-simple-maps";
 
-// URL para o TopoJSON do mundo
-const geoUrl = "https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json";
+// URL para o TopoJSON do Brasil (estados)
+const geoUrl = "https://raw.githubusercontent.com/codeforamerica/click_that_hood/master/public/data/brazil-states.geojson";
 
 interface VisitorSession {
   id: string;
