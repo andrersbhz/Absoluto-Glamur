@@ -372,10 +372,10 @@ export default function LiveMapView() {
                           <path
                             d={BRAZIL_SVG_PATH}
                             transform="translate(100, 50) scale(2.5)"
-                            fill="transparent"
-                            stroke="hsl(var(--primary))"
+                            fill="rgba(255,255,255,0.05)"
+                            stroke="#FFFFFF"
                             strokeWidth={2}
-                            opacity={0.3}
+                            opacity={1}
                           />
                           <text
                             x="250"
