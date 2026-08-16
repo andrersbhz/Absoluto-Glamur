@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -15,12 +15,21 @@ import {
   TrendingUp,
   Filter,
   ChevronDown,
-  LayoutGrid
+  LayoutGrid,
+  Bell,
+  Check,
+  Download,
+  AlertTriangle
 } from "lucide-react";
 import { formatBRL } from "@/lib/format";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { getAnalyticsStats } from "@/lib/analytics.functions";
+import { 
+  getAnalyticsStats, 
+  getOperatorNotifications, 
+  markNotificationRead,
+  exportAnalyticsCsv 
+} from "@/lib/analytics.functions";
 import { 
   DropdownMenu,
   DropdownMenuContent,
@@ -28,6 +37,9 @@ import {
   DropdownMenuTrigger 
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
 
 interface VisitorSession {
   id: string;
@@ -47,12 +59,31 @@ export default function LiveMapView() {
   const [visitors, setVisitors] = useState<VisitorSession[]>([]);
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState<"today" | "24h" | "7d" | "30d">("today");
+  const [selectedVisitorId, setSelectedVisitorId] = useState<string | null>(null);
+  const queryClient = useQueryClient();
+  
   const statsFn = useServerFn(getAnalyticsStats);
+  const notificationsFn = useServerFn(getOperatorNotifications);
+  const markReadFn = useServerFn(markNotificationRead);
+  const exportFn = useServerFn(exportAnalyticsCsv);
 
   const { data: stats } = useQuery({
     queryKey: ["analytics-stats", period],
     queryFn: () => statsFn({ data: { period } }),
-    refetchInterval: 10000 // 10s
+    refetchInterval: 10000 
+  });
+
+  const { data: notifications } = useQuery({
+    queryKey: ["operator-notifications"],
+    queryFn: () => notificationsFn({ data: undefined }),
+    refetchInterval: 5000
+  });
+
+  const markReadMutation = useMutation({
+    mutationFn: (id: string) => markReadFn({ data: { id } }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["operator-notifications"] });
+    }
   });
 
   useEffect(() => {
@@ -72,7 +103,7 @@ export default function LiveMapView() {
     fetchInitial();
 
     const channel = supabase
-      .channel("live_visitors_map")
+      .channel("live_visitors_map_v2")
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "visitor_sessions" },
@@ -96,36 +127,74 @@ export default function LiveMapView() {
           }
         }
       )
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "operator_notifications" },
+        (payload) => {
+          const audio = document.getElementById("whatsapp-alert") as HTMLAudioElement;
+          if (audio) audio.play().catch(() => {});
+          toast.info(payload.new.title, {
+            description: payload.new.content,
+            action: {
+              label: "Ver no Mapa",
+              onClick: () => setSelectedVisitorId(payload.new.session_id)
+            }
+          });
+          queryClient.invalidateQueries({ queryKey: ["operator-notifications"] });
+        }
+      )
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, []);
+  }, [queryClient]);
 
-  // Cluster simples por cidade para o mapa
+  const handleExport = async () => {
+    try {
+      const { csv, filename } = await exportFn({ data: { period } });
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.setAttribute("href", url);
+      link.setAttribute("download", filename);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      toast.success("Exportação concluída!");
+    } catch (e) {
+      toast.error("Erro ao exportar dados");
+    }
+  };
+
   const clusters = useMemo(() => {
-    const map = new Map<string, { lat: number, lon: number, count: number, stage: string }>();
+    const map = new Map<string, { lat: number, lon: number, count: number, stage: string, ids: string[] }>();
     visitors.forEach(v => {
       if (!v.latitude || !v.longitude) return;
-      const key = `${v.city || 'Unknown'}-${v.state || 'Unknown'}`;
-      const cur = map.get(key) || { lat: v.latitude, lon: v.longitude, count: 0, stage: v.funnel_stage };
+      // Precisão menor para agrupar melhor
+      const lat = Math.round(v.latitude * 10) / 10;
+      const lon = Math.round(v.longitude * 10) / 10;
+      const key = `${lat}-${lon}`;
+      const cur = map.get(key) || { lat, lon, count: 0, stage: v.funnel_stage, ids: [] };
       cur.count += 1;
-      // Prioridade de estágio para cor do cluster
-      if (v.funnel_stage === 'purchased' || v.funnel_stage === 'checkout') cur.stage = v.funnel_stage;
+      cur.ids.push(v.id);
+      if (['purchased', 'checkout', 'cart'].indexOf(v.funnel_stage) > ['purchased', 'checkout', 'cart'].indexOf(cur.stage)) {
+        cur.stage = v.funnel_stage;
+      }
       map.set(key, cur);
     });
     return Array.from(map.values());
   }, [visitors]);
 
   return (
-    <div className="flex flex-col h-full bg-background overflow-hidden">
+    <div className="flex flex-col h-full bg-background overflow-hidden relative">
       {/* Top Header - Resumo em Tempo Real */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-px bg-border border-b border-border">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-px bg-border border-b border-border z-20">
         <KpiCard 
           label="Online Agora" 
           value={visitors.length} 
           icon={Users} 
           sub="Visitantes ativos"
           trend="pulse"
+          onClick={() => setPeriod("24h")}
         />
         <KpiCard 
           label="Vendo Produtos" 
@@ -149,8 +218,8 @@ export default function LiveMapView() {
           color="text-blue-500"
         />
         <KpiCard 
-          label="Vendas Hoje" 
-          value={formatBRL((stats?.revenueToday || 0) / 100)} 
+          label={`Receita ${period === 'today' ? 'Hoje' : period}`} 
+          value={formatBRL(((period === 'today' ? stats?.revenueToday : stats?.revenuePeriod) || 0) / 100)} 
           icon={TrendingUp} 
           sub={`${stats?.ordersToday || 0} pedidos`}
           color="text-green-500"
