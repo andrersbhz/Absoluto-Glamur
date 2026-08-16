@@ -338,47 +338,81 @@ export default function LiveMapView() {
           </div>
         </div>
 
-        {/* Map & Clusters */}
-        <div className="lg:col-span-3 relative bg-[#0a0a0a] overflow-hidden">
-          {/* Fundo do mapa com efeito radar */}
-          <div className="absolute inset-0 opacity-20 pointer-events-none">
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] border border-primary/20 rounded-full animate-[ping_10s_infinite]" />
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] border border-primary/10 rounded-full animate-[ping_8s_infinite]" />
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] border border-primary/5 rounded-full animate-[ping_6s_infinite]" />
+        {/* Map & Clusters 2D */}
+        <div className="lg:col-span-3 relative bg-[#0a0a0a] overflow-hidden flex flex-col">
+          {/* Fundo do mapa com efeito radar decorativo */}
+          <div className="absolute inset-0 opacity-10 pointer-events-none">
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] border border-primary/20 rounded-full animate-[ping_15s_infinite]" />
           </div>
 
-          <div className="absolute inset-0 flex items-center justify-center p-10">
-            {/* Visualização de Clusters Simplificada */}
-            <div className="relative w-full h-full border border-border/20 rounded-3xl bg-black/40 backdrop-blur-sm overflow-hidden shadow-2xl">
-               <div className="absolute inset-0 bg-[url('https://api.mapbox.com/styles/v1/mapbox/dark-v11/static/-46.63,-23.55,3,0,0/1200x800?access_token=pk.placeholder')] bg-cover opacity-40 grayscale" />
-               
-               {/* Marcadores de Cluster */}
-               {clusters.map((c, i) => (
-                 <div 
-                   key={i}
-                   className={`absolute group transition-all duration-500 cursor-pointer ${selectedVisitorId && c.ids.includes(selectedVisitorId) ? 'scale-150 z-50' : ''}`}
-                   style={{ 
-                     left: `${50 + (c.lon * 0.5)}%`, 
-                     top: `${50 - (c.lat * 0.8)}%` 
-                   }}
-                   onClick={() => setSelectedVisitorId(c.ids[0])}
-                 >
-                   <div className={`relative flex items-center justify-center h-8 w-8 rounded-full border border-white/20 backdrop-blur-md shadow-lg ${
-                     c.stage === 'purchased' ? 'bg-green-500/60' : 
-                     c.stage === 'checkout' ? 'bg-blue-500/60' :
-                     c.stage === 'cart' ? 'bg-yellow-500/60' : 'bg-primary/40'
-                   } ${selectedVisitorId && c.ids.includes(selectedVisitorId) ? 'ring-2 ring-white animate-bounce' : 'animate-pulse'}`}>
-                     <span className="text-[10px] font-bold text-white">{c.count}</span>
-                   </div>
-                 </div>
-               ))}
-               
-               <div className="absolute bottom-6 right-6 p-4 rounded-xl border border-white/5 bg-black/60 backdrop-blur-xl text-[10px] space-y-2">
-                 <div className="flex items-center gap-2"><div className="h-2 w-2 rounded-full bg-primary" /> Navegando</div>
-                 <div className="flex items-center gap-2"><div className="h-2 w-2 rounded-full bg-yellow-500" /> Carrinho</div>
-                 <div className="flex items-center gap-2"><div className="h-2 w-2 rounded-full bg-blue-500" /> Checkout</div>
-                 <div className="flex items-center gap-2"><div className="h-2 w-2 rounded-full bg-green-500" /> Compra</div>
-               </div>
+          <div className="flex-1 relative">
+            <ComposableMap
+              projectionConfig={{
+                scale: 180,
+                center: [-50, -15] // Focado na América do Sul/Brasil inicialmente
+              }}
+              style={{ width: "100%", height: "100%" }}
+            >
+              <ZoomableGroup zoom={1} maxZoom={8}>
+                <Geographies geography={geoUrl}>
+                  {({ geographies }) =>
+                    geographies.map((geo) => (
+                      <Geography
+                        key={geo.rsmKey}
+                        geography={geo}
+                        fill="#1a1a1a"
+                        stroke="#333"
+                        strokeWidth={0.5}
+                        style={{
+                          default: { outline: "none" },
+                          hover: { fill: "#222", outline: "none" },
+                          pressed: { outline: "none" },
+                        }}
+                      />
+                    ))
+                  }
+                </Geographies>
+
+                {clusters.map((c, i) => (
+                  <Marker key={i} coordinates={[c.lon, c.lat]}>
+                    <g 
+                      className={`cursor-pointer transition-all duration-300 ${selectedVisitorId && c.ids.includes(selectedVisitorId) ? 'scale-150' : ''}`}
+                      onClick={() => setSelectedVisitorId(c.ids[0])}
+                    >
+                      <circle
+                        r={6 + (Math.min(c.count, 5))}
+                        fill={
+                          c.stage === 'purchased' ? 'rgba(34, 197, 94, 0.7)' : 
+                          c.stage === 'checkout' ? 'rgba(59, 130, 246, 0.7)' :
+                          c.stage === 'cart' ? 'rgba(234, 179, 8, 0.7)' : 'rgba(217, 70, 239, 0.5)'
+                        }
+                        stroke="#fff"
+                        strokeWidth={1}
+                        className={selectedVisitorId && c.ids.includes(selectedVisitorId) ? 'animate-bounce' : 'animate-pulse'}
+                      />
+                      <text
+                        textAnchor="middle"
+                        y={2}
+                        style={{ fontSize: "7px", fill: "#fff", fontWeight: "bold", pointerEvents: "none" }}
+                      >
+                        {c.count}
+                      </text>
+                    </g>
+                  </Marker>
+                ))}
+              </ZoomableGroup>
+            </ComposableMap>
+
+            {/* Legenda */}
+            <div className="absolute bottom-6 right-6 p-4 rounded-xl border border-white/5 bg-black/60 backdrop-blur-xl text-[10px] space-y-2 z-10 shadow-2xl">
+              <div className="flex items-center gap-2"><div className="h-2 w-2 rounded-full bg-primary" /> Navegando</div>
+              <div className="flex items-center gap-2"><div className="h-2 w-2 rounded-full bg-yellow-500" /> Carrinho</div>
+              <div className="flex items-center gap-2"><div className="h-2 w-2 rounded-full bg-blue-500" /> Checkout</div>
+              <div className="flex items-center gap-2"><div className="h-2 w-2 rounded-full bg-green-500" /> Compra</div>
+            </div>
+            
+            <div className="absolute top-6 left-6 text-[10px] text-muted-foreground bg-black/40 px-3 py-1.5 rounded-full border border-white/5 backdrop-blur-md">
+              Dica: Use o mouse para arrastar e scroll para zoom no mapa
             </div>
           </div>
         </div>
@@ -422,27 +456,21 @@ function ActivityItem({ visitor }: { visitor: VisitorSession }) {
             {visitor.city || "Brasília"}, {visitor.state || "DF"}
           </span>
         </div>
-        <Badge 
-          variant="outline" 
-          className={`text-[8px] uppercase tracking-tighter h-4 px-1 ${
-            visitor.funnel_stage === 'checkout' ? 'border-blue-500/50 text-blue-500 bg-blue-500/5' :
-            visitor.funnel_stage === 'cart' ? 'border-yellow-500/50 text-yellow-500 bg-yellow-500/5' :
-            visitor.funnel_stage === 'purchased' ? 'border-green-500/50 text-green-500 bg-green-500/5' : ''
-          }`}
-        >
-          {visitor.funnel_stage}
+        <Badge variant="outline" className={`text-[8px] h-4 px-1 ${
+          visitor.funnel_stage === 'purchased' ? 'border-green-500/50 text-green-500' :
+          visitor.funnel_stage === 'checkout' ? 'border-blue-500/50 text-blue-500' :
+          visitor.funnel_stage === 'cart' ? 'border-yellow-500/50 text-yellow-500' : 'border-primary/50 text-primary'
+        }`}>
+          {visitor.funnel_stage.replace('_', ' ')}
         </Badge>
       </div>
-      <p className="text-[9px] text-muted-foreground truncate mb-2 px-1 py-0.5 rounded bg-background/50 border border-border/20">
-        {visitor.current_page || "/"}
-      </p>
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-1.5">
-          <div className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
-          <span className="text-[9px] text-muted-foreground">Ativo agora</span>
-        </div>
-        <span className="text-[8px] text-muted-foreground/60">{new Date(visitor.last_seen_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+      
+      <div className="flex items-center gap-2 text-[9px] text-muted-foreground">
+        <MapPin className="h-2.5 w-2.5" />
+        <span className="truncate max-w-[150px]">{visitor.current_page || "/"}</span>
       </div>
+
+      <div className="absolute bottom-0 left-0 h-0.5 bg-primary/20 w-full transform origin-left transition-transform duration-500 group-hover:scale-x-110" />
     </div>
   );
 }
