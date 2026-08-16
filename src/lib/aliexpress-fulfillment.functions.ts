@@ -29,6 +29,7 @@ type OrderAddress = {
 type OrderRow = {
   id: string;
   code: string;
+  status: string;
   customer_name: string;
   customer_email: string;
   customer_document: string;
@@ -51,7 +52,7 @@ async function loadOrder(orderId: string): Promise<OrderRow> {
   const { data, error } = await supabaseAdmin
     .from("orders")
     .select(
-      "id, code, customer_name, customer_email, customer_document, customer_phone, shipping_address, fulfillment_status, order_items(id, product_id, variant_id, product_name, quantity, aliexpress_product_id, aliexpress_sku_attr)",
+      "id, code, status, customer_name, customer_email, customer_document, customer_phone, shipping_address, fulfillment_status, order_items(id, product_id, variant_id, product_name, quantity, aliexpress_product_id, aliexpress_sku_attr)",
     )
     .eq("id", orderId)
     .maybeSingle();
@@ -65,7 +66,6 @@ async function resolveItemMapping(
 ): Promise<{ product_id: string; sku_attr: string | null; sku_id: string | null }> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-  // 1) Variação escolhida pelo cliente é sempre a fonte da verdade.
   type VariantMapping = {
     external_sku_id: string | null;
     external_sku_attr: string | null;
@@ -85,7 +85,6 @@ async function resolveItemMapping(
     item.aliexpress_sku_attr ?? variant?.external_sku_attr ?? variant?.options?.sku_attr ?? null;
   const skuId = variant?.external_sku_id ?? null;
 
-  // 2) product_id externo: congelado no pedido → variação → import do produto.
   let externalProductId: string | null =
     item.aliexpress_product_id ??
     (variant?.options?.source_id ? String(variant.options.source_id) : null);
@@ -109,7 +108,6 @@ async function resolveItemMapping(
     );
   }
 
-  // 3) Nunca "chutar" um SKU: se o item tem variação, ela precisa estar mapeada.
   if (item.variant_id && !skuAttr && !skuId) {
     throw new Error(
       `Item "${item.product_name}" tem variação selecionada, mas sem SKU do AliExpress mapeado. Sincronize as variações do produto e tente novamente — enviar sem o SKU exato compraria a variação errada.`,
@@ -142,11 +140,21 @@ function buildLogisticsAddress(o: OrderRow) {
 
 async function sendOrderToAli(orderId: string) {
   const order = await loadOrder(orderId);
+  if (order.status !== "paid") {
+    throw new Error(`Pedido ${order.code} não pode ser enviado: status atual é "${order.status}". Aguarde a confirmação do pagamento.`);
+  }
   if (order.fulfillment_status === "sent") {
     throw new Error(`Pedido ${order.code} já foi enviado ao AliExpress.`);
   }
+  if (!order.order_items?.length) {
+    throw new Error(`Pedido ${order.code} não possui itens para fulfillment.`);
+  }
+
   const productItems: any[] = [];
-  for (const it of order.order_items ?? []) {
+  for (const it of order.order_items) {
+    if (!Number.isInteger(it.quantity) || it.quantity <= 0) {
+      throw new Error(`Item "${it.product_name}" possui quantidade inválida.`);
+    }
     const mapping = await resolveItemMapping(it);
     const entry: Record<string, any> = {
       product_id: Number(mapping.product_id) || mapping.product_id,
@@ -158,6 +166,7 @@ async function sendOrderToAli(orderId: string) {
     if (mapping.sku_id) entry.sku_id = mapping.sku_id;
     productItems.push(entry);
   }
+
   const dto = {
     logistics_address: buildLogisticsAddress(order),
     product_items: productItems,
