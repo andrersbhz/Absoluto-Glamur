@@ -360,9 +360,8 @@ export default function LiveMapView() {
             <ComposableMap
               projection="geoMercator"
               projectionConfig={{
-                scale: 650,
+                scale: 900,
                 center: [-55, -15] 
-
               }}
               style={{ width: "100%", height: "100%" }}
             >
