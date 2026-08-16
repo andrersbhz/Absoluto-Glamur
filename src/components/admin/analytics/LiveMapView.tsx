@@ -47,9 +47,10 @@ import {
   Marker,
   ZoomableGroup
 } from "react-simple-maps";
+import { feature } from "topojson-client";
 
-// GeoJSON do Brasil com estados
-const geoUrl = "/data/brazil-states.json";
+// URL do TopoJSON otimizado
+const geoUrl = "/data/brazil-states.topo.json";
 
 // SVG estático do Brasil como fallback (path simplificado do contorno do Brasil)
 const BRAZIL_SVG_PATH = "M120,40 L130,45 L145,45 L160,55 L175,70 L185,90 L195,110 L205,135 L210,165 L205,190 L190,215 L170,235 L145,250 L120,260 L95,265 L70,260 L50,250 L35,235 L25,215 L20,190 L20,165 L25,140 L35,115 L50,95 L70,75 L95,55 Z";
