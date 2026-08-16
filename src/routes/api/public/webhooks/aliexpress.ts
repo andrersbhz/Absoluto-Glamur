@@ -1,8 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { createHmac } from "crypto";
+import { createHmac, timingSafeEqual } from "crypto";
 
 function restTs(): string {
-  // AliExpress /rest/* usa timestamp em milissegundos Unix (13 dígitos).
   return Date.now().toString();
 }
 
@@ -12,14 +11,41 @@ function signRest(apiPath: string, params: Record<string, string>, appSecret: st
   return createHmac("sha256", appSecret).update(base, "utf8").digest("hex").toUpperCase();
 }
 
-/**
- * Callback OAuth do AliExpress Open Platform.
- * Fluxo:
- *  1. Admin cadastra App Key + App Secret na tabela integrations.
- *  2. AliExpress redireciona o usuário para esta URL com ?code=XXX após autorização.
- *  3. Trocamos o code por access_token/refresh_token via /rest/auth/token/create
- *     e gravamos no config da integração.
- */
+type OAuthStatePayload = {
+  uid: string;
+  ts: number;
+  nonce: string;
+};
+
+async function validateOAuthState(
+  state: string | null,
+  appSecret: string,
+  supabaseAdmin: Awaited<typeof import("@/integrations/supabase/client.server")>["supabaseAdmin"],
+): Promise<boolean> {
+  if (!state) return false;
+  const [payload, signature] = state.split(".");
+  if (!payload || !signature) return false;
+
+  const expected = createHmac("sha256", appSecret).update(payload).digest("base64url");
+  const left = Buffer.from(signature);
+  const right = Buffer.from(expected);
+  if (left.length !== right.length || !timingSafeEqual(left, right)) return false;
+
+  let parsed: OAuthStatePayload;
+  try {
+    parsed = JSON.parse(Buffer.from(payload, "base64url").toString("utf8")) as OAuthStatePayload;
+  } catch {
+    return false;
+  }
+
+  if (!parsed.uid || !parsed.nonce || !Number.isFinite(parsed.ts)) return false;
+  const ageMs = Date.now() - parsed.ts;
+  if (ageMs < 0 || ageMs > 10 * 60 * 1000) return false;
+
+  const { data: isAdmin } = await supabaseAdmin.rpc("is_admin", { _user_id: parsed.uid });
+  return !!isAdmin;
+}
+
 export const Route = createFileRoute("/api/public/webhooks/aliexpress")({
   server: {
     handlers: {
@@ -27,6 +53,7 @@ export const Route = createFileRoute("/api/public/webhooks/aliexpress")({
         const url = new URL(request.url);
         const code = url.searchParams.get("code");
         const error = url.searchParams.get("error");
+        const state = url.searchParams.get("state");
 
         if (error) {
           return htmlResponse(
@@ -45,25 +72,23 @@ export const Route = createFileRoute("/api/public/webhooks/aliexpress")({
           .eq("provider", "aliexpress")
           .maybeSingle();
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const cfg = (integ?.config as any) ?? {};
+        const cfg = (integ?.config as Record<string, unknown> | null) ?? {};
         const appKey = String(integ?.api_key ?? cfg.app_key ?? "").trim();
         const appSecret = String(integ?.webhook_token ?? cfg.app_secret ?? "").trim();
 
         if (!appKey || !appSecret) {
-          await supabaseAdmin
-            .from("integrations")
-            .update({
-              config: { ...cfg, pending_code: code, pending_code_at: new Date().toISOString() },
-              last_status: "pending_exchange",
-              last_error: "App Key/App Secret ausentes — cadastre e reautorize.",
-            })
-            .eq("provider", "aliexpress");
           return htmlResponse(
-            `<h1>Code recebido, mas faltam credenciais</h1>
-             <p>Cadastre App Key (em "API Key") e App Secret (em "Webhook Token") em /admin/integrations e refaça a autorização.</p>
-             <p>Depois clique novamente em "Autorizar AliExpress".</p>`,
-            200,
+            `<h1>Credenciais ausentes</h1>
+             <p>Cadastre App Key e App Secret em /admin/integrations e refaça a autorização.</p>`,
+            400,
+          );
+        }
+
+        if (!(await validateOAuthState(state, appSecret, supabaseAdmin))) {
+          return htmlResponse(
+            `<h1>Autorização inválida ou expirada</h1>
+             <p>Volte ao painel administrativo e inicie novamente a autorização do AliExpress.</p>`,
+            403,
           );
         }
 
@@ -97,7 +122,7 @@ export const Route = createFileRoute("/api/public/webhooks/aliexpress")({
           try {
             tokenJson = JSON.parse(tokenText);
           } catch {
-            /* keep empty */
+            // keep empty
           }
 
           if (!tokenRes.ok || tokenJson.error || !tokenJson.access_token) {
