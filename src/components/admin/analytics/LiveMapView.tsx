@@ -352,8 +352,8 @@ export default function LiveMapView() {
             <ComposableMap
               projection="geoMercator"
               projectionConfig={{
-                scale: 800,
-                center: [-55, -15] 
+                scale: 140,
+                center: [0, 0] 
               }}
               style={{ width: "100%", height: "100%" }}
             >
