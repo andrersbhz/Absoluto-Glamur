@@ -23,21 +23,30 @@ type CartState = {
   clear: () => void;
 };
 
+const MAX_ITEM_QUANTITY = 99;
+
+function normalizeQuantity(qty: number) {
+  return Math.min(MAX_ITEM_QUANTITY, Math.max(1, Math.trunc(qty || 1)));
+}
+
 export const useCart = create<CartState>()(
   persist(
     (set) => ({
       items: [],
       add: (item, qty = 1) =>
         set((s) => {
+          const nextQty = normalizeQuantity(qty);
           const existing = s.items.find((i) => i.variantId === item.variantId);
           if (existing) {
             return {
               items: s.items.map((i) =>
-                i.variantId === item.variantId ? { ...i, quantity: i.quantity + qty } : i,
+                i.variantId === item.variantId
+                  ? { ...i, quantity: Math.min(MAX_ITEM_QUANTITY, i.quantity + nextQty) }
+                  : i,
               ),
             };
           }
-          return { items: [...s.items, { ...item, quantity: qty }] };
+          return { items: [...s.items, { ...item, quantity: nextQty }] };
         }),
       remove: (variantId) =>
         set((s) => ({ items: s.items.filter((i) => i.variantId !== variantId) })),
@@ -45,7 +54,9 @@ export const useCart = create<CartState>()(
         set((s) => ({
           items: qty <= 0
             ? s.items.filter((i) => i.variantId !== variantId)
-            : s.items.map((i) => (i.variantId === variantId ? { ...i, quantity: qty } : i)),
+            : s.items.map((i) =>
+                i.variantId === variantId ? { ...i, quantity: normalizeQuantity(qty) } : i,
+              ),
         })),
       clear: () => set({ items: [] }),
     }),
