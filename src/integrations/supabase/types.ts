@@ -218,6 +218,53 @@ export type Database = {
         }
         Relationships: []
       }
+      analytics_events: {
+        Row: {
+          created_at: string | null
+          event_name: string
+          id: string
+          metadata: Json | null
+          page_path: string | null
+          product_id: string | null
+          product_name: string | null
+          session_id: string | null
+          value_cents: number | null
+          visitor_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          event_name: string
+          id?: string
+          metadata?: Json | null
+          page_path?: string | null
+          product_id?: string | null
+          product_name?: string | null
+          session_id?: string | null
+          value_cents?: number | null
+          visitor_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          event_name?: string
+          id?: string
+          metadata?: Json | null
+          page_path?: string | null
+          product_id?: string | null
+          product_name?: string | null
+          session_id?: string | null
+          value_cents?: number | null
+          visitor_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "analytics_events_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "visitor_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       audit_logs: {
         Row: {
           action: string
@@ -2308,6 +2355,102 @@ export type Database = {
         }
         Relationships: []
       }
+      visitor_sessions: {
+        Row: {
+          browser: string | null
+          cart_value_cents: number | null
+          city: string | null
+          converted: boolean | null
+          country: string | null
+          created_at: string | null
+          current_page: string | null
+          device_type: string | null
+          funnel_stage:
+            | Database["public"]["Enums"]["visitor_funnel_stage"]
+            | null
+          id: string
+          is_online: boolean | null
+          items_count: number | null
+          last_seen_at: string | null
+          latitude_approx: number | null
+          longitude_approx: number | null
+          os: string | null
+          referrer: string | null
+          session_id: string
+          state: string | null
+          updated_at: string | null
+          user_id: string | null
+          utm_campaign: string | null
+          utm_content: string | null
+          utm_medium: string | null
+          utm_source: string | null
+          utm_term: string | null
+          visitor_id: string
+        }
+        Insert: {
+          browser?: string | null
+          cart_value_cents?: number | null
+          city?: string | null
+          converted?: boolean | null
+          country?: string | null
+          created_at?: string | null
+          current_page?: string | null
+          device_type?: string | null
+          funnel_stage?:
+            | Database["public"]["Enums"]["visitor_funnel_stage"]
+            | null
+          id?: string
+          is_online?: boolean | null
+          items_count?: number | null
+          last_seen_at?: string | null
+          latitude_approx?: number | null
+          longitude_approx?: number | null
+          os?: string | null
+          referrer?: string | null
+          session_id: string
+          state?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+          utm_campaign?: string | null
+          utm_content?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+          utm_term?: string | null
+          visitor_id: string
+        }
+        Update: {
+          browser?: string | null
+          cart_value_cents?: number | null
+          city?: string | null
+          converted?: boolean | null
+          country?: string | null
+          created_at?: string | null
+          current_page?: string | null
+          device_type?: string | null
+          funnel_stage?:
+            | Database["public"]["Enums"]["visitor_funnel_stage"]
+            | null
+          id?: string
+          is_online?: boolean | null
+          items_count?: number | null
+          last_seen_at?: string | null
+          latitude_approx?: number | null
+          longitude_approx?: number | null
+          os?: string | null
+          referrer?: string | null
+          session_id?: string
+          state?: string | null
+          updated_at?: string | null
+          user_id?: string | null
+          utm_campaign?: string | null
+          utm_content?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
+          utm_term?: string | null
+          visitor_id?: string
+        }
+        Relationships: []
+      }
       whatsapp_contacts: {
         Row: {
           created_at: string | null
@@ -2529,6 +2672,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      cleanup_offline_sessions: { Args: never; Returns: undefined }
       generate_order_code: { Args: never; Returns: string }
       has_role: {
         Args: {
@@ -2572,6 +2716,12 @@ export type Database = {
         | "cancelled"
         | "failed"
       product_status: "draft" | "active" | "archived"
+      visitor_funnel_stage:
+        | "browsing"
+        | "product_view"
+        | "cart"
+        | "checkout"
+        | "purchased"
       whatsapp_conversation_status:
         | "waiting"
         | "in_service"
@@ -2741,6 +2891,13 @@ export const Constants = {
         "failed",
       ],
       product_status: ["draft", "active", "archived"],
+      visitor_funnel_stage: [
+        "browsing",
+        "product_view",
+        "cart",
+        "checkout",
+        "purchased",
+      ],
       whatsapp_conversation_status: [
         "waiting",
         "in_service",
