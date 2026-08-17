@@ -1,0 +1,154 @@
+name: Diagnose AliExpress Reviews Production
+
+on:
+  push:
+    branches:
+      - diagnostic/aliexpress-review-production
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Trigger product review sync and verify persistence
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          read_env() {
+            local pattern="$1"
+            grep -E "$pattern" .env | head -1 | cut -d= -f2- | sed -e 's/^"//' -e 's/"$//' -e "s/^'//" -e "s/'$//" -e 's/\r$//'
+          }
+
+          SUPABASE_URL=$(read_env '^(VITE_SUPABASE_URL|NEXT_PUBLIC_SUPABASE_URL)=')
+          SUPABASE_KEY=$(read_env '^(VITE_SUPABASE_PUBLISHABLE_KEY|VITE_SUPABASE_ANON_KEY|NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY|NEXT_PUBLIC_SUPABASE_ANON_KEY)=')
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_KEY" ]; then
+            echo "Public Supabase configuration not found in .env"
+            exit 1
+          fi
+
+          api_get() {
+            local path="$1"
+            curl --max-time 20 -fsS \
+              -H "apikey: ${SUPABASE_KEY}" \
+              -H "Authorization: Bearer ${SUPABASE_KEY}" \
+              -H "Accept: application/json" \
+              "${SUPABASE_URL}/rest/v1/${path}"
+          }
+
+          CHROME=$(command -v google-chrome || command -v google-chrome-stable || command -v chromium || command -v chromium-browser || true)
+          if [ -z "$CHROME" ]; then
+            echo "Chrome/Chromium not found"
+            exit 1
+          fi
+
+          echo "Finding visible products with legacy AliExpress review data..."
+          api_get 'product_external_reviews?source=eq.aliexpress_legacy_unverified&is_visible=eq.true&select=product_id&limit=30' > /tmp/legacy.json
+          python - <<'PY' > /tmp/product_ids.txt
+          import json
+          rows=json.load(open('/tmp/legacy.json'))
+          seen=set()
+          for row in rows:
+              pid=row.get('product_id')
+              if pid and pid not in seen:
+                  seen.add(pid)
+                  print(pid)
+          PY
+
+          if [ ! -s /tmp/product_ids.txt ]; then
+            echo "No visible legacy AliExpress product reviews are publicly readable"
+            exit 1
+          fi
+
+          : > /tmp/review-diagnostic.log
+          success=0
+          tested=0
+          while read -r product_id; do
+            [ "$tested" -ge 8 ] && break
+            tested=$((tested + 1))
+
+            api_get "products?id=eq.${product_id}&select=id,slug,name&limit=1" > /tmp/product.json || continue
+            slug=$(python - <<'PY'
+          import json
+          rows=json.load(open('/tmp/product.json'))
+          print((rows[0].get('slug') if rows else '') or '')
+          PY
+            )
+            [ -z "$slug" ] && continue
+
+            api_get "product_external_reviews?product_id=eq.${product_id}&source=eq.aliexpress&is_visible=eq.true&select=id,source_review_id,rating,author_country,reviewed_at&limit=5" > /tmp/before.json
+            before=$(python - <<'PY'
+          import json
+          print(len(json.load(open('/tmp/before.json'))))
+          PY
+            )
+            echo "Testing product ${product_id} /products/${slug}; official reviews before=${before}" | tee -a /tmp/review-diagnostic.log
+
+            set +e
+            timeout 55s "$CHROME" \
+              --headless=new \
+              --no-sandbox \
+              --disable-gpu \
+              --disable-dev-shm-usage \
+              --virtual-time-budget=30000 \
+              --enable-logging=stderr \
+              --v=0 \
+              --dump-dom \
+              "https://absolutoglamur.com.br/products/${slug}" \
+              > /tmp/product-dom.html 2> /tmp/product-browser-stderr.log
+            chrome_exit=$?
+            set -e
+            echo "Chrome exit=${chrome_exit}; DOM bytes=$(wc -c </tmp/product-dom.html 2>/dev/null || echo 0)" | tee -a /tmp/review-diagnostic.log
+
+            sleep 4
+            api_get "product_external_reviews?product_id=eq.${product_id}&source=eq.aliexpress&is_visible=eq.true&select=id,source_review_id,rating,author_country,reviewed_at&limit=20" > /tmp/after.json
+            after=$(python - <<'PY'
+          import json
+          print(len(json.load(open('/tmp/after.json'))))
+          PY
+            )
+            echo "official reviews after=${after}" | tee -a /tmp/review-diagnostic.log
+
+            if [ "$after" -gt 0 ]; then
+              python - <<'PY' | tee -a /tmp/review-diagnostic.log
+          import json
+          rows=json.load(open('/tmp/after.json'))
+          sample=rows[0]
+          print('Verified official review sample:', {
+              'has_source_review_id': bool(sample.get('source_review_id')),
+              'rating': sample.get('rating'),
+              'author_country': sample.get('author_country'),
+              'reviewed_at': sample.get('reviewed_at'),
+          })
+          PY
+              success=1
+              break
+            fi
+
+            grep -Ei "CONSOLE|TypeError|ReferenceError|Uncaught|Failed to load|ERR_|reviews" /tmp/product-browser-stderr.log | tail -50 >> /tmp/review-diagnostic.log || true
+          done < /tmp/product_ids.txt
+
+          if [ "$success" -ne 1 ]; then
+            echo "No official AliExpress review was persisted after testing ${tested} linked products" | tee -a /tmp/review-diagnostic.log
+            cat /tmp/review-diagnostic.log
+            exit 1
+          fi
+
+          echo "Production AliExpress review persistence verified" | tee -a /tmp/review-diagnostic.log
+      - name: Upload review diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: aliexpress-review-production-diagnostic
+          path: |
+            /tmp/review-diagnostic.log
+            /tmp/product-dom.html
+            /tmp/product-browser-stderr.log
+            /tmp/before.json
+            /tmp/after.json
+          if-no-files-found: ignore
+          retention-days: 1
