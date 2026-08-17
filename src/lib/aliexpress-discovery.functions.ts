@@ -64,13 +64,18 @@ async function sign(params: Record<string, string>, secret: string): Promise<str
   return hmacSha256Hex(secret, base);
 }
 
-async function loadAliCreds() {
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { data } = await supabaseAdmin
+async function loadAliCreds(credentialClient?: any) {
+  let client = credentialClient;
+  if (!client) {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    client = supabaseAdmin;
+  }
+  const { data, error } = await client
     .from("integrations")
     .select("config, api_key, webhook_token, last_status")
     .eq("provider", "aliexpress")
     .maybeSingle();
+  if (error) throw new Error(`Não foi possível ler a integração AliExpress: ${error.message}`);
   const cfg = (data?.config ?? {}) as any;
   // api_key/webhook_token são os campos canônicos editados pelo painel.
   // config.app_* existe apenas para instalações antigas e não pode sobrescrever
@@ -101,11 +106,20 @@ async function signRestPath(apiPath: string, params: Record<string, string>, sec
   return hmacSha256Hex(secret, base);
 }
 
-async function refreshAliToken(appKey: string, appSecret: string, refreshToken: string): Promise<string> {
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+async function refreshAliToken(
+  appKey: string,
+  appSecret: string,
+  refreshToken: string,
+  credentialClient?: any,
+): Promise<string> {
+  let client = credentialClient;
+  if (!client) {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    client = supabaseAdmin;
+  }
 
   const markInvalid = async (msg: string) => {
-    const { data: existing } = await supabaseAdmin
+    const { data: existing } = await client
       .from("integrations")
       .select("config")
       .eq("provider", "aliexpress")
@@ -119,7 +133,7 @@ async function refreshAliToken(appKey: string, appSecret: string, refreshToken: 
     delete nextCfg.refreshed_at;
     nextCfg.reauth_required = true;
     nextCfg.reauth_required_at = new Date().toISOString();
-    await supabaseAdmin
+    await client
       .from("integrations")
       .update({
         config: nextCfg,
@@ -158,7 +172,7 @@ async function refreshAliToken(appKey: string, appSecret: string, refreshToken: 
     if (/invalid|expired|IllegalRefreshToken|InvalidRefreshToken/i.test(String(raw))) {
       await markInvalid(msg);
     } else {
-      await supabaseAdmin
+      await client
         .from("integrations")
         .update({
           last_status: "error",
@@ -170,7 +184,7 @@ async function refreshAliToken(appKey: string, appSecret: string, refreshToken: 
     throw new Error(msg);
   }
 
-  const { data: existing } = await supabaseAdmin
+  const { data: existing } = await client
     .from("integrations")
     .select("config")
     .eq("provider", "aliexpress")
@@ -178,7 +192,7 @@ async function refreshAliToken(appKey: string, appSecret: string, refreshToken: 
   const prev = (existing?.config ?? {}) as any;
   delete prev.reauth_required;
   delete prev.reauth_required_at;
-  await supabaseAdmin
+  await client
     .from("integrations")
     .update({
       config: {
@@ -241,8 +255,9 @@ async function requestAli(
 export async function callAli<T = any>(
   method: string,
   bizParams: Record<string, string | number | boolean | undefined | null>,
+  credentialClient?: any,
 ): Promise<T> {
-  let { appKey, appSecret, fallbackAppSecret, accessToken, refreshToken, refreshedAt, expiresIn } = await loadAliCreds();
+  let { appKey, appSecret, fallbackAppSecret, accessToken, refreshToken, refreshedAt, expiresIn } = await loadAliCreds(credentialClient);
 
   // Refresh preventivo: se access_token expira em menos de 5 min, renova antes.
   if (refreshedAt && expiresIn > 0) {
@@ -250,7 +265,7 @@ export async function callAli<T = any>(
     const remainingSec = expiresIn - Math.floor(ageMs / 1000);
     if (remainingSec < 300 && refreshToken) {
       try {
-        accessToken = await refreshAliToken(appKey, appSecret, refreshToken);
+        accessToken = await refreshAliToken(appKey, appSecret, refreshToken, credentialClient);
       } catch {
         // segue tentando com o token atual; erro real será tratado abaixo
       }
@@ -278,7 +293,7 @@ export async function callAli<T = any>(
   };
 
   if (isTokenErr(json)) {
-    const newToken = await refreshAliToken(appKey, appSecret, refreshToken);
+    const newToken = await refreshAliToken(appKey, appSecret, refreshToken, credentialClient);
     json = await requestAli(method, appKey, appSecret, newToken, bizParams);
   }
 
@@ -377,7 +392,7 @@ async function searchAliExpressWeb(keyword: string, limit: number): Promise<Disc
   return products;
 }
 
-async function enrichWebResultsWithAliDetails(items: DiscoveryProduct[]): Promise<DiscoveryProduct[]> {
+async function enrichWebResultsWithAliDetails(items: DiscoveryProduct[], credentialClient?: any): Promise<DiscoveryProduct[]> {
   const enriched = [...items];
   let cursor = 0;
   const workers = Array.from({ length: Math.min(4, items.length) }, async () => {
@@ -390,7 +405,7 @@ async function enrichWebResultsWithAliDetails(items: DiscoveryProduct[]): Promis
           ship_to_country: "BR",
           target_currency: "BRL",
           target_language: "PT",
-        });
+        }, credentialClient);
         const root = json.aliexpress_ds_product_get_response ?? json;
         const result = root.result ?? root;
         const base = result.ae_item_base_info_dto ?? result.base_info ?? {};
@@ -578,14 +593,14 @@ export const discoverAliexpressProducts = createServerFn({ method: "POST" })
       // There is no `aliexpress.ds.text.search` method in the Open Platform.
       // Keyword discovery is provided by the official Affiliate product query.
       try {
-        json = await callAli("aliexpress.affiliate.product.query", bizParams);
+        json = await callAli("aliexpress.affiliate.product.query", bizParams, context.supabase);
       } catch (apiError) {
         // Affiliate access and OAuth tokens may be unavailable even while the
         // store can still discover public products. Keep discovery operational
         // through the connected web catalog instead of returning a false zero.
         try {
           items = await searchAliExpressWeb(data.keyword.trim(), data.page_size);
-          items = await enrichWebResultsWithAliDetails(items);
+          items = await enrichWebResultsWithAliDetails(items, context.supabase);
           json = null;
         } catch (fallbackError) {
           const apiMessage = apiError instanceof Error ? apiError.message : String(apiError);
@@ -597,7 +612,7 @@ export const discoverAliexpressProducts = createServerFn({ method: "POST" })
       delete bizParams.ship_to_country;
       bizParams.country = "BR";
       bizParams.feed_name = "DS bestseller";
-      json = await callAli("aliexpress.ds.recommend.feed.get", bizParams);
+      json = await callAli("aliexpress.ds.recommend.feed.get", bizParams, context.supabase);
     }
 
     if (json) {
@@ -734,7 +749,7 @@ export const importAliexpressProductToStore = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     await assertCatalog(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const db = context.supabase;
 
     // Fetch full product details
     const json = await callAli("aliexpress.ds.product.get", {
@@ -742,7 +757,7 @@ export const importAliexpressProductToStore = createServerFn({ method: "POST" })
       target_currency: "BRL",
       target_language: "PT",
       ship_to_country: "BR",
-    });
+    }, db);
     const root =
       (json as any).aliexpress_ds_product_get_response ??
       (json as any).aliexpress_ds_productdetail_get_response ??
@@ -814,7 +829,7 @@ export const importAliexpressProductToStore = createServerFn({ method: "POST" })
     };
 
     // Register import row
-    const { data: imp, error: impErr } = await supabaseAdmin
+    const { data: imp, error: impErr } = await db
       .from("product_imports")
       .insert({
         source: "aliexpress_api",
@@ -830,11 +845,11 @@ export const importAliexpressProductToStore = createServerFn({ method: "POST" })
     if (impErr) throw new Error(impErr.message);
 
     // Build product
-    const settings = await loadSettings(supabaseAdmin);
+    const settings = await loadSettings(db);
     const priceCents = computeSalePriceCents(norm.price_original, norm.currency, settings);
     const slug = slugify(norm.title) + "-" + (norm.source_id ?? Math.random().toString(36).slice(2, 8));
 
-    const { data: created, error: pe } = await supabaseAdmin
+    const { data: created, error: pe } = await db
       .from("products")
       .insert({
         slug,
@@ -852,7 +867,7 @@ export const importAliexpressProductToStore = createServerFn({ method: "POST" })
     if (pe) throw new Error(pe.message);
     const productId = created.id;
 
-    const { data: nv, error: ve } = await supabaseAdmin
+    const { data: nv, error: ve } = await db
       .from("product_variants")
       .insert({
         product_id: productId,
@@ -864,18 +879,18 @@ export const importAliexpressProductToStore = createServerFn({ method: "POST" })
       .single();
     if (ve) throw new Error(ve.message);
 
-    await supabaseAdmin.from("product_prices").insert({
+    await db.from("product_prices").insert({
       variant_id: nv.id,
       list_price_cents: priceCents,
       sale_price_cents: null,
       is_active: true,
     });
-    await supabaseAdmin
+    await db
       .from("product_inventory")
       .upsert({ variant_id: nv.id, stock: data.stock }, { onConflict: "variant_id" });
 
     if (norm.images.length > 0) {
-      await supabaseAdmin.from("product_media").insert(
+      await db.from("product_media").insert(
         norm.images.map((url, i) => ({
           product_id: productId,
           url,
@@ -886,7 +901,7 @@ export const importAliexpressProductToStore = createServerFn({ method: "POST" })
       );
     }
 
-    await supabaseAdmin
+    await db
       .from("product_imports")
       .update({ status: "imported", product_id: productId, error: null })
       .eq("id", imp.id);

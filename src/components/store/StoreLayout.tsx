@@ -35,9 +35,9 @@ export function StoreLayout({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     // A loja pública usa sempre a identidade visual clara da marca.
-    // O modo escuro pertence somente ao painel administrativo e não pode vazar para o storefront.
+    // Reforce a cada navegação para impedir vazamento do tema do painel.
     document.documentElement.classList.remove("dark");
-  }, []);
+  }, [location.pathname]);
 
   useEffect(() => {
     if (!openSearch) return;
