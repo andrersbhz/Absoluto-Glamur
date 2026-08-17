@@ -145,8 +145,10 @@ export function ProductReviews({ productId }: Props) {
   }
 
   useEffect(() => {
-    if (!active || !productId || autoRanRef.current === productId) return;
+    if (!productId || autoRanRef.current === productId) return;
     autoRanRef.current = productId;
+    // Sincroniza em segundo plano assim que a página do produto abre. A renderização
+    // do feed continua lazy; o cache por produto impede chamadas repetidas à API.
     autoSync({ data: { product_id: productId } })
       .then(async (result) => {
         if ((result?.upserted ?? 0) > 0 || (result?.translated ?? 0) > 0) await refetchReviews();
@@ -155,7 +157,7 @@ export function ProductReviews({ productId }: Props) {
         // A sincronização pública é silenciosa; o botão administrativo exibe falhas detalhadas.
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [active, productId]);
+  }, [productId]);
 
   useEffect(() => {
     if (!active || !reviewsQ.hasNextPage || reviewsQ.isFetchingNextPage || typeof IntersectionObserver === "undefined") return;
