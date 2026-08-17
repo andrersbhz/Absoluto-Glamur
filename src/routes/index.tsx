@@ -69,6 +69,10 @@ type StructureBlockData = {
   category_slug?: string;
   limit?: number;
   columns?: number;
+  layout?: "inline" | "grid";
+  align?: "left" | "center";
+  pill_style?: "outline" | "soft" | "solid";
+  show_heading?: boolean;
 };
 
 function blockData(block: HomepageBlock): StructureBlockData {
@@ -81,6 +85,10 @@ function blockData(block: HomepageBlock): StructureBlockData {
     category_slug: typeof raw.category_slug === "string" ? raw.category_slug : undefined,
     limit: typeof raw.limit === "number" && Number.isFinite(raw.limit) ? raw.limit : undefined,
     columns: typeof raw.columns === "number" && Number.isFinite(raw.columns) ? raw.columns : undefined,
+    layout: raw.layout === "inline" || raw.layout === "grid" ? raw.layout : undefined,
+    align: raw.align === "left" || raw.align === "center" ? raw.align : undefined,
+    pill_style: raw.pill_style === "soft" || raw.pill_style === "solid" || raw.pill_style === "outline" ? raw.pill_style : undefined,
+    show_heading: typeof raw.show_heading === "boolean" ? raw.show_heading : undefined,
   };
 }
 
@@ -320,31 +328,75 @@ function CategoryGridBlock({
 }) {
   const data = blockData(block);
   const slugs = selectedSlugs(data);
+  const inlineConfigured = data.layout === "inline";
   let visible = categories;
-  if (data.mode === "selected" && slugs.length > 0) {
+
+  // Legacy category_grid blocks did not have a layout flag. Treat them as the new
+  // "all categories" inline block so an old two-item selection cannot keep the Home broken.
+  if (inlineConfigured && data.mode === "selected" && slugs.length > 0) {
     const bySlug = new Map(categories.map((category) => [category.slug, category]));
     visible = slugs.map((slug) => bySlug.get(slug)).filter((value): value is (typeof categories)[number] => !!value);
   }
-  const limit = clampInt(data.limit, visible.length || categories.length, 1, 50);
-  return <CategoryGridSection categories={visible.slice(0, limit)} />;
+
+  const limit = inlineConfigured
+    ? clampInt(data.limit, visible.length || categories.length, 1, 50)
+    : visible.length;
+
+  return (
+    <CategoryGridSection
+      categories={visible.slice(0, limit)}
+      title={block.title ?? undefined}
+      subtitle={block.subtitle ?? undefined}
+      showHeading={data.show_heading === true}
+      align={data.align ?? "center"}
+      pillStyle={data.pill_style ?? "outline"}
+    />
+  );
 }
 
 function CategoryGridSection({
   categories,
+  title,
+  subtitle,
+  showHeading = false,
+  align = "center",
+  pillStyle = "outline",
 }: {
   categories: Array<{ id: string; name: string; slug: string }>;
+  title?: string;
+  subtitle?: string;
+  showHeading?: boolean;
+  align?: "left" | "center";
+  pillStyle?: "outline" | "soft" | "solid";
 }) {
   if (categories.length === 0) return null;
+  const pillClass = pillStyle === "solid"
+    ? "border-primary bg-primary text-primary-foreground hover:bg-primary/90"
+    : pillStyle === "soft"
+      ? "border-transparent bg-secondary text-foreground hover:border-champagne hover:text-primary"
+      : "border-border bg-card text-foreground hover:border-champagne hover:text-primary";
+
   return (
-    <section className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
-      <GoldRule />
-      <div className="mt-6 flex flex-wrap justify-center gap-3">
+    <section className="mx-auto max-w-7xl overflow-hidden px-4 py-8 sm:px-6 lg:px-8">
+      {showHeading && (title || subtitle) ? (
+        <div className={align === "left" ? "text-left" : "text-center"}>
+          {subtitle ? <p className="text-[11px] uppercase tracking-[0.3em] text-champagne">{subtitle}</p> : null}
+          {title ? <h2 className="mt-2 font-display text-3xl text-foreground sm:text-4xl">{title}</h2> : null}
+          {align === "center" ? <GoldRule /> : null}
+        </div>
+      ) : (
+        <GoldRule />
+      )}
+      <div
+        className={`mt-6 flex w-full flex-nowrap items-center gap-3 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${align === "center" ? "lg:justify-center" : "justify-start"}`}
+        aria-label="Categorias da loja"
+      >
         {categories.map((category) => (
           <Link
             key={category.id}
             to="/products"
             search={{ category: category.slug } as never}
-            className="rounded-full border border-border bg-card px-5 py-2 text-xs uppercase tracking-[0.22em] text-foreground shadow-soft transition hover:border-champagne hover:text-primary"
+            className={`shrink-0 whitespace-nowrap rounded-full border px-5 py-2.5 text-xs uppercase tracking-[0.2em] shadow-soft transition ${pillClass}`}
           >
             {category.name}
           </Link>
