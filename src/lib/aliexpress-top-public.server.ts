@@ -7,12 +7,13 @@
  * e a documentação específica aceita `sign_method=md5` ou `sign_method=hmac`.
  * Usamos MD5 aqui por compatibilidade com o endpoint legado /router/rest.
  *
- * A Open Platform moderna e o gateway TOP não devem ser tratados como se a mesma
- * App Key fosse necessariamente válida nos dois ambientes. Quando configuradas,
- * `config.top_app_key` + `config.top_app_secret` são usadas exclusivamente aqui.
+ * As credenciais TOP de avaliações ficam isoladas no provider
+ * `aliexpress_top_reviews`. A integração principal `aliexpress` permanece como
+ * fallback por compatibilidade com instalações anteriores.
  */
 
 const TOP_HTTPS_ENDPOINT = "https://eco.taobao.com/router/rest";
+const TOP_REVIEWS_PROVIDER = "aliexpress_top_reviews";
 
 function topTimestampGmt8(): string {
   const shifted = new Date(Date.now() + 8 * 60 * 60 * 1000);
@@ -41,7 +42,7 @@ function md5Hex(input: string): string {
   const shifts = [
     7, 12, 17, 22, 7, 12, 17, 22, 7, 12, 17, 22, 7, 12, 17, 22,
     5, 9, 14, 20, 5, 9, 14, 20, 5, 9, 14, 20, 5, 9, 14, 20,
-    4, 11, 16, 23, 4, 11, 16, 23, 4, 11, 16, 23, 4, 11, 16, 23,
+    4, 11, 16, 23, 4, 11, 16, 23, 4, 11, 16, 23,
     6, 10, 15, 21, 6, 10, 15, 21, 6, 10, 15, 21, 6, 10, 15, 21,
   ];
   const constants = Array.from({ length: 64 }, (_, i) =>
@@ -107,44 +108,50 @@ function signTopMd5(params: Record<string, string>, secret: string): string {
   return md5Hex(`${secret}${base}${secret}`);
 }
 
+async function readCredentialRow(client: any, provider: string) {
+  const { data, error } = await client
+    .from("integrations")
+    .select("config, api_key, webhook_token, enabled")
+    .eq("provider", provider)
+    .maybeSingle();
+  if (error) throw new Error(`Não foi possível ler a integração ${provider}: ${error.message}`);
+  return data;
+}
+
 async function loadAliTopCredentials(credentialClient?: any) {
   let client = credentialClient;
   if (!client) {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     client = supabaseAdmin;
   }
-  const { data, error } = await client
-    .from("integrations")
-    .select("config, api_key, webhook_token")
-    .eq("provider", "aliexpress")
-    .maybeSingle();
-  if (error) throw new Error(`Não foi possível ler a integração AliExpress: ${error.message}`);
 
-  const cfg = (data?.config ?? {}) as Record<string, unknown>;
-  const dedicatedTopKey = String(cfg.top_app_key ?? "").trim();
-  const dedicatedTopSecret = String(cfg.top_app_secret ?? "").trim();
+  const dedicated = await readCredentialRow(client, TOP_REVIEWS_PROVIDER);
+  const dedicatedKey = String(dedicated?.api_key ?? "").trim();
+  const dedicatedSecret = String(dedicated?.webhook_token ?? "").trim();
 
-  // Se o administrador começou a configurar credenciais TOP, exigimos o par completo
-  // para evitar assinar uma App Key TOP com o Secret da Open Platform por engano.
-  if ((dedicatedTopKey && !dedicatedTopSecret) || (!dedicatedTopKey && dedicatedTopSecret)) {
-    throw new Error(
-      "Complete App Key TOP e App Secret TOP em Admin → Integrações → AliExpress → Credenciais TOP para avaliações.",
-    );
-  }
-
-  if (dedicatedTopKey && dedicatedTopSecret) {
-    return { appKey: dedicatedTopKey, secrets: [dedicatedTopSecret], dedicated: true };
+  if (dedicatedKey || dedicatedSecret) {
+    if (!dedicatedKey || !dedicatedSecret) {
+      throw new Error(
+        "Complete App Key TOP e App Secret TOP em Admin → AliExpress TOP · Avaliações antes de sincronizar.",
+      );
+    }
+    return { appKey: dedicatedKey, secrets: [dedicatedSecret], dedicated: true };
   }
 
   // Compatibilidade com instalações antigas: tenta o par principal. Se o gateway TOP
-  // rejeitar a App Key, a mensagem orienta a configurar o par TOP dedicado no painel.
-  const appKey = String(data?.api_key ?? cfg.app_key ?? "").trim();
-  const primarySecret = String(data?.webhook_token ?? "").trim();
+  // rejeitar a App Key, a mensagem orienta a configurar o par TOP dedicado sem alterar
+  // importação, estoque, OAuth ou fulfillment.
+  const primary = await readCredentialRow(client, "aliexpress");
+  const cfg = (primary?.config ?? {}) as Record<string, unknown>;
+  const appKey = String(primary?.api_key ?? cfg.app_key ?? "").trim();
+  const primarySecret = String(primary?.webhook_token ?? "").trim();
   const configSecret = String(cfg.app_secret ?? "").trim();
   const secrets = [...new Set([primarySecret, configSecret].filter(Boolean))];
 
   if (!appKey || secrets.length === 0) {
-    throw new Error("Configure App Key e App Secret do AliExpress em Integrações antes de sincronizar avaliações.");
+    throw new Error(
+      "Configure as credenciais do AliExpress ou o par TOP dedicado em Admin → AliExpress TOP · Avaliações antes de sincronizar.",
+    );
   }
 
   return { appKey, secrets, dedicated: false };
@@ -180,8 +187,8 @@ function isInvalidTopAppKey(error: { code: string; detail: string }): boolean {
 
 function invalidTopAppKeyMessage(dedicated: boolean): string {
   return dedicated
-    ? "A App Key TOP configurada para avaliações não é reconhecida pelo gateway TOP. Confira o par App Key TOP/App Secret TOP e o ambiente no console Alibaba/TOP."
-    : "A App Key principal do AliExpress não é reconhecida pelo gateway TOP usado para avaliações. Configure o par específico em Admin → Integrações → AliExpress → Credenciais TOP para avaliações; a integração principal de importação/estoque não será alterada.";
+    ? "A App Key TOP salva para avaliações não é reconhecida pelo gateway TOP. Confira App Key TOP, App Secret TOP e o ambiente da aplicação no console Alibaba/TOP."
+    : "A App Key principal do AliExpress não é reconhecida pelo gateway TOP usado para avaliações. Configure a credencial específica em Admin → AliExpress TOP · Avaliações. A integração principal de importação e estoque permanece intacta.";
 }
 
 function readBusinessError(method: string, json: any): string | null {
@@ -258,7 +265,7 @@ export async function callAliTopPublic<T = any>(
       const platformError = getPlatformError(json);
       if (platformError) {
         // App Key inválida é determinística: trocar secret ou repetir endpoint não resolve
-        // e só poluía a tela com a mesma mensagem três vezes.
+        // e só poluía a tela com a mesma mensagem várias vezes.
         if (isInvalidTopAppKey(platformError)) throw new Error(invalidTopAppKeyMessage(dedicated));
         throw new Error(formatPlatformError(platformError));
       }
