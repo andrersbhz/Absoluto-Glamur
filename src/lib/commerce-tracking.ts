@@ -1,4 +1,5 @@
 export type CommerceEventName =
+  | "page_view"
   | "view_item"
   | "add_to_cart"
   | "remove_from_cart"
@@ -7,15 +8,54 @@ export type CommerceEventName =
   | "purchase"
   | "checkout_abandoned";
 
-function sessionId() {
+const SESSION_KEY = "absoluto-glamur-session-v12";
+const SESSION_ACTIVITY_KEY = "absoluto-glamur-session-last-activity-v12";
+const VISITOR_KEY = "absoluto-glamur-visitor-v12";
+const SESSION_TIMEOUT_MS = 30 * 60 * 1000;
+
+function stableVisitorId() {
   if (typeof window === "undefined") return null;
-  const key = "absoluto-glamur-session-v12";
-  let value = window.localStorage.getItem(key);
+  let value = window.localStorage.getItem(VISITOR_KEY);
   if (!value) {
     value = crypto.randomUUID();
-    window.localStorage.setItem(key, value);
+    window.localStorage.setItem(VISITOR_KEY, value);
   }
   return value;
+}
+
+function sessionId() {
+  if (typeof window === "undefined") return null;
+  const now = Date.now();
+  const lastActivity = Number(window.localStorage.getItem(SESSION_ACTIVITY_KEY) ?? 0);
+  let value = window.localStorage.getItem(SESSION_KEY);
+
+  // Uma visita volta a ser uma nova sessão depois de 30 minutos sem atividade.
+  // O visitor_id permanece estável e permite reconhecer visitas recorrentes sem PII.
+  if (!value || !Number.isFinite(lastActivity) || now - lastActivity > SESSION_TIMEOUT_MS) {
+    value = crypto.randomUUID();
+    window.localStorage.setItem(SESSION_KEY, value);
+  }
+
+  window.localStorage.setItem(SESSION_ACTIVITY_KEY, String(now));
+  return value;
+}
+
+function sendJson(body: string) {
+  if (typeof window === "undefined") return;
+  try {
+    if (navigator.sendBeacon) {
+      navigator.sendBeacon("/api/public/commerce-event", new Blob([body], { type: "application/json" }));
+      return;
+    }
+    void fetch("/api/public/commerce-event", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body,
+      keepalive: true,
+    });
+  } catch {
+    // Analytics must never interrupt shopping.
+  }
 }
 
 export function trackCommerce(event_name: CommerceEventName, payload: {
@@ -24,19 +64,36 @@ export function trackCommerce(event_name: CommerceEventName, payload: {
   value_cents?: number | null;
   channel?: string | null;
   campaign?: string | null;
+  current_page?: string | null;
   metadata?: Record<string, unknown>;
 } = {}) {
   if (typeof window === "undefined") return;
-  const body = JSON.stringify({ event_name, session_id: sessionId(), ...payload, metadata: payload.metadata ?? {} });
-  try {
-    if (navigator.sendBeacon) {
-      navigator.sendBeacon("/api/public/commerce-event", new Blob([body], { type: "application/json" }));
-      return;
-    }
-    void fetch("/api/public/commerce-event", { method: "POST", headers: { "Content-Type": "application/json" }, body, keepalive: true });
-  } catch {
-    // Analytics must never interrupt shopping.
-  }
+  const id = sessionId();
+  if (!id) return;
+  sendJson(JSON.stringify({
+    event_name,
+    session_id: id,
+    visitor_id: stableVisitorId() ?? id,
+    current_page: payload.current_page ?? window.location.pathname,
+    ...payload,
+    metadata: payload.metadata ?? {},
+  }));
+}
+
+export function sendCommercePresence(
+  presence: "active" | "offline",
+  payload: { current_page?: string; metadata?: Record<string, unknown> } = {},
+) {
+  if (typeof window === "undefined") return;
+  const id = sessionId();
+  if (!id) return;
+  sendJson(JSON.stringify({
+    presence,
+    session_id: id,
+    visitor_id: stableVisitorId() ?? id,
+    current_page: payload.current_page ?? window.location.pathname,
+    metadata: payload.metadata ?? {},
+  }));
 }
 
 export function syncRecoverableCart(items: Array<{ productId: string; variantId: string; name: string; unitCents: number; quantity: number; sku?: string | null }>) {
@@ -79,4 +136,8 @@ function readUtm(): Record<string, string> {
 
 export function getCommerceSessionId() {
   return sessionId();
+}
+
+export function getCommerceVisitorId() {
+  return stableVisitorId();
 }
