@@ -1,0 +1,251 @@
+name: Agent Patch Restore AliExpress Review Comments
+
+on:
+  push:
+    branches:
+      - agent/restore-aliexpress-review-comments
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/restore-aliexpress-review-comments
+      - name: Restore official review comments flow
+        shell: python
+        run: |
+          from pathlib import Path
+
+          p = Path('src/lib/product-reviews-live.functions.ts')
+          s = p.read_text()
+
+          start = s.index('async function fetchOfficialReviews(\n')
+          end = s.index('\nasync function persistOfficialReviews', start)
+          new_fetch = '''async function fetchOfficialReviewsForProductId(
+            productId: string,
+            credentialClient?: any,
+          ): Promise<{ reviews: NormalizedOfficialReview[]; productId: string; total: number }> {
+            const collected = new Map<string, NormalizedOfficialReview>();
+            let remoteTotal = 0;
+
+            for (let page = 1; page <= OFFICIAL_SYNC_PAGES; page += 1) {
+              const payload = await callAliTopPublic<any>("aliexpress.social.product.evaluation.query", {
+                product_id: productId,
+                page,
+                page_size: OFFICIAL_SYNC_PAGE_SIZE,
+              }, credentialClient);
+              const { rows, total } = extractOfficialPage(payload);
+              remoteTotal = Math.max(remoteTotal, total);
+              if (!rows.length) break;
+
+              for (const raw of rows) {
+                const review = normalizeOfficialReview(raw, productId);
+                if (review) collected.set(review.source_review_id, review);
+              }
+              if (rows.length < OFFICIAL_SYNC_PAGE_SIZE) break;
+              if (remoteTotal > 0 && page * OFFICIAL_SYNC_PAGE_SIZE >= remoteTotal) break;
+            }
+
+            return { reviews: [...collected.values()], productId, total: remoteTotal };
+          }
+
+          async function fetchOfficialReviews(
+            sourceId: string,
+            credentialClient?: any,
+          ): Promise<{ reviews: NormalizedOfficialReview[]; productId: string; total: number }> {
+            const productId = normalizeAliProductId(sourceId);
+            if (!productId) {
+              throw new Error(`ID do produto AliExpress inválido na importação: ${sourceId.slice(0, 120)}`);
+            }
+
+            const first = await fetchOfficialReviewsForProductId(productId, credentialClient);
+            if (first.reviews.length > 0 || first.total > 0) return first;
+
+            // Alguns links/importações usam um ID regional. Quando a API Dropshipper
+            // informa o main_product_id, tentamos a lista de avaliações no produto
+            // principal sem alterar o source_id original usado por estoque/variações.
+            try {
+              const productPayload = await fetchDropshipperProductPayload(productId, credentialClient);
+              const parsed = parseDropshipperReviewAggregate(productPayload, productId);
+              if (parsed.mainProductId && parsed.mainProductId !== productId) {
+                const main = await fetchOfficialReviewsForProductId(parsed.mainProductId, credentialClient);
+                if (main.reviews.length > 0 || main.total > 0) return main;
+              }
+            } catch {
+              // Resolver o ID principal é somente um fallback. A consulta TOP original
+              // continua sendo o resultado válido quando o conversor estiver indisponível.
+            }
+
+            return first;
+          }
+'''
+          s = s[:start] + new_fetch + s[end:]
+
+          sync_marker = '  try {\n    // A aplicação internacional Drop Shipping expõe a nota média e a quantidade'
+          sync_start = s.index(sync_marker)
+          sync_end = s.index('\n}\n\nexport const autoSyncLiveProductReviews', sync_start)
+          new_sync = '''  let officialError: string | null = null;
+
+            // Primeiro buscamos os comentários individuais pela API oficial TOP.
+            // Esse é o endpoint que entrega texto, estrelas, comprador, país e fotos.
+            try {
+              const official = await fetchOfficialReviews(sourceId, credentialClient);
+              if (official.reviews.length > 0) {
+                const persisted = await persistOfficialReviews(admin, productId, official.reviews);
+                const translatedNow = await translatePendingReviews(admin, productId, 36);
+
+                let aggregateUpdated = false;
+                let remoteTotal: number | null = official.total > 0 ? official.total : official.reviews.length;
+                let remoteAverage: number | null = official.reviews.length
+                  ? Math.round((official.reviews.reduce((sum, review) => sum + review.rating, 0) / official.reviews.length) * 100) / 100
+                  : null;
+
+                // Mantém nota/quantidade oficiais do Dropshipper quando disponíveis,
+                // mas uma falha nesse agregado nunca impede os comentários já obtidos.
+                try {
+                  const aggregate = await fetchDropshipperReviewAggregate(sourceId, credentialClient);
+                  const hasAggregate = (aggregate.total ?? 0) > 0 || (aggregate.average ?? 0) > 0;
+                  if (hasAggregate) {
+                    aggregateUpdated = await persistDropshipperReviewAggregate(admin, productId, aggregate);
+                    if ((aggregate.total ?? 0) > 0) remoteTotal = aggregate.total;
+                    if ((aggregate.average ?? 0) > 0) remoteAverage = aggregate.average;
+                  }
+                } catch {
+                  // Comentários oficiais já foram obtidos; o agregado é complementar.
+                }
+
+                const finishedAt = new Date().toISOString();
+                await admin.from("product_review_sync_state").upsert({
+                  product_id: productId,
+                  source: "aliexpress",
+                  source_id: official.productId,
+                  status: "ok",
+                  fetched_count: official.reviews.length,
+                  remote_total: remoteTotal,
+                  last_attempt_at: now,
+                  last_success_at: finishedAt,
+                  last_error: null,
+                  updated_at: finishedAt,
+                }, { onConflict: "product_id" });
+
+                return {
+                  fetched: official.reviews.length,
+                  upserted: persisted.upserted,
+                  translated: translatedBacklog + translatedNow,
+                  skipped: false,
+                  source: "official_top_reviews" as const,
+                  error: null,
+                  aggregateUpdated,
+                  remoteTotal,
+                  remoteAverage,
+                };
+              }
+            } catch (error) {
+              officialError = (error instanceof Error ? error.message : String(error)).slice(0, 1200);
+            }
+
+            try {
+              // Fallback: a API internacional Drop Shipping expõe somente nota média
+              // e quantidade. Ela não substitui os comentários individuais da TOP.
+              const aggregate = await fetchDropshipperReviewAggregate(sourceId, credentialClient);
+              const hasRemoteReviews = (aggregate.total ?? 0) > 0 || (aggregate.average ?? 0) > 0;
+              const aggregateUpdated = hasRemoteReviews
+                ? await persistDropshipperReviewAggregate(admin, productId, aggregate)
+                : false;
+              const finishedAt = new Date().toISOString();
+              const status = hasRemoteReviews ? "ok" : "empty";
+
+              await admin.from("product_review_sync_state").upsert({
+                product_id: productId,
+                source: "aliexpress",
+                source_id: aggregate.productId,
+                status,
+                fetched_count: 0,
+                remote_total: aggregate.total,
+                last_attempt_at: now,
+                last_success_at: finishedAt,
+                last_error: officialError,
+                updated_at: finishedAt,
+              }, { onConflict: "product_id" });
+
+              return {
+                fetched: 0,
+                upserted: 0,
+                translated: translatedBacklog,
+                skipped: false,
+                source: "dropshipper_aggregate" as const,
+                // Se a TOP falhou, devolvemos o motivo ao administrador. Assim o
+                // botão não mascara falta/erro de credencial como "sem avaliações".
+                error: officialError,
+                aggregateUpdated,
+                remoteTotal: aggregate.total,
+                remoteAverage: aggregate.average,
+              };
+            } catch (error) {
+              const aggregateError = (error instanceof Error ? error.message : String(error)).slice(0, 1200);
+              const message = officialError
+                ? `${officialError} | Fallback Dropshipper: ${aggregateError}`.slice(0, 1200)
+                : aggregateError;
+              const failedAt = new Date().toISOString();
+              await admin.from("product_review_sync_state").upsert({
+                product_id: productId,
+                source: "aliexpress",
+                source_id: normalizeAliProductId(sourceId) ?? sourceId,
+                status: "error",
+                last_attempt_at: now,
+                last_error: message,
+                updated_at: failedAt,
+              }, { onConflict: "product_id" });
+              return {
+                fetched: 0,
+                upserted: 0,
+                translated: translatedBacklog,
+                skipped: false,
+                source: "dropshipper_aggregate" as const,
+                error: message,
+                aggregateUpdated: false,
+                remoteTotal: null,
+                remoteAverage: null,
+              };
+            }
+'''
+          s = s[:sync_start] + new_sync + s[sync_end:]
+          p.write_text(s)
+
+          ui = Path('src/components/store/ProductReviews.tsx')
+          u = ui.read_text()
+          old = '''      if (result.aggregateUpdated && hasRemoteReviews) {
+        const rating = (result.remoteAverage ?? 0) > 0 ? `${result.remoteAverage!.toFixed(1)}/5` : null;
+        const total = (result.remoteTotal ?? 0) > 0 ? `${result.remoteTotal} avaliações` : null;
+        const details = [rating, total].filter(Boolean).join(" · ");
+        toast.success(`Dados oficiais do AliExpress atualizados${details ? `: ${details}` : "."}`);
+      } else if ((result.upserted ?? 0) > 0) {
+        toast.success(`${result.upserted} avaliações sincronizadas do AliExpress.`);
+      } else if (result.error) {
+        toast.error(result.error);
+'''
+          new = '''      if ((result.upserted ?? 0) > 0) {
+        toast.success(`${result.upserted} avaliações sincronizadas do AliExpress.`);
+      } else if (result.error) {
+        toast.error(result.error);
+      } else if (result.aggregateUpdated && hasRemoteReviews) {
+        const rating = (result.remoteAverage ?? 0) > 0 ? `${result.remoteAverage!.toFixed(1)}/5` : null;
+        const total = (result.remoteTotal ?? 0) > 0 ? `${result.remoteTotal} avaliações` : null;
+        const details = [rating, total].filter(Boolean).join(" · ");
+        toast.success(`Dados oficiais do AliExpress atualizados${details ? `: ${details}` : "."}`);
+'''
+          if old not in u:
+              raise SystemExit('ProductReviews toast target not found')
+          ui.write_text(u.replace(old, new))
+      - name: Commit patch
+        run: |
+          git config user.name "André Rocha"
+          git config user.email "andrers.bhz@gmail.com"
+          git add src/lib/product-reviews-live.functions.ts src/components/store/ProductReviews.tsx
+          git commit -m "fix: restaurar comentários oficiais do AliExpress"
+          git push origin agent/restore-aliexpress-review-comments
