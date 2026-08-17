@@ -1,0 +1,32 @@
+name: Apply AliExpress Reviews Fix
+
+on:
+  push:
+    branches:
+      - fix/aliexpress-reviews-official-sync
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/aliexpress-reviews-official-sync
+          fetch-depth: 0
+      - name: Apply review sync patch
+        run: python scripts/patch-aliexpress-reviews-official.py
+      - name: Commit functional changes
+        run: |
+          if git diff --quiet; then
+            echo "No changes"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/lib/product-reviews-live.functions.ts src/lib/product-reviews.functions.ts src/lib/aliexpress-import.functions.ts
+          git commit -m "fix(reviews): use official AliExpress evaluation sync end-to-end"
+          git push origin HEAD:fix/aliexpress-reviews-official-sync
