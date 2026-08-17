@@ -1,0 +1,27 @@
+name: Apply Integrations Eye Patch
+
+on:
+  push:
+    branches:
+      - fix/full-system-stability-integrations
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/full-system-stability-integrations
+          fetch-depth: 0
+      - run: python scripts/patch-integrations-eye.py
+      - name: Commit UI changes
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/routes/_authenticated/admin.integrations.tsx
+          git commit -m "fix: keep integrations visible and reveal credentials on demand"
+          git push origin HEAD:fix/full-system-stability-integrations
