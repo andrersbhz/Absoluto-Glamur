@@ -26,6 +26,17 @@ export const Route = createFileRoute("/_authenticated/admin/home-visual")({
   component: HomeVisualEditor,
 });
 
+const HOME_COLOR_PRESETS = [
+  { label: "Branco", value: "#ffffff" },
+  { label: "Texto", value: "#251e23" },
+  { label: "Berry", value: "#c64b76" },
+  { label: "Rosa queimado", value: "#a84c69" },
+  { label: "Ameixa", value: "#6d405f" },
+  { label: "Lavanda", value: "#a890ae" },
+  { label: "Champagne", value: "#d7b47a" },
+  { label: "Fundo", value: "#fff8f7" },
+] as const;
+
 type VisualBlockData = Record<string, unknown> & {
   image_url?: string; image_mobile_url?: string; cta_label?: string; cta_href?: string; cta_target?: "_self" | "_blank";
   title_color?: string; subtitle_color?: string; title_size_desktop?: number; title_size_mobile?: number;
@@ -77,7 +88,7 @@ function HomeVisualEditor() {
   }
 
   function addSlide() {
-    patchHome((value) => ({ ...value, hero_slider: { enabled: true, autoplay_ms: value.hero_slider?.autoplay_ms ?? 6000, ...value.hero_slider, slides: [...(value.hero_slider?.slides ?? []), { title: "Novo destaque", subtitle: "", cta_label: "Ver produtos", cta_href: "/products", align: "left", image_position_x: 50, image_position_y: 50, overlay_opacity: .45, height_desktop: 640, height_mobile: 500 }] } }));
+    patchHome((value) => ({ ...value, hero_slider: { enabled: true, autoplay_ms: value.hero_slider?.autoplay_ms ?? 6000, ...value.hero_slider, slides: [...(value.hero_slider?.slides ?? []), { title: "Novo destaque", subtitle: "", cta_label: "Ver produtos", cta_href: "/products", align: "left", image_position_x: 50, image_position_y: 50, overlay_color: "#000000", overlay_opacity: .45, title_color: "#ffffff", subtitle_color: "#fff8f7", button_bg: "#c64b76", button_color: "#ffffff", button_hover_bg: "#a84c69", height_desktop: 640, height_mobile: 500 }] } }));
   }
 
   return (
@@ -122,7 +133,7 @@ function SlideEditor({ index, slide, patch, remove }: { index: number; slide: He
 }
 
 function HeroFields({ value, patch }: { value: NonNullable<HomeContent["hero"]>; patch: (p: Partial<NonNullable<HomeContent["hero"]>>) => void }) {
-  return <div className="space-y-4 rounded-2xl border border-border bg-card p-5"><div className="grid gap-4 md:grid-cols-2"><Field label="Badge"><Input value={value.badge ?? ""} onChange={(e) => patch({ badge: e.target.value })} /></Field><Field label="Título"><Input value={value.title_line1 ?? ""} onChange={(e) => patch({ title_line1: e.target.value })} /></Field><Field label="Destaque do título"><Input value={value.title_highlight ?? ""} onChange={(e) => patch({ title_highlight: e.target.value })} /></Field><Field label="Subtítulo"><Input value={value.subtitle ?? ""} onChange={(e) => patch({ subtitle: e.target.value })} /></Field><Field label="Texto do botão"><Input value={value.cta_primary_label ?? ""} onChange={(e) => patch({ cta_primary_label: e.target.value })} /></Field><Field label="Link"><Input value={value.cta_primary_href ?? ""} onChange={(e) => patch({ cta_primary_href: e.target.value })} /></Field></div><HomeImageUpload label="Imagem desktop" value={value.image_url} onChange={(v) => patch({ image_url: v })} /><HomeImageUpload label="Imagem mobile" value={value.image_mobile_url} onChange={(v) => patch({ image_mobile_url: v })} /><VisualControls value={value} patch={patch} /></div>;
+  return <div className="space-y-4 rounded-2xl border border-border bg-card p-5"><div className="grid gap-4 md:grid-cols-2"><Field label="Badge"><Input value={value.badge ?? ""} onChange={(e) => patch({ badge: e.target.value })} /></Field><Field label="Título"><Input value={value.title_line1 ?? ""} onChange={(e) => patch({ title_line1: e.target.value })} /></Field><Field label="Destaque do título"><Input value={value.title_highlight ?? ""} onChange={(e) => patch({ title_highlight: e.target.value })} /></Field><Field label="Subtítulo"><Input value={value.subtitle ?? ""} onChange={(e) => patch({ subtitle: e.target.value })} /></Field><Field label="Texto do botão"><Input value={value.cta_primary_label ?? ""} onChange={(e) => patch({ cta_primary_label: e.target.value })} /></Field><Field label="Link"><Input value={value.cta_primary_href ?? ""} onChange={(e) => patch({ cta_primary_href: e.target.value })} /></Field></div><HomeImageUpload label="Imagem desktop" value={value.image_url} onChange={(v) => patch({ image_url: v })} /><HomeImageUpload label="Imagem mobile" value={value.image_mobile_url} onChange={(v) => patch({ image_mobile_url: v })} /><VisualControls value={value} patch={patch} /><div className="grid gap-4 rounded-xl border border-border bg-secondary/20 p-4 md:grid-cols-2"><ColorField label="Cor do destaque do título" value={value.highlight_color ?? "#d7b47a"} onChange={(v) => patch({ highlight_color: v })} /><div className="flex items-end text-xs text-muted-foreground">Use Champagne para o padrão da marca ou escolha qualquer cor personalizada.</div></div></div>;
 }
 
 function SecondaryHeroEditor({ block, setBlock, onSave, saving }: { block: HomepageBlock; setBlock: (b: HomepageBlock) => void; onSave: () => void; saving: boolean }) {
@@ -137,4 +148,7 @@ function VisualControls({ value, patch }: { value: HeroSlide; patch: (p: Partial
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) { return <div><Label className="mb-1.5 block text-xs">{label}</Label>{children}</div>; }
 function NumberField({ label, value, onChange, step = "1" }: { label: string; value: number; onChange: (v: number) => void; step?: string }) { return <Field label={label}><Input type="number" step={step} value={value} onChange={(e) => onChange(Number(e.target.value))} /></Field>; }
-function ColorField({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) { return <Field label={label}><div className="flex gap-2"><input type="color" value={value.startsWith("#") ? value : "#000000"} onChange={(e) => onChange(e.target.value)} className="h-10 w-12 rounded border border-input" /><Input value={value} onChange={(e) => onChange(e.target.value)} /></div></Field>; }
+function ColorField({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
+  const pickerValue = /^#[0-9a-f]{6}$/i.test(value) ? value : "#000000";
+  return <Field label={label}><div className="space-y-2"><div className="flex gap-2"><input type="color" value={pickerValue} onChange={(e) => onChange(e.target.value)} className="h-10 w-12 cursor-pointer rounded border border-input" aria-label={`${label}: seletor de cor`} /><Input value={value} onChange={(e) => onChange(e.target.value)} placeholder="#ffffff" /></div><div className="flex flex-wrap gap-1.5">{HOME_COLOR_PRESETS.map((preset) => <button key={preset.value} type="button" title={`${preset.label} ${preset.value}`} aria-label={`${preset.label} ${preset.value}`} onClick={() => onChange(preset.value)} className="h-6 w-6 rounded-full border border-border shadow-sm transition hover:scale-110 focus:outline-none focus:ring-2 focus:ring-primary/40" style={{ backgroundColor: preset.value }} />)}</div></div></Field>;
+}
