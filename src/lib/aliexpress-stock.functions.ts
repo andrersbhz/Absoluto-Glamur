@@ -92,8 +92,8 @@ async function fetchAliexpressLive(productId: string, credentialClient?: any): P
 }
 
 // Alias de compatibilidade para chamadas antigas.
-async function fetchAliexpressStock(productId: string) {
-  const r = await fetchAliexpressLive(productId);
+async function fetchAliexpressStock(productId: string, credentialClient?: any) {
+  const r = await fetchAliexpressLive(productId, credentialClient);
   return { total: r.total, bySku: r.bySku };
 }
 
@@ -123,7 +123,6 @@ export const syncAliexpressStock = createServerFn({ method: "POST" })
       .maybeSingle();
 
     if (!imp?.source_id) {
-      // Produto sem vínculo AliExpress: não é erro, apenas não há o que sincronizar.
       return {
         skipped: true as const,
         reason: "Produto não está conectado ao AliExpress.",
@@ -156,7 +155,6 @@ export const syncAliexpressStock = createServerFn({ method: "POST" })
         .upsert(rows, { onConflict: "variant_id" });
     }
 
-    // Registra custo (BRL) em pricing_calculations para exibir no admin.
     if (costBrlCents && costBrlCents > 0) {
       await db.from("pricing_calculations").insert({
         product_id: data.product_id,
@@ -169,7 +167,6 @@ export const syncAliexpressStock = createServerFn({ method: "POST" })
       } as any);
     }
 
-    // Marca a última sincronização no import.
     await db
       .from("product_imports")
       .update({
@@ -210,8 +207,8 @@ export const syncAllAliexpressStock = createServerFn({ method: "POST" })
 export async function runBulkSync(limit: number, client?: any) {
   let db = client;
   if (!db) {
-    const { db } = await import("@/integrations/supabase/client.server");
-    db = db;
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    db = supabaseAdmin;
   }
   const { data: imports } = await db
     .from("product_imports")
@@ -223,7 +220,7 @@ export async function runBulkSync(limit: number, client?: any) {
     .limit(limit);
 
   const seen = new Set<string>();
-  const list = (imports ?? []).filter((r) => {
+  const list = (imports ?? []).filter((r: any) => {
     const key = r.product_id!;
     if (seen.has(key)) return false;
     seen.add(key);
@@ -233,7 +230,6 @@ export async function runBulkSync(limit: number, client?: any) {
   let ok = 0;
   const errors: { product_id: string; error: string }[] = [];
 
-  // Concorrência controlada (4 requests em paralelo) para respeitar rate-limit.
   let cursor = 0;
   const workers = Array.from({ length: Math.min(4, list.length) }, async () => {
     while (cursor < list.length) {
@@ -246,7 +242,7 @@ export async function runBulkSync(limit: number, client?: any) {
           .eq("product_id", row.product_id!);
         if (variants && variants.length > 0) {
           const single = variants.length === 1;
-          const rows = variants.map((v) => {
+          const rows = variants.map((v: any) => {
             const matched = v.sku && bySku[v.sku] != null ? bySku[v.sku] : null;
             const stock = matched != null ? matched : single || v.is_default ? total : 0;
             return { variant_id: v.id, stock: Math.max(0, stock) };
