@@ -40,12 +40,13 @@ function currentMetadata(pathname = window.location.pathname) {
 export function useAnalyticsTracker() {
   const location = useLocation();
 
-  // Registra a navegação como histórico. "page_view" não significa "viu produto";
-  // produtos geram o evento semântico view_item na página de produto.
+  // Registra cada navegação como histórico. Apenas uma rota realmente reconhecida
+  // como produto gera view_item; páginas institucionais, blog e conta usam page_view.
   useEffect(() => {
     if (!shouldTrackPath(location.pathname)) return;
 
-    trackCommerce("page_view", {
+    const stage = inferFunnelStage(location.pathname);
+    trackCommerce(stage === "product_view" ? "view_item" : "page_view", {
       current_page: location.pathname,
       metadata: currentMetadata(location.pathname),
     });
