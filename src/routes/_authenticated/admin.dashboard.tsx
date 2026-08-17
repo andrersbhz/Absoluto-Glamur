@@ -1,35 +1,32 @@
-import { createFileRoute, redirect } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
+import { useEffect, useState } from "react";
+import {
+  Loader2,
+  Download,
+  TrendingUp,
+  ShoppingCart,
+  Users,
+  Sparkles,
+  Package,
+  Globe,
+} from "lucide-react";
+import { toast } from "sonner";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { 
-  Loader2, 
-  Download, 
-  TrendingUp, 
-  ShoppingCart, 
-  Users, 
-  Sparkles, 
-  Package, 
-  AlertTriangle,
-  Globe,
-  ArrowRight
-} from "lucide-react";
 import { formatBRL } from "@/lib/format";
 import { getDashboardMetrics, exportOrdersCsv } from "@/lib/dashboard.functions";
-import { toast } from "sonner";
-import { Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
 
 export const Route = createFileRoute("/_authenticated/admin/dashboard")({
-  beforeLoad: async () => {
-    const { data: userData } = await supabase.auth.getUser();
-    if (!userData.user) throw redirect({ to: "/auth" });
-    const { data: rolesData } = await supabase.from("user_roles").select("role").eq("user_id", userData.user.id);
-    const roles = (rolesData ?? []).map((r) => r.role as string);
-    if (!roles.includes("admin") && !roles.includes("superadmin")) throw redirect({ to: "/account" });
+  beforeLoad: ({ context }) => {
+    // O pai /admin já carregou as permissões. O dashboard apenas aplica a restrição
+    // adicional de admin/superadmin sem repetir getUser + user_roles.
+    const roles = (context as { roles?: string[] }).roles ?? [];
+    if (!roles.includes("admin") && !roles.includes("superadmin")) {
+      throw redirect({ to: "/account" });
+    }
   },
   component: Dashboard,
 });
@@ -38,34 +35,41 @@ function Dashboard() {
   const fn = useServerFn(getDashboardMetrics);
   const exportFn = useServerFn(exportOrdersCsv);
   const [onlineCount, setOnlineCount] = useState(0);
-  
-  const q = useQuery({ 
-    queryKey: ["dashboard-metrics"], 
-    queryFn: () => fn({ data: undefined as any }) 
+
+  const q = useQuery({
+    queryKey: ["dashboard-metrics"],
+    queryFn: () => fn({ data: undefined as any }),
+    staleTime: 30_000,
+    gcTime: 5 * 60_000,
+    refetchOnWindowFocus: false,
+    retry: 1,
   });
 
   useEffect(() => {
-    // Buscar contagem online inicial
+    let active = true;
+
     const fetchOnline = async () => {
       const { count } = await supabase
         .from("visitor_sessions")
-        .select("*", { count: 'exact', head: true })
+        .select("*", { count: "exact", head: true })
         .eq("is_online", true);
-      setOnlineCount(count || 0);
+
+      if (active) setOnlineCount(count ?? 0);
     };
-    fetchOnline();
 
-    // Ouvir mudanças em tempo real nas sessões
-    const channel = supabase
-      .channel("dashboard_stats")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "visitor_sessions" },
-        () => fetchOnline()
-      )
-      .subscribe();
+    void fetchOnline();
 
-    return () => { supabase.removeChannel(channel); };
+    // visitor_sessions recebe heartbeat de visitantes. Ouvir cada UPDATE via Realtime
+    // fazia uma nova contagem exata para cada heartbeat. Polling curto mantém o KPI atual
+    // sem transformar atividade da loja em uma tempestade de consultas no painel.
+    const interval = window.setInterval(() => {
+      void fetchOnline();
+    }, 30_000);
+
+    return () => {
+      active = false;
+      window.clearInterval(interval);
+    };
   }, []);
 
   async function download() {
@@ -105,10 +109,10 @@ function Dashboard() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="font-display text-3xl">Dashboard executivo</h1>
-            <p className="text-sm text-muted-foreground">Últimos 30 dias · atualizado em tempo real.</p>
+            <p className="text-sm text-muted-foreground">Últimos 30 dias · atualização contínua.</p>
           </div>
           <div className="flex items-center gap-3">
-             <Link 
+            <Link
               to="/admin/map"
               className="inline-flex items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-4 py-2 text-sm font-medium text-primary transition hover:bg-primary/10"
             >
@@ -119,16 +123,18 @@ function Dashboard() {
                 <span className="relative inline-flex h-2 w-2 rounded-full bg-primary"></span>
               </div>
             </Link>
-            <Button onClick={download} variant="outline"><Download className="mr-2 h-4 w-4" /> Exportar CSV</Button>
+            <Button onClick={download} variant="outline">
+              <Download className="mr-2 h-4 w-4" /> Exportar CSV
+            </Button>
           </div>
         </div>
 
         <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <Kpi 
-            icon={Users} 
-            label="Visitantes Online" 
-            value={String(onlineCount)} 
-            sub="Navegando agora" 
+          <Kpi
+            icon={Users}
+            label="Visitantes Online"
+            value={String(onlineCount)}
+            sub="Navegando agora"
             tone="ok"
             highlight={true}
           />
@@ -141,7 +147,6 @@ function Dashboard() {
           <Kpi icon={Sparkles} label="Chamadas IA" value={String(m.ai_calls_30d)} sub={`${m.ai_tokens_30d.toLocaleString("pt-BR")} tokens`} />
         </div>
 
-        {/* ... restante do componente ... */}
         <div className="mt-8 rounded-2xl border border-border bg-card p-6 shadow-soft">
           <h2 className="font-display text-xl">Receita diária</h2>
           <div className="mt-4 flex h-48 items-end gap-1">
@@ -182,12 +187,11 @@ function Dashboard() {
           <div className="rounded-2xl border border-border bg-card p-6 shadow-soft">
             <h2 className="font-display text-xl">Funil Comercial</h2>
             <div className="mt-6 space-y-4">
-               {/* Aqui entra a lógica do funil em tempo real simplificada */}
-               <FunnelBar label="Browsing" value={onlineCount} total={onlineCount} color="bg-primary/40" />
-               <FunnelBar label="Carrinho" value={0} total={onlineCount} color="bg-yellow-500/40" />
-               <FunnelBar label="Checkout" value={0} total={onlineCount} color="bg-blue-500/40" />
-               <FunnelBar label="Vendas" value={m.paid_orders_30d} total={m.orders_30d || 1} color="bg-green-500/40" />
-               <p className="text-[10px] text-muted-foreground text-center mt-2 italic">Dados de carrinho e checkout atualizam via heatmap no mapa.</p>
+              <FunnelBar label="Browsing" value={onlineCount} total={onlineCount} color="bg-primary/40" />
+              <FunnelBar label="Carrinho" value={0} total={onlineCount} color="bg-yellow-500/40" />
+              <FunnelBar label="Checkout" value={0} total={onlineCount} color="bg-blue-500/40" />
+              <FunnelBar label="Vendas" value={m.paid_orders_30d} total={m.orders_30d || 1} color="bg-green-500/40" />
+              <p className="mt-2 text-center text-[10px] italic text-muted-foreground">Dados de carrinho e checkout atualizam via heatmap no mapa.</p>
             </div>
           </div>
         </div>
@@ -198,9 +202,9 @@ function Dashboard() {
 
 function Kpi({ icon: Icon, label, value, sub, tone = "ok", highlight = false }: any) {
   return (
-    <div className={`rounded-2xl border p-5 shadow-soft transition-all ${highlight ? 'border-primary/50 bg-primary/5 shadow-[0_0_20px_rgba(var(--primary),0.05)]' : 'border-border bg-card'}`}>
+    <div className={`rounded-2xl border p-5 shadow-soft transition-all ${highlight ? "border-primary/50 bg-primary/5 shadow-[0_0_20px_rgba(var(--primary),0.05)]" : "border-border bg-card"}`}>
       <div className="flex items-center gap-2 text-muted-foreground">
-        <Icon className={`h-4 w-4 ${highlight ? 'text-primary' : ''}`} />
+        <Icon className={`h-4 w-4 ${highlight ? "text-primary" : ""}`} />
         <p className="text-xs uppercase tracking-widest">{label}</p>
       </div>
       <p className={`mt-2 font-display text-2xl ${tone === "warn" ? "text-destructive" : highlight ? "text-primary" : "text-foreground"}`}>{value}</p>
@@ -217,7 +221,7 @@ function FunnelBar({ label, value, total, color }: any) {
         <span className="text-muted-foreground">{label}</span>
         <span className="font-medium">{value}</span>
       </div>
-      <div className="h-2 w-full rounded-full bg-secondary overflow-hidden">
+      <div className="h-2 w-full overflow-hidden rounded-full bg-secondary">
         <div className={`h-full ${color} transition-all`} style={{ width: `${Math.max(5, pct)}%` }} />
       </div>
     </div>
