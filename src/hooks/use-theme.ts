@@ -19,6 +19,9 @@ export function useTheme() {
     const initial: Theme = stored ?? (prefersDark ? "dark" : "light");
     setThemeState(initial);
     apply(initial);
+    return () => {
+      document.documentElement.classList.remove("dark");
+    };
   }, []);
 
   function setTheme(next: Theme) {
