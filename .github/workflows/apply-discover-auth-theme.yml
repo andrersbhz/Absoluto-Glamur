@@ -1,0 +1,32 @@
+name: Apply Discover Auth Theme Patch
+
+on:
+  push:
+    branches:
+      - fix/discover-auth-theme
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/discover-auth-theme
+          fetch-depth: 0
+      - name: Apply patch
+        run: python scripts/patch-discover-auth-theme.py
+      - name: Commit changes
+        run: |
+          if git diff --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/lib/aliexpress-discovery.functions.ts src/hooks/use-theme.ts src/components/store/StoreLayout.tsx
+          git commit -m "fix: use authenticated discovery client and isolate admin theme"
+          git push origin HEAD:fix/discover-auth-theme
