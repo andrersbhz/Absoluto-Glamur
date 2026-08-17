@@ -238,16 +238,28 @@ function optionalCount(value: unknown): number | null {
   return Number.isFinite(n) && n >= 0 ? Math.round(n) : null;
 }
 
-async function fetchDropshipperReviewAggregate(
-  sourceId: string,
-  credentialClient?: any,
-): Promise<DropshipperReviewAggregate> {
-  const productId = normalizeAliProductId(sourceId);
-  if (!productId) {
-    throw new Error(`ID do produto AliExpress inválido na importação: ${sourceId.slice(0, 120)}`);
-  }
+function parseDropshipperReviewAggregate(
+  payload: any,
+  requestedProductId: string,
+): DropshipperReviewAggregate & { mainProductId: string | null } {
+  const root = payload?.aliexpress_ds_product_get_response ?? payload;
+  const result = root?.result?.result ?? root?.resp_result?.result ?? root?.result ?? root;
+  const base = result?.ae_item_base_info_dto ?? result?.base_info ?? {};
+  const converter = result?.product_id_converter_result ?? result?.productIdConverterResult ?? {};
+  const average = optionalRating(
+    base?.avg_evaluation_rating ?? result?.avg_evaluation_rating ?? result?.evaluate_rate,
+  );
+  const total = optionalCount(
+    base?.evaluation_count ?? result?.evaluation_count ?? base?.evaluate_count ?? result?.evaluate_count,
+  );
+  const mainProductId = normalizeAliProductId(String(
+    converter?.main_product_id ?? converter?.mainProductId ?? "",
+  ));
+  return { productId: requestedProductId, total, average, mainProductId };
+}
 
-  const payload = await callAli<any>(
+async function fetchDropshipperProductPayload(productId: string, credentialClient?: any) {
+  return callAli<any>(
     "aliexpress.ds.product.get",
     {
       product_id: productId,
@@ -257,22 +269,45 @@ async function fetchDropshipperReviewAggregate(
     },
     credentialClient,
   );
-  const root = payload?.aliexpress_ds_product_get_response ?? payload;
-  const result = root?.result?.result ?? root?.resp_result?.result ?? root?.result ?? root;
-  const base = result?.ae_item_base_info_dto ?? result?.base_info ?? {};
-  const average = optionalRating(
-    base?.avg_evaluation_rating ?? result?.avg_evaluation_rating ?? result?.evaluate_rate,
-  );
-  const total = optionalCount(
-    base?.evaluation_count ?? result?.evaluation_count ?? base?.evaluate_count ?? result?.evaluate_count,
-  );
+}
 
-  if (average == null && total == null) {
+async function fetchDropshipperReviewAggregate(
+  sourceId: string,
+  credentialClient?: any,
+): Promise<DropshipperReviewAggregate> {
+  const productId = normalizeAliProductId(sourceId);
+  if (!productId) {
+    throw new Error(`ID do produto AliExpress inválido na importação: ${sourceId.slice(0, 120)}`);
+  }
+
+  const payload = await fetchDropshipperProductPayload(productId, credentialClient);
+  const first = parseDropshipperReviewAggregate(payload, productId);
+  const firstHasReviews = (first.total ?? 0) > 0 || (first.average ?? 0) > 0;
+  if (firstHasReviews) return first;
+
+  // Links internacionais podem carregar um sub-product ID regional. A própria
+  // resposta oficial informa o main_product_id; avaliações pertencem ao produto
+  // principal. Fazemos apenas um retry oficial e não alteramos o source_id salvo,
+  // pois estoque/variações podem depender do ID regional original.
+  if (first.mainProductId && first.mainProductId !== productId) {
+    try {
+      const mainPayload = await fetchDropshipperProductPayload(first.mainProductId, credentialClient);
+      const main = parseDropshipperReviewAggregate(mainPayload, first.mainProductId);
+      const mainHasReviews = (main.total ?? 0) > 0 || (main.average ?? 0) > 0;
+      if (mainHasReviews) return main;
+    } catch {
+      // O retry no produto principal é apenas um fallback. Se ele estiver
+      // indisponível/restrito temporariamente, preservamos o resultado regional
+      // vazio em vez de transformar a sincronização inteira em erro.
+    }
+  }
+
+  if (first.average == null && first.total == null) {
     throw new Error(
       `A API Dropshipper não retornou nota nem quantidade de avaliações para o produto ${productId}.`,
     );
   }
-  return { productId, total, average };
+  return first;
 }
 
 async function persistDropshipperReviewAggregate(
