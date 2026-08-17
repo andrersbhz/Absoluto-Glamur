@@ -405,8 +405,8 @@ export const testIntegration = createServerFn({ method: "POST" })
       const provider = data.provider as "openai" | "gemini";
       const config = row.config && typeof row.config === "object" ? (row.config as Record<string, unknown>) : {};
       const apiKey = typeof row.api_key === "string" ? row.api_key.trim() : "";
-      if (!apiKey || row.enabled === false) {
-        const message = "Preencha a chave da API e ative a integração antes de testar.";
+      if (!apiKey) {
+        const message = "Preencha a chave da API antes de testar.";
         await writeVerification(db, provider, message);
         throw new Error(message);
       }
