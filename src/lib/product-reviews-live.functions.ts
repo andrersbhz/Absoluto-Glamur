@@ -280,9 +280,22 @@ async function persistDropshipperReviewAggregate(
   productId: string,
   aggregate: DropshipperReviewAggregate,
 ): Promise<boolean> {
+  // Zero/zero significa que a API não trouxe uma avaliação útil para este item.
+  // Nunca usamos esse retorno para apagar uma nota/contagem válida já existente.
+  const hasAverage = aggregate.average != null && aggregate.average > 0;
+  const hasTotal = aggregate.total != null && aggregate.total > 0;
+  if (!hasAverage && !hasTotal) return false;
+
+  const { data: current, error: readError } = await admin
+    .from("products")
+    .select("rating_avg,rating_count")
+    .eq("id", productId)
+    .maybeSingle();
+  if (readError) throw new Error(`Falha ao ler a nota atual do produto: ${readError.message}`);
+
   const patch: Record<string, number> = {};
-  if (aggregate.average != null) patch.rating_avg = aggregate.average;
-  if (aggregate.total != null) patch.rating_count = aggregate.total;
+  if (hasAverage && Number(current?.rating_avg ?? 0) !== aggregate.average) patch.rating_avg = aggregate.average as number;
+  if (hasTotal && Number(current?.rating_count ?? 0) !== aggregate.total) patch.rating_count = aggregate.total as number;
   if (!Object.keys(patch).length) return false;
 
   const { error } = await admin.from("products").update(patch).eq("id", productId);
@@ -520,9 +533,12 @@ export async function syncLiveReviewsInternal(
     // oficial pela API aliexpress.ds.product.get. A API TOP antiga de textos
     // individuais não é chamada aqui: avaliações já salvas permanecem intactas.
     const aggregate = await fetchDropshipperReviewAggregate(sourceId, credentialClient);
-    const aggregateUpdated = await persistDropshipperReviewAggregate(admin, productId, aggregate);
+    const hasRemoteReviews = (aggregate.total ?? 0) > 0 || (aggregate.average ?? 0) > 0;
+    const aggregateUpdated = hasRemoteReviews
+      ? await persistDropshipperReviewAggregate(admin, productId, aggregate)
+      : false;
     const finishedAt = new Date().toISOString();
-    const status = (aggregate.total ?? 0) > 0 || (aggregate.average ?? 0) > 0 ? "ok" : "empty";
+    const status = hasRemoteReviews ? "ok" : "empty";
 
     await admin.from("product_review_sync_state").upsert({
       product_id: productId,
