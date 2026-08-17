@@ -40,15 +40,15 @@ export const syncAliexpressVariants = createServerFn({ method: "POST" })
   .inputValidator((v: unknown) => z.object({ product_id: z.string().uuid() }).parse(v))
   .handler(async ({ data, context }) => {
     await assertCatalog(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const db = context.supabase;
     const { syncVariantsForProduct } = await import("./aliexpress-variants.server");
 
-    const sourceId = await findSourceId(supabaseAdmin, data.product_id);
+    const sourceId = await findSourceId(db, data.product_id);
     if (!sourceId) {
       throw new Error("Produto não está conectado ao AliExpress.");
     }
 
-    const result = await syncVariantsForProduct(supabaseAdmin, data.product_id, sourceId);
+    const result = await syncVariantsForProduct(db, data.product_id, sourceId);
     return { ...result, variants_upserted: result.created + result.updated };
   });
 
@@ -69,12 +69,12 @@ export const resyncAliexpressVariantsBulk = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     await assertCatalog(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const db = context.supabase;
     const { syncVariantsForProduct } = await import("./aliexpress-variants.server");
 
     // Alvo: ids informados ou todos os produtos com importação AliExpress.
     let targets: Array<{ product_id: string; source_id: string }> = [];
-    const query = supabaseAdmin
+    const query = db
       .from("product_imports")
       .select("product_id, source_id, created_at")
       .in("source", ALI_SOURCES)
@@ -92,7 +92,7 @@ export const resyncAliexpressVariantsBulk = createServerFn({ method: "POST" })
     }
 
     if (data.only_missing_skus !== false && targets.length > 0) {
-      const { data: mapped } = await supabaseAdmin
+      const { data: mapped } = await db
         .from("product_variants")
         .select("product_id")
         .not("external_sku_id", "is", null)
@@ -115,7 +115,7 @@ export const resyncAliexpressVariantsBulk = createServerFn({ method: "POST" })
 
     for (const t of targets) {
       try {
-        const r = await syncVariantsForProduct(supabaseAdmin, t.product_id, t.source_id);
+        const r = await syncVariantsForProduct(db, t.product_id, t.source_id);
         created += r.created;
         updated += r.updated;
         unavailable += r.unavailable;

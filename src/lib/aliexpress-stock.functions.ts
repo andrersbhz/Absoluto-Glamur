@@ -28,7 +28,7 @@ function num(v: unknown): number {
  * Faz uma chamada à API AliExpress DS para obter estoque + preço/custo atual
  * do produto (em BRL, moeda alvo BR). Retorna também mapa SKU→estoque.
  */
-async function fetchAliexpressLive(productId: string): Promise<{
+async function fetchAliexpressLive(productId: string, credentialClient?: any): Promise<{
   total: number;
   bySku: Record<string, number>;
   costBrlCents: number | null;
@@ -39,7 +39,7 @@ async function fetchAliexpressLive(productId: string): Promise<{
     ship_to_country: "BR",
     target_currency: "BRL",
     target_language: "PT",
-  });
+  }, credentialClient);
   const root =
     (json as any).aliexpress_ds_product_get_response ??
     (json as any).aliexpress_ds_productdetail_get_response ??
@@ -110,9 +110,9 @@ export const syncAliexpressStock = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     await assertCatalog(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const db = context.supabase;
 
-    const { data: imp } = await supabaseAdmin
+    const { data: imp } = await db
       .from("product_imports")
       .select("source_id, source")
       .eq("product_id", data.product_id)
@@ -133,9 +133,9 @@ export const syncAliexpressStock = createServerFn({ method: "POST" })
       };
     }
 
-    const { total, bySku, costBrlCents } = await fetchAliexpressLive(imp.source_id);
+    const { total, bySku, costBrlCents } = await fetchAliexpressLive(imp.source_id, db);
 
-    const { data: variants } = await supabaseAdmin
+    const { data: variants } = await db
       .from("product_variants")
       .select("id, sku, is_default")
       .eq("product_id", data.product_id);
@@ -151,14 +151,14 @@ export const syncAliexpressStock = createServerFn({ method: "POST" })
     }
 
     if (rows.length > 0) {
-      await supabaseAdmin
+      await db
         .from("product_inventory")
         .upsert(rows, { onConflict: "variant_id" });
     }
 
     // Registra custo (BRL) em pricing_calculations para exibir no admin.
     if (costBrlCents && costBrlCents > 0) {
-      await supabaseAdmin.from("pricing_calculations").insert({
+      await db.from("pricing_calculations").insert({
         product_id: data.product_id,
         cost_cents: costBrlCents,
         suggested_price_cents: costBrlCents,
@@ -170,7 +170,7 @@ export const syncAliexpressStock = createServerFn({ method: "POST" })
     }
 
     // Marca a última sincronização no import.
-    await supabaseAdmin
+    await db
       .from("product_imports")
       .update({
         raw_data: {
@@ -204,12 +204,16 @@ export const syncAllAliexpressStock = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     await assertCatalog(context);
-    return await runBulkSync(data.limit);
+    return await runBulkSync(data.limit, context.supabase);
   });
 
-export async function runBulkSync(limit: number) {
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { data: imports } = await supabaseAdmin
+export async function runBulkSync(limit: number, client?: any) {
+  let db = client;
+  if (!db) {
+    const { db } = await import("@/integrations/supabase/client.server");
+    db = db;
+  }
+  const { data: imports } = await db
     .from("product_imports")
     .select("product_id, source_id")
     .in("source", ["aliexpress", "aliexpress_api"])
@@ -235,8 +239,8 @@ export async function runBulkSync(limit: number) {
     while (cursor < list.length) {
       const row = list[cursor++];
       try {
-        const { total, bySku, costBrlCents } = await fetchAliexpressLive(row.source_id!);
-        const { data: variants } = await supabaseAdmin
+        const { total, bySku, costBrlCents } = await fetchAliexpressLive(row.source_id!, db);
+        const { data: variants } = await db
           .from("product_variants")
           .select("id, sku, is_default")
           .eq("product_id", row.product_id!);
@@ -247,12 +251,12 @@ export async function runBulkSync(limit: number) {
             const stock = matched != null ? matched : single || v.is_default ? total : 0;
             return { variant_id: v.id, stock: Math.max(0, stock) };
           });
-          await supabaseAdmin
+          await db
             .from("product_inventory")
             .upsert(rows, { onConflict: "variant_id" });
         }
         if (costBrlCents && costBrlCents > 0) {
-          await supabaseAdmin.from("pricing_calculations").insert({
+          await db.from("pricing_calculations").insert({
             product_id: row.product_id!,
             cost_cents: costBrlCents,
             suggested_price_cents: costBrlCents,

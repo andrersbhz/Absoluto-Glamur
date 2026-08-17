@@ -15,8 +15,8 @@ export const createAliExpressAuthorizationUrl = createServerFn({ method: "POST" 
     });
     if (!isAdmin) throw new Error("Acesso restrito a administradores");
 
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: integration } = await supabaseAdmin
+    const db = context.supabase;
+    const { data: integration } = await db
       .from("integrations")
       .select("api_key, webhook_token, config")
       .eq("provider", "aliexpress")

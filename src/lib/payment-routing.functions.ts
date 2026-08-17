@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { supabase } from "@/integrations/supabase/client";
 
 export type PaymentMethodKey = "pix" | "credit_card" | "boleto" | "nubank_redirect";
 
@@ -29,8 +30,7 @@ function isSupportedPaymentRoute(method: PaymentMethodKey, provider: string) {
  */
 export const listCheckoutMethods = createServerFn({ method: "GET" }).handler(
   async (): Promise<CheckoutMethodDTO[]> => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await supabase
       .from("payment_method_routing")
       .select("method, provider, enabled, display_label, sort_order")
       .eq("enabled", true)
@@ -56,8 +56,7 @@ export const listAdminRouting = createServerFn({ method: "GET" })
       _user_id: context.userId,
     });
     if (!adm) throw new Error("Acesso restrito a administradores");
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await supabase
       .from("payment_method_routing")
       .select("method, provider, enabled, display_label, sort_order")
       .order("sort_order");
@@ -88,11 +87,11 @@ export const updateRouting = createServerFn({ method: "POST" })
       _user_id: context.userId,
     });
     if (!adm) throw new Error("Acesso restrito a administradores");
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const db = context.supabase;
 
     let provider = data.provider;
     if (!provider && data.enabled === true) {
-      const { data: current, error: currentError } = await supabaseAdmin
+      const { data: current, error: currentError } = await db
         .from("payment_method_routing")
         .select("provider")
         .eq("method", data.method)
@@ -114,7 +113,7 @@ export const updateRouting = createServerFn({ method: "POST" })
     if (data.enabled !== undefined) patch.enabled = data.enabled;
     if (data.display_label !== undefined) patch.display_label = data.display_label;
     if (data.sort_order !== undefined) patch.sort_order = data.sort_order;
-    const { error } = await supabaseAdmin
+    const { error } = await db
       .from("payment_method_routing")
       .update(patch)
       .eq("method", data.method);

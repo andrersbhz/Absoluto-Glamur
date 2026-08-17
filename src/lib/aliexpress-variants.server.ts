@@ -163,7 +163,7 @@ export async function syncVariantsForProduct(
     ship_to_country: "BR",
     target_currency: "BRL",
     target_language: "PT",
-  });
+  }, admin);
   const skus = parseSkus(json);
   if (skus.length === 0) {
     return {
