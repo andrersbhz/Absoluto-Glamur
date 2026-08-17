@@ -1,0 +1,29 @@
+name: Apply Final Admin Session Patch
+
+on:
+  push:
+    branches:
+      - fix/admin-stability-integrations
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/admin-stability-integrations
+          fetch-depth: 0
+      - name: Patch authenticated admin consumers
+        run: python scripts/temp-final-admin-session-patch.py
+      - name: Commit functional changes
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/lib/ai-product-optimize.functions.ts src/lib/blog-admin.functions.ts src/lib/blog-meta.functions.ts src/lib/customer-push.functions.ts src/lib/push.functions.ts src/lib/admin-system.functions.ts src/lib/integrations.functions.ts
+          git commit -m "fix(admin): remove remaining unnecessary service-role dependencies" || exit 0
+          git push origin HEAD:fix/admin-stability-integrations
