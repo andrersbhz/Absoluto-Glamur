@@ -298,6 +298,109 @@ export const testIntegration = createServerFn({ method: "POST" })
       }
     }
 
+    if (data.provider === "stripe") {
+      const secret = String(row.api_key ?? "").trim();
+      if (!secret) throw new Error("Preencha a Secret Key da Stripe antes de testar.");
+      try {
+        const basic = Buffer.from(`${secret}:`, "utf8").toString("base64");
+        const response = await fetch("https://api.stripe.com/v1/balance", {
+          method: "GET",
+          headers: { Authorization: `Basic ${basic}`, Accept: "application/json" },
+        });
+        const json = (await response.json().catch(() => ({}))) as Record<string, unknown>;
+        if (!response.ok) {
+          const error = json.error as { message?: string } | undefined;
+          throw new Error(error?.message ?? `Stripe respondeu HTTP ${response.status}.`);
+        }
+        await writeVerification(db, "stripe", null);
+        return {
+          ok: true,
+          info: {
+            name: `Stripe · ${json.livemode === true ? "produção" : "teste"}`,
+            email: null,
+          },
+        };
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        await writeVerification(db, "stripe", message);
+        throw new Error(message);
+      }
+    }
+
+    if (data.provider === "mercadopago") {
+      const accessToken = String(row.api_key ?? "").trim();
+      if (!accessToken) throw new Error("Preencha o Access Token do Mercado Pago antes de testar.");
+      try {
+        const response = await fetch("https://api.mercadolibre.com/users/me", {
+          method: "GET",
+          headers: { Authorization: `Bearer ${accessToken}`, Accept: "application/json" },
+        });
+        const json = (await response.json().catch(() => ({}))) as Record<string, unknown>;
+        if (!response.ok) {
+          throw new Error(String(json.message ?? json.error ?? `Mercado Pago respondeu HTTP ${response.status}.`));
+        }
+        await writeVerification(db, "mercadopago", null);
+        return {
+          ok: true,
+          info: {
+            name: `Mercado Pago · ${String(json.nickname ?? json.id ?? "conta validada")}`,
+            email: typeof json.email === "string" ? json.email : null,
+          },
+        };
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        await writeVerification(db, "mercadopago", message);
+        throw new Error(message);
+      }
+    }
+
+    if (data.provider === "17track") {
+      const token = String(row.api_key ?? "").trim();
+      if (!token) throw new Error("Preencha a API Key da 17TRACK antes de testar.");
+      try {
+        const response = await fetch("https://api.17track.net/track/v2.4/getquota", {
+          method: "POST",
+          headers: { "17token": token, "Content-Type": "application/json", Accept: "application/json" },
+          body: "[]",
+        });
+        const json = (await response.json().catch(() => ({}))) as Record<string, unknown>;
+        const apiCode = typeof json.code === "number" ? json.code : null;
+        if (!response.ok || (apiCode !== null && apiCode !== 0)) {
+          throw new Error(String(json.message ?? json.msg ?? `17TRACK respondeu HTTP ${response.status}.`));
+        }
+        await writeVerification(db, "17track", null);
+        return { ok: true, info: { name: "17TRACK · credencial válida", email: null } };
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        await writeVerification(db, "17track", message);
+        throw new Error(message);
+      }
+    }
+
+    if (data.provider === "facebook" || data.provider === "instagram") {
+      try {
+        const { testMetaIntegration } = await import("./meta-social.server");
+        const info = await testMetaIntegration(data.provider, db);
+        await writeVerification(db, data.provider, null);
+        return { ok: true, info: { name: info.name, email: null } };
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        await writeVerification(db, data.provider, message);
+        throw new Error(message);
+      }
+    }
+
+    if (data.provider === "google_tag_manager") {
+      const containerId = String(row.api_key ?? "").trim().toUpperCase();
+      if (!/^GTM-[A-Z0-9]+$/.test(containerId)) {
+        const message = "ID do Google Tag Manager inválido. Use o formato GTM-XXXXXX.";
+        await writeVerification(db, "google_tag_manager", message);
+        throw new Error(message);
+      }
+      await writeVerification(db, "google_tag_manager", null);
+      return { ok: true, info: { name: `Google Tag Manager · ${containerId}`, email: null } };
+    }
+
     if (data.provider === "openai" || data.provider === "gemini") {
       const provider = data.provider as "openai" | "gemini";
       const config = row.config && typeof row.config === "object" ? (row.config as Record<string, unknown>) : {};
@@ -352,11 +455,19 @@ export const testIntegration = createServerFn({ method: "POST" })
       }
     }
 
+    const name = INTEGRATION_CATALOG.find((item) => item.provider === data.provider)?.display_name ?? data.provider;
+    const message = `Teste automático para "${name}" ainda não está implementado. A integração foi mantida disponível e as credenciais continuam salvas; valide pelo fluxo oficial do provedor.`;
+    await db
+      .from("integrations")
+      .update({
+        last_verified_at: new Date().toISOString(),
+        last_status: "manual",
+        last_error: null,
+      })
+      .eq("provider", data.provider);
     return {
-      ok: true,
-      info: {
-        name: INTEGRATION_CATALOG.find((item) => item.provider === data.provider)?.display_name ?? data.provider,
-        message: `Teste automático para "${data.provider}" ainda não está disponível. As credenciais permanecem salvas e a integração pode ser validada pelo fluxo do próprio provedor.`,
-      },
+      ok: false,
+      unsupported: true as const,
+      info: { name, message },
     };
   });
