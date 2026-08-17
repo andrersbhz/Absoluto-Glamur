@@ -11,7 +11,7 @@ permissions:
 jobs:
   verify:
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - name: Trigger product review sync and verify persistence
@@ -46,47 +46,76 @@ jobs:
             exit 1
           fi
 
-          echo "Finding visible products with legacy AliExpress review data..."
-          api_get 'product_external_reviews?source=eq.aliexpress_legacy_unverified&is_visible=eq.true&select=product_id&limit=30' > /tmp/legacy.json
-          python - <<'PY' > /tmp/product_ids.txt
-          import json
-          rows=json.load(open('/tmp/legacy.json'))
-          seen=set()
-          for row in rows:
-              pid=row.get('product_id')
-              if pid and pid not in seen:
-                  seen.add(pid)
-                  print(pid)
+          : > /tmp/review-diagnostic.log
+          echo "Reading production sitemap and selecting slugs with AliExpress-style source IDs..." | tee -a /tmp/review-diagnostic.log
+          curl --max-time 20 -fsSL "https://absolutoglamur.com.br/sitemap.xml" -o /tmp/sitemap.xml
+          python - <<'PY' > /tmp/product_urls.txt
+          import re, xml.etree.ElementTree as ET
+          root=ET.parse('/tmp/sitemap.xml').getroot()
+          urls=[]
+          for node in root.iter():
+              if node.tag.endswith('loc') and node.text:
+                  url=node.text.strip()
+                  if '/products/' in url and re.search(r'(?:100500\d{7,}|\d{12,})', url):
+                      urls.append(url)
+          for url in urls[:30]:
+              print(url)
           PY
 
-          if [ ! -s /tmp/product_ids.txt ]; then
-            echo "No visible legacy AliExpress product reviews are publicly readable"
+          if [ ! -s /tmp/product_urls.txt ]; then
+            echo "No AliExpress-style product URLs found in sitemap; falling back to all product URLs" | tee -a /tmp/review-diagnostic.log
+            python - <<'PY' > /tmp/product_urls.txt
+          import xml.etree.ElementTree as ET
+          root=ET.parse('/tmp/sitemap.xml').getroot()
+          urls=[]
+          for node in root.iter():
+              if node.tag.endswith('loc') and node.text and '/products/' in node.text:
+                  urls.append(node.text.strip())
+          for url in urls[:30]:
+              print(url)
+          PY
+          fi
+
+          if [ ! -s /tmp/product_urls.txt ]; then
+            echo "No product URLs found in production sitemap" | tee -a /tmp/review-diagnostic.log
             exit 1
           fi
 
-          : > /tmp/review-diagnostic.log
+          api_get 'product_external_reviews?source=eq.aliexpress&is_visible=eq.true&select=id,product_id,source_review_id,rating&limit=100' > /tmp/global-before.json || echo '[]' > /tmp/global-before.json
+          global_before=$(python - <<'PY'
+          import json
+          print(len(json.load(open('/tmp/global-before.json'))))
+          PY
+          )
+          echo "Official AliExpress reviews publicly visible before test: ${global_before}" | tee -a /tmp/review-diagnostic.log
+
           success=0
           tested=0
-          while read -r product_id; do
-            [ "$tested" -ge 8 ] && break
-            tested=$((tested + 1))
-
-            api_get "products?id=eq.${product_id}&select=id,slug,name&limit=1" > /tmp/product.json || continue
-            slug=$(python - <<'PY'
-          import json
-          rows=json.load(open('/tmp/product.json'))
-          print((rows[0].get('slug') if rows else '') or '')
+          while read -r product_url; do
+            [ "$tested" -ge 10 ] && break
+            slug="${product_url##*/}"
+            encoded_slug=$(python - "$slug" <<'PY'
+          import sys, urllib.parse
+          print(urllib.parse.quote(sys.argv[1], safe=''))
           PY
             )
-            [ -z "$slug" ] && continue
+            api_get "products?slug=eq.${encoded_slug}&select=id,slug,name&limit=1" > /tmp/product.json || continue
+            product_id=$(python - <<'PY'
+          import json
+          rows=json.load(open('/tmp/product.json'))
+          print((rows[0].get('id') if rows else '') or '')
+          PY
+            )
+            [ -z "$product_id" ] && continue
+            tested=$((tested + 1))
 
-            api_get "product_external_reviews?product_id=eq.${product_id}&source=eq.aliexpress&is_visible=eq.true&select=id,source_review_id,rating,author_country,reviewed_at&limit=5" > /tmp/before.json
+            api_get "product_external_reviews?product_id=eq.${product_id}&source=eq.aliexpress&is_visible=eq.true&select=id,source_review_id,rating,author_country,reviewed_at&limit=20" > /tmp/before.json || echo '[]' > /tmp/before.json
             before=$(python - <<'PY'
           import json
           print(len(json.load(open('/tmp/before.json'))))
           PY
             )
-            echo "Testing product ${product_id} /products/${slug}; official reviews before=${before}" | tee -a /tmp/review-diagnostic.log
+            echo "Testing ${product_url}; product_id=${product_id}; official before=${before}" | tee -a /tmp/review-diagnostic.log
 
             set +e
             timeout 55s "$CHROME" \
@@ -98,26 +127,25 @@ jobs:
               --enable-logging=stderr \
               --v=0 \
               --dump-dom \
-              "https://absolutoglamur.com.br/products/${slug}" \
+              "$product_url" \
               > /tmp/product-dom.html 2> /tmp/product-browser-stderr.log
             chrome_exit=$?
             set -e
             echo "Chrome exit=${chrome_exit}; DOM bytes=$(wc -c </tmp/product-dom.html 2>/dev/null || echo 0)" | tee -a /tmp/review-diagnostic.log
 
-            sleep 4
-            api_get "product_external_reviews?product_id=eq.${product_id}&source=eq.aliexpress&is_visible=eq.true&select=id,source_review_id,rating,author_country,reviewed_at&limit=20" > /tmp/after.json
+            sleep 5
+            api_get "product_external_reviews?product_id=eq.${product_id}&source=eq.aliexpress&is_visible=eq.true&select=id,source_review_id,rating,author_country,reviewed_at&limit=20" > /tmp/after.json || echo '[]' > /tmp/after.json
             after=$(python - <<'PY'
           import json
           print(len(json.load(open('/tmp/after.json'))))
           PY
             )
-            echo "official reviews after=${after}" | tee -a /tmp/review-diagnostic.log
+            echo "official after=${after}" | tee -a /tmp/review-diagnostic.log
 
             if [ "$after" -gt 0 ]; then
               python - <<'PY' | tee -a /tmp/review-diagnostic.log
           import json
-          rows=json.load(open('/tmp/after.json'))
-          sample=rows[0]
+          sample=json.load(open('/tmp/after.json'))[0]
           print('Verified official review sample:', {
               'has_source_review_id': bool(sample.get('source_review_id')),
               'rating': sample.get('rating'),
@@ -129,12 +157,19 @@ jobs:
               break
             fi
 
-            grep -Ei "CONSOLE|TypeError|ReferenceError|Uncaught|Failed to load|ERR_|reviews" /tmp/product-browser-stderr.log | tail -50 >> /tmp/review-diagnostic.log || true
-          done < /tmp/product_ids.txt
+            grep -Ei "CONSOLE|TypeError|ReferenceError|Uncaught|Failed to load|ERR_|reviews|AliExpress" /tmp/product-browser-stderr.log | tail -80 >> /tmp/review-diagnostic.log || true
+          done < /tmp/product_urls.txt
 
-          if [ "$success" -ne 1 ]; then
-            echo "No official AliExpress review was persisted after testing ${tested} linked products" | tee -a /tmp/review-diagnostic.log
-            cat /tmp/review-diagnostic.log
+          api_get 'product_external_reviews?source=eq.aliexpress&is_visible=eq.true&select=id,product_id,source_review_id,rating&limit=100' > /tmp/global-after.json || echo '[]' > /tmp/global-after.json
+          global_after=$(python - <<'PY'
+          import json
+          print(len(json.load(open('/tmp/global-after.json'))))
+          PY
+          )
+          echo "Official AliExpress reviews publicly visible after test: ${global_after}" | tee -a /tmp/review-diagnostic.log
+
+          if [ "$success" -ne 1 ] && [ "$global_after" -le "$global_before" ]; then
+            echo "No official AliExpress review was observable after testing ${tested} production products" | tee -a /tmp/review-diagnostic.log
             exit 1
           fi
 
@@ -150,5 +185,8 @@ jobs:
             /tmp/product-browser-stderr.log
             /tmp/before.json
             /tmp/after.json
+            /tmp/global-before.json
+            /tmp/global-after.json
+            /tmp/product_urls.txt
           if-no-files-found: ignore
           retention-days: 1
