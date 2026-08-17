@@ -2,15 +2,17 @@ import { createFileRoute, redirect, Link } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
-import { Copy, ExternalLink, Plug, PlugZap, RefreshCw, Route as RouteIcon, Save, TestTube } from "lucide-react";
+import { Copy, ExternalLink, Eye, EyeOff, Plug, PlugZap, RefreshCw, Route as RouteIcon, Save, TestTube } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { Badge } from "@/components/ui/badge";
 import {
   listIntegrations,
+  revealIntegrationCredential,
   saveIntegration,
   testIntegration,
+  type IntegrationCredentialField,
   type IntegrationDTO,
   type SaveIntegrationInput,
 } from "@/lib/integrations.functions";
@@ -40,6 +42,7 @@ const CATEGORY_LABELS: Record<string, string> = {
   shipping: "Envio",
   marketing: "Marketing",
   ai: "IA",
+  import: "Importação / fornecedores",
   storage: "Armazenamento",
   other: "Outros",
 };
@@ -239,8 +242,7 @@ function IntegrationCard({ integration }: { integration: Integration }) {
   const isNuPay = integration.provider === "nupay";
   const isAliexpress = integration.provider === "aliexpress";
   const isGtm = integration.provider === "google_tag_manager";
-  const currentMerchantKey =
-    (integration.config as { merchant_key?: string } | null)?.merchant_key ?? "";
+  const hasMerchantKey = integration.has_merchant_key;
 
   const authorizeAliExpress = (
     <button
@@ -298,9 +300,12 @@ function IntegrationCard({ integration }: { integration: Integration }) {
       <div className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
         <div>
           <p className="text-xs text-muted-foreground">Chave da API</p>
-          <p className="font-mono text-xs">
-            {integration.api_key_masked ?? <span className="text-muted-foreground">— vazia —</span>}
-          </p>
+          <StoredCredential
+            provider={integration.provider}
+            field="api_key"
+            masked={integration.api_key_masked}
+            emptyLabel="— vazia —"
+          />
         </div>
         {webhookUrl && (
           <div>
@@ -454,6 +459,14 @@ function IntegrationCard({ integration }: { integration: Integration }) {
               }
               className="w-full rounded-lg border border-border bg-background px-3 py-2 font-mono text-sm"
             />
+            {!isGtm && integration.has_api_key && (
+              <StoredCredential
+                provider={integration.provider}
+                field="api_key"
+                masked={integration.api_key_masked}
+                prefix="Atual: "
+              />
+            )}
             {isGtm && (
               <span className="mt-1 block text-[11px] text-muted-foreground">
                 Ative a integração após salvar. O snippet do GTM é carregado automaticamente em todas as páginas públicas da loja.
@@ -463,7 +476,7 @@ function IntegrationCard({ integration }: { integration: Integration }) {
           {isNuPay && (
             <label className="block text-sm">
               <span className="mb-1 block text-xs text-muted-foreground">
-                X-Merchant-Key {currentMerchantKey && "(preenchida — deixe vazio para manter)"}
+                X-Merchant-Key {hasMerchantKey && "(preenchida — deixe vazio para manter)"}
               </span>
               <input
                 type="password"
@@ -472,6 +485,14 @@ function IntegrationCard({ integration }: { integration: Integration }) {
                 placeholder="chave pública do merchant NuPay"
                 className="w-full rounded-lg border border-border bg-background px-3 py-2 font-mono text-sm"
               />
+              {integration.has_merchant_key && (
+                <StoredCredential
+                  provider={integration.provider}
+                  field="merchant_key"
+                  masked={integration.merchant_key_masked}
+                  prefix="Atual: "
+                />
+              )}
               <span className="mt-1 block text-[11px] text-muted-foreground">
                 Encontre em NuPay Business → Configurações → Credenciais. Envie a Merchant Key aqui e o Merchant Token no campo acima.
               </span>
@@ -494,6 +515,14 @@ function IntegrationCard({ integration }: { integration: Integration }) {
                 }
                 className="w-full rounded-lg border border-border bg-background px-3 py-2 font-mono text-sm"
               />
+              {integration.has_webhook_token && (
+                <StoredCredential
+                  provider={integration.provider}
+                  field="webhook_token"
+                  masked={integration.webhook_token_masked}
+                  prefix="Atual: "
+                />
+              )}
               <span className="mt-1 block text-[11px] text-muted-foreground">
                 {isAliexpress
                   ? "Cole aqui o App Secret gerado no console AliExpress Open (mesmo app onde a Callback URL foi cadastrada)."
@@ -674,6 +703,69 @@ function RoutingPanel() {
         </table>
       </div>
     </section>
+  );
+}
+
+
+function StoredCredential({
+  provider,
+  field,
+  masked,
+  prefix = "",
+  emptyLabel = "Não configurada",
+}: {
+  provider: string;
+  field: IntegrationCredentialField;
+  masked: string | null;
+  prefix?: string;
+  emptyLabel?: string;
+}) {
+  const reveal = useServerFn(revealIntegrationCredential);
+  const [visible, setVisible] = useState(false);
+  const [value, setValue] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  if (!masked && !value) {
+    return <span className="text-xs text-muted-foreground">{emptyLabel}</span>;
+  }
+
+  const toggle = async () => {
+    if (visible) {
+      setVisible(false);
+      return;
+    }
+    if (value == null) {
+      setLoading(true);
+      try {
+        const result = await reveal({ data: { provider, field } });
+        setValue(result.value ?? null);
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : "Não foi possível revelar a credencial");
+        return;
+      } finally {
+        setLoading(false);
+      }
+    }
+    setVisible(true);
+  };
+
+  return (
+    <span className="mt-1 inline-flex max-w-full items-center gap-1.5 rounded-md border border-border bg-background px-2 py-1 font-mono text-[11px]">
+      <span className="truncate">
+        {prefix}
+        {visible ? (value ?? "— vazia —") : (masked ?? "••••")}
+      </span>
+      <button
+        type="button"
+        onClick={toggle}
+        disabled={loading}
+        className="shrink-0 rounded p-0.5 text-muted-foreground hover:bg-secondary hover:text-foreground disabled:opacity-50"
+        aria-label={visible ? "Ocultar credencial" : "Mostrar credencial"}
+        title={visible ? "Ocultar credencial" : "Mostrar credencial"}
+      >
+        {visible ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+      </button>
+    </span>
   );
 }
 
