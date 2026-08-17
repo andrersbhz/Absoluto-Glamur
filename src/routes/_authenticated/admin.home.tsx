@@ -222,6 +222,14 @@ function HomeBuilderPage() {
   }
 
   async function addBlock(kind: AddableBlock) {
+    if (kind === "category_grid") {
+      const existing = blockOrder.find((block) => block.kind === "category_grid");
+      if (existing) {
+        selectBlock(existing);
+        toast.info("O bloco de categorias já existe. Ele foi selecionado para edição.");
+        return;
+      }
+    }
     setCreatingBlock(true);
     try {
       const position = (blockOrder.at(-1)?.position ?? 0) + 10;

@@ -124,6 +124,7 @@ function Index() {
   const sliderActive = heroSlider.enabled !== false && heroSlides.length > 0;
 
   const hasCategoryGridBlock = blocks.some((block) => block.kind === "category_grid");
+  const categoryGridBlockId = blocks.find((block) => block.kind === "category_grid")?.id ?? null;
   const hasCategoryProductsBlock = blocks.some((block) => block.kind === "category_products");
 
   const primaryHref = hero.cta_primary_href ?? "/products";
@@ -234,6 +235,9 @@ function Index() {
 
       {blocks.map((block) => {
         if (block.kind === "category_grid") {
+          // Several legacy category_grid rows can exist from the old Builder. Render only
+          // the first one so the storefront always has one canonical inline category strip.
+          if (block.id !== categoryGridBlockId) return null;
           return <CategoryGridBlock key={block.id} block={block} categories={categories} />;
         }
         if (block.kind === "category_products") {
