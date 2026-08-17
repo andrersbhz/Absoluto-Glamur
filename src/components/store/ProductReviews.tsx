@@ -141,6 +141,8 @@ export function ProductReviews({ productId }: Props) {
       qc.invalidateQueries({ queryKey: ["product-review-summary", productId] }),
       qc.invalidateQueries({ queryKey: ["admin-external-reviews", productId] }),
       qc.invalidateQueries({ queryKey: ["product-external-reviews", productId] }),
+      qc.invalidateQueries({ queryKey: ["product"] }),
+      qc.invalidateQueries({ queryKey: ["products"] }),
     ]);
   }
 
@@ -151,7 +153,7 @@ export function ProductReviews({ productId }: Props) {
     // do feed continua lazy; o cache por produto impede chamadas repetidas à API.
     autoSync({ data: { product_id: productId } })
       .then(async (result) => {
-        if ((result?.upserted ?? 0) > 0 || (result?.translated ?? 0) > 0) await refetchReviews();
+        if (result?.aggregateUpdated || (result?.upserted ?? 0) > 0 || (result?.translated ?? 0) > 0) await refetchReviews();
       })
       .catch(() => {
         // A sincronização pública é silenciosa; o botão administrativo exibe falhas detalhadas.
@@ -178,13 +180,17 @@ export function ProductReviews({ productId }: Props) {
     try {
       const result = await forceSync({ data: { product_id: productId } });
       await refetchReviews();
-      if ((result.upserted ?? 0) > 0) {
-        const origem = result.source === "official_api" ? "API oficial" : "fonte compatível";
-        toast.success(`${result.upserted} avaliações sincronizadas do AliExpress (${origem}).`);
+      if (result.aggregateUpdated) {
+        const rating = result.remoteAverage != null ? `${result.remoteAverage.toFixed(1)}/5` : null;
+        const total = result.remoteTotal != null ? `${result.remoteTotal} avaliações` : null;
+        const details = [rating, total].filter(Boolean).join(" · ");
+        toast.success(`Dados oficiais do AliExpress atualizados${details ? `: ${details}` : "."}`);
+      } else if ((result.upserted ?? 0) > 0) {
+        toast.success(`${result.upserted} avaliações sincronizadas do AliExpress.`);
       } else if (result.error) {
         toast.error(result.error);
       } else {
-        toast.info("Nenhuma avaliação nova encontrada no AliExpress.");
+        toast.info("Os dados de avaliação do AliExpress já estão atualizados.");
       }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Erro ao sincronizar avaliações.");
@@ -202,14 +208,16 @@ export function ProductReviews({ productId }: Props) {
         <div>
           <div className="flex flex-wrap items-center gap-2">
             <h2 className="font-display text-2xl text-foreground sm:text-3xl">Avaliações de clientes</h2>
-            {summary && summary.total > 0 && (
+            {summary && (summary.total > 0 || summary.officialTotal > 0) && (
               <span className="rounded-full bg-[#ff4747]/10 px-2.5 py-1 text-[11px] font-semibold text-[#d93636]">
                 AliExpress
               </span>
             )}
           </div>
           <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-            Avaliações sincronizadas do produto original e traduzidas automaticamente para PT-BR.
+            {summary?.officialTotal > 0
+              ? "Nota e quantidade sincronizadas do produto original no AliExpress. Comentários disponíveis são exibidos abaixo."
+              : "Avaliações disponíveis do produto original e comentários cadastrados na loja."}
           </p>
         </div>
 
@@ -253,7 +261,7 @@ export function ProductReviews({ productId }: Props) {
         </div>
       ) : (
         <>
-          {!showAll && summary && summary.total > 0 && (
+          {!showAll && summary && (summary.total > 0 || summary.officialTotal > 0) && (
             <ReviewOverview summary={summary} filter={filter} onFilter={setFilter} />
           )}
 
@@ -283,10 +291,16 @@ export function ProductReviews({ productId }: Props) {
             <div className="rounded-2xl border border-dashed border-border px-5 py-9 text-center">
               <Star className="mx-auto h-6 w-6 text-muted-foreground/50" />
               <p className="mt-2 text-sm font-medium text-foreground">
-                {filter === "all" ? "Ainda não há avaliações sincronizadas." : "Nenhuma avaliação neste filtro."}
+                {filter === "all"
+                  ? summary?.officialTotal > 0
+                    ? "A nota geral do produto foi sincronizada com sucesso."
+                    : "Ainda não há avaliações disponíveis."
+                  : "Nenhuma avaliação neste filtro."}
               </p>
               <p className="mt-1 text-xs text-muted-foreground">
-                Assim que o AliExpress disponibilizar avaliações para este item, elas aparecem aqui automaticamente.
+                {summary?.officialTotal > 0
+                  ? "Os comentários individuais deste produto ainda não estão disponíveis para exibição."
+                  : "Quando houver comentários disponíveis, eles aparecerão aqui automaticamente."}
               </p>
             </div>
           ) : (
@@ -346,37 +360,46 @@ function ReviewOverview({
   filter: ReviewFilter;
   onFilter: (filter: ReviewFilter) => void;
 }) {
+  const hasOfficial = summary.officialTotal > 0;
+  const displayAverage = hasOfficial && summary.officialAverage > 0 ? summary.officialAverage : summary.average;
+  const displayTotal = hasOfficial ? summary.officialTotal : summary.total;
   return (
     <div className="mb-6 grid gap-6 rounded-2xl bg-secondary/25 p-5 sm:grid-cols-[180px_1fr] sm:p-6">
       <div className="flex flex-col justify-center sm:border-r sm:border-border sm:pr-6">
         <div className="flex items-end gap-1">
-          <strong className="font-display text-5xl font-medium leading-none text-foreground">{summary.average.toFixed(1)}</strong>
+          <strong className="font-display text-5xl font-medium leading-none text-foreground">{displayAverage.toFixed(1)}</strong>
           <span className="pb-1 text-sm text-muted-foreground">/ 5</span>
         </div>
-        <div className="mt-2"><StarRow rating={summary.average} size="md" /></div>
-        <p className="mt-2 text-xs text-muted-foreground">{summary.total} avaliações sincronizadas</p>
+        <div className="mt-2"><StarRow rating={displayAverage} size="md" /></div>
+        <p className="mt-2 text-xs text-muted-foreground">{hasOfficial ? `${displayTotal} avaliações no produto original` : `${displayTotal} avaliações disponíveis`}</p>
       </div>
-      <div className="space-y-2">
-        {[5, 4, 3, 2, 1].map((star) => {
-          const typedStar = star as 1 | 2 | 3 | 4 | 5;
-          const count = summary.distribution[typedStar];
-          const pct = summary.total ? Math.round((count / summary.total) * 100) : 0;
-          return (
-            <button
-              key={star}
-              type="button"
-              onClick={() => onFilter(filter === typedStar ? "all" : typedStar)}
-              className="grid w-full grid-cols-[42px_1fr_58px] items-center gap-3 text-left text-xs text-muted-foreground"
-            >
-              <span className="flex items-center gap-1">{star}<Star className="h-3 w-3 fill-champagne text-champagne" /></span>
-              <span className="h-2 overflow-hidden rounded-full bg-background">
-                <span className="block h-full rounded-full bg-champagne transition-all" style={{ width: `${pct}%` }} />
-              </span>
-              <span className="text-right">{pct}%</span>
-            </button>
-          );
-        })}
-      </div>
+      {summary.total > 0 ? (
+        <div className="space-y-2">
+          {[5, 4, 3, 2, 1].map((star) => {
+            const typedStar = star as 1 | 2 | 3 | 4 | 5;
+            const count = summary.distribution[typedStar];
+            const pct = Math.round((count / summary.total) * 100);
+            return (
+              <button
+                key={star}
+                type="button"
+                onClick={() => onFilter(filter === typedStar ? "all" : typedStar)}
+                className="grid w-full grid-cols-[42px_1fr_58px] items-center gap-3 text-left text-xs text-muted-foreground"
+              >
+                <span className="flex items-center gap-1">{star}<Star className="h-3 w-3 fill-champagne text-champagne" /></span>
+                <span className="h-2 overflow-hidden rounded-full bg-background">
+                  <span className="block h-full rounded-full bg-champagne transition-all" style={{ width: `${pct}%` }} />
+                </span>
+                <span className="text-right">{pct}%</span>
+              </button>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="flex items-center rounded-xl border border-border bg-background/60 p-4 text-xs leading-relaxed text-muted-foreground">
+          Nota média e quantidade verificadas no produto de origem. Os comentários individuais não são fornecidos pela integração disponível para este item.
+        </div>
+      )}
     </div>
   );
 }

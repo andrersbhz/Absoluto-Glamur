@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabase } from "@/integrations/supabase/client";
 import { callAliTopPublic } from "./aliexpress-top-public.server";
+import { callAli } from "./aliexpress-discovery.functions";
 import { generateWithOwnKeys } from "./ai-translate.server";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -40,6 +41,8 @@ export type ReviewSummary = {
   average: number;
   withPhotos: number;
   distribution: Record<1 | 2 | 3 | 4 | 5, number>;
+  officialTotal: number;
+  officialAverage: number;
 };
 
 type NormalizedOfficialReview = {
@@ -213,6 +216,78 @@ async function findAliSourceId(admin: any, productId: string): Promise<string | 
     .limit(1)
     .maybeSingle();
   return data?.source_id ? String(data.source_id) : null;
+}
+
+type DropshipperReviewAggregate = {
+  productId: string;
+  total: number | null;
+  average: number | null;
+};
+
+function optionalRating(value: unknown): number | null {
+  if (value == null || value === "") return null;
+  const n = Number.parseFloat(String(value).replace("%", "").replace(",", ".").trim());
+  if (!Number.isFinite(n)) return null;
+  const normalized = n > 5 && n <= 100 ? n / 20 : n;
+  return Math.round(Math.min(5, Math.max(0, normalized)) * 100) / 100;
+}
+
+function optionalCount(value: unknown): number | null {
+  if (value == null || value === "") return null;
+  const n = Number(String(value).replace(/[^\d.-]/g, ""));
+  return Number.isFinite(n) && n >= 0 ? Math.round(n) : null;
+}
+
+async function fetchDropshipperReviewAggregate(
+  sourceId: string,
+  credentialClient?: any,
+): Promise<DropshipperReviewAggregate> {
+  const productId = normalizeAliProductId(sourceId);
+  if (!productId) {
+    throw new Error(`ID do produto AliExpress inválido na importação: ${sourceId.slice(0, 120)}`);
+  }
+
+  const payload = await callAli<any>(
+    "aliexpress.ds.product.get",
+    {
+      product_id: productId,
+      ship_to_country: "BR",
+      target_currency: "BRL",
+      target_language: "PT",
+    },
+    credentialClient,
+  );
+  const root = payload?.aliexpress_ds_product_get_response ?? payload;
+  const result = root?.result?.result ?? root?.resp_result?.result ?? root?.result ?? root;
+  const base = result?.ae_item_base_info_dto ?? result?.base_info ?? {};
+  const average = optionalRating(
+    base?.avg_evaluation_rating ?? result?.avg_evaluation_rating ?? result?.evaluate_rate,
+  );
+  const total = optionalCount(
+    base?.evaluation_count ?? result?.evaluation_count ?? base?.evaluate_count ?? result?.evaluate_count,
+  );
+
+  if (average == null && total == null) {
+    throw new Error(
+      `A API Dropshipper não retornou nota nem quantidade de avaliações para o produto ${productId}.`,
+    );
+  }
+  return { productId, total, average };
+}
+
+async function persistDropshipperReviewAggregate(
+  admin: any,
+  productId: string,
+  aggregate: DropshipperReviewAggregate,
+): Promise<boolean> {
+  const patch: Record<string, number> = {};
+  if (aggregate.average != null) patch.rating_avg = aggregate.average;
+  if (aggregate.total != null) patch.rating_count = aggregate.total;
+  if (!Object.keys(patch).length) return false;
+
+  const { error } = await admin.from("products").update(patch).eq("id", productId);
+  if (error) throw new Error(`Falha ao atualizar a nota oficial do produto: ${error.message}`);
+  return true;
 }
 
 async function translateBatch(
@@ -399,6 +474,9 @@ export async function syncLiveReviewsInternal(
         skipped: true,
         source: "cache" as const,
         error: null,
+        aggregateUpdated: false,
+        remoteTotal: null,
+        remoteAverage: null,
       };
     }
   }
@@ -414,7 +492,17 @@ export async function syncLiveReviewsInternal(
       last_error: error,
       updated_at: now,
     }, { onConflict: "product_id" });
-    return { fetched: 0, upserted: 0, translated: translatedBacklog, skipped: true, source: "none" as const, error };
+    return {
+      fetched: 0,
+      upserted: 0,
+      translated: translatedBacklog,
+      skipped: true,
+      source: "none" as const,
+      error,
+      aggregateUpdated: false,
+      remoteTotal: null,
+      remoteAverage: null,
+    };
   }
 
   await admin.from("product_review_sync_state").upsert({
@@ -428,21 +516,21 @@ export async function syncLiveReviewsInternal(
   }, { onConflict: "product_id" });
 
   try {
-    const official = await fetchOfficialReviews(sourceId, credentialClient);
-    const saved = await persistOfficialReviews(admin, productId, official.reviews);
-    // Traduz em lotes pequenos depois da persistência. O restante fica na fila
-    // e é traduzido nas próximas sincronizações/acessos sem perder o original.
-    const translatedNew = await translatePendingReviews(admin, productId, 24);
+    // A aplicação internacional Drop Shipping expõe a nota média e a quantidade
+    // oficial pela API aliexpress.ds.product.get. A API TOP antiga de textos
+    // individuais não é chamada aqui: avaliações já salvas permanecem intactas.
+    const aggregate = await fetchDropshipperReviewAggregate(sourceId, credentialClient);
+    const aggregateUpdated = await persistDropshipperReviewAggregate(admin, productId, aggregate);
     const finishedAt = new Date().toISOString();
-    const status = official.reviews.length > 0 ? "ok" : "empty";
+    const status = (aggregate.total ?? 0) > 0 || (aggregate.average ?? 0) > 0 ? "ok" : "empty";
 
     await admin.from("product_review_sync_state").upsert({
       product_id: productId,
       source: "aliexpress",
-      source_id: official.productId,
+      source_id: aggregate.productId,
       status,
-      fetched_count: official.reviews.length,
-      remote_total: official.total,
+      fetched_count: 0,
+      remote_total: aggregate.total,
       last_attempt_at: now,
       last_success_at: finishedAt,
       last_error: null,
@@ -450,14 +538,15 @@ export async function syncLiveReviewsInternal(
     }, { onConflict: "product_id" });
 
     return {
-      fetched: official.reviews.length,
-      upserted: saved.upserted,
-      translated: translatedBacklog + translatedNew,
+      fetched: 0,
+      upserted: 0,
+      translated: translatedBacklog,
       skipped: false,
-      source: "official_api" as const,
-      error: official.reviews.length === 0
-        ? `A API oficial do AliExpress retornou 0 avaliações para o produto ${official.productId}.`
-        : null,
+      source: "dropshipper_aggregate" as const,
+      error: null,
+      aggregateUpdated,
+      remoteTotal: aggregate.total,
+      remoteAverage: aggregate.average,
     };
   } catch (error) {
     const message = (error instanceof Error ? error.message : String(error)).slice(0, 1200);
@@ -476,8 +565,11 @@ export async function syncLiveReviewsInternal(
       upserted: 0,
       translated: translatedBacklog,
       skipped: false,
-      source: "official_api" as const,
+      source: "dropshipper_aggregate" as const,
       error: message,
+      aggregateUpdated: false,
+      remoteTotal: null,
+      remoteAverage: null,
     };
   }
 }
@@ -542,25 +634,41 @@ export async function fetchProductReviewsPage({
 }
 
 export async function fetchProductReviewSummary(productId: string): Promise<ReviewSummary> {
-  const { data, error } = await supabase
-    .from("product_external_reviews")
-    .select("rating,images")
-    .eq("product_id", productId)
-    .eq("is_visible", true)
-    .limit(1000);
-  if (error) throw error;
+  const [reviewsResult, productResult] = await Promise.all([
+    supabase
+      .from("product_external_reviews")
+      .select("rating,images")
+      .eq("product_id", productId)
+      .eq("is_visible", true)
+      .limit(1000),
+    supabase
+      .from("products")
+      .select("rating_avg,rating_count")
+      .eq("id", productId)
+      .maybeSingle(),
+  ]);
+  if (reviewsResult.error) throw reviewsResult.error;
 
   const distribution: ReviewSummary["distribution"] = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
   let sum = 0;
   let withPhotos = 0;
-  for (const row of data ?? []) {
+  for (const row of reviewsResult.data ?? []) {
     const rating = Math.min(5, Math.max(1, Math.round(Number(row.rating) || 0))) as 1 | 2 | 3 | 4 | 5;
     distribution[rating] += 1;
     sum += Number(row.rating) || 0;
     if (Array.isArray(row.images) && row.images.length > 0) withPhotos += 1;
   }
-  const total = data?.length ?? 0;
-  return { total, average: total ? sum / total : 0, withPhotos, distribution };
+  const total = reviewsResult.data?.length ?? 0;
+  const officialTotal = Math.max(0, Number(productResult.data?.rating_count) || 0);
+  const officialAverage = Math.min(5, Math.max(0, Number(productResult.data?.rating_avg) || 0));
+  return {
+    total,
+    average: total ? sum / total : 0,
+    withPhotos,
+    distribution,
+    officialTotal,
+    officialAverage,
+  };
 }
 
 export { REVIEW_PAGE_SIZE };
