@@ -1,0 +1,113 @@
+name: Auth Regression
+
+on:
+  push:
+    branches: [main, "agent/**"]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  auth-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: bun install --frozen-lockfile
+
+      - name: Build
+        run: bun run build
+
+      - name: Auth routes smoke test
+        shell: bash
+        run: |
+          set -euo pipefail
+          bun run dev -- --host 127.0.0.1 --port 4173 > /tmp/auth-dev.log 2>&1 &
+          SERVER_PID=$!
+          trap 'kill "$SERVER_PID" 2>/dev/null || true' EXIT
+
+          healthy=0
+          for i in $(seq 1 60); do
+            if curl --max-time 3 -fsS http://127.0.0.1:4173/auth -o /tmp/auth.html 2>/dev/null; then
+              healthy=1
+              break
+            fi
+            if ! kill -0 "$SERVER_PID" 2>/dev/null; then
+              echo "Dev server exited before auth routes became available"
+              cat /tmp/auth-dev.log || true
+              exit 1
+            fi
+            sleep 1
+          done
+
+          if [ "$healthy" -ne 1 ]; then
+            echo "Auth dev server did not become healthy"
+            cat /tmp/auth-dev.log || true
+            exit 1
+          fi
+
+          grep -q "Acesse sua conta" /tmp/auth.html
+
+          curl --max-time 10 -fsS http://127.0.0.1:4173/auth/forgot -o /tmp/auth-forgot.html
+          grep -q "Recuperar senha" /tmp/auth-forgot.html
+
+          curl --max-time 10 -fsS http://127.0.0.1:4173/auth/reset-password -o /tmp/auth-reset.html
+          grep -q "Nova senha" /tmp/auth-reset.html
+
+          ! grep -q "Algo não carregou" /tmp/auth.html
+          ! grep -q "Algo não carregou" /tmp/auth-forgot.html
+          ! grep -q "Algo não carregou" /tmp/auth-reset.html
+
+      - name: Production auth routes check
+        if: github.ref == 'refs/heads/main'
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          check_route() {
+            local path="$1"
+            local expected="$2"
+            local output="$3"
+            local healthy=0
+
+            for i in $(seq 1 24); do
+              code=$(curl --max-time 12 -sS -L -o "$output" -w '%{http_code}' "https://absolutoglamur.com.br${path}" || true)
+              echo "${path} attempt ${i}: HTTP ${code}"
+              if [ "$code" = "200" ] && grep -q "$expected" "$output" && ! grep -q "Algo não carregou" "$output"; then
+                healthy=1
+                break
+              fi
+              sleep 10
+            done
+
+            if [ "$healthy" -ne 1 ]; then
+              echo "Production auth route failed: ${path}"
+              head -c 1600 "$output" 2>/dev/null || true
+              exit 1
+            fi
+          }
+
+          check_route "/auth" "Acesse sua conta" /tmp/prod-auth.html
+          check_route "/auth/forgot" "Recuperar senha" /tmp/prod-auth-forgot.html
+          check_route "/auth/reset-password" "Nova senha" /tmp/prod-auth-reset.html
+
+      - name: Upload auth diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: auth-regression-diagnostics
+          path: |
+            /tmp/auth-dev.log
+            /tmp/auth.html
+            /tmp/auth-forgot.html
+            /tmp/auth-reset.html
+            /tmp/prod-auth.html
+            /tmp/prod-auth-forgot.html
+            /tmp/prod-auth-reset.html
+          if-no-files-found: ignore
+          retention-days: 2
