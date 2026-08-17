@@ -1,5 +1,3 @@
-import { supabaseAdmin } from "@/integrations/supabase/client.server";
-
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 // Tradução usando as chaves próprias do lojista cadastradas em Admin → Integrações.
@@ -9,7 +7,7 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 export type AiProvider = "openai" | "gemini";
 
-type AiCredential = {
+export type AiCredential = {
   provider: AiProvider;
   apiKey: string;
   model: string;
@@ -23,6 +21,14 @@ export const DEFAULT_AI_MODEL: Record<AiProvider, string> = {
 /** Ordem padrão: Gemini gratuito primeiro; OpenAI somente como fallback. */
 const DEFAULT_ORDER: AiProvider[] = ["gemini", "openai"];
 
+type DbLike = any;
+
+async function resolveDb(db?: DbLike): Promise<DbLike | null> {
+  if (db) return db;
+  const { getSupabaseAdminOrNull } = await import("@/integrations/supabase/client.server");
+  return getSupabaseAdminOrNull();
+}
+
 function readCredential(row: any): AiCredential | null {
   if (!row) return null;
   const provider = row.provider as AiProvider;
@@ -35,21 +41,30 @@ function readCredential(row: any): AiCredential | null {
   return { provider, apiKey, model };
 }
 
-/** Carrega a credencial de um provedor específico (sem expor a chave ao cliente). */
-export async function loadAiCredential(provider: AiProvider): Promise<AiCredential | null> {
-  const { data } = await supabaseAdmin
+/** Carrega a credencial de um provedor específico sem expor a chave ao cliente. */
+export async function loadAiCredential(
+  provider: AiProvider,
+  db?: DbLike,
+): Promise<AiCredential | null> {
+  const client = await resolveDb(db);
+  if (!client) return null;
+  const { data, error } = await client
     .from("integrations")
     .select("provider, api_key, enabled, config")
     .eq("provider", provider)
     .maybeSingle();
+  if (error) return null;
   return readCredential(data);
 }
 
-async function loadAiCredentials(): Promise<AiCredential[]> {
-  const { data } = await supabaseAdmin
+async function loadAiCredentials(db?: DbLike): Promise<AiCredential[]> {
+  const client = await resolveDb(db);
+  if (!client) return [];
+  const { data, error } = await client
     .from("integrations")
     .select("provider, api_key, enabled, config")
     .eq("category", "ai");
+  if (error) return [];
   const rows = (data ?? []) as any[];
 
   const order = [...DEFAULT_ORDER].sort((a, b) => {
@@ -104,7 +119,6 @@ export async function callGemini(
   system: string,
   prompt: string,
 ): Promise<string> {
-  // Se o modelo configurado não existir/estiver indisponível, tenta outro modelo gratuito atual.
   const models = Array.from(
     new Set([cred.model, "gemini-3.5-flash-lite", "gemini-3.1-flash-lite"]),
   );
@@ -114,9 +128,7 @@ export async function callGemini(
       return await callGeminiModel(cred.apiKey, model, system, prompt);
     } catch (e) {
       lastError = e instanceof Error ? e : new Error(String(e));
-      // Chave inválida não será resolvida trocando de modelo.
       if (/API_KEY_INVALID|API key not valid/i.test(lastError.message)) throw lastError;
-      // Limite/quota também não deve provocar várias chamadas inúteis.
       if (/RESOURCE_EXHAUSTED|quota|rate limit/i.test(lastError.message)) throw lastError;
     }
   }
@@ -158,9 +170,15 @@ export async function callAiProvider(
     : callOpenAi(cred, system, prompt);
 }
 
-async function recordProviderStatus(provider: AiProvider, error: string | null) {
+async function recordProviderStatus(
+  provider: AiProvider,
+  error: string | null,
+  db?: DbLike,
+) {
   try {
-    await supabaseAdmin
+    const client = await resolveDb(db);
+    if (!client) return;
+    await client
       .from("integrations")
       .update({
         last_verified_at: new Date().toISOString(),
@@ -175,25 +193,30 @@ async function recordProviderStatus(provider: AiProvider, error: string | null) 
 
 /**
  * Gera texto usando a primeira credencial habilitada.
+ * Quando chamado por uma server function autenticada, passe context.supabase para
+ * que a leitura das credenciais respeite a sessão/RLS e não dependa de service-role.
  * A falha de IA NUNCA impede a importação: retorna null e o chamador preserva o texto original.
  */
-export async function generateWithOwnKeys(system: string, prompt: string): Promise<string | null> {
-  let creds: AiCredential[] = [];
-  try {
-    creds = await loadAiCredentials();
-  } catch {
-    return null;
-  }
+export async function generateWithOwnKeys(
+  system: string,
+  prompt: string,
+  db?: DbLike,
+): Promise<string | null> {
+  const creds = await loadAiCredentials(db);
   for (const cred of creds) {
     try {
       const text = await callAiProvider(cred, system, prompt);
       if (text) {
-        await recordProviderStatus(cred.provider, null);
+        await recordProviderStatus(cred.provider, null, db);
         return text;
       }
-      await recordProviderStatus(cred.provider, "Resposta vazia do provedor de IA.");
+      await recordProviderStatus(cred.provider, "Resposta vazia do provedor de IA.", db);
     } catch (e) {
-      await recordProviderStatus(cred.provider, e instanceof Error ? e.message : String(e));
+      await recordProviderStatus(
+        cred.provider,
+        e instanceof Error ? e.message : String(e),
+        db,
+      );
     }
   }
   return null;
