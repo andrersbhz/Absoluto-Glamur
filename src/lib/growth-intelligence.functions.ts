@@ -32,13 +32,13 @@ export const saveMarketMetrics = createServerFn({ method: "POST" })
   }).parse(value))
   .handler(async ({ data, context }) => {
     await assertCatalog(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const db = context.supabase;
     const trend = clamp(
       Math.max(0, data.growth_7d_pct ?? 0) * 0.9 +
       Math.max(0, data.growth_30d_pct ?? 0) * 0.55 +
       Math.max(0, data.growth_90d_pct ?? 0) * 0.25,
     );
-    const { error } = await supabaseAdmin.from("product_market_metrics").upsert({
+    const { error } = await db.from("product_market_metrics").upsert({
       ...data,
       raw: (data.raw ?? {}) as never,
       trend_score: trend,
@@ -54,19 +54,22 @@ export const computeGrowthScore = createServerFn({ method: "POST" })
   .inputValidator((value: unknown) => z.object({ product_id: z.string().uuid() }).parse(value))
   .handler(async ({ data, context }) => {
     await assertCatalog(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const db = context.supabase;
 
     const [productRes, metricsRes, costsRes, favoriteRes] = await Promise.all([
-      supabaseAdmin.from("products").select(`
+      db.from("products").select(`
         id, name, status, rating_avg, rating_count,
         variants:product_variants(id, is_default, prices:product_prices(list_price_cents, sale_price_cents, is_active), inventory:product_inventory(stock))
       `).eq("id", data.product_id).maybeSingle(),
-      supabaseAdmin.from("product_market_metrics").select("*").eq("product_id", data.product_id).maybeSingle(),
-      supabaseAdmin.from("pricing_cost_components").select("amount_cents").eq("product_id", data.product_id),
-      supabaseAdmin.from("favorites").select("product_id", { count: "exact", head: true }).eq("product_id", data.product_id),
+      db.from("product_market_metrics").select("*").eq("product_id", data.product_id).maybeSingle(),
+      db.from("pricing_cost_components").select("amount_cents").eq("product_id", data.product_id),
+      db.from("favorites").select("product_id", { count: "exact", head: true }).eq("product_id", data.product_id),
     ]);
 
     if (productRes.error) throw new Error(productRes.error.message);
+    if (metricsRes.error) throw new Error(metricsRes.error.message);
+    if (costsRes.error) throw new Error(costsRes.error.message);
+    if (favoriteRes.error) throw new Error(favoriteRes.error.message);
     if (!productRes.data) throw new Error("Produto não encontrado");
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -131,10 +134,10 @@ export const computeGrowthScore = createServerFn({ method: "POST" })
       computed_at: new Date().toISOString(),
     };
 
-    const { error } = await supabaseAdmin.from("product_scores").upsert(payload, { onConflict: "product_id" });
+    const { error } = await db.from("product_scores").upsert(payload, { onConflict: "product_id" });
     if (error) throw new Error(error.message);
 
-    await supabaseAdmin.from("product_score_versions").insert({
+    const { error: versionError } = await db.from("product_score_versions").insert({
       product_id: data.product_id,
       overall,
       snapshot: {
@@ -155,6 +158,7 @@ export const computeGrowthScore = createServerFn({ method: "POST" })
       },
       computed_by: context.userId,
     });
+    if (versionError) throw new Error(versionError.message);
 
     return { overall, opportunity, commercial, trend, confidence, label, margin_pct: Math.round(marginPct * 100) / 100, recommendations };
   });
@@ -163,8 +167,8 @@ export const listGrowthOpportunities = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     await assertCatalog(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data, error } = await supabaseAdmin.from("products").select(`
+    const db = context.supabase;
+    const { data, error } = await db.from("products").select(`
       id, name, slug, status, rating_avg, rating_count,
       score:product_scores(overall, opportunity, commercial, trend, confidence, label, recommendation, computed_at),
       market:product_market_metrics(external_sales, growth_7d_pct, growth_30d_pct, growth_90d_pct, supplier_score, shipping_score, competition_score, updated_at)

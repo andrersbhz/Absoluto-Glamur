@@ -23,8 +23,8 @@ export const registerAdminPushSubscription = createServerFn({ method: "POST" })
     });
     if (!isAdmin) throw new Error("Forbidden");
 
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    await supabaseAdmin
+    const db = context.supabase;
+    await db
       .from("admin_push_subscriptions")
       .upsert(
         {
@@ -43,8 +43,8 @@ export const unregisterAdminPushSubscription = createServerFn({ method: "POST" }
   .middleware([requireSupabaseAuth])
   .inputValidator((data: { endpoint: string }) => data)
   .handler(async ({ data, context }) => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    await supabaseAdmin
+    const db = context.supabase;
+    await db
       .from("admin_push_subscriptions")
       .delete()
       .eq("endpoint", data.endpoint)

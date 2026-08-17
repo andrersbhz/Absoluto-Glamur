@@ -34,11 +34,11 @@ export const computeProductScore = createServerFn({ method: "POST" })
   .inputValidator((v: unknown) => z.object({ product_id: z.string().uuid() }).parse(v))
   .handler(async ({ data, context }) => {
     await assertCatalog(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const db = context.supabase;
 
     // Load product basics first, then hydrate relations separately so that
     // a failing embed (missing FK, missing table, RLS) doesn't null out the row.
-    const { data: productBasic, error: prodErr } = await supabaseAdmin
+    const { data: productBasic, error: prodErr } = await db
       .from("products")
       .select("id, name, description, status, is_featured")
       .eq("id", data.product_id)
@@ -48,8 +48,8 @@ export const computeProductScore = createServerFn({ method: "POST" })
     if (!productBasic) throw new Error(`Produto ${data.product_id} não encontrado`);
 
     const [mediaRes, variantsRes, reviewsRes, seoRes, costsRes, favRes] = await Promise.all([
-      supabaseAdmin.from("product_media").select("id").eq("product_id", data.product_id),
-      supabaseAdmin
+      db.from("product_media").select("id").eq("product_id", data.product_id),
+      db
         .from("product_variants")
         .select(
           `id, is_default,
@@ -57,17 +57,17 @@ export const computeProductScore = createServerFn({ method: "POST" })
            inventory:product_inventory(stock)`,
         )
         .eq("product_id", data.product_id),
-      supabaseAdmin.from("product_reviews").select("rating").eq("product_id", data.product_id),
-      supabaseAdmin
+      db.from("product_reviews").select("rating").eq("product_id", data.product_id),
+      db
         .from("product_seo")
         .select("title, description, keywords")
         .eq("product_id", data.product_id)
         .maybeSingle(),
-      supabaseAdmin
+      db
         .from("pricing_cost_components")
         .select("amount_cents")
         .eq("product_id", data.product_id),
-      supabaseAdmin
+      db
         .from("favorites")
         .select("product_id", { count: "exact", head: true })
         .eq("product_id", data.product_id),
@@ -153,7 +153,7 @@ export const computeProductScore = createServerFn({ method: "POST" })
     if (!reviews.length) recommendations.push("Solicitar avaliações a clientes.");
 
     // Upsert score
-    const { data: existing } = await supabaseAdmin
+    const { data: existing } = await db
       .from("product_scores")
       .select("id")
       .eq("product_id", data.product_id)
@@ -175,10 +175,10 @@ export const computeProductScore = createServerFn({ method: "POST" })
     let scoreId: string;
     if (existing) {
       scoreId = existing.id;
-      await supabaseAdmin.from("product_scores").update(scorePayload).eq("id", scoreId);
-      await supabaseAdmin.from("product_score_components").delete().eq("score_id", scoreId);
+      await db.from("product_scores").update(scorePayload).eq("id", scoreId);
+      await db.from("product_score_components").delete().eq("score_id", scoreId);
     } else {
-      const { data: inserted } = await supabaseAdmin
+      const { data: inserted } = await db
         .from("product_scores")
         .insert(scorePayload)
         .select("id")
@@ -186,11 +186,11 @@ export const computeProductScore = createServerFn({ method: "POST" })
       scoreId = inserted!.id;
     }
 
-    await supabaseAdmin.from("product_score_components").insert(
+    await db.from("product_score_components").insert(
       comps.map((c) => ({ score_id: scoreId, ...c })),
     );
 
-    await supabaseAdmin.from("product_score_versions").insert({
+    await db.from("product_score_versions").insert({
       product_id: data.product_id,
       overall,
       snapshot: { score: scorePayload, components: comps, recommendations },
@@ -205,10 +205,10 @@ export const getProductIntelligence = createServerFn({ method: "GET" })
   .inputValidator((v: unknown) => z.object({ product_id: z.string().uuid() }).parse(v))
   .handler(async ({ data, context }) => {
     await assertCatalog(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const db = context.supabase;
 
     // Load basics first — an embed failure must not blank the product.
-    const { data: basic, error: basicErr } = await supabaseAdmin
+    const { data: basic, error: basicErr } = await db
       .from("products")
       .select("id, name, slug, status, category_id, brand_id")
       .eq("id", data.product_id)
@@ -218,25 +218,25 @@ export const getProductIntelligence = createServerFn({ method: "GET" })
     if (!basic) throw new Error(`Produto ${data.product_id} não encontrado`);
 
     const [variantsRes, scoreRes, costsRes, rulesRes, calcsRes] = await Promise.all([
-      supabaseAdmin
+      db
         .from("product_variants")
         .select(
           `id, is_default,
            prices:product_prices(id, list_price_cents, sale_price_cents, is_active)`,
         )
         .eq("product_id", data.product_id),
-      supabaseAdmin
+      db
         .from("product_scores")
         .select("*, components:product_score_components(*)")
         .eq("product_id", data.product_id)
         .maybeSingle(),
-      supabaseAdmin
+      db
         .from("pricing_cost_components")
         .select("*")
         .eq("product_id", data.product_id)
         .order("created_at", { ascending: true }),
-      supabaseAdmin.from("pricing_rules").select("*").eq("is_active", true).order("priority"),
-      supabaseAdmin
+      db.from("pricing_rules").select("*").eq("is_active", true).order("priority"),
+      db
         .from("pricing_calculations")
         .select("*")
         .eq("product_id", data.product_id)
@@ -275,10 +275,10 @@ export const saveCostComponents = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     await assertCatalog(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    await supabaseAdmin.from("pricing_cost_components").delete().eq("product_id", data.product_id);
+    const db = context.supabase;
+    await db.from("pricing_cost_components").delete().eq("product_id", data.product_id);
     if (data.components.length) {
-      const { error } = await supabaseAdmin
+      const { error } = await db
         .from("pricing_cost_components")
         .insert(data.components.map((c) => ({ product_id: data.product_id, ...c })));
       if (error) throw new Error(error.message);
@@ -292,8 +292,8 @@ export const listPricingRules = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     await assertCatalog(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data } = await supabaseAdmin.from("pricing_rules").select("*").order("priority");
+    const db = context.supabase;
+    const { data } = await db.from("pricing_rules").select("*").order("priority");
     return data ?? [];
   });
 
@@ -318,16 +318,16 @@ export const upsertPricingRule = createServerFn({ method: "POST" })
   .inputValidator((v: unknown) => RuleInput.parse(v))
   .handler(async ({ data, context }) => {
     await assertCatalog(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const db = context.supabase;
     if (data.is_default) {
-      await supabaseAdmin.from("pricing_rules").update({ is_default: false }).eq("is_default", true);
+      await db.from("pricing_rules").update({ is_default: false }).eq("is_default", true);
     }
     if (data.id) {
-      const { error } = await supabaseAdmin.from("pricing_rules").update(data).eq("id", data.id);
+      const { error } = await db.from("pricing_rules").update(data).eq("id", data.id);
       if (error) throw new Error(error.message);
       return { id: data.id };
     }
-    const { data: inserted, error } = await supabaseAdmin
+    const { data: inserted, error } = await db
       .from("pricing_rules")
       .insert(data)
       .select("id")
@@ -341,8 +341,8 @@ export const deletePricingRule = createServerFn({ method: "POST" })
   .inputValidator((v: unknown) => z.object({ id: z.string().uuid() }).parse(v))
   .handler(async ({ data, context }) => {
     await assertCatalog(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { error } = await supabaseAdmin.from("pricing_rules").delete().eq("id", data.id);
+    const db = context.supabase;
+    const { error } = await db.from("pricing_rules").delete().eq("id", data.id);
     if (error) throw new Error(error.message);
     return { ok: true };
   });
@@ -378,9 +378,9 @@ export const simulatePrice = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     await assertCatalog(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const db = context.supabase;
 
-    const { data: costs } = await supabaseAdmin
+    const { data: costs } = await db
       .from("pricing_cost_components")
       .select("*")
       .eq("product_id", data.product_id);
@@ -388,10 +388,10 @@ export const simulatePrice = createServerFn({ method: "POST" })
 
     let rule: any = null;
     if (data.rule_id) {
-      const { data: r } = await supabaseAdmin.from("pricing_rules").select("*").eq("id", data.rule_id).maybeSingle();
+      const { data: r } = await db.from("pricing_rules").select("*").eq("id", data.rule_id).maybeSingle();
       rule = r;
     } else {
-      const { data: r } = await supabaseAdmin
+      const { data: r } = await db
         .from("pricing_rules")
         .select("*")
         .eq("is_default", true)
@@ -445,10 +445,10 @@ export const applyPriceToProduct = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     await assertCatalog(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const db = context.supabase;
 
     // Reuse simulate logic inline
-    const { data: costs } = await supabaseAdmin
+    const { data: costs } = await db
       .from("pricing_cost_components")
       .select("*")
       .eq("product_id", data.product_id);
@@ -456,10 +456,10 @@ export const applyPriceToProduct = createServerFn({ method: "POST" })
 
     let rule: any = null;
     if (data.rule_id) {
-      const { data: r } = await supabaseAdmin.from("pricing_rules").select("*").eq("id", data.rule_id).maybeSingle();
+      const { data: r } = await db.from("pricing_rules").select("*").eq("id", data.rule_id).maybeSingle();
       rule = r;
     } else {
-      const { data: r } = await supabaseAdmin
+      const { data: r } = await db
         .from("pricing_rules")
         .select("*")
         .eq("is_default", true)
@@ -477,7 +477,7 @@ export const applyPriceToProduct = createServerFn({ method: "POST" })
     const marginPct = final > 0 ? ((final - totalCost) / final) * 100 : 0;
 
     // Find default variant / active price
-    const { data: variants } = await supabaseAdmin
+    const { data: variants } = await db
       .from("product_variants")
       .select("id, is_default, prices:product_prices(id, is_active)")
       .eq("product_id", data.product_id);
@@ -486,12 +486,12 @@ export const applyPriceToProduct = createServerFn({ method: "POST" })
     const activePrice = def.prices?.find((p: any) => p.is_active);
 
     if (activePrice) {
-      await supabaseAdmin
+      await db
         .from("product_prices")
         .update({ list_price_cents: final, sale_price_cents: null })
         .eq("id", activePrice.id);
     } else {
-      await supabaseAdmin.from("product_prices").insert({
+      await db.from("product_prices").insert({
         variant_id: def.id,
         list_price_cents: final,
         currency: "BRL",
@@ -499,7 +499,7 @@ export const applyPriceToProduct = createServerFn({ method: "POST" })
       });
     }
 
-    await supabaseAdmin.from("pricing_calculations").insert({
+    await db.from("pricing_calculations").insert({
       product_id: data.product_id,
       rule_id: rule?.id ?? null,
       cost_cents: totalCost,
@@ -520,8 +520,8 @@ export const listProductsWithScores = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     await assertCatalog(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data } = await supabaseAdmin
+    const db = context.supabase;
+    const { data } = await db
       .from("products")
       .select(
         `id, name, slug, status,

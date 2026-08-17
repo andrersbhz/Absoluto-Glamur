@@ -25,8 +25,8 @@ export const saveMarketingSpend = createServerFn({ method: "POST" })
   }).parse(value))
   .handler(async ({ data, context }) => {
     await assertMarketing(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { error } = await supabaseAdmin.from("marketing_spend_daily").upsert({ ...data, updated_at: new Date().toISOString() }, { onConflict: "day,channel,campaign" });
+    const db = context.supabase;
+    const { error } = await db.from("marketing_spend_daily").upsert({ ...data, updated_at: new Date().toISOString() }, { onConflict: "day,channel,campaign" });
     if (error) throw new Error(error.message);
     return { ok: true };
   });
@@ -36,18 +36,20 @@ export const getPerformanceV12 = createServerFn({ method: "GET" })
   .inputValidator((value: unknown) => z.object({ days: z.number().int().min(1).max(365).default(30) }).parse(value ?? { days: 30 }))
   .handler(async ({ data, context }) => {
     await assertMarketing(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const db = context.supabase;
     const sinceDate = new Date(Date.now() - (data.days - 1) * 24 * 3600 * 1000);
     const sinceIso = sinceDate.toISOString();
     const sinceDay = sinceIso.slice(0, 10);
 
     const [ordersRes, spendRes, eventsRes, abandonedRes, newCustomersRes] = await Promise.all([
-      supabaseAdmin.from("orders").select("id,status,total_cents,paid_at,created_at").gte("created_at", sinceIso),
-      supabaseAdmin.from("marketing_spend_daily").select("*").gte("day", sinceDay),
-      supabaseAdmin.from("commerce_events").select("event_name,session_id,value_cents,channel,campaign,occurred_at").gte("occurred_at", sinceIso),
-      supabaseAdmin.from("abandoned_checkouts").select("id,total_cents,recovered_at,last_seen_at,source").gte("last_seen_at", sinceIso),
-      supabaseAdmin.from("profiles").select("id", { count: "exact", head: true }).gte("created_at", sinceIso),
+      db.from("orders").select("id,status,total_cents,paid_at,created_at").gte("created_at", sinceIso),
+      db.from("marketing_spend_daily").select("*").gte("day", sinceDay),
+      db.from("commerce_events").select("event_name,session_id,value_cents,channel,campaign,occurred_at").gte("occurred_at", sinceIso),
+      db.from("abandoned_checkouts").select("id,total_cents,recovered_at,last_seen_at,source").gte("last_seen_at", sinceIso),
+      db.from("profiles").select("id", { count: "exact", head: true }).gte("created_at", sinceIso),
     ]);
+    const errors = [ordersRes.error, spendRes.error, eventsRes.error, abandonedRes.error, newCustomersRes.error].filter(Boolean);
+    if (errors.length) throw new Error(errors[0]!.message);
 
     const orders = ordersRes.data ?? [];
     const paid = orders.filter((order) => order.status === "paid" || order.paid_at);

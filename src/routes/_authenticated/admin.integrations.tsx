@@ -2,12 +2,14 @@ import { createFileRoute, redirect, Link } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
-import { Copy, ExternalLink, Plug, PlugZap, RefreshCw, Route as RouteIcon, Save, TestTube } from "lucide-react";
+import { Copy, ExternalLink, Eye, EyeOff, Plug, PlugZap, RefreshCw, Route as RouteIcon, Save, TestTube } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { Badge } from "@/components/ui/badge";
 import {
+  INTEGRATION_CATALOG,
+  getIntegrationSecrets,
   listIntegrations,
   saveIntegration,
   testIntegration,
@@ -48,7 +50,24 @@ function IntegrationsPage() {
   const list = useServerFn(listIntegrations);
   const q = useQuery({ queryKey: ["integrations"], queryFn: () => list() });
 
-  const grouped = (q.data ?? []).reduce<Record<string, Integration[]>>((acc, it) => {
+  const fallbackRows: Integration[] = INTEGRATION_CATALOG.map((it) => ({
+    ...it,
+    enabled: false,
+    mode: it.default_mode ?? "sandbox",
+    config: {},
+    last_verified_at: null,
+    last_status: null,
+    last_error: null,
+    updated_at: new Date(0).toISOString(),
+    api_key_masked: null,
+    webhook_token_masked: null,
+    merchant_key_masked: null,
+    has_api_key: false,
+    has_webhook_token: false,
+    has_merchant_key: false,
+    reauth_required: false,
+  }));
+  const grouped = (q.data ?? fallbackRows).reduce<Record<string, Integration[]>>((acc, it) => {
     (acc[it.category] ??= []).push(it);
     return acc;
   }, {});
@@ -111,6 +130,7 @@ function IntegrationsPage() {
 function IntegrationCard({ integration }: { integration: Integration }) {
   const qc = useQueryClient();
   const save = useServerFn(saveIntegration);
+  const reveal = useServerFn(getIntegrationSecrets);
   const test = useServerFn(testIntegration);
   const beginAliExpressOAuth = useServerFn(createAliExpressAuthorizationUrl);
 
@@ -118,8 +138,37 @@ function IntegrationCard({ integration }: { integration: Integration }) {
   const [apiKey, setApiKey] = useState("");
   const [webhookToken, setWebhookToken] = useState("");
   const [merchantKey, setMerchantKey] = useState("");
+  const [showApiKey, setShowApiKey] = useState(false);
+  const [showWebhookToken, setShowWebhookToken] = useState(false);
+  const [showMerchantKey, setShowMerchantKey] = useState(false);
   const [mode, setMode] = useState(integration.mode);
   const [enabled, setEnabled] = useState(integration.enabled);
+
+  const revealMut = useMutation({
+    mutationFn: () => reveal({ data: { provider: integration.provider } }),
+    onSuccess: (secrets) => {
+      if (!apiKey) setApiKey(secrets.api_key ?? "");
+      if (!webhookToken) setWebhookToken(secrets.webhook_token ?? "");
+      if (!merchantKey) setMerchantKey(secrets.merchant_key ?? "");
+    },
+    onError: (e: Error) => toast.error(`Não foi possível revelar a credencial: ${e.message}`),
+  });
+
+  async function toggleSecret(field: "api" | "webhook" | "merchant") {
+    const showing = field === "api" ? showApiKey : field === "webhook" ? showWebhookToken : showMerchantKey;
+    if (showing) {
+      if (field === "api") setShowApiKey(false);
+      if (field === "webhook") setShowWebhookToken(false);
+      if (field === "merchant") setShowMerchantKey(false);
+      return;
+    }
+    const hasSaved = field === "api" ? integration.has_api_key : field === "webhook" ? integration.has_webhook_token : integration.has_merchant_key;
+    const localValue = field === "api" ? apiKey : field === "webhook" ? webhookToken : merchantKey;
+    if (hasSaved && !localValue) await revealMut.mutateAsync();
+    if (field === "api") setShowApiKey(true);
+    if (field === "webhook") setShowWebhookToken(true);
+    if (field === "merchant") setShowMerchantKey(true);
+  }
 
   const saveMut = useMutation({
     mutationFn: (v: SaveIntegrationInput) => save({ data: v }),
@@ -239,8 +288,7 @@ function IntegrationCard({ integration }: { integration: Integration }) {
   const isNuPay = integration.provider === "nupay";
   const isAliexpress = integration.provider === "aliexpress";
   const isGtm = integration.provider === "google_tag_manager";
-  const currentMerchantKey =
-    (integration.config as { merchant_key?: string } | null)?.merchant_key ?? "";
+  const currentMerchantKey = integration.has_merchant_key;
 
   const authorizeAliExpress = (
     <button
@@ -435,8 +483,9 @@ function IntegrationCard({ integration }: { integration: Integration }) {
                     : "Chave da API"}{" "}
               {integration.has_api_key && "(deixe vazio para manter a atual)"}
             </span>
-            <input
-              type={isGtm ? "text" : "password"}
+            <div className="relative">
+              <input
+              type={isGtm || showApiKey ? "text" : "password"}
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
               placeholder={
@@ -452,8 +501,14 @@ function IntegrationCard({ integration }: { integration: Integration }) {
                           ? "GTM-XXXXXX"
                           : "chave da API"
               }
-              className="w-full rounded-lg border border-border bg-background px-3 py-2 font-mono text-sm"
-            />
+              className="w-full rounded-lg border border-border bg-background px-3 py-2 pr-10 font-mono text-sm"
+              />
+              {!isGtm && (
+                <button type="button" onClick={() => void toggleSecret("api")} disabled={revealMut.isPending} className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-muted-foreground hover:text-foreground" aria-label={showApiKey ? "Ocultar chave" : "Mostrar chave"}>
+                  {showApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              )}
+            </div>
             {isGtm && (
               <span className="mt-1 block text-[11px] text-muted-foreground">
                 Ative a integração após salvar. O snippet do GTM é carregado automaticamente em todas as páginas públicas da loja.
@@ -465,13 +520,18 @@ function IntegrationCard({ integration }: { integration: Integration }) {
               <span className="mb-1 block text-xs text-muted-foreground">
                 X-Merchant-Key {currentMerchantKey && "(preenchida — deixe vazio para manter)"}
               </span>
-              <input
-                type="password"
-                value={merchantKey}
-                onChange={(e) => setMerchantKey(e.target.value)}
-                placeholder="chave pública do merchant NuPay"
-                className="w-full rounded-lg border border-border bg-background px-3 py-2 font-mono text-sm"
-              />
+              <div className="relative">
+                <input
+                  type={showMerchantKey ? "text" : "password"}
+                  value={merchantKey}
+                  onChange={(e) => setMerchantKey(e.target.value)}
+                  placeholder="Merchant Key do NuPay"
+                  className="w-full rounded-lg border border-border bg-background px-3 py-2 pr-10 font-mono text-sm"
+                />
+                <button type="button" onClick={() => void toggleSecret("merchant")} disabled={revealMut.isPending} className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-muted-foreground hover:text-foreground" aria-label={showMerchantKey ? "Ocultar Merchant Key" : "Mostrar Merchant Key"}>
+                  {showMerchantKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
               <span className="mt-1 block text-[11px] text-muted-foreground">
                 Encontre em NuPay Business → Configurações → Credenciais. Envie a Merchant Key aqui e o Merchant Token no campo acima.
               </span>
@@ -483,8 +543,9 @@ function IntegrationCard({ integration }: { integration: Integration }) {
                 {isAliexpress ? "App Secret" : "Token do webhook"}{" "}
                 {integration.has_webhook_token && "(deixe vazio para manter)"}
               </span>
-              <input
-                type="password"
+              <div className="relative">
+                <input
+                type={showWebhookToken ? "text" : "password"}
                 value={webhookToken}
                 onChange={(e) => setWebhookToken(e.target.value)}
                 placeholder={
@@ -492,8 +553,12 @@ function IntegrationCard({ integration }: { integration: Integration }) {
                     ? "App Secret do console AliExpress"
                     : "qualquer string secreta (você define aqui e no painel do provedor)"
                 }
-                className="w-full rounded-lg border border-border bg-background px-3 py-2 font-mono text-sm"
-              />
+                className="w-full rounded-lg border border-border bg-background px-3 py-2 pr-10 font-mono text-sm"
+                />
+                <button type="button" onClick={() => void toggleSecret("webhook")} disabled={revealMut.isPending} className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-muted-foreground hover:text-foreground" aria-label={showWebhookToken ? "Ocultar token" : "Mostrar token"}>
+                  {showWebhookToken ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
               <span className="mt-1 block text-[11px] text-muted-foreground">
                 {isAliexpress
                   ? "Cole aqui o App Secret gerado no console AliExpress Open (mesmo app onde a Callback URL foi cadastrada)."

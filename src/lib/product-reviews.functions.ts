@@ -118,8 +118,8 @@ export const listAllReviews = createServerFn({ method: "POST" })
   .inputValidator((v: unknown) => z.object({ product_id: z.string().uuid() }).parse(v))
   .handler(async ({ data, context }) => {
     await assertCatalog(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: rows, error } = await supabaseAdmin
+    const db = context.supabase;
+    const { data: rows, error } = await db
       .from("product_external_reviews")
       .select("*")
       .eq("product_id", data.product_id)
@@ -166,12 +166,12 @@ export const syncAliexpressReviews = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     await assertCatalog(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const sourceId = await findAliSourceId(supabaseAdmin, data.product_id);
+    const db = context.supabase;
+    const sourceId = await findAliSourceId(db, data.product_id);
     if (!sourceId) throw new Error("Este produto não está conectado ao AliExpress.");
 
     const result = await syncReviewsForProductInternal(
-      supabaseAdmin,
+      db,
       data.product_id,
       sourceId,
       data.min_rating,
@@ -202,7 +202,7 @@ export const upsertReview = createServerFn({ method: "POST" })
   .inputValidator((v: unknown) => REVIEW_INPUT.parse(v))
   .handler(async ({ data, context }) => {
     await assertCatalog(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const db = context.supabase;
     const payload = {
       product_id: data.product_id,
       author_name: data.author_name ?? null,
@@ -216,7 +216,7 @@ export const upsertReview = createServerFn({ method: "POST" })
       source: "manual",
     };
     if (data.id) {
-      const { data: row, error } = await supabaseAdmin
+      const { data: row, error } = await db
         .from("product_external_reviews")
         .update(payload)
         .eq("id", data.id)
@@ -225,7 +225,7 @@ export const upsertReview = createServerFn({ method: "POST" })
       if (error) throw error;
       return row;
     }
-    const { data: row, error } = await supabaseAdmin
+    const { data: row, error } = await db
       .from("product_external_reviews")
       .insert(payload)
       .select("*")
@@ -239,8 +239,8 @@ export const deleteReview = createServerFn({ method: "POST" })
   .inputValidator((v: unknown) => z.object({ id: z.string().uuid() }).parse(v))
   .handler(async ({ data, context }) => {
     await assertCatalog(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { error } = await supabaseAdmin.from("product_external_reviews").delete().eq("id", data.id);
+    const db = context.supabase;
+    const { error } = await db.from("product_external_reviews").delete().eq("id", data.id);
     if (error) throw error;
     return { ok: true };
   });
@@ -252,8 +252,8 @@ export const bulkSyncAliexpressReviews = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     await assertCatalog(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: linked, error } = await supabaseAdmin
+    const db = context.supabase;
+    const { data: linked, error } = await db
       .from("product_imports")
       .select("product_id, source_id, created_at")
       .in("source", ALI_SOURCES)
@@ -278,7 +278,7 @@ export const bulkSyncAliexpressReviews = createServerFn({ method: "POST" })
 
     for (const row of unique) {
       const r = await syncReviewsForProductInternal(
-        supabaseAdmin,
+        db,
         row.product_id!,
         String(row.source_id),
         data.min_rating,

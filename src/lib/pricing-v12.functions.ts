@@ -17,8 +17,8 @@ export const listPricingProfiles = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     await assertCatalog(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data, error } = await supabaseAdmin.from("pricing_profiles").select("*").order("is_default", { ascending: false }).order("name");
+    const db = context.supabase;
+    const { data, error } = await db.from("pricing_profiles").select("*").order("is_default", { ascending: false }).order("name");
     if (error) throw new Error(error.message);
     return data ?? [];
   });
@@ -44,15 +44,15 @@ export const savePricingProfile = createServerFn({ method: "POST" })
   }).parse(value))
   .handler(async ({ data, context }) => {
     await assertCatalog(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    if (data.is_default) await supabaseAdmin.from("pricing_profiles").update({ is_default: false }).eq("is_default", true);
+    const db = context.supabase;
+    if (data.is_default) await db.from("pricing_profiles").update({ is_default: false }).eq("is_default", true);
     const payload = { ...data, updated_at: new Date().toISOString() };
     if (data.id) {
-      const { error } = await supabaseAdmin.from("pricing_profiles").update(payload).eq("id", data.id);
+      const { error } = await db.from("pricing_profiles").update(payload).eq("id", data.id);
       if (error) throw new Error(error.message);
       return { id: data.id };
     }
-    const { data: inserted, error } = await supabaseAdmin.from("pricing_profiles").insert(payload).select("id").single();
+    const { data: inserted, error } = await db.from("pricing_profiles").insert(payload).select("id").single();
     if (error) throw new Error(error.message);
     return { id: inserted.id };
   });
@@ -67,13 +67,13 @@ export const simulateProfessionalPrice = createServerFn({ method: "POST" })
   }).parse(value))
   .handler(async ({ data, context }) => {
     await assertCatalog(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const db = context.supabase;
 
     const [costRes, profileRes] = await Promise.all([
-      supabaseAdmin.from("pricing_cost_components").select("key,label,amount_cents").eq("product_id", data.product_id),
+      db.from("pricing_cost_components").select("key,label,amount_cents").eq("product_id", data.product_id),
       data.profile_id
-        ? supabaseAdmin.from("pricing_profiles").select("*").eq("id", data.profile_id).maybeSingle()
-        : supabaseAdmin.from("pricing_profiles").select("*").eq("is_default", true).eq("enabled", true).maybeSingle(),
+        ? db.from("pricing_profiles").select("*").eq("id", data.profile_id).maybeSingle()
+        : db.from("pricing_profiles").select("*").eq("is_default", true).eq("enabled", true).maybeSingle(),
     ]);
     if (costRes.error) throw new Error(costRes.error.message);
     if (profileRes.error) throw new Error(profileRes.error.message);
@@ -85,14 +85,9 @@ export const simulateProfessionalPrice = createServerFn({ method: "POST" })
     const landedWithFx = landedBase + pct(landedBase, Number(profile.fx_spread_pct ?? 0));
 
     const variablePct =
-      Number(profile.gateway_pct ?? 0) +
-      Number(profile.tax_pct ?? 0) +
-      Number(profile.returns_pct ?? 0) +
-      Number(profile.chargeback_pct ?? 0) +
-      Number(profile.operational_pct ?? 0) +
-      Number(profile.target_ad_cost_pct ?? 0) +
-      Number(profile.desired_margin_pct ?? 0);
-
+      Number(profile.gateway_pct ?? 0) + Number(profile.tax_pct ?? 0) + Number(profile.returns_pct ?? 0) +
+      Number(profile.chargeback_pct ?? 0) + Number(profile.operational_pct ?? 0) +
+      Number(profile.target_ad_cost_pct ?? 0) + Number(profile.desired_margin_pct ?? 0);
     if (variablePct >= 95) throw new Error("A soma de custos percentuais e margem está alta demais para calcular um preço sustentável.");
 
     const breakEvenRaw = Math.ceil((landedWithFx + Number(profile.gateway_fixed_cents ?? 0)) / (1 - (variablePct - Number(profile.desired_margin_pct ?? 0)) / 100));
