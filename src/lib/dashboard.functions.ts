@@ -116,11 +116,13 @@ export const getDashboardMetrics = createServerFn({ method: "POST" })
     const ai_tokens_30d = ai.reduce((s: number, r: any) => s + (r.total_tokens ?? 0), 0);
 
     const rowTables = ["orders", "products", "profiles", "ai_generations", "product_imports", "order_items"] as const;
-    let database_rows = 0;
-    for (const t of rowTables) {
-      const { count, error } = await (db.from(t) as any).select("id", { count: "exact", head: true });
-      if (!error) database_rows += count ?? 0;
-    }
+    const rowCounts = await Promise.all(
+      rowTables.map(async (table) => {
+        const { count, error } = await (db.from(table) as any).select("id", { count: "exact", head: true });
+        return error ? 0 : count ?? 0;
+      }),
+    );
+    const database_rows = rowCounts.reduce((sum, count) => sum + count, 0);
 
     return {
       revenue_cents_30d,
