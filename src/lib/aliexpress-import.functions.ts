@@ -76,8 +76,8 @@ export const getImportSettings = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<ImportSettings> => {
     await assertCatalog(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data } = await supabaseAdmin
+    const db = context.supabase;
+    const { data } = await db
       .from("integrations")
       .select("config")
       .eq("provider", "aliexpress")
@@ -94,15 +94,15 @@ export const saveImportSettings = createServerFn({ method: "POST" })
   .inputValidator((v: unknown) => SettingsSchema.parse(v))
   .handler(async ({ data, context }) => {
     await assertCatalog(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: existing } = await supabaseAdmin
+    const db = context.supabase;
+    const { data: existing } = await db
       .from("integrations")
       .select("config")
       .eq("provider", "aliexpress")
       .maybeSingle();
     const prev = (existing?.config as Record<string, unknown> | null) ?? {};
     const merged = { ...prev, import_settings: data };
-    const { error } = await supabaseAdmin
+    const { error } = await db
       .from("integrations")
       .update({ config: merged })
       .eq("provider", "aliexpress");
@@ -694,8 +694,8 @@ export const bulkImportJson = createServerFn({ method: "POST" })
   .inputValidator((v: unknown) => z.object({ items: z.array(DraftSchema.shape.normalized).min(1).max(100) }).parse(v))
   .handler(async ({ data, context }) => {
     await assertCatalog(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const settings = await loadSettings(supabaseAdmin);
+    const db = context.supabase;
+    const settings = await loadSettings(db);
     let count = 0;
     for (const n of data.items) {
       const translated = await translateToPtBr({
@@ -720,7 +720,7 @@ export const bulkImportJson = createServerFn({ method: "POST" })
         source_url: null,
         source_id: null,
       };
-      const { data: row, error } = await supabaseAdmin
+      const { data: row, error } = await db
         .from("product_imports")
         .insert({
           source: "json",
@@ -733,7 +733,7 @@ export const bulkImportJson = createServerFn({ method: "POST" })
         .single();
       if (error) continue;
       try {
-        await commitImportRow(supabaseAdmin, row.id, norm, settings, {
+        await commitImportRow(db, row.id, norm, settings, {
           status: "draft",
           category_id: settings.default_category_id ?? null,
           brand_id: settings.default_brand_id ?? null,
@@ -742,7 +742,7 @@ export const bulkImportJson = createServerFn({ method: "POST" })
         count++;
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
-        await supabaseAdmin.from("product_imports").update({ error: msg }).eq("id", row.id);
+        await db.from("product_imports").update({ error: msg }).eq("id", row.id);
       }
     }
     return { count };
@@ -755,8 +755,8 @@ export const listImports = createServerFn({ method: "GET" })
   )
   .handler(async ({ data, context }): Promise<ImportRow[]> => {
     await assertCatalog(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    let q = supabaseAdmin
+    const db = context.supabase;
+    let q = db
       .from("product_imports")
       .select("id, source, source_url, source_id, status, error, product_id, normalized_data, created_at, updated_at")
       .order("created_at", { ascending: false })
@@ -783,8 +783,8 @@ export const getImport = createServerFn({ method: "GET" })
   .inputValidator((v: unknown) => z.object({ id: z.string().uuid() }).parse(v))
   .handler(async ({ data, context }): Promise<ImportRow> => {
     await assertCatalog(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: r, error } = await supabaseAdmin
+    const db = context.supabase;
+    const { data: r, error } = await db
       .from("product_imports")
       .select("id, source, source_url, source_id, status, error, product_id, normalized_data, created_at, updated_at")
       .eq("id", data.id)
@@ -812,8 +812,8 @@ export const updateImportDraft = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     await assertCatalog(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { error } = await supabaseAdmin
+    const db = context.supabase;
+    const { error } = await db
       .from("product_imports")
       .update({
         normalized_data: {
@@ -836,8 +836,8 @@ export const deleteImport = createServerFn({ method: "POST" })
   .inputValidator((v: unknown) => z.object({ id: z.string().uuid() }).parse(v))
   .handler(async ({ data, context }) => {
     await assertCatalog(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { error } = await supabaseAdmin.from("product_imports").delete().eq("id", data.id);
+    const db = context.supabase;
+    const { error } = await db.from("product_imports").delete().eq("id", data.id);
     if (error) throw new Error(error.message);
     return { ok: true };
   });
@@ -871,9 +871,9 @@ export const commitImport = createServerFn({ method: "POST" })
   .inputValidator((v: unknown) => CommitSchema.parse(v))
   .handler(async ({ data, context }) => {
     await assertCatalog(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const db = context.supabase;
 
-    const { data: imp, error: ie } = await supabaseAdmin
+    const { data: imp, error: ie } = await db
       .from("product_imports")
       .select("id, normalized_data, status, product_id")
       .eq("id", data.id)
@@ -882,7 +882,7 @@ export const commitImport = createServerFn({ method: "POST" })
     if (!imp) throw new Error("Importação não encontrada");
     const norm = imp.normalized_data as NormalizedProduct;
 
-    const { data: cfg } = await supabaseAdmin
+    const { data: cfg } = await db
       .from("integrations")
       .select("config")
       .eq("provider", "aliexpress")
@@ -903,7 +903,7 @@ export const commitImport = createServerFn({ method: "POST" })
     assertPublishablePrice(data.status, priceCents);
 
     if (imp.product_id) {
-      const { error: upErr } = await supabaseAdmin
+      const { error: upErr } = await db
         .from("products")
         .update({
           name: norm.title,
@@ -916,7 +916,7 @@ export const commitImport = createServerFn({ method: "POST" })
         .eq("id", imp.product_id);
       if (upErr) throw new Error(upErr.message);
 
-      const { data: vrow, error: vrowError } = await supabaseAdmin
+      const { data: vrow, error: vrowError } = await db
         .from("product_variants")
         .select("id")
         .eq("product_id", imp.product_id)
@@ -927,13 +927,13 @@ export const commitImport = createServerFn({ method: "POST" })
         throw new Error("Produto importado sem variação padrão. Corrija o catálogo antes de publicar.");
       }
 
-      const { error: disablePriceError } = await supabaseAdmin
+      const { error: disablePriceError } = await db
         .from("product_prices")
         .update({ is_active: false })
         .eq("variant_id", vrow.id);
       if (disablePriceError) throw new Error(disablePriceError.message);
 
-      const { error: newPriceError } = await supabaseAdmin.from("product_prices").insert({
+      const { error: newPriceError } = await db.from("product_prices").insert({
         variant_id: vrow.id,
         list_price_cents: priceCents,
         sale_price_cents: null,
@@ -941,12 +941,12 @@ export const commitImport = createServerFn({ method: "POST" })
       });
       if (newPriceError) throw new Error(newPriceError.message);
 
-      const { error: stockError } = await supabaseAdmin
+      const { error: stockError } = await db
         .from("product_inventory")
         .upsert({ variant_id: vrow.id, stock: data.stock }, { onConflict: "variant_id" });
       if (stockError) throw new Error(stockError.message);
 
-      const { error: importUpdateError } = await supabaseAdmin
+      const { error: importUpdateError } = await db
         .from("product_imports")
         .update({ status: "imported", error: null })
         .eq("id", data.id);
@@ -954,15 +954,15 @@ export const commitImport = createServerFn({ method: "POST" })
 
       if (norm.source_id) {
         await syncVariantsAndRecord(
-          supabaseAdmin,
+          db,
           data.id,
           imp.product_id,
           String(norm.source_id),
           settings,
         );
-        await syncImportedProductReviews(supabaseAdmin, imp.product_id);
+        await syncImportedProductReviews(db, imp.product_id);
       }
-      const { data: p, error: productError } = await supabaseAdmin
+      const { data: p, error: productError } = await db
         .from("products")
         .select("slug")
         .eq("id", imp.product_id)
@@ -975,7 +975,7 @@ export const commitImport = createServerFn({ method: "POST" })
       slugify(norm.title) + "-" + (norm.source_id ?? Math.random().toString(36).slice(2, 8));
     const sku = norm.sku || (norm.source_id ? `AE-${norm.source_id}` : `IMP-${Date.now()}`);
 
-    const { data: created, error: pe } = await supabaseAdmin
+    const { data: created, error: pe } = await db
       .from("products")
       .insert({
         slug,
@@ -993,7 +993,7 @@ export const commitImport = createServerFn({ method: "POST" })
     if (pe) throw new Error(pe.message);
     const productId = created.id;
 
-    const { data: nv, error: ve } = await supabaseAdmin
+    const { data: nv, error: ve } = await db
       .from("product_variants")
       .insert({
         product_id: productId,
@@ -1006,7 +1006,7 @@ export const commitImport = createServerFn({ method: "POST" })
     if (ve) throw new Error(ve.message);
     const variantId = nv.id;
 
-    const { error: prErr } = await supabaseAdmin.from("product_prices").insert({
+    const { error: prErr } = await db.from("product_prices").insert({
       variant_id: variantId,
       list_price_cents: priceCents,
       sale_price_cents: null,
@@ -1014,13 +1014,13 @@ export const commitImport = createServerFn({ method: "POST" })
     });
     if (prErr) throw new Error(prErr.message);
 
-    const { error: invErr } = await supabaseAdmin
+    const { error: invErr } = await db
       .from("product_inventory")
       .upsert({ variant_id: variantId, stock: data.stock }, { onConflict: "variant_id" });
     if (invErr) throw new Error(invErr.message);
 
     if (norm.images.length > 0) {
-      const { error: me } = await supabaseAdmin.from("product_media").insert(
+      const { error: me } = await db.from("product_media").insert(
         norm.images.map((url, i) => ({
           product_id: productId,
           url,
@@ -1032,7 +1032,7 @@ export const commitImport = createServerFn({ method: "POST" })
       if (me) throw new Error(me.message);
     }
 
-    const { error: importUpdateError } = await supabaseAdmin
+    const { error: importUpdateError } = await db
       .from("product_imports")
       .update({ status: "imported", product_id: productId, error: null })
       .eq("id", data.id);
@@ -1040,13 +1040,13 @@ export const commitImport = createServerFn({ method: "POST" })
 
     if (norm.source_id) {
       await syncVariantsAndRecord(
-        supabaseAdmin,
+        db,
         data.id,
         productId,
         String(norm.source_id),
         settings,
       );
-        await syncImportedProductReviews(supabaseAdmin, productId);
+        await syncImportedProductReviews(db, productId);
     }
 
     return { id: productId, slug, price_cents: priceCents };
