@@ -478,8 +478,8 @@ function ApiTab() {
           <div>
             <h3 className="font-display text-xl">Sincronizar best-sellers via IA</h3>
             <p className="text-sm text-muted-foreground">
-              A IA (Gemini via Lovable AI Gateway) gera palavras-chave estratégicas para o seu nicho e
-              busca automaticamente os produtos mais vendidos e melhor avaliados na API oficial do AliExpress.
+              A IA usa primeiro o Gemini configurado em Integrações e pode usar OpenAI como fallback para gerar
+              palavras-chave estratégicas; os produtos são buscados e classificados com dados da API oficial do AliExpress.
             </p>
           </div>
         </div>
