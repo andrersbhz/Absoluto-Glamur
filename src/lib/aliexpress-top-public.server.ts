@@ -12,7 +12,13 @@
  * fallback por compatibilidade com instalações anteriores.
  */
 
-const TOP_HTTPS_ENDPOINT = "https://eco.taobao.com/router/rest";
+const TOP_HTTPS_ENDPOINTS = [
+  // A documentação TOP atual recomenda este endpoint para ISVs no exterior.
+  "https://api.taobao.com/router/rest",
+  // Endpoint formal atual e endpoint HTTPS legado publicado na página desta API.
+  "https://gw.api.taobao.com/router/rest",
+  "https://eco.taobao.com/router/rest",
+] as const;
 const TOP_REVIEWS_PROVIDER = "aliexpress_top_reviews";
 
 function topTimestampGmt8(): string {
@@ -187,8 +193,8 @@ function isInvalidTopAppKey(error: { code: string; detail: string }): boolean {
 
 function invalidTopAppKeyMessage(dedicated: boolean): string {
   return dedicated
-    ? "A App Key TOP salva para avaliações não é reconhecida pelo gateway TOP. Confira App Key TOP, App Secret TOP e o ambiente da aplicação no console Alibaba/TOP."
-    : "A App Key principal do AliExpress não é reconhecida pelo gateway TOP usado para avaliações. Configure a credencial específica em Admin → AliExpress TOP · Avaliações. A integração principal de importação e estoque permanece intacta.";
+    ? "A App Key TOP salva para avaliações não foi reconhecida por nenhum gateway TOP oficial (overseas ou formal). Confira se esta chave pertence a uma aplicação TOP com acesso à API de avaliações."
+    : "A App Key principal do AliExpress não foi reconhecida pelos gateways TOP usados para avaliações. Configure uma credencial TOP dedicada em Admin → AliExpress TOP · Avaliações. A integração principal de importação e estoque permanece intacta.";
 }
 
 function readBusinessError(method: string, json: any): string | null {
@@ -256,29 +262,41 @@ export async function callAliTopPublic<T = any>(
 ): Promise<T> {
   const { appKey, secrets, dedicated } = await loadAliTopCredentials(credentialClient);
   const failures: string[] = [];
+  let invalidKeyResponses = 0;
+  let attempts = 0;
 
-  // A documentação deste método publica eco.taobao.com como endpoint HTTPS de
-  // produção. Não repetimos a mesma requisição em hosts não documentados.
-  for (const secret of secrets) {
-    try {
-      const json = await requestTop(TOP_HTTPS_ENDPOINT, method, appKey, secret, bizParams);
-      const platformError = getPlatformError(json);
-      if (platformError) {
-        // App Key inválida é determinística: trocar secret ou repetir endpoint não resolve
-        // e só poluía a tela com a mesma mensagem várias vezes.
-        if (isInvalidTopAppKey(platformError)) throw new Error(invalidTopAppKeyMessage(dedicated));
-        throw new Error(formatPlatformError(platformError));
+  // Aplicações AliExpress internacionais podem estar registradas no ambiente
+  // TOP overseas. Testamos primeiro o gateway overseas documentado e só então
+  // os gateways formais. Uma AppKey só é considerada inválida depois que todos
+  // os endpoints oficiais a rejeitam.
+  for (const endpoint of TOP_HTTPS_ENDPOINTS) {
+    for (const secret of secrets) {
+      attempts += 1;
+      try {
+        const json = await requestTop(endpoint, method, appKey, secret, bizParams);
+        const platformError = getPlatformError(json);
+        if (platformError) {
+          if (isInvalidTopAppKey(platformError)) {
+            invalidKeyResponses += 1;
+            failures.push(formatPlatformError(platformError));
+            continue;
+          }
+          throw new Error(formatPlatformError(platformError));
+        }
+        const businessError = readBusinessError(method, json);
+        if (businessError) throw new Error(businessError);
+        return json as T;
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        failures.push(message);
       }
-      const businessError = readBusinessError(method, json);
-      if (businessError) throw new Error(businessError);
-      return json as T;
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      if (/App Key TOP|App Key principal do AliExpress/i.test(message)) throw new Error(message);
-      failures.push(message);
     }
   }
 
+  if (attempts > 0 && invalidKeyResponses === attempts) {
+    throw new Error(invalidTopAppKeyMessage(dedicated));
+  }
+
   const unique = [...new Set(failures)].filter(Boolean);
-  throw new Error(unique.slice(0, 2).join(" | ") || "Não foi possível consultar a API TOP oficial do AliExpress.");
+  throw new Error(unique.slice(0, 3).join(" | ") || "Não foi possível consultar a API TOP oficial do AliExpress.");
 }
