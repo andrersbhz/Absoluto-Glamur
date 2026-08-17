@@ -126,79 +126,200 @@ export function computeSalePriceCents(
   return withMarkup;
 }
 
-function extractAliexpressId(url: string): string | null {
-  const m = url.match(/\/item\/(\d+)\.html/) || url.match(/\/(\d{10,})\.html/);
-  return m?.[1] ?? null;
+function extractAliexpressId(input: string): string | null {
+  const value = input.trim();
+  if (/^\d{8,20}$/.test(value)) return value;
+
+  let decoded = value;
+  try {
+    decoded = decodeURIComponent(value);
+  } catch {
+    // Keep the original value when it is not percent-encoded.
+  }
+
+  const pathMatch =
+    decoded.match(/\/(?:item|i)\/(\d{8,20})(?:\.html)?(?:[/?#]|$)/i) ??
+    decoded.match(/\/(\d{10,20})\.html(?:[/?#]|$)/i);
+  if (pathMatch?.[1]) return pathMatch[1];
+
+  try {
+    const url = new URL(value);
+    for (const key of ["productId", "product_id", "itemId", "item_id"]) {
+      const candidate = url.searchParams.get(key)?.trim() ?? "";
+      if (/^\d{8,20}$/.test(candidate)) return candidate;
+    }
+  } catch {
+    // URL validation is handled by resolveAliExpressInput.
+  }
+
+  return null;
 }
 
-async function scrapeViaFirecrawl(url: string): Promise<NormalizedProduct> {
-  const key = process.env.FIRECRAWL_API_KEY;
-  const lovableKey = process.env.LOVABLE_API_KEY;
-  if (!key) {
-    throw new Error(
-      "Firecrawl não conectado. Conecte o conector Firecrawl no workspace (Connectors) para importar via URL.",
-    );
-  }
-  const isGateway = key.startsWith("lovc_");
-  const endpoint = isGateway
-    ? "https://connector-gateway.lovable.dev/firecrawl/v2/scrape"
-    : "https://api.firecrawl.dev/v2/scrape";
-  const headers: Record<string, string> = { "Content-Type": "application/json" };
-  if (isGateway) {
-    if (!lovableKey) throw new Error("LOVABLE_API_KEY ausente para o gateway do Firecrawl");
-    headers.Authorization = `Bearer ${lovableKey}`;
-    headers["X-Connection-Api-Key"] = key;
-  } else {
-    headers.Authorization = `Bearer ${key}`;
+function isAliExpressHost(hostname: string): boolean {
+  const host = hostname.toLowerCase().replace(/^www\./, "");
+  return host === "aliexpress.com" || host.endsWith(".aliexpress.com") || host === "aliexpress.us" || host.endsWith(".aliexpress.us");
+}
+
+async function resolveAliExpressInput(input: string): Promise<{ productId: string; sourceUrl: string }> {
+  const value = input.trim();
+  const directId = extractAliexpressId(value);
+  if (directId) {
+    return {
+      productId: directId,
+      sourceUrl: `https://www.aliexpress.com/item/${directId}.html`,
+    };
   }
 
-  const jsonSchema = {
-    type: "object",
-    properties: {
-      title: { type: "string" },
-      description: { type: "string" },
-      images: { type: "array", items: { type: "string" } },
-      price: { type: "number" },
-      currency: { type: "string" },
-      sku: { type: "string" },
-      weight_grams: { type: "number" },
-    },
-    required: ["title"],
-  };
-
-  const res = await fetch(endpoint, {
-    method: "POST",
-    headers,
-    body: JSON.stringify({
-      url,
-      onlyMainContent: true,
-      formats: [
-        "markdown",
-        { type: "json", schema: jsonSchema, prompt: "Extract product title, full description, image URLs, current price (as a number in source currency), 3-letter currency code (default BRL), SKU/product code, and shipping weight in grams if available." },
-      ],
-    }),
-  });
-
-  if (!res.ok) {
-    const body = await res.text();
-    throw new Error(`Firecrawl falhou [${res.status}]: ${body.slice(0, 300)}`);
+  let parsed: URL;
+  try {
+    parsed = new URL(value);
+  } catch {
+    throw new Error("Informe uma URL de produto AliExpress válida ou o ID numérico do produto.");
   }
-  const payload = await res.json();
-  const root = payload.data ?? payload;
-  const j = root.json ?? {};
-  const md = root.markdown ?? "";
-  const meta = root.metadata ?? {};
+
+  if (!isAliExpressHost(parsed.hostname)) {
+    throw new Error("A importação por URL aceita apenas links de produtos do AliExpress ou o ID numérico do produto.");
+  }
+
+  // Short/share links do AliExpress não carregam o ID no endereço inicial.
+  // We only follow the official redirect and inspect the final URL; no page scraping is performed.
+  let finalUrl = parsed.toString();
+  try {
+    let response = await fetch(finalUrl, {
+      method: "HEAD",
+      redirect: "follow",
+      headers: { "User-Agent": "Mozilla/5.0 (compatible; AbsolutoGlamurImporter/1.0)" },
+    });
+    if (!response.ok || !response.url) {
+      response = await fetch(finalUrl, {
+        method: "GET",
+        redirect: "follow",
+        headers: { "User-Agent": "Mozilla/5.0 (compatible; AbsolutoGlamurImporter/1.0)" },
+      });
+    }
+    finalUrl = response.url || finalUrl;
+  } catch {
+    throw new Error("Não foi possível resolver esse link curto do AliExpress. Cole a URL completa do produto ou o ID numérico.");
+  }
+
+  const resolvedId = extractAliexpressId(finalUrl);
+  if (!resolvedId) {
+    throw new Error("Não encontrei o ID do produto nesse link. Cole a URL completa do AliExpress ou o ID numérico.");
+  }
 
   return {
-    title: j.title || meta.title || "Produto importado",
-    description: j.description || md.slice(0, 4000) || null,
-    images: Array.isArray(j.images) ? j.images.filter((s: unknown) => typeof s === "string").slice(0, 10) : [],
-    price_original: typeof j.price === "number" ? j.price : null,
-    currency: typeof j.currency === "string" ? j.currency : "BRL",
-    sku: typeof j.sku === "string" ? j.sku : null,
-    weight_grams: typeof j.weight_grams === "number" ? Math.round(j.weight_grams) : null,
-    source_url: url,
-    source_id: extractAliexpressId(url),
+    productId: resolvedId,
+    sourceUrl: `https://www.aliexpress.com/item/${resolvedId}.html`,
+  };
+}
+
+function firstOfficialNumber(...values: unknown[]): number | null {
+  for (const value of values) {
+    if (typeof value === "number" && Number.isFinite(value)) return value;
+    if (typeof value === "string") {
+      const normalized = value.replace(/[^\d.,-]/g, "").replace(",", ".");
+      const parsed = Number.parseFloat(normalized);
+      if (Number.isFinite(parsed)) return parsed;
+    }
+  }
+  return null;
+}
+
+function stripOfficialHtml(input: string): string {
+  return input
+    .replace(/<script[\s\S]*?<\/script>/gi, "")
+    .replace(/<style[\s\S]*?<\/style>/gi, "")
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/<\/p>/gi, "\n\n")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/gi, "'")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
+async function loadAliExpressUrlPreview(
+  input: string,
+  credentialClient: any,
+): Promise<NormalizedProduct> {
+  const { productId, sourceUrl } = await resolveAliExpressInput(input);
+  const { callAli } = await import("./aliexpress-discovery.functions");
+
+  const json = await callAli<any>(
+    "aliexpress.ds.product.get",
+    {
+      product_id: productId,
+      target_currency: "BRL",
+      target_language: "PT",
+      ship_to_country: "BR",
+    },
+    credentialClient,
+  );
+
+  const root =
+    json?.aliexpress_ds_product_get_response ??
+    json?.aliexpress_ds_productdetail_get_response ??
+    json;
+  const result = root?.result ?? root;
+  const base = result?.ae_item_base_info_dto ?? result?.base_info ?? result ?? {};
+  const props = result?.ae_item_properties ?? {};
+  const media = result?.ae_multimedia_info_dto ?? result?.multimedia ?? {};
+  const skuBlock = result?.ae_item_sku_info_dtos ?? result?.skus ?? {};
+
+  const rawTitle = String(base?.subject ?? base?.product_title ?? "").trim();
+  if (!rawTitle) {
+    throw new Error(`A API oficial do AliExpress não retornou os dados do produto ${productId}.`);
+  }
+
+  const images: string[] = [];
+  const pushImage = (value: unknown) => {
+    if (typeof value !== "string") return;
+    const url = value.trim();
+    if (/^https?:\/\//i.test(url) && !images.includes(url)) images.push(url);
+  };
+
+  pushImage(base?.product_main_image_url);
+  pushImage(base?.main_image_url);
+  const rawImages = media?.image_urls ?? media?.image_url_list ?? base?.product_small_image_urls;
+  if (typeof rawImages === "string") {
+    const matches = rawImages.match(/https?:\/\/[^\s,;]+/gi) ?? [];
+    matches.forEach(pushImage);
+  } else if (Array.isArray(rawImages)) {
+    rawImages.forEach(pushImage);
+  } else if (Array.isArray(rawImages?.string)) {
+    rawImages.string.forEach(pushImage);
+  }
+
+  const skuRows: any[] = Array.isArray(skuBlock?.ae_item_sku_info_d_t_o)
+    ? skuBlock.ae_item_sku_info_d_t_o
+    : Array.isArray(skuBlock)
+      ? skuBlock
+      : [];
+  const firstSku = skuRows[0] ?? {};
+  const price = firstOfficialNumber(
+    firstSku?.offer_sale_price,
+    firstSku?.sku_price,
+    firstSku?.offer_bulk_sale_price,
+    result?.app_sale_price,
+    base?.sale_price,
+  );
+  const currency = String(firstSku?.currency_code ?? base?.currency_code ?? "BRL").toUpperCase();
+  const sku = String(firstSku?.sku_code ?? firstSku?.sku_id ?? `AE-${productId}`);
+  const weightKg = firstOfficialNumber(props?.package_weight, firstSku?.package_weight);
+  const descriptionHtml = String(base?.detail ?? result?.package_info_dto?.package_detail ?? "");
+
+  return {
+    title: rawTitle,
+    description: descriptionHtml ? stripOfficialHtml(descriptionHtml).slice(0, 6000) : null,
+    images: images.slice(0, 12),
+    price_original: price,
+    currency,
+    sku,
+    weight_grams: weightKg != null && weightKg > 0 ? Math.round(weightKg * 1000) : null,
+    source_url: sourceUrl,
+    source_id: productId,
   };
 }
 
@@ -324,21 +445,13 @@ async function fetchFxToBrl(from: string): Promise<number | null> {
 
 export const scrapeUrlPreview = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((v: unknown) => z.object({ url: z.string().url() }).parse(v))
+  .inputValidator((v: unknown) =>
+    z.object({ url: z.string().trim().min(3).max(2048) }).parse(v),
+  )
   .handler(async ({ data, context }): Promise<NormalizedProduct> => {
     await assertCatalog(context);
-    const raw = await scrapeViaFirecrawl(data.url);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: cfg } = await supabaseAdmin
-      .from("integrations")
-      .select("config")
-      .eq("provider", "aliexpress")
-      .maybeSingle();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const settingsRaw = (cfg?.config as any)?.import_settings ?? cfg?.config ?? null;
-    const settingsParsed = SettingsSchema.safeParse(settingsRaw);
-    const settings: ImportSettings = settingsParsed.success ? settingsParsed.data : DEFAULT_SETTINGS;
-
+    const raw = await loadAliExpressUrlPreview(data.url, context.supabase);
+    const settings = await loadSettings(context.supabase);
     const translated = await translateToPtBr({ title: raw.title, description: raw.description });
 
     let priceBrl: number | null = raw.price_original;
@@ -521,7 +634,7 @@ export const saveImportDraft = createServerFn({ method: "POST" })
   .inputValidator((v: unknown) => DraftSchema.parse(v))
   .handler(async ({ data, context }) => {
     await assertCatalog(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const db = context.supabase;
     const translated = await translateToPtBr({
       title: data.normalized.title,
       description: data.normalized.description ?? null,
@@ -530,9 +643,7 @@ export const saveImportDraft = createServerFn({ method: "POST" })
     const srcCurrency = (data.normalized.currency ?? "BRL").toUpperCase();
     if (priceBrl != null && srcCurrency !== "BRL") {
       const live = await fetchFxToBrl(srcCurrency);
-      const cfgForFx = await loadSettings(
-        (await import("@/integrations/supabase/client.server")).supabaseAdmin,
-      );
+      const cfgForFx = await loadSettings(db);
       const rate = live ?? cfgForFx.fx_rate;
       priceBrl = Math.round(priceBrl * rate * 100) / 100;
     }
@@ -547,7 +658,7 @@ export const saveImportDraft = createServerFn({ method: "POST" })
       source_url: data.source_url ?? null,
       source_id: data.source_id ?? null,
     };
-    const { data: created, error } = await supabaseAdmin
+    const { data: created, error } = await db
       .from("product_imports")
       .insert({
         source: data.source,
@@ -562,9 +673,9 @@ export const saveImportDraft = createServerFn({ method: "POST" })
       .single();
     if (error) throw new Error(error.message);
 
-    const settings = await loadSettings(supabaseAdmin);
+    const settings = await loadSettings(db);
     try {
-      const { productId } = await commitImportRow(supabaseAdmin, created.id, norm, settings, {
+      const { productId } = await commitImportRow(db, created.id, norm, settings, {
         status: "draft",
         category_id: settings.default_category_id ?? null,
         brand_id: settings.default_brand_id ?? null,
@@ -573,7 +684,7 @@ export const saveImportDraft = createServerFn({ method: "POST" })
       return { id: created.id, product_id: productId };
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
-      await supabaseAdmin.from("product_imports").update({ error: msg }).eq("id", created.id);
+      await db.from("product_imports").update({ error: msg }).eq("id", created.id);
       return { id: created.id, product_id: null };
     }
   });

@@ -71,7 +71,7 @@ function ImportsPage() {
 
         <div className="mb-6 flex flex-wrap gap-2 border-b border-border">
           <TabBtn active={tab === "url"} onClick={() => setTab("url")} icon={<Link2 className="h-4 w-4" />}>
-            URL (Firecrawl)
+            URL / ID AliExpress
           </TabBtn>
           <TabBtn active={tab === "json"} onClick={() => setTab("json")} icon={<FileJson className="h-4 w-4" />}>
             JSON / CSV
@@ -136,7 +136,7 @@ function UrlTab() {
     mutationFn: (u: string) => scrape({ data: { url: u } }),
     onSuccess: (p) => {
       setPreview(p);
-      toast.success("Produto extraído. Revise e salve como rascunho.");
+      toast.success("Produto carregado pela API oficial. Revise e salve como rascunho.");
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -172,13 +172,14 @@ function UrlTab() {
   return (
     <div className="space-y-6">
       <div className="rounded-xl border border-border bg-card p-6">
-        <label className="mb-2 block text-sm font-medium">Cole a URL do produto AliExpress</label>
+        <label className="mb-2 block text-sm font-medium">Cole a URL ou o ID do produto AliExpress</label>
         <div className="flex gap-2">
           <input
-            type="url"
+            type="text"
+            inputMode="url"
             value={url}
             onChange={(e) => setUrl(e.target.value)}
-            placeholder="https://pt.aliexpress.com/item/1005006123456789.html"
+            placeholder="https://pt.aliexpress.com/item/1005006123456789.html ou 1005006123456789"
             className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm"
           />
           <button
@@ -186,11 +187,11 @@ function UrlTab() {
             onClick={() => previewMut.mutate(url)}
             className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50"
           >
-            {previewMut.isPending ? "Extraindo..." : "Extrair"}
+            {previewMut.isPending ? "Consultando API..." : "Buscar produto"}
           </button>
         </div>
         <p className="mt-2 text-xs text-muted-foreground">
-          Requer o conector <strong>Firecrawl</strong>. Sem ele, use a aba JSON/CSV.
+          Usa a <strong>API oficial do AliExpress</strong> conectada em Integrações. Aceita URL completa, link compartilhado ou ID numérico; não requer Firecrawl.
         </p>
       </div>
 
