@@ -34,10 +34,9 @@ export type DashboardMetrics = {
   };
 };
 
-// Supabase free tier caps (approx)
 const FREE_LIMITS = {
-  database_rows_limit: 500_000, // 500MB DB ~ heurística
-  storage_bytes_limit: 1_073_741_824, // 1GB
+  database_rows_limit: 500_000,
+  storage_bytes_limit: 1_073_741_824,
   mau_limit: 50_000,
 };
 
@@ -45,7 +44,7 @@ export const getDashboardMetrics = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<DashboardMetrics> => {
     await assertAdmin(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const db = context.supabase;
     const since30 = new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString();
 
     const [
@@ -59,19 +58,21 @@ export const getDashboardMetrics = createServerFn({ method: "POST" })
       importsRes,
       orderItemsRes,
     ] = await Promise.all([
-      supabaseAdmin.from("orders").select("id, status, total_cents, created_at, paid_at").gte("created_at", since30),
-      supabaseAdmin.from("orders").select("id", { count: "exact", head: true }).eq("status", "pending"),
-      supabaseAdmin.from("products").select("id", { count: "exact", head: true }).eq("status", "active"),
-      supabaseAdmin.from("products").select("id", { count: "exact", head: true }).eq("status", "draft"),
-      supabaseAdmin.from("profiles").select("id", { count: "exact", head: true }),
-      supabaseAdmin.from("profiles").select("id", { count: "exact", head: true }).gte("created_at", since30),
-      supabaseAdmin.from("ai_generations").select("id, total_tokens").gte("created_at", since30),
-      supabaseAdmin.from("product_imports").select("id", { count: "exact", head: true }),
-      supabaseAdmin
-        .from("order_items")
-        .select("product_name, quantity, total_cents, created_at")
-        .gte("created_at", since30),
+      db.from("orders").select("id, status, total_cents, created_at, paid_at").gte("created_at", since30),
+      db.from("orders").select("id", { count: "exact", head: true }).eq("status", "pending"),
+      db.from("products").select("id", { count: "exact", head: true }).eq("status", "active"),
+      db.from("products").select("id", { count: "exact", head: true }).eq("status", "draft"),
+      db.from("profiles").select("id", { count: "exact", head: true }),
+      db.from("profiles").select("id", { count: "exact", head: true }).gte("created_at", since30),
+      db.from("ai_generations").select("id, total_tokens").gte("created_at", since30),
+      db.from("product_imports").select("id", { count: "exact", head: true }),
+      db.from("order_items").select("product_name, quantity, total_cents, created_at").gte("created_at", since30),
     ]);
+
+    const errors = [ordersRes, pendingRes, productsActiveRes, productsDraftRes, customersTotalRes, newCustomersRes, aiRes, importsRes, orderItemsRes]
+      .map((r: any) => r.error)
+      .filter(Boolean);
+    if (errors.length) throw new Error(errors[0].message ?? String(errors[0]));
 
     const orders = ordersRes.data ?? [];
     const paid = orders.filter((o: any) => o.status === "paid" || o.paid_at);
@@ -79,7 +80,6 @@ export const getDashboardMetrics = createServerFn({ method: "POST" })
     const aov_cents = paid.length ? Math.round(revenue_cents_30d / paid.length) : 0;
     const conversion_rate = orders.length ? paid.length / orders.length : 0;
 
-    // Sales series by day (last 30d)
     const seriesMap = new Map<string, { revenue_cents: number; orders: number }>();
     for (let i = 29; i >= 0; i--) {
       const d = new Date(Date.now() - i * 24 * 3600 * 1000).toISOString().slice(0, 10);
@@ -95,12 +95,10 @@ export const getDashboardMetrics = createServerFn({ method: "POST" })
     }
     const sales_series = Array.from(seriesMap.entries()).map(([day, v]) => ({ day, ...v }));
 
-    // Orders by status
     const statusMap = new Map<string, number>();
     for (const o of orders as any[]) statusMap.set(o.status, (statusMap.get(o.status) ?? 0) + 1);
     const orders_by_status = Array.from(statusMap.entries()).map(([status, count]) => ({ status, count }));
 
-    // Top products
     const prodMap = new Map<string, { qty: number; revenue_cents: number }>();
     for (const it of (orderItemsRes.data ?? []) as any[]) {
       const key = it.product_name ?? "—";
@@ -117,12 +115,11 @@ export const getDashboardMetrics = createServerFn({ method: "POST" })
     const ai = aiRes.data ?? [];
     const ai_tokens_30d = ai.reduce((s: number, r: any) => s + (r.total_tokens ?? 0), 0);
 
-    // Rough DB rows count (sum of a few known tables)
     const rowTables = ["orders", "products", "profiles", "ai_generations", "product_imports", "order_items"] as const;
     let database_rows = 0;
     for (const t of rowTables) {
-      const { count } = await (supabaseAdmin.from(t) as any).select("id", { count: "exact", head: true });
-      database_rows += count ?? 0;
+      const { count, error } = await (db.from(t) as any).select("id", { count: "exact", head: true });
+      if (!error) database_rows += count ?? 0;
     }
 
     return {
@@ -153,14 +150,13 @@ export const getDashboardMetrics = createServerFn({ method: "POST" })
     };
   });
 
-// CSV export of paid orders in the last N days
 export const exportOrdersCsv = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     await assertAdmin(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const db = context.supabase;
     const since = new Date(Date.now() - 90 * 24 * 3600 * 1000).toISOString();
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await db
       .from("orders")
       .select("code, status, customer_name, customer_email, total_cents, currency, created_at, paid_at")
       .gte("created_at", since)
