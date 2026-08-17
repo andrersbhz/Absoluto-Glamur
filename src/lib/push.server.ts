@@ -1,11 +1,27 @@
 import webpush from "web-push";
-import { supabaseAdmin } from "@/integrations/supabase/client.server";
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
+type DbClient = any;
 
 let cachedKeys: { publicKey: string; privateKey: string; subject: string } | null = null;
 
-export async function ensureVapidKeys() {
+async function resolveDb(client?: DbClient): Promise<DbClient> {
+  if (client) return client;
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  return supabaseAdmin;
+}
+
+/**
+ * Carrega/gera VAPID no servidor. Quando uma ação é iniciada pelo administrador,
+ * recebe context.supabase e obedece RLS. Notificações automáticas sem sessão usam
+ * o fallback privilegiado de servidor.
+ */
+export async function ensureVapidKeys(client?: DbClient) {
   if (cachedKeys) return cachedKeys;
-  const { data } = await supabaseAdmin.from("push_config").select("*").eq("id", true).maybeSingle();
+  const db = await resolveDb(client);
+  const { data, error } = await db.from("push_config").select("*").eq("id", true).maybeSingle();
+  if (error) throw new Error(`Falha ao carregar configuração push: ${error.message}`);
+
   if (data) {
     cachedKeys = {
       publicKey: data.vapid_public_key,
@@ -15,14 +31,16 @@ export async function ensureVapidKeys() {
   } else {
     const kp = webpush.generateVAPIDKeys();
     const subject = "mailto:admin@absolutoglamur.com.br";
-    await supabaseAdmin.from("push_config").insert({
+    const { error: insertError } = await db.from("push_config").insert({
       id: true,
       vapid_public_key: kp.publicKey,
       vapid_private_key: kp.privateKey,
       vapid_subject: subject,
     });
+    if (insertError) throw new Error(`Falha ao salvar configuração push: ${insertError.message}`);
     cachedKeys = { publicKey: kp.publicKey, privateKey: kp.privateKey, subject };
   }
+
   webpush.setVapidDetails(cachedKeys.subject, cachedKeys.publicKey, cachedKeys.privateKey);
   return cachedKeys;
 }
@@ -34,11 +52,13 @@ export type SalePushPayload = {
   tag?: string;
 };
 
-export async function sendPushToAllAdmins(payload: SalePushPayload) {
-  await ensureVapidKeys();
-  const { data: subs } = await supabaseAdmin
+export async function sendPushToAllAdmins(payload: SalePushPayload, client?: DbClient) {
+  const db = await resolveDb(client);
+  await ensureVapidKeys(db);
+  const { data: subs, error } = await db
     .from("admin_push_subscriptions")
     .select("id, endpoint, p256dh, auth");
+  if (error) throw new Error(`Falha ao carregar dispositivos push: ${error.message}`);
   if (!subs || subs.length === 0) return { sent: 0, failed: 0, removed: 0 };
 
   let sent = 0;
@@ -47,21 +67,21 @@ export async function sendPushToAllAdmins(payload: SalePushPayload) {
   const body = JSON.stringify(payload);
 
   await Promise.all(
-    subs.map(async (s) => {
+    subs.map(async (s: any) => {
       try {
         await webpush.sendNotification(
           { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },
           body,
         );
         sent++;
-        await supabaseAdmin
+        await db
           .from("admin_push_subscriptions")
           .update({ last_success_at: new Date().toISOString() })
           .eq("id", s.id);
       } catch (e: unknown) {
         const status = (e as { statusCode?: number })?.statusCode;
         if (status === 404 || status === 410) {
-          await supabaseAdmin.from("admin_push_subscriptions").delete().eq("id", s.id);
+          await db.from("admin_push_subscriptions").delete().eq("id", s.id);
           removed++;
         } else {
           failed++;
@@ -73,8 +93,10 @@ export async function sendPushToAllAdmins(payload: SalePushPayload) {
   return { sent, failed, removed };
 }
 
+/** Backend automático: continua privilegiado e nunca recebe cliente do browser. */
 export async function notifyAdminsOfPaidOrder(orderId: string) {
-  const { data: order } = await supabaseAdmin
+  const db = await resolveDb();
+  const { data: order } = await db
     .from("orders")
     .select("code, total_cents, customer_name")
     .eq("id", orderId)
@@ -84,10 +106,13 @@ export async function notifyAdminsOfPaidOrder(orderId: string) {
     style: "currency",
     currency: "BRL",
   });
-  await sendPushToAllAdmins({
-    title: "💰 Nova venda confirmada",
-    body: `${order.code} · ${order.customer_name ?? "Cliente"} · ${total}`,
-    url: "/admin/orders",
-    tag: `order-${orderId}`,
-  });
+  await sendPushToAllAdmins(
+    {
+      title: "💰 Nova venda confirmada",
+      body: `${order.code} · ${order.customer_name ?? "Cliente"} · ${total}`,
+      url: "/admin/orders",
+      tag: `order-${orderId}`,
+    },
+    db,
+  );
 }
