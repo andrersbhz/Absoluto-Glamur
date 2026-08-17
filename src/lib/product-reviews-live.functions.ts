@@ -290,10 +290,16 @@ async function fetchDropshipperReviewAggregate(
   // principal. Fazemos apenas um retry oficial e não alteramos o source_id salvo,
   // pois estoque/variações podem depender do ID regional original.
   if (first.mainProductId && first.mainProductId !== productId) {
-    const mainPayload = await fetchDropshipperProductPayload(first.mainProductId, credentialClient);
-    const main = parseDropshipperReviewAggregate(mainPayload, first.mainProductId);
-    const mainHasReviews = (main.total ?? 0) > 0 || (main.average ?? 0) > 0;
-    if (mainHasReviews) return main;
+    try {
+      const mainPayload = await fetchDropshipperProductPayload(first.mainProductId, credentialClient);
+      const main = parseDropshipperReviewAggregate(mainPayload, first.mainProductId);
+      const mainHasReviews = (main.total ?? 0) > 0 || (main.average ?? 0) > 0;
+      if (mainHasReviews) return main;
+    } catch {
+      // O retry no produto principal é apenas um fallback. Se ele estiver
+      // indisponível/restrito temporariamente, preservamos o resultado regional
+      // vazio em vez de transformar a sincronização inteira em erro.
+    }
   }
 
   if (first.average == null && first.total == null) {
