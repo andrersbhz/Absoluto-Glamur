@@ -180,15 +180,18 @@ export function ProductReviews({ productId }: Props) {
     try {
       const result = await forceSync({ data: { product_id: productId } });
       await refetchReviews();
-      if (result.aggregateUpdated) {
-        const rating = result.remoteAverage != null ? `${result.remoteAverage.toFixed(1)}/5` : null;
-        const total = result.remoteTotal != null ? `${result.remoteTotal} avaliações` : null;
+      const hasRemoteReviews = (result.remoteTotal ?? 0) > 0 || (result.remoteAverage ?? 0) > 0;
+      if (result.aggregateUpdated && hasRemoteReviews) {
+        const rating = (result.remoteAverage ?? 0) > 0 ? `${result.remoteAverage!.toFixed(1)}/5` : null;
+        const total = (result.remoteTotal ?? 0) > 0 ? `${result.remoteTotal} avaliações` : null;
         const details = [rating, total].filter(Boolean).join(" · ");
         toast.success(`Dados oficiais do AliExpress atualizados${details ? `: ${details}` : "."}`);
       } else if ((result.upserted ?? 0) > 0) {
         toast.success(`${result.upserted} avaliações sincronizadas do AliExpress.`);
       } else if (result.error) {
         toast.error(result.error);
+      } else if (result.source === "dropshipper_aggregate" && !hasRemoteReviews) {
+        toast.info("O AliExpress não retornou avaliações para este produto. Nenhuma nota existente foi alterada.");
       } else {
         toast.info("Os dados de avaliação do AliExpress já estão atualizados.");
       }
