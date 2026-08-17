@@ -1,0 +1,94 @@
+name: Fix Integration Verified Status
+
+on:
+  push:
+    branches:
+      - fix/integration-verified-status
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/integration-verified-status
+          fetch-depth: 0
+      - name: Patch verified/inactive flow
+        shell: python
+        run: |
+          from pathlib import Path
+
+          p = Path('src/lib/integrations.functions.ts')
+          s = p.read_text()
+          old = '''      if (!apiKey || row.enabled === false) {
+                  const message = "Preencha a chave da API e ative a integração antes de testar.";'''
+          new = '''      if (!apiKey) {
+                  const message = "Preencha a chave da API antes de testar.";'''
+          if old not in s:
+              raise SystemExit('AI test flow marker not found')
+          p.write_text(s.replace(old, new, 1))
+
+          p = Path('src/routes/_authenticated/admin.integrations.tsx')
+          s = p.read_text()
+          old = '''          <StatusLight
+                    connected={integration.last_status === "ok" && integration.enabled}
+                    errored={integration.last_status === "error"}
+                    manual={integration.last_status === "manual"}'''
+          new = '''          <StatusLight
+                    connected={integration.last_status === "ok" && integration.enabled}
+                    verified={integration.last_status === "ok"}
+                    errored={integration.last_status === "error"}
+                    manual={integration.last_status === "manual"}'''
+          if old not in s:
+              raise SystemExit('StatusLight invocation marker not found')
+          s = s.replace(old, new, 1)
+
+          old = '''function StatusLight({
+            connected,
+            errored,
+            manual,
+            hasKey,
+            errorMessage,
+          }: {
+            connected: boolean;
+            errored: boolean;
+            manual: boolean;'''
+          new = '''function StatusLight({
+            connected,
+            verified,
+            errored,
+            manual,
+            hasKey,
+            errorMessage,
+          }: {
+            connected: boolean;
+            verified: boolean;
+            errored: boolean;
+            manual: boolean;'''
+          if old not in s:
+              raise SystemExit('StatusLight signature marker not found')
+          s = s.replace(old, new, 1)
+
+          old = '''  const { color, label, pulse, title } = connected
+              ? { color: "bg-success", label: "Conectado", pulse: true, title: "Provedor testado e ativo" }
+              : errored'''
+          new = '''  const { color, label, pulse, title } = connected
+              ? { color: "bg-success", label: "Conectado", pulse: true, title: "Provedor testado e ativo" }
+              : verified
+                ? { color: "bg-success", label: "Validada", pulse: false, title: "Credencial testada com sucesso; integração ainda está inativa" }
+                : errored'''
+          if old not in s:
+              raise SystemExit('StatusLight behavior marker not found')
+          p.write_text(s.replace(old, new, 1))
+      - name: Commit functional changes
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/lib/integrations.functions.ts src/routes/_authenticated/admin.integrations.tsx
+          git commit -m "fix(integrations): separate validated from active status" || exit 0
+          git push origin HEAD:fix/integration-verified-status
