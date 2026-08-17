@@ -18,12 +18,14 @@ jobs:
           ref: fix/admin-stability-integrations
           fetch-depth: 0
       - name: Apply patch
-        run: python scripts/patch-admin-stability.py
+        run: |
+          python scripts/patch-admin-stability.py
+          git checkout -- .github/workflows/ci.yml
       - name: Commit functional changes
         shell: bash
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add src/lib src/routes/_authenticated/admin.integrations.tsx supabase/migrations .github/workflows/ci.yml
+          git add src/lib src/routes/_authenticated/admin.integrations.tsx supabase/migrations
           git commit -m "fix(admin): stabilize catalog and integrations without service role" || exit 0
           git push origin HEAD:fix/admin-stability-integrations
