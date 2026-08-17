@@ -3,9 +3,9 @@
 /**
  * Cliente para APIs públicas do protocolo TOP clássico.
  *
- * Algumas APIs do AliExpress (como product.evaluation.query) continuam
- * documentadas no gateway /router/rest e NÃO usam OAuth/session. Não devem ser
- * chamadas pelo gateway moderno /sync usado pelas APIs DS.
+ * `aliexpress.social.product.evaluation.query` é uma API TOP pública (sem session)
+ * e a documentação específica aceita `sign_method=md5` ou `sign_method=hmac`.
+ * Usamos MD5 aqui por compatibilidade com o endpoint legado /router/rest.
  */
 
 function topTimestampGmt8(): string {
@@ -13,25 +13,92 @@ function topTimestampGmt8(): string {
   return shifted.toISOString().slice(0, 19).replace("T", " ");
 }
 
-async function hmacSha256Hex(secret: string, data: string): Promise<string> {
-  const enc = new TextEncoder();
-  const key = await globalThis.crypto.subtle.importKey(
-    "raw",
-    enc.encode(secret),
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign"],
-  );
-  const signature = await globalThis.crypto.subtle.sign("HMAC", key, enc.encode(data));
-  return [...new Uint8Array(signature)].map((byte) => byte.toString(16).padStart(2, "0")).join("").toUpperCase();
+function leftRotate(value: number, amount: number): number {
+  return ((value << amount) | (value >>> (32 - amount))) >>> 0;
 }
 
-async function signTop(params: Record<string, string>, secret: string): Promise<string> {
+/** MD5 UTF-8 sem dependência Node, compatível com runtimes edge. */
+function md5Hex(input: string): string {
+  const bytes = new TextEncoder().encode(input);
+  const withMarker = bytes.length + 1;
+  const padding = (56 - (withMarker % 64) + 64) % 64;
+  const totalLength = withMarker + padding + 8;
+  const buffer = new Uint8Array(totalLength);
+  buffer.set(bytes);
+  buffer[bytes.length] = 0x80;
+
+  const view = new DataView(buffer.buffer);
+  const bitLength = bytes.length * 8;
+  view.setUint32(totalLength - 8, bitLength >>> 0, true);
+  view.setUint32(totalLength - 4, Math.floor(bitLength / 0x100000000) >>> 0, true);
+
+  const shifts = [
+    7, 12, 17, 22, 7, 12, 17, 22, 7, 12, 17, 22, 7, 12, 17, 22,
+    5, 9, 14, 20, 5, 9, 14, 20, 5, 9, 14, 20, 5, 9, 14, 20,
+    4, 11, 16, 23, 4, 11, 16, 23, 4, 11, 16, 23, 4, 11, 16, 23,
+    6, 10, 15, 21, 6, 10, 15, 21, 6, 10, 15, 21, 6, 10, 15, 21,
+  ];
+  const constants = Array.from({ length: 64 }, (_, i) =>
+    Math.floor(Math.abs(Math.sin(i + 1)) * 0x100000000) >>> 0,
+  );
+
+  let a0 = 0x67452301;
+  let b0 = 0xefcdab89;
+  let c0 = 0x98badcfe;
+  let d0 = 0x10325476;
+
+  for (let offset = 0; offset < buffer.length; offset += 64) {
+    const words = Array.from({ length: 16 }, (_, i) => view.getUint32(offset + i * 4, true));
+    let a = a0;
+    let b = b0;
+    let c = c0;
+    let d = d0;
+
+    for (let i = 0; i < 64; i += 1) {
+      let f: number;
+      let g: number;
+      if (i < 16) {
+        f = (b & c) | (~b & d);
+        g = i;
+      } else if (i < 32) {
+        f = (d & b) | (~d & c);
+        g = (5 * i + 1) % 16;
+      } else if (i < 48) {
+        f = b ^ c ^ d;
+        g = (3 * i + 5) % 16;
+      } else {
+        f = c ^ (b | ~d);
+        g = (7 * i) % 16;
+      }
+
+      const nextD = c;
+      const nextC = b;
+      const mixed = (a + (f >>> 0) + constants[i] + words[g]) >>> 0;
+      const nextB = (b + leftRotate(mixed, shifts[i])) >>> 0;
+      a = d;
+      d = nextD;
+      c = nextC;
+      b = nextB;
+    }
+
+    a0 = (a0 + a) >>> 0;
+    b0 = (b0 + b) >>> 0;
+    c0 = (c0 + c) >>> 0;
+    d0 = (d0 + d) >>> 0;
+  }
+
+  return [a0, b0, c0, d0]
+    .flatMap((word) => [0, 8, 16, 24].map((shift) => ((word >>> shift) & 0xff).toString(16).padStart(2, "0")))
+    .join("")
+    .toUpperCase();
+}
+
+function signTopMd5(params: Record<string, string>, secret: string): string {
   const base = Object.keys(params)
     .sort()
     .map((key) => `${key}${params[key]}`)
     .join("");
-  return hmacSha256Hex(secret, base);
+  return md5Hex(`${secret}${base}${secret}`);
 }
 
 async function loadAliTopCredentials() {
@@ -45,15 +112,19 @@ async function loadAliTopCredentials() {
 
   const cfg = (data?.config ?? {}) as Record<string, unknown>;
   const appKey = String(data?.api_key ?? cfg.app_key ?? "").trim();
-  const appSecret = String(data?.webhook_token ?? cfg.app_secret ?? "").trim();
-  const legacySecret = String(cfg.app_secret ?? "").trim();
-  const fallbackSecret = legacySecret && legacySecret !== appSecret ? legacySecret : null;
+  const primarySecret = String(data?.webhook_token ?? "").trim();
+  const configSecret = String(cfg.app_secret ?? "").trim();
+  const secrets = [...new Set([primarySecret, configSecret].filter(Boolean))];
 
-  if (!appKey || !appSecret) {
+  if (!appKey || secrets.length === 0) {
     throw new Error("Configure App Key e App Secret do AliExpress em Integrações antes de sincronizar avaliações.");
   }
 
-  return { appKey, appSecret, fallbackSecret };
+  return { appKey, secrets };
+}
+
+function responseKey(method: string): string {
+  return `${method.replace(/\./g, "_")}_response`;
 }
 
 function readPlatformError(json: any): string | null {
@@ -65,18 +136,17 @@ function readPlatformError(json: any): string | null {
   return `AliExpress TOP ${code || "erro"}: ${detail}${requestId}`;
 }
 
-function responseKey(method: string): string {
-  return `${method.replace(/\./g, "_")}_response`;
-}
-
 function readBusinessError(method: string, json: any): string | null {
   const root = json?.[responseKey(method)] ?? json;
-  const result = root?.result;
-  const success = result?.success;
+  const envelope = root?.result;
+  const success = envelope?.success;
   if (success === false || success === "false") {
-    const code = result?.error_code ? ` ${result.error_code}` : "";
-    const message = result?.error_message ?? "Falha retornada pela API.";
+    const code = envelope?.error_code ? ` ${envelope.error_code}` : "";
+    const message = envelope?.error_message ?? "Falha retornada pela API.";
     return `AliExpress${code}: ${message}`;
+  }
+  if (!envelope?.result && envelope?.error_code) {
+    return `AliExpress ${envelope.error_code}: ${envelope.error_message ?? "Falha retornada pela API."}`;
   }
   return null;
 }
@@ -93,7 +163,7 @@ async function requestTop(
     app_key: appKey,
     format: "json",
     v: "2.0",
-    sign_method: "hmac-sha256",
+    sign_method: "md5",
     timestamp: topTimestampGmt8(),
   };
 
@@ -102,7 +172,7 @@ async function requestTop(
     params[key] = String(value);
   }
 
-  params.sign = await signTop(params, appSecret);
+  params.sign = signTopMd5(params, appSecret);
   const response = await fetch(endpoint, {
     method: "POST",
     headers: {
@@ -124,39 +194,31 @@ async function requestTop(
   return json;
 }
 
-function looksLikeSignatureError(json: any): boolean {
-  const error = json?.error_response;
-  const material = `${error?.code ?? ""} ${error?.sub_code ?? ""} ${error?.msg ?? ""} ${error?.sub_msg ?? ""}`;
-  return /sign|signature|InvalidSignature|IncompleteSignature/i.test(material);
-}
-
 export async function callAliTopPublic<T = any>(
   method: string,
   bizParams: Record<string, string | number | boolean | undefined | null>,
 ): Promise<T> {
-  const { appKey, appSecret, fallbackSecret } = await loadAliTopCredentials();
-  const endpoints = [
-    "https://api.taobao.com/router/rest",
-    "https://eco.taobao.com/router/rest",
-  ];
+  const { appKey, secrets } = await loadAliTopCredentials();
+  // HTTPS oficial documentado para TOP. O segundo host é mantido apenas como
+  // compatibilidade de infraestrutura, nunca como fonte alternativa de dados.
+  const endpoints = ["https://eco.taobao.com/router/rest", "https://api.taobao.com/router/rest"];
+  const failures: string[] = [];
 
-  let lastError: Error | null = null;
   for (const endpoint of endpoints) {
-    try {
-      let json = await requestTop(endpoint, method, appKey, appSecret, bizParams);
-      if (fallbackSecret && looksLikeSignatureError(json)) {
-        json = await requestTop(endpoint, method, appKey, fallbackSecret, bizParams);
+    for (const secret of secrets) {
+      try {
+        const json = await requestTop(endpoint, method, appKey, secret, bizParams);
+        const platformError = readPlatformError(json);
+        if (platformError) throw new Error(platformError);
+        const businessError = readBusinessError(method, json);
+        if (businessError) throw new Error(businessError);
+        return json as T;
+      } catch (error) {
+        failures.push(error instanceof Error ? error.message : String(error));
       }
-
-      const platformError = readPlatformError(json);
-      if (platformError) throw new Error(platformError);
-      const businessError = readBusinessError(method, json);
-      if (businessError) throw new Error(businessError);
-      return json as T;
-    } catch (error) {
-      lastError = error instanceof Error ? error : new Error(String(error));
     }
   }
 
-  throw lastError ?? new Error("Não foi possível consultar a API pública TOP do AliExpress.");
+  const unique = [...new Set(failures)].filter(Boolean);
+  throw new Error(unique.slice(0, 3).join(" | ") || "Não foi possível consultar a API TOP oficial do AliExpress.");
 }

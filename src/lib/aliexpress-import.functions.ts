@@ -731,6 +731,20 @@ export const deleteImport = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
+async function syncImportedProductReviews(admin: any, productId: string) {
+  try {
+    const { syncLiveReviewsInternal } = await import("./product-reviews-live.functions");
+    const result = await syncLiveReviewsInternal(admin, productId, true);
+    if (result.error && result.fetched === 0) {
+      console.warn(`[reviews] produto ${productId}: ${result.error}`);
+    }
+  } catch (error) {
+    // Avaliações não podem desfazer uma importação de produto que já foi concluída.
+    // A falha fica disponível em product_review_sync_state para nova tentativa.
+    console.warn("[reviews] sincronização inicial do AliExpress falhou", error);
+  }
+}
+
 const CommitSchema = z.object({
   id: z.string().uuid(),
   status: z.enum(["draft", "active"]).default("draft"),
@@ -835,6 +849,7 @@ export const commitImport = createServerFn({ method: "POST" })
           String(norm.source_id),
           settings,
         );
+        await syncImportedProductReviews(supabaseAdmin, imp.product_id);
       }
       const { data: p, error: productError } = await supabaseAdmin
         .from("products")
@@ -920,6 +935,7 @@ export const commitImport = createServerFn({ method: "POST" })
         String(norm.source_id),
         settings,
       );
+        await syncImportedProductReviews(supabaseAdmin, productId);
     }
 
     return { id: productId, slug, price_cents: priceCents };
