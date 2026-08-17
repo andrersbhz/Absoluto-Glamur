@@ -387,15 +387,10 @@ function extractOfficialPage(payload: any): { rows: any[]; total: number } {
   return { rows, total };
 }
 
-async function fetchOfficialReviews(
-  sourceId: string,
+async function fetchOfficialReviewsForProductId(
+  productId: string,
   credentialClient?: any,
 ): Promise<{ reviews: NormalizedOfficialReview[]; productId: string; total: number }> {
-  const productId = normalizeAliProductId(sourceId);
-  if (!productId) {
-    throw new Error(`ID do produto AliExpress inválido na importação: ${sourceId.slice(0, 120)}`);
-  }
-
   const collected = new Map<string, NormalizedOfficialReview>();
   let remoteTotal = 0;
 
@@ -418,6 +413,35 @@ async function fetchOfficialReviews(
   }
 
   return { reviews: [...collected.values()], productId, total: remoteTotal };
+}
+
+async function fetchOfficialReviews(
+  sourceId: string,
+  credentialClient?: any,
+): Promise<{ reviews: NormalizedOfficialReview[]; productId: string; total: number }> {
+  const productId = normalizeAliProductId(sourceId);
+  if (!productId) {
+    throw new Error(`ID do produto AliExpress inválido na importação: ${sourceId.slice(0, 120)}`);
+  }
+
+  const first = await fetchOfficialReviewsForProductId(productId, credentialClient);
+  if (first.reviews.length > 0 || first.total > 0) return first;
+
+  // Alguns links/importações usam um ID regional. Quando a API Dropshipper
+  // informa o main_product_id, tentamos os comentários no produto principal
+  // sem alterar o source_id original usado por estoque e variações.
+  try {
+    const productPayload = await fetchDropshipperProductPayload(productId, credentialClient);
+    const parsed = parseDropshipperReviewAggregate(productPayload, productId);
+    if (parsed.mainProductId && parsed.mainProductId !== productId) {
+      const main = await fetchOfficialReviewsForProductId(parsed.mainProductId, credentialClient);
+      if (main.reviews.length > 0 || main.total > 0) return main;
+    }
+  } catch {
+    // Resolver o ID principal é apenas fallback; preserva o resultado TOP original.
+  }
+
+  return first;
 }
 
 async function persistOfficialReviews(admin: any, productId: string, reviews: NormalizedOfficialReview[]) {
@@ -563,10 +587,69 @@ export async function syncLiveReviewsInternal(
     updated_at: now,
   }, { onConflict: "product_id" });
 
+  let officialError: string | null = null;
+
+  // Primeiro buscamos os comentários individuais pela API oficial TOP. Esse
+  // endpoint entrega texto, estrelas, comprador mascarado, país, data e fotos.
   try {
-    // A aplicação internacional Drop Shipping expõe a nota média e a quantidade
-    // oficial pela API aliexpress.ds.product.get. A API TOP antiga de textos
-    // individuais não é chamada aqui: avaliações já salvas permanecem intactas.
+    const official = await fetchOfficialReviews(sourceId, credentialClient);
+    if (official.reviews.length > 0) {
+      const persisted = await persistOfficialReviews(admin, productId, official.reviews);
+      const translatedNow = await translatePendingReviews(admin, productId, 36);
+
+      let aggregateUpdated = false;
+      let remoteTotal: number | null = official.total > 0 ? official.total : official.reviews.length;
+      let remoteAverage: number | null = official.reviews.length
+        ? Math.round((official.reviews.reduce((sum, review) => sum + review.rating, 0) / official.reviews.length) * 100) / 100
+        : null;
+
+      // O agregado do Dropshipper é complementar. Uma falha aqui nunca impede
+      // comentários oficiais já obtidos pela API TOP.
+      try {
+        const aggregate = await fetchDropshipperReviewAggregate(sourceId, credentialClient);
+        const hasAggregate = (aggregate.total ?? 0) > 0 || (aggregate.average ?? 0) > 0;
+        if (hasAggregate) {
+          aggregateUpdated = await persistDropshipperReviewAggregate(admin, productId, aggregate);
+          if ((aggregate.total ?? 0) > 0) remoteTotal = aggregate.total;
+          if ((aggregate.average ?? 0) > 0) remoteAverage = aggregate.average;
+        }
+      } catch {
+        // Comentários já foram sincronizados; não transformar o agregado em falha.
+      }
+
+      const finishedAt = new Date().toISOString();
+      await admin.from("product_review_sync_state").upsert({
+        product_id: productId,
+        source: "aliexpress",
+        source_id: official.productId,
+        status: "ok",
+        fetched_count: official.reviews.length,
+        remote_total: remoteTotal,
+        last_attempt_at: now,
+        last_success_at: finishedAt,
+        last_error: null,
+        updated_at: finishedAt,
+      }, { onConflict: "product_id" });
+
+      return {
+        fetched: official.reviews.length,
+        upserted: persisted.upserted,
+        translated: translatedBacklog + translatedNow,
+        skipped: false,
+        source: "official_top_reviews" as const,
+        error: null,
+        aggregateUpdated,
+        remoteTotal,
+        remoteAverage,
+      };
+    }
+  } catch (error) {
+    officialError = (error instanceof Error ? error.message : String(error)).slice(0, 1200);
+  }
+
+  try {
+    // Fallback: o Dropshipper expõe somente nota média e quantidade. Ele não
+    // substitui os comentários individuais da API TOP.
     const aggregate = await fetchDropshipperReviewAggregate(sourceId, credentialClient);
     const hasRemoteReviews = (aggregate.total ?? 0) > 0 || (aggregate.average ?? 0) > 0;
     const aggregateUpdated = hasRemoteReviews
@@ -584,7 +667,7 @@ export async function syncLiveReviewsInternal(
       remote_total: aggregate.total,
       last_attempt_at: now,
       last_success_at: finishedAt,
-      last_error: null,
+      last_error: officialError,
       updated_at: finishedAt,
     }, { onConflict: "product_id" });
 
@@ -594,13 +677,18 @@ export async function syncLiveReviewsInternal(
       translated: translatedBacklog,
       skipped: false,
       source: "dropshipper_aggregate" as const,
-      error: null,
+      // Se a TOP falhou, o administrador recebe o motivo real. Assim falta/erro
+      // de credencial não aparece mais como "AliExpress não retornou avaliações".
+      error: officialError,
       aggregateUpdated,
       remoteTotal: aggregate.total,
       remoteAverage: aggregate.average,
     };
   } catch (error) {
-    const message = (error instanceof Error ? error.message : String(error)).slice(0, 1200);
+    const aggregateError = (error instanceof Error ? error.message : String(error)).slice(0, 1200);
+    const message = officialError
+      ? `${officialError} | Fallback Dropshipper: ${aggregateError}`.slice(0, 1200)
+      : aggregateError;
     const failedAt = new Date().toISOString();
     await admin.from("product_review_sync_state").upsert({
       product_id: productId,
