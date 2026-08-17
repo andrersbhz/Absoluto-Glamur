@@ -5,6 +5,8 @@ import { callAli } from "./aliexpress-discovery.functions";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
+const ALI_SOURCES = ["aliexpress", "aliexpress_api", "aliexpress_url"];
+
 async function assertCatalog(context: any) {
   const { data: adm } = await context.supabase.rpc("is_admin", { _user_id: context.userId });
   if (adm) return;
@@ -116,7 +118,7 @@ export const syncAliexpressStock = createServerFn({ method: "POST" })
       .from("product_imports")
       .select("source_id, source")
       .eq("product_id", data.product_id)
-      .in("source", ["aliexpress", "aliexpress_api"])
+      .in("source", ALI_SOURCES)
       .not("source_id", "is", null)
       .order("created_at", { ascending: false })
       .limit(1)
@@ -213,7 +215,7 @@ export async function runBulkSync(limit: number, client?: any) {
   const { data: imports } = await db
     .from("product_imports")
     .select("product_id, source_id")
-    .in("source", ["aliexpress", "aliexpress_api"])
+    .in("source", ALI_SOURCES)
     .not("product_id", "is", null)
     .not("source_id", "is", null)
     .order("created_at", { ascending: false })
