@@ -1,14 +1,19 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import {
+  INTEGRATION_CATALOG,
+  INTEGRATION_CATALOG_BY_PROVIDER,
+} from "./integration-catalog";
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 async function assertAdmin(context: any) {
   const { data } = await context.supabase.rpc("is_admin", { _user_id: context.userId });
   if (!data) throw new Error("Acesso restrito a administradores");
 }
 
-function mask(v: string | null): string | null {
+function mask(v: string | null | undefined): string | null {
   if (!v) return null;
   if (v.length <= 8) return "••••";
   return v.slice(0, 4) + "••••" + v.slice(-4);
@@ -17,16 +22,15 @@ function mask(v: string | null): string | null {
 function sanitizeIntegrationConfig(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== "object" || Array.isArray(value)) return {};
   const config = { ...(value as Record<string, unknown>) };
-  const sensitiveKeys = [
-    "access_token",
-    "refresh_token",
-    "app_secret",
-    "client_secret",
-    "merchant_token",
-    "secret",
-    "token",
-  ];
-  for (const key of sensitiveKeys) delete config[key];
+  for (const key of Object.keys(config)) {
+    if (
+      /(^|_)(access_?token|refresh_?token|token|secret|password|private_?key|merchant_?key|api_?key|client_?secret|app_?secret)($|_)/i.test(
+        key,
+      )
+    ) {
+      delete config[key];
+    }
+  }
   return config;
 }
 
@@ -37,58 +41,85 @@ export type IntegrationDTO = {
   description: string | null;
   enabled: boolean;
   mode: "sandbox" | "production";
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  config: any;
+  config: Record<string, unknown>;
   last_verified_at: string | null;
   last_status: string | null;
   last_error: string | null;
   updated_at: string;
   api_key_masked: string | null;
   webhook_token_masked: string | null;
+  merchant_key_masked: string | null;
   has_api_key: boolean;
   has_webhook_token: boolean;
+  has_merchant_key: boolean;
   reauth_required: boolean;
 };
+
+function toDto(row: any, fallback?: (typeof INTEGRATION_CATALOG)[number]): IntegrationDTO {
+  const rawConfig =
+    row?.config && typeof row.config === "object" && !Array.isArray(row.config)
+      ? (row.config as Record<string, unknown>)
+      : {};
+  const merchantKey =
+    typeof rawConfig.merchant_key === "string" ? rawConfig.merchant_key : null;
+  return {
+    provider: String(row?.provider ?? fallback?.provider ?? ""),
+    category: String(row?.category ?? fallback?.category ?? "other"),
+    display_name: String(
+      row?.display_name ?? fallback?.display_name ?? row?.provider ?? fallback?.provider ?? "Integração",
+    ),
+    description: String(row?.description ?? fallback?.description ?? "") || null,
+    enabled: Boolean(row?.enabled ?? false),
+    mode: (row?.mode ?? fallback?.default_mode ?? "sandbox") as "sandbox" | "production",
+    config: sanitizeIntegrationConfig(rawConfig),
+    last_verified_at: row?.last_verified_at ?? null,
+    last_status: row?.last_status ?? null,
+    last_error: row?.last_error ?? null,
+    updated_at: row?.updated_at ?? "",
+    api_key_masked: mask(row?.api_key),
+    webhook_token_masked: mask(row?.webhook_token),
+    merchant_key_masked: mask(merchantKey),
+    has_api_key: Boolean(row?.api_key),
+    has_webhook_token: Boolean(row?.webhook_token),
+    has_merchant_key: Boolean(merchantKey),
+    reauth_required: Boolean(rawConfig.reauth_required),
+  };
+}
 
 export const listIntegrations = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<IntegrationDTO[]> => {
     await assertAdmin(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data, error } = await supabaseAdmin
+    const db = context.supabase;
+    const { data, error } = await db
       .from("integrations")
       .select(
         "provider, category, display_name, description, enabled, mode, config, last_verified_at, last_status, last_error, api_key, webhook_token, updated_at",
       )
       .order("category")
       .order("display_name");
-    if (error) throw new Error(error.message);
-    return (data ?? []).map((i) => ({
-      provider: i.provider,
-      category: i.category,
-      display_name: i.display_name,
-      description: i.description,
-      enabled: i.enabled,
-      mode: (i.mode as "sandbox" | "production") ?? "sandbox",
-      config: sanitizeIntegrationConfig(i.config),
-      last_verified_at: i.last_verified_at,
-      last_status: i.last_status,
-      last_error: i.last_error,
-      updated_at: i.updated_at,
-      api_key_masked: mask(i.api_key),
-      webhook_token_masked: mask(i.webhook_token),
-      has_api_key: !!i.api_key,
-      has_webhook_token: !!i.webhook_token,
-      reauth_required: !!(
-        i.config &&
-        typeof i.config === "object" &&
-        (i.config as Record<string, unknown>).reauth_required
-      ),
-    }));
+
+    // The provider catalog is the source of truth for visibility. A transient DB read
+    // problem must never make every connector disappear from the admin interface.
+    if (error) console.warn("[integrations] failed to load persisted state", error.message);
+    const rows = (data ?? []) as any[];
+    const byProvider = new Map(rows.map((row) => [String(row.provider), row]));
+
+    const canonical = INTEGRATION_CATALOG.map((item) =>
+      toDto(byProvider.get(item.provider), item),
+    );
+    const known = new Set(INTEGRATION_CATALOG.map((item) => item.provider));
+    const custom = rows
+      .filter((row) => !known.has(String(row.provider)))
+      .map((row) => toDto(row))
+      .sort((a, b) =>
+        `${a.category}/${a.display_name}`.localeCompare(`${b.category}/${b.display_name}`, "pt-BR"),
+      );
+    return [...canonical, ...custom];
   });
 
 const SaveSchema = z.object({
-  provider: z.string(),
+  provider: z.string().trim().min(1),
   enabled: z.boolean().optional(),
   mode: z.enum(["sandbox", "production"]).optional(),
   api_key: z.string().nullable().optional(),
@@ -102,53 +133,122 @@ export const saveIntegration = createServerFn({ method: "POST" })
   .inputValidator((v: unknown) => SaveSchema.parse(v))
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const update: any = { updated_by: context.userId };
-    if (data.enabled !== undefined) update.enabled = data.enabled;
-    if (data.mode) update.mode = data.mode;
-    if (data.api_key !== undefined) update.api_key = data.api_key || null;
-    if (data.webhook_token !== undefined) update.webhook_token = data.webhook_token || null;
-    if (data.config) {
-      // Merge (não sobrescreve) — preserva access_token/refresh_token já gravados
-      const { data: existing } = await supabaseAdmin
-        .from("integrations")
-        .select("config")
-        .eq("provider", data.provider)
-        .maybeSingle();
-      const prev = (existing?.config as Record<string, unknown> | null) ?? {};
-      const merged: Record<string, unknown> = { ...prev, ...data.config };
-      // valores explícitos null removem a chave
-      for (const [k, v] of Object.entries(data.config)) {
-        if (v === null) delete merged[k];
-      }
-      // Se o usuário limpou tudo (Desconectar envia config:{}), preservar comportamento anterior de reset
+    const db = context.supabase;
+    const { data: existing, error: readError } = await db
+      .from("integrations")
+      .select("*")
+      .eq("provider", data.provider)
+      .maybeSingle();
+    if (readError) throw new Error(readError.message);
+
+    const catalog = INTEGRATION_CATALOG_BY_PROVIDER.get(data.provider);
+    if (!existing && !catalog) throw new Error("Integração desconhecida");
+
+    const prevConfig =
+      existing?.config && typeof existing.config === "object" && !Array.isArray(existing.config)
+        ? ({ ...existing.config } as Record<string, unknown>)
+        : {};
+    let nextConfig = prevConfig;
+    if (data.config !== undefined) {
       if (Object.keys(data.config).length === 0) {
-        update.config = {};
+        nextConfig = {};
       } else {
-        update.config = merged;
+        nextConfig = { ...prevConfig, ...data.config };
+        for (const [key, value] of Object.entries(data.config)) {
+          if (value === null) delete nextConfig[key];
+        }
       }
     }
-    const { error } = await supabaseAdmin
+
+    const payload = {
+      provider: data.provider,
+      category: existing?.category ?? catalog?.category ?? "other",
+      display_name: existing?.display_name ?? catalog?.display_name ?? data.provider,
+      description: existing?.description ?? catalog?.description ?? null,
+      enabled: data.enabled ?? existing?.enabled ?? false,
+      mode: data.mode ?? existing?.mode ?? catalog?.default_mode ?? "sandbox",
+      api_key:
+        data.api_key !== undefined ? data.api_key || null : (existing?.api_key ?? null),
+      webhook_token:
+        data.webhook_token !== undefined
+          ? data.webhook_token || null
+          : (existing?.webhook_token ?? null),
+      config: nextConfig,
+      updated_by: context.userId,
+    };
+
+    const { error } = await db
       .from("integrations")
-      .update(update)
-      .eq("provider", data.provider);
+      .upsert(payload, { onConflict: "provider" });
     if (error) throw new Error(error.message);
     return { ok: true };
   });
+
+const RevealSchema = z.object({
+  provider: z.string().trim().min(1),
+  field: z.enum(["api_key", "webhook_token", "merchant_key"]),
+});
+export type IntegrationCredentialField = z.infer<typeof RevealSchema>["field"];
+
+/**
+ * Reveals exactly one credential after an explicit admin action (eye button).
+ * Normal connector listing never returns plaintext secrets.
+ */
+export const revealIntegrationCredential = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((v: unknown) => RevealSchema.parse(v))
+  .handler(async ({ data, context }) => {
+    await assertAdmin(context);
+    const { data: row, error } = await context.supabase
+      .from("integrations")
+      .select("api_key, webhook_token, config")
+      .eq("provider", data.provider)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!row) return { value: null as string | null };
+
+    if (data.field === "merchant_key") {
+      const config =
+        row.config && typeof row.config === "object" && !Array.isArray(row.config)
+          ? (row.config as Record<string, unknown>)
+          : {};
+      const value = config.merchant_key;
+      return { value: typeof value === "string" && value ? value : null };
+    }
+    const value = row[data.field];
+    return { value: typeof value === "string" && value ? value : null };
+  });
+
+async function updateTestStatus(
+  db: any,
+  provider: string,
+  error: string | null,
+  extra: Record<string, unknown> = {},
+) {
+  await db
+    .from("integrations")
+    .update({
+      last_verified_at: new Date().toISOString(),
+      last_status: error ? "error" : "ok",
+      last_error: error ? error.slice(0, 800) : null,
+      ...extra,
+    })
+    .eq("provider", provider);
+}
 
 export const testIntegration = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((v: unknown) => z.object({ provider: z.string() }).parse(v))
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: row } = await supabaseAdmin
+    const db = context.supabase;
+    const { data: row, error: readError } = await db
       .from("integrations")
       .select("*")
       .eq("provider", data.provider)
       .maybeSingle();
-    if (!row) throw new Error("Integração não encontrada");
+    if (readError) throw new Error(readError.message);
+    if (!row) throw new Error("Integração ainda não configurada. Clique em Configurar e salve as credenciais.");
 
     if (data.provider === "asaas") {
       if (!row.api_key) throw new Error("Preencha a chave da API do Asaas");
@@ -158,28 +258,14 @@ export const testIntegration = createServerFn({ method: "POST" })
           { apiKey: row.api_key, env: (row.mode as "sandbox" | "production") ?? "sandbox" },
           "/myAccount",
         );
-        await supabaseAdmin
-          .from("integrations")
-          .update({
-            last_verified_at: new Date().toISOString(),
-            last_status: "ok",
-            last_error: null,
-          })
-          .eq("provider", "asaas");
+        await updateTestStatus(db, "asaas", null);
         return {
           ok: true,
           info: { name: info.name ?? "Conta Asaas", email: info.email ?? null },
         };
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
-        await supabaseAdmin
-          .from("integrations")
-          .update({
-            last_verified_at: new Date().toISOString(),
-            last_status: "error",
-            last_error: msg,
-          })
-          .eq("provider", "asaas");
+        await updateTestStatus(db, "asaas", msg);
         throw new Error(msg);
       }
     }
@@ -193,25 +279,11 @@ export const testIntegration = createServerFn({ method: "POST" })
           "/public-keys",
           { method: "POST", body: JSON.stringify({ type: "card" }) },
         );
-        await supabaseAdmin
-          .from("integrations")
-          .update({
-            last_verified_at: new Date().toISOString(),
-            last_status: "ok",
-            last_error: null,
-          })
-          .eq("provider", "pagbank");
+        await updateTestStatus(db, "pagbank", null);
         return { ok: true, info: { name: "PagBank", email: null } };
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
-        await supabaseAdmin
-          .from("integrations")
-          .update({
-            last_verified_at: new Date().toISOString(),
-            last_status: "error",
-            last_error: msg,
-          })
-          .eq("provider", "pagbank");
+        await updateTestStatus(db, "pagbank", msg);
         throw new Error(msg);
       }
     }
@@ -219,31 +291,16 @@ export const testIntegration = createServerFn({ method: "POST" })
     if (data.provider === "openai" || data.provider === "gemini") {
       const provider = data.provider as "openai" | "gemini";
       const { loadAiCredential, callAiProvider } = await import("./ai-translate.server");
-      const cred = await loadAiCredential(provider);
+      const cred = await loadAiCredential(provider, db);
       if (!cred) {
         const msg = "Preencha a chave da API e ative a integração antes de testar.";
-        await supabaseAdmin
-          .from("integrations")
-          .update({
-            last_verified_at: new Date().toISOString(),
-            last_status: "error",
-            last_error: msg,
-          })
-          .eq("provider", provider);
+        await updateTestStatus(db, provider, msg);
         throw new Error(msg);
       }
       try {
-        // Chamada mínima real ao modelo configurado.
         const text = await callAiProvider(cred, "Responda apenas com: OK", "ping");
         if (!text) throw new Error("O modelo respondeu vazio.");
-        await supabaseAdmin
-          .from("integrations")
-          .update({
-            last_verified_at: new Date().toISOString(),
-            last_status: "ok",
-            last_error: null,
-          })
-          .eq("provider", provider);
+        await updateTestStatus(db, provider, null);
         return {
           ok: true,
           info: {
@@ -253,21 +310,13 @@ export const testIntegration = createServerFn({ method: "POST" })
         };
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
-        await supabaseAdmin
-          .from("integrations")
-          .update({
-            last_verified_at: new Date().toISOString(),
-            last_status: "error",
-            last_error: msg,
-          })
-          .eq("provider", provider);
+        await updateTestStatus(db, provider, msg);
         throw new Error(msg);
       }
     }
 
     if (data.provider === "aliexpress") {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const cfg: any = (row.config as any) ?? {};
+      const cfg = (row.config as Record<string, unknown> | null) ?? {};
       const appKey = String(row.api_key ?? cfg.app_key ?? "").trim();
       const appSecret = String(row.webhook_token ?? cfg.app_secret ?? "").trim();
       const accessToken = String(cfg.access_token ?? "").trim();
@@ -281,37 +330,25 @@ export const testIntegration = createServerFn({ method: "POST" })
       }
       try {
         const { callAli } = await import("./aliexpress-discovery.functions");
-        // Chamada leve só para validar o access_token. Se falhar por token, callAli tenta refresh.
-        await callAli("aliexpress.ds.recommend.feed.get", {
-          feed_name: "DS_bestseller",
-          page_no: 1,
-          page_size: 1,
-          target_currency: "BRL",
-          target_language: "PT",
-        });
-        await supabaseAdmin
-          .from("integrations")
-          .update({
-            last_verified_at: new Date().toISOString(),
-            last_status: "ok",
-            last_error: null,
-            enabled: true,
-          })
-          .eq("provider", "aliexpress");
+        await callAli(
+          "aliexpress.ds.recommend.feed.get",
+          {
+            feed_name: "DS_bestseller",
+            page_no: 1,
+            page_size: 1,
+            target_currency: "BRL",
+            target_language: "PT",
+          },
+          db,
+        );
+        await updateTestStatus(db, "aliexpress", null, { enabled: true });
         return {
           ok: true,
           info: { name: "AliExpress Open Platform", email: cfg.aliexpress_user_id ?? null },
         };
       } catch (e) {
         const msg = e instanceof Error ? e.message : String(e);
-        await supabaseAdmin
-          .from("integrations")
-          .update({
-            last_verified_at: new Date().toISOString(),
-            last_status: "error",
-            last_error: msg,
-          })
-          .eq("provider", "aliexpress");
+        await updateTestStatus(db, "aliexpress", msg);
         throw new Error(msg);
       }
     }
@@ -319,7 +356,8 @@ export const testIntegration = createServerFn({ method: "POST" })
     return {
       ok: true,
       info: {
-        message: `Teste automático para "${data.provider}" ainda não está disponível. Salve as credenciais e valide manualmente no fluxo do provedor.`,
+        name: row.display_name ?? data.provider,
+        message: `As credenciais de ${row.display_name ?? data.provider} estão salvas. Este provedor ainda não possui teste remoto automático; valide no fluxo correspondente.`,
       },
     };
   });
