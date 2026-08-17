@@ -4,7 +4,6 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabase } from "@/integrations/supabase/client";
 import { callAliTopPublic } from "./aliexpress-top-public.server";
 import { generateWithOwnKeys } from "./ai-translate.server";
-import { syncReviewsForProductInternal } from "./product-reviews.functions";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -250,13 +249,31 @@ async function translateBatch(
   }
 }
 
-async function fetchOfficialReviews(sourceId: string): Promise<{ reviews: NormalizedOfficialReview[]; productId: string }> {
+function extractOfficialPage(payload: any): { rows: any[]; total: number } {
+  const root = payload?.aliexpress_social_product_evaluation_query_response ?? payload;
+  const result = root?.result?.result ?? root?.result ?? root;
+  const evaluations = result?.evaluations;
+  const buyerEvaluations = evaluations?.buyer_evaluation ?? evaluations?.buyerEvaluation ?? evaluations;
+  const rows = Array.isArray(buyerEvaluations)
+    ? buyerEvaluations
+    : buyerEvaluations && typeof buyerEvaluations === "object"
+      ? [buyerEvaluations]
+      : findEvaluationRows(payload);
+  const totalRaw = result?.total_number ?? result?.totalNumber ?? rows.length;
+  const total = Number.isFinite(Number(totalRaw)) ? Math.max(0, Number(totalRaw)) : rows.length;
+  return { rows, total };
+}
+
+async function fetchOfficialReviews(
+  sourceId: string,
+): Promise<{ reviews: NormalizedOfficialReview[]; productId: string; total: number }> {
   const productId = normalizeAliProductId(sourceId);
   if (!productId) {
     throw new Error(`ID do produto AliExpress inválido na importação: ${sourceId.slice(0, 120)}`);
   }
 
   const collected = new Map<string, NormalizedOfficialReview>();
+  let remoteTotal = 0;
 
   for (let page = 1; page <= OFFICIAL_SYNC_PAGES; page += 1) {
     const payload = await callAliTopPublic<any>("aliexpress.social.product.evaluation.query", {
@@ -264,7 +281,8 @@ async function fetchOfficialReviews(sourceId: string): Promise<{ reviews: Normal
       page,
       page_size: OFFICIAL_SYNC_PAGE_SIZE,
     });
-    const rows = findEvaluationRows(payload);
+    const { rows, total } = extractOfficialPage(payload);
+    remoteTotal = Math.max(remoteTotal, total);
     if (!rows.length) break;
 
     for (const raw of rows) {
@@ -272,15 +290,16 @@ async function fetchOfficialReviews(sourceId: string): Promise<{ reviews: Normal
       if (review) collected.set(review.source_review_id, review);
     }
     if (rows.length < OFFICIAL_SYNC_PAGE_SIZE) break;
+    if (remoteTotal > 0 && page * OFFICIAL_SYNC_PAGE_SIZE >= remoteTotal) break;
   }
 
-  return { reviews: [...collected.values()], productId };
+  return { reviews: [...collected.values()], productId, total: remoteTotal };
 }
 
 async function persistOfficialReviews(admin: any, productId: string, reviews: NormalizedOfficialReview[]) {
-  if (!reviews.length) return { upserted: 0, translated: 0 };
+  if (!reviews.length) return { upserted: 0 };
 
-  const ids = reviews.map((r) => r.source_review_id);
+  const ids = reviews.map((review) => review.source_review_id);
   const { data: existingRows } = await admin
     .from("product_external_reviews")
     .select("source_review_id,title,body,body_translated")
@@ -293,22 +312,12 @@ async function persistOfficialReviews(admin: any, productId: string, reviews: No
     if (row.source_review_id) existing.set(String(row.source_review_id), row);
   }
 
-  const needsTranslation = reviews.filter((review) => {
-    const current = existing.get(review.source_review_id);
-    return !current || current.body_translated !== true;
-  });
-
-  const translatedMap = new Map<string, { title: string | null; body: string | null; translated: boolean }>();
-  for (let i = 0; i < needsTranslation.length; i += 12) {
-    const batch = needsTranslation.slice(i, i + 12);
-    const translated = await translateBatch(batch.map((r) => ({ title: r.title, body: r.body })));
-    batch.forEach((review, index) => translatedMap.set(review.source_review_id, translated[index]));
-  }
-
+  // Persistimos primeiro. A tradução é uma etapa posterior e nunca pode impedir
+  // que uma avaliação real baixada da API oficial seja gravada no catálogo.
   const now = new Date().toISOString();
   const rows = reviews.map((review) => {
     const current = existing.get(review.source_review_id);
-    const translated = translatedMap.get(review.source_review_id);
+    const keepTranslated = current?.body_translated === true;
     return {
       product_id: productId,
       source: "aliexpress",
@@ -316,12 +325,12 @@ async function persistOfficialReviews(admin: any, productId: string, reviews: No
       author_name: review.author_name,
       author_country: review.author_country,
       rating: review.rating,
-      title: current?.body_translated === true ? current.title : translated?.title ?? review.title,
-      body: current?.body_translated === true ? current.body : translated?.body ?? review.body,
+      title: keepTranslated ? current.title : review.title,
+      body: keepTranslated ? current.body : review.body,
       images: review.images,
       reviewed_at: review.reviewed_at,
       is_visible: true,
-      body_translated: current?.body_translated === true || translated?.translated === true,
+      body_translated: keepTranslated,
       last_synced_at: now,
     };
   });
@@ -330,11 +339,7 @@ async function persistOfficialReviews(admin: any, productId: string, reviews: No
     .from("product_external_reviews")
     .upsert(rows, { onConflict: "product_id,source,source_review_id" });
   if (error) throw new Error(`Falha ao salvar avaliações oficiais do AliExpress: ${error.message}`);
-
-  return {
-    upserted: rows.length,
-    translated: [...translatedMap.values()].filter((x) => x.translated).length,
-  };
+  return { upserted: rows.length };
 }
 
 async function translatePendingReviews(admin: any, productId: string, limit = 36): Promise<number> {
@@ -368,72 +373,107 @@ async function translatePendingReviews(admin: any, productId: string, limit = 36
   return translatedCount;
 }
 
-async function syncLiveReviewsInternal(admin: any, productId: string, force = false) {
-  const translatedBacklog = await translatePendingReviews(admin, productId);
+export async function syncLiveReviewsInternal(admin: any, productId: string, force = false) {
+  const translatedBacklog = await translatePendingReviews(admin, productId, 24);
+  const now = new Date().toISOString();
 
-  if (!force) {
-    const { data: latest } = await admin
-      .from("product_external_reviews")
-      .select("last_synced_at")
-      .eq("product_id", productId)
-      .eq("source", "aliexpress")
-      .not("source_review_id", "is", null)
-      .order("last_synced_at", { ascending: false, nullsFirst: false })
-      .limit(1)
-      .maybeSingle();
-    const last = latest?.last_synced_at ? new Date(latest.last_synced_at).getTime() : 0;
+  const { data: state } = await admin
+    .from("product_review_sync_state")
+    .select("status,last_attempt_at")
+    .eq("product_id", productId)
+    .maybeSingle();
+
+  if (!force && state?.last_attempt_at && ["ok", "empty"].includes(String(state.status))) {
+    const last = new Date(state.last_attempt_at).getTime();
     if (last && Date.now() - last < AUTO_SYNC_TTL_HOURS * 60 * 60 * 1000) {
-      return { fetched: 0, upserted: 0, translated: translatedBacklog, skipped: true, source: "cache" as const, error: null };
+      return {
+        fetched: 0,
+        upserted: 0,
+        translated: translatedBacklog,
+        skipped: true,
+        source: "cache" as const,
+        error: null,
+      };
     }
   }
 
   const sourceId = await findAliSourceId(admin, productId);
   if (!sourceId) {
+    const error = "Este produto não possui um ID de origem do AliExpress vinculado à importação.";
+    await admin.from("product_review_sync_state").upsert({
+      product_id: productId,
+      source: "aliexpress",
+      status: "error",
+      last_attempt_at: now,
+      last_error: error,
+      updated_at: now,
+    }, { onConflict: "product_id" });
+    return { fetched: 0, upserted: 0, translated: translatedBacklog, skipped: true, source: "none" as const, error };
+  }
+
+  await admin.from("product_review_sync_state").upsert({
+    product_id: productId,
+    source: "aliexpress",
+    source_id: normalizeAliProductId(sourceId) ?? sourceId,
+    status: "running",
+    last_attempt_at: now,
+    last_error: null,
+    updated_at: now,
+  }, { onConflict: "product_id" });
+
+  try {
+    const official = await fetchOfficialReviews(sourceId);
+    const saved = await persistOfficialReviews(admin, productId, official.reviews);
+    // Traduz em lotes pequenos depois da persistência. O restante fica na fila
+    // e é traduzido nas próximas sincronizações/acessos sem perder o original.
+    const translatedNew = await translatePendingReviews(admin, productId, 24);
+    const finishedAt = new Date().toISOString();
+    const status = official.reviews.length > 0 ? "ok" : "empty";
+
+    await admin.from("product_review_sync_state").upsert({
+      product_id: productId,
+      source: "aliexpress",
+      source_id: official.productId,
+      status,
+      fetched_count: official.reviews.length,
+      remote_total: official.total,
+      last_attempt_at: now,
+      last_success_at: finishedAt,
+      last_error: null,
+      updated_at: finishedAt,
+    }, { onConflict: "product_id" });
+
+    return {
+      fetched: official.reviews.length,
+      upserted: saved.upserted,
+      translated: translatedBacklog + translatedNew,
+      skipped: false,
+      source: "official_api" as const,
+      error: official.reviews.length === 0
+        ? `A API oficial do AliExpress retornou 0 avaliações para o produto ${official.productId}.`
+        : null,
+    };
+  } catch (error) {
+    const message = (error instanceof Error ? error.message : String(error)).slice(0, 1200);
+    const failedAt = new Date().toISOString();
+    await admin.from("product_review_sync_state").upsert({
+      product_id: productId,
+      source: "aliexpress",
+      source_id: normalizeAliProductId(sourceId) ?? sourceId,
+      status: "error",
+      last_attempt_at: now,
+      last_error: message,
+      updated_at: failedAt,
+    }, { onConflict: "product_id" });
     return {
       fetched: 0,
       upserted: 0,
       translated: translatedBacklog,
-      skipped: true,
-      source: "none" as const,
-      error: "Este produto não possui um ID de origem do AliExpress vinculado à importação.",
+      skipped: false,
+      source: "official_api" as const,
+      error: message,
     };
   }
-
-  let officialIssue: string | null = null;
-  const normalizedSourceId = normalizeAliProductId(sourceId) ?? sourceId;
-  try {
-    const official = await fetchOfficialReviews(sourceId);
-    if (official.reviews.length) {
-      const saved = await persistOfficialReviews(admin, productId, official.reviews);
-      return {
-        fetched: official.reviews.length,
-        upserted: saved.upserted,
-        translated: translatedBacklog + saved.translated,
-        skipped: false,
-        source: "official_api" as const,
-        error: null,
-      };
-    }
-    officialIssue = `A API oficial do AliExpress retornou 0 avaliações globais para o produto ${official.productId}.`;
-  } catch (error) {
-    officialIssue = error instanceof Error ? error.message : String(error);
-    console.warn("[reviews] API TOP oficial indisponível; tentando fallback compatível", error);
-  }
-
-  const fallback = await syncReviewsForProductInternal(admin, productId, normalizedSourceId, 0);
-  const fallbackWorked = fallback.fetched > 0 || fallback.upserted > 0;
-  const combinedError = fallbackWorked
-    ? null
-    : [officialIssue, fallback.error && `Fallback: ${fallback.error}`].filter(Boolean).join(" | ").slice(0, 1200) || null;
-
-  return {
-    fetched: fallback.fetched,
-    upserted: fallback.upserted,
-    translated: translatedBacklog + fallback.translated,
-    skipped: false,
-    source: "feedback_fallback" as const,
-    error: combinedError,
-  };
 }
 
 export const autoSyncLiveProductReviews = createServerFn({ method: "POST" })
