@@ -1,0 +1,32 @@
+name: Apply Review Sync Session Patch
+
+on:
+  push:
+    branches:
+      - fix/manual-review-sync-session
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/manual-review-sync-session
+          fetch-depth: 0
+      - name: Apply deterministic patch
+        run: python scripts/patch-manual-review-sync-session.py
+      - name: Commit changes
+        run: |
+          if git diff --quiet; then
+            echo "No changes to commit"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/lib/aliexpress-top-public.server.ts src/lib/product-reviews-live.functions.ts
+          git commit -m "fix(reviews): sync manually with authenticated Supabase session"
+          git push origin HEAD:fix/manual-review-sync-session
