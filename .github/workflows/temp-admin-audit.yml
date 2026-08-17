@@ -1,0 +1,21 @@
+name: Final Admin Stability Audit
+
+on:
+  push:
+    branches:
+      - fix/admin-stability-integrations
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/admin-stability-integrations
+      - name: Remaining service-role usage in server functions
+        shell: bash
+        run: |
+          echo '=== REMAINING ==='
+          grep -RInE 'client\.server|supabaseAdmin' src/lib --include='*.functions.ts' || true
+          echo '=== AUTHENTICATED ROUTES DIRECT USAGE ==='
+          grep -RInE 'client\.server|supabaseAdmin' src/routes/_authenticated src/components/admin --include='*.ts' --include='*.tsx' || true
