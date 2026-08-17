@@ -4,7 +4,12 @@ import { getRequest } from '@tanstack/react-start/server'
 import { createClient } from '@supabase/supabase-js'
 import type { Database } from './types'
 
-
+// Public Supabase client configuration. These values are intentionally safe to ship
+// to the browser and already exist in client.ts. Keeping the same deterministic
+// fallback here prevents authenticated server functions from failing when a hosting
+// runtime omits SUPABASE_URL / SUPABASE_PUBLISHABLE_KEY.
+const PUBLIC_SUPABASE_URL = 'https://bnbksevtmbmlirnwglqb.supabase.co';
+const PUBLIC_SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_LPohaeKkLFO_6PrEB7F-sQ_dflToR4l';
 
 function isNewSupabaseApiKey(value: string): boolean {
   return value.startsWith('sb_publishable_') || value.startsWith('sb_secret_');
@@ -30,22 +35,20 @@ function createSupabaseFetch(supabaseKey: string): typeof fetch {
   };
 }
 
+function readServerEnv(name: 'SUPABASE_URL' | 'SUPABASE_PUBLISHABLE_KEY'): string | undefined {
+  if (typeof process === 'undefined' || !process.env) return undefined;
+  return process.env[name];
+}
+
 export const requireSupabaseAuth = createMiddleware({ type: 'function' }).server(
   async ({ next }) => {
-    
-    const SUPABASE_URL = process.env.SUPABASE_URL;
-    const SUPABASE_PUBLISHABLE_KEY = process.env.SUPABASE_PUBLISHABLE_KEY;
+    const SUPABASE_URL =
+      readServerEnv('SUPABASE_URL') ||
+      PUBLIC_SUPABASE_URL;
+    const SUPABASE_PUBLISHABLE_KEY =
+      readServerEnv('SUPABASE_PUBLISHABLE_KEY') ||
+      PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 
-    if (!SUPABASE_URL || !SUPABASE_PUBLISHABLE_KEY) {
-      const missing = [
-        ...(!SUPABASE_URL ? ['SUPABASE_URL'] : []),
-        ...(!SUPABASE_PUBLISHABLE_KEY ? ['SUPABASE_PUBLISHABLE_KEY'] : []),
-      ];
-      const message = `Missing Supabase environment variable(s): ${missing.join(', ')}. Connect Supabase in Lovable Cloud.`;
-      console.error(`[Supabase] ${message}`);
-      throw new Error(message);
-    }
-    
     const request = getRequest();
 
     if (!request?.headers) {
@@ -72,11 +75,11 @@ export const requireSupabaseAuth = createMiddleware({ type: 'function' }).server
     }
 
     const supabase = createClient<Database>(
-      SUPABASE_URL!,
-      SUPABASE_PUBLISHABLE_KEY!,
+      SUPABASE_URL,
+      SUPABASE_PUBLISHABLE_KEY,
       {
         global: {
-          fetch: createSupabaseFetch(SUPABASE_PUBLISHABLE_KEY!),
+          fetch: createSupabaseFetch(SUPABASE_PUBLISHABLE_KEY),
           headers: {
             Authorization: `Bearer ${token}`,
           },
