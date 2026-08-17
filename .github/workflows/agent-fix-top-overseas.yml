@@ -1,0 +1,87 @@
+name: Agent Fix TOP Overseas Endpoint
+
+on:
+  push:
+    branches:
+      - agent/fix-top-overseas-endpoint
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/fix-top-overseas-endpoint
+      - name: Patch TOP endpoints
+        shell: python
+        run: |
+          from pathlib import Path
+
+          p = Path('src/lib/aliexpress-top-public.server.ts')
+          s = p.read_text()
+
+          s = s.replace(
+              'const TOP_HTTPS_ENDPOINT = "https://eco.taobao.com/router/rest";',
+              '''const TOP_HTTPS_ENDPOINTS = [\n  // A documentação TOP atual recomenda este endpoint para ISVs no exterior.\n  "https://api.taobao.com/router/rest",\n  // Endpoint formal atual e endpoint HTTPS legado publicado na página desta API.\n  "https://gw.api.taobao.com/router/rest",\n  "https://eco.taobao.com/router/rest",\n] as const;'''
+          )
+
+          start = s.index('export async function callAliTopPublic<T = any>(\n')
+          new_tail = '''export async function callAliTopPublic<T = any>(
+            method: string,
+            bizParams: Record<string, string | number | boolean | undefined | null>,
+            credentialClient?: any,
+          ): Promise<T> {
+            const { appKey, secrets, dedicated } = await loadAliTopCredentials(credentialClient);
+            const failures: string[] = [];
+            let invalidKeyResponses = 0;
+            let attempts = 0;
+
+            // Aplicações AliExpress internacionais podem estar registradas no ambiente
+            // TOP overseas. Testamos primeiro o gateway overseas documentado e só então
+            // os gateways formais. Uma AppKey só é considerada inválida depois que todos
+            // os endpoints oficiais a rejeitam.
+            for (const endpoint of TOP_HTTPS_ENDPOINTS) {
+              for (const secret of secrets) {
+                attempts += 1;
+                try {
+                  const json = await requestTop(endpoint, method, appKey, secret, bizParams);
+                  const platformError = getPlatformError(json);
+                  if (platformError) {
+                    if (isInvalidTopAppKey(platformError)) {
+                      invalidKeyResponses += 1;
+                      failures.push(formatPlatformError(platformError));
+                      continue;
+                    }
+                    throw new Error(formatPlatformError(platformError));
+                  }
+                  const businessError = readBusinessError(method, json);
+                  if (businessError) throw new Error(businessError);
+                  return json as T;
+                } catch (error) {
+                  const message = error instanceof Error ? error.message : String(error);
+                  failures.push(message);
+                }
+              }
+            }
+
+            if (attempts > 0 && invalidKeyResponses === attempts) {
+              throw new Error(invalidTopAppKeyMessage(dedicated));
+            }
+
+            const unique = [...new Set(failures)].filter(Boolean);
+            throw new Error(unique.slice(0, 3).join(" | ") || "Não foi possível consultar a API TOP oficial do AliExpress.");
+          }
+'''
+          s = s[:start] + new_tail
+          p.write_text(s)
+      - name: Commit patch
+        run: |
+          git config user.name "André Rocha"
+          git config user.email "andrers.bhz@gmail.com"
+          git add src/lib/aliexpress-top-public.server.ts
+          git commit -m "fix: testar gateway TOP overseas para avaliações"
+          git push origin agent/fix-top-overseas-endpoint
