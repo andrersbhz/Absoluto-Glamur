@@ -12,8 +12,8 @@ export const registerCustomerPushSubscription = createServerFn({ method: "POST" 
   .middleware([requireSupabaseAuth])
   .inputValidator((data: SubscribeInput) => data)
   .handler(async ({ data, context }) => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    await supabaseAdmin
+    const db = context.supabase;
+    await db
       .from("customer_push_subscriptions")
       .upsert(
         {
@@ -32,8 +32,8 @@ export const unregisterCustomerPushSubscription = createServerFn({ method: "POST
   .middleware([requireSupabaseAuth])
   .inputValidator((data: { endpoint: string }) => data)
   .handler(async ({ data, context }) => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    await supabaseAdmin
+    const db = context.supabase;
+    await db
       .from("customer_push_subscriptions")
       .delete()
       .eq("endpoint", data.endpoint)

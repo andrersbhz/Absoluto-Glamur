@@ -159,26 +159,26 @@ export const getComplianceOverview = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<ComplianceOverview> => {
     await assertAdmin(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const db = context.supabase;
 
     const [products, reviews, paymentErrors, integrations, auditLogs, paymentEvents] = await Promise.all([
-      supabaseAdmin
+      db
         .from("products")
         .select("id, name, seo:product_seo(meta_title, meta_description), media:product_media(id)")
         .eq("status", "active")
         .limit(500),
-      supabaseAdmin.from("product_reviews").select("id", { count: "exact", head: true }).eq("is_approved", false),
-      supabaseAdmin.from("payment_events").select("id", { count: "exact", head: true }).not("error", "is", null),
-      supabaseAdmin
+      db.from("product_reviews").select("id", { count: "exact", head: true }).eq("is_approved", false),
+      db.from("payment_events").select("id", { count: "exact", head: true }).not("error", "is", null),
+      db
         .from("integrations")
         .select("provider, display_name, last_status, last_error")
         .eq("last_status", "error"),
-      supabaseAdmin
+      db
         .from("audit_logs")
         .select("id, action, entity, actor_id, created_at")
         .order("created_at", { ascending: false })
         .limit(12),
-      supabaseAdmin
+      db
         .from("payment_events")
         .select("id, provider, event_type, processed, error, created_at")
         .order("created_at", { ascending: false })
@@ -248,7 +248,7 @@ export const getUsageOverview = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<UsageOverview> => {
     await assertAdmin(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const db = context.supabase;
     const since30 = new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString();
     const tables = [
       "profiles",
@@ -267,7 +267,7 @@ export const getUsageOverview = createServerFn({ method: "GET" })
     const rowCounts = await Promise.all(
       tables.map(async (table) => {
         // The generated database type only accepts literal table names; this runtime list is intentional.
-        const { count, error } = await supabaseAdmin
+        const { count, error } = await db
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           .from(table as any)
           .select("*", { count: "exact", head: true });
@@ -277,10 +277,10 @@ export const getUsageOverview = createServerFn({ method: "GET" })
     );
 
     const [users30, integrations, aiCalls, imports] = await Promise.all([
-      supabaseAdmin.from("profiles").select("id", { count: "exact", head: true }).gte("created_at", since30),
-      supabaseAdmin.from("integrations").select("provider", { count: "exact", head: true }).eq("enabled", true),
-      supabaseAdmin.from("ai_generations").select("id", { count: "exact", head: true }).gte("created_at", since30),
-      supabaseAdmin.from("product_imports").select("id", { count: "exact", head: true }),
+      db.from("profiles").select("id", { count: "exact", head: true }).gte("created_at", since30),
+      db.from("integrations").select("provider", { count: "exact", head: true }).eq("enabled", true),
+      db.from("ai_generations").select("id", { count: "exact", head: true }).gte("created_at", since30),
+      db.from("product_imports").select("id", { count: "exact", head: true }),
     ]);
 
     for (const result of [users30, integrations, aiCalls, imports]) {

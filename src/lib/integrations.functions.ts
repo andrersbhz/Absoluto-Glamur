@@ -57,7 +57,9 @@ export const INTEGRATION_CATALOG: IntegrationCatalogItem[] = [
   { provider: "google_ads", category: "marketing", display_name: "Google Ads", description: "Campanhas e conversões no Google Ads." },
   { provider: "google_merchant", category: "marketing", display_name: "Google Merchant Center", description: "Feed de produtos para Google Shopping." },
   { provider: "google_tag_manager", category: "marketing", display_name: "Google Tag Manager", description: "Tags, pixels e eventos através do GTM." },
-  { provider: "meta_ads", category: "marketing", display_name: "Meta Ads (Facebook/Instagram)", description: "Campanhas, Pixel e Conversions API da Meta." },
+  { provider: "meta", category: "marketing", display_name: "Meta Ads / Catalog / Pixel", description: "Campanhas, Pixel, catálogo e Conversions API da Meta." },
+  { provider: "facebook", category: "marketing", display_name: "Facebook Page", description: "Publicação do blog na Página via Meta Graph API." },
+  { provider: "instagram", category: "marketing", display_name: "Instagram Business", description: "Publicação do blog no Instagram profissional via Meta Graph API." },
 
   { provider: "openai", category: "ai", display_name: "OpenAI", description: "IA para textos, classificação e automações do catálogo." },
   { provider: "gemini", category: "ai", display_name: "Google Gemini", description: "IA multimodal e tradução de conteúdo." },

@@ -19,8 +19,8 @@ export const getBlogMetaIntegrations = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     await assertAdmin(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data, error } = await (supabaseAdmin as any)
+    const db = context.supabase as any;
+    const { data, error } = await db
       .from("integrations")
       .select("provider,display_name,enabled,config,api_key,last_status,last_error,last_verified_at")
       .in("provider", ["facebook", "instagram"]);
@@ -58,8 +58,7 @@ export const saveBlogMetaIntegration = createServerFn({ method: "POST" })
   .inputValidator((value: unknown) => MetaSaveSchema.parse(value))
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const db = supabaseAdmin as any;
+    const db = context.supabase as any;
     const { data: existing } = await db
       .from("integrations")
       .select("config,api_key")
@@ -101,18 +100,18 @@ export const testBlogMetaIntegration = createServerFn({ method: "POST" })
   .inputValidator((value: unknown) => z.object({ provider: z.enum(["facebook", "instagram"]) }).parse(value))
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const db = context.supabase as any;
     try {
       const { testMetaIntegration } = await import("./meta-social.server");
-      const info = await testMetaIntegration(data.provider);
-      await (supabaseAdmin as any)
+      const info = await testMetaIntegration(data.provider, db);
+      await db
         .from("integrations")
         .update({ last_status: "ok", last_error: null, last_verified_at: new Date().toISOString() })
         .eq("provider", data.provider);
       return { ok: true, info };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      await (supabaseAdmin as any)
+      await db
         .from("integrations")
         .update({ last_status: "error", last_error: message.slice(0, 800), last_verified_at: new Date().toISOString() })
         .eq("provider", data.provider);

@@ -85,9 +85,9 @@ export const optimizeProductCopy = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     await assertCatalog(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const db = context.supabase;
 
-    const { data: prod, error } = await supabaseAdmin
+    const { data: prod, error } = await db
       .from("products")
       .select(
         `id, name, short_description, description, tags,
@@ -143,7 +143,7 @@ Regras finais:
     let raw = "";
     let err: string | null = null;
     try {
-      const text = await generateWithOwnKeys(SYSTEM_COPY, prompt);
+      const text = await generateWithOwnKeys(SYSTEM_COPY, prompt, db);
       if (!text) {
         status = "error";
         err = "Nenhuma chave de IA configurada (Gemini ou OpenAI) em Admin → Integrações.";
@@ -224,7 +224,7 @@ Regras finais:
     };
 
     if (data.apply) {
-      const { error: upErr } = await supabaseAdmin
+      const { error: upErr } = await db
         .from("products")
         .update({
           name: result.name,
@@ -234,7 +234,7 @@ Regras finais:
         .eq("id", data.product_id);
       if (upErr) throw new Error(upErr.message);
 
-      const { error: seoErr } = await supabaseAdmin.from("product_seo").upsert(
+      const { error: seoErr } = await db.from("product_seo").upsert(
         {
           product_id: data.product_id,
           meta_title: result.seo_title || null,
