@@ -37,7 +37,7 @@ import {
   type DiscoveryProduct,
 } from "@/lib/aliexpress-discovery.functions";
 import { suggestNicheKeywords } from "@/lib/ai-suggest-keywords.functions";
-
+import { polishImportProductCopy } from "@/lib/ai-import-polish.functions";
 
 export const Route = createFileRoute("/_authenticated/admin/imports")({
   head: () => ({ meta: [{ title: "Importador · Admin Absoluto Glamur" }] }),
@@ -130,6 +130,7 @@ function UrlTab() {
   const [preview, setPreview] = useState<NormalizedProduct | null>(null);
   const scrape = useServerFn(scrapeUrlPreview);
   const save = useServerFn(saveImportDraft);
+  const polish = useServerFn(polishImportProductCopy);
   const qc = useQueryClient();
 
   const previewMut = useMutation({
@@ -141,31 +142,67 @@ function UrlTab() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const saveMut = useMutation({
-    mutationFn: () =>
-      save({
-        data: {
-          source: "aliexpress_url",
-          source_url: preview!.source_url,
-          source_id: preview!.source_id,
-          normalized: {
-            title: preview!.title,
-            description: preview!.description,
-            images: preview!.images,
-            price_original: preview!.price_original,
-            currency: preview!.currency,
-            sku: preview!.sku,
-            weight_grams: preview!.weight_grams,
-          },
+  const persistDraft = async (product: NormalizedProduct) => {
+    const result = await save({
+      data: {
+        source: "aliexpress_url",
+        source_url: product.source_url,
+        source_id: product.source_id,
+        normalized: {
+          title: product.title,
+          description: product.description,
+          images: product.images,
+          price_original: product.price_original,
+          currency: product.currency,
+          sku: product.sku,
+          weight_grams: product.weight_grams,
         },
-      }),
-    onSuccess: () => {
-      toast.success("Rascunho criado no Catálogo — abra em Catálogo para revisar e publicar");
-      setPreview(null);
-      setUrl("");
-      qc.invalidateQueries({ queryKey: ["imports"] });
-      qc.invalidateQueries({ queryKey: ["admin-products"] });
+      },
+    });
+    if (!result.product_id) {
+      throw new Error(
+        "A importação foi registrada, mas o rascunho não foi criado no Catálogo. Abra Histórico para consultar o erro técnico.",
+      );
+    }
+    return result;
+  };
+
+  const afterSuccessfulSave = (message: string) => {
+    toast.success(message);
+    setPreview(null);
+    setUrl("");
+    qc.invalidateQueries({ queryKey: ["imports"] });
+    qc.invalidateQueries({ queryKey: ["admin-products"] });
+  };
+
+  const saveMut = useMutation({
+    mutationFn: () => persistDraft(preview!),
+    onSuccess: () =>
+      afterSuccessfulSave("Rascunho criado no Catálogo — abra em Catálogo para revisar e publicar"),
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const aiSaveMut = useMutation({
+    mutationFn: async () => {
+      const current = preview!;
+      const polished = await polish({
+        data: {
+          title: current.title,
+          description: current.description,
+          source_id: current.source_id,
+        },
+      });
+      if (!polished.ok) throw new Error(polished.error);
+      const ready: NormalizedProduct = {
+        ...current,
+        title: polished.title,
+        description: polished.description,
+      };
+      setPreview(ready);
+      return persistDraft(ready);
     },
+    onSuccess: () =>
+      afterSuccessfulSave("IA organizou o texto e o produto foi salvo no Catálogo como rascunho"),
     onError: (e: Error) => toast.error(e.message),
   });
 
@@ -200,7 +237,9 @@ function UrlTab() {
           value={preview}
           onChange={setPreview}
           onSave={() => saveMut.mutate()}
+          onAiSave={() => aiSaveMut.mutate()}
           saving={saveMut.isPending}
+          aiSaving={aiSaveMut.isPending}
         />
       )}
     </div>
@@ -211,13 +250,18 @@ function PreviewEditor({
   value,
   onChange,
   onSave,
+  onAiSave,
   saving,
+  aiSaving,
 }: {
   value: NormalizedProduct;
   onChange: (v: NormalizedProduct) => void;
   onSave: () => void;
+  onAiSave: () => void;
   saving: boolean;
+  aiSaving: boolean;
 }) {
+  const busy = saving || aiSaving;
   return (
     <div className="rounded-xl border border-border bg-card p-6">
       <h3 className="mb-4 font-display text-xl">Prévia (edite antes de salvar)</h3>
@@ -283,16 +327,28 @@ function PreviewEditor({
           />
         </Field>
       </div>
-      <div className="mt-6 flex justify-end">
+      <div className="mt-6 flex flex-wrap justify-end gap-2">
+        <button
+          onClick={onAiSave}
+          disabled={busy || !value.title}
+          className="inline-flex items-center gap-2 rounded-lg border border-primary/40 bg-primary/10 px-4 py-2 text-sm font-medium text-primary hover:bg-primary/20 disabled:opacity-50"
+          title="Organiza título e descrição com Gemini/OpenAI configurados e já salva no Catálogo como rascunho"
+        >
+          <Sparkles className={`h-4 w-4 ${aiSaving ? "animate-pulse" : ""}`} />
+          {aiSaving ? "IA ajustando e salvando..." : "IA + salvar rascunho"}
+        </button>
         <button
           onClick={onSave}
-          disabled={saving || !value.title}
+          disabled={busy || !value.title}
           className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50"
         >
           <Save className="h-4 w-4" />
           {saving ? "Salvando..." : "Salvar rascunho"}
         </button>
       </div>
+      <p className="mt-2 text-right text-xs text-muted-foreground">
+        O botão com IA usa Gemini/OpenAI configurados em Integrações, não usa créditos do Lovable e mantém o produto como rascunho.
+      </p>
     </div>
   );
 }
@@ -437,7 +493,6 @@ function ApiTab() {
         const uniqueErrors = Array.from(new Set(searchErrors));
         throw new Error(uniqueErrors[0] ?? "Não foi possível consultar os produtos do AliExpress.");
       }
-      // sort by (rating * log(sales))
       const sorted = Array.from(map.values()).sort((a, b) => {
         const sa = Math.log((a.lastest_volume ?? 0) + 1) * (a.evaluate_rate ?? 0);
         const sb = Math.log((b.lastest_volume ?? 0) + 1) * (b.evaluate_rate ?? 0);
@@ -678,7 +733,6 @@ function DiscoveryCard({
   );
 }
 
-
 // ============== HISTORY ==============
 
 function suggestedSaleCents(priceOriginal: number | null, currency: string | null, s: ImportSettings | null) {
@@ -828,7 +882,6 @@ function HistoryTab() {
     </div>
   );
 }
-
 
 // ============== SETTINGS ==============
 
