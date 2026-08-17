@@ -47,42 +47,61 @@ export const listAdminUsers = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<AdminUserRow[]> => {
     await assertAdmin(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const db = context.supabase;
 
-    const [{ data: authData, error: authError }, { data: roles, error: rolesError }] = await Promise.all([
-      supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 100 }),
-      supabaseAdmin.from("user_roles").select("user_id, role"),
-    ]);
-    if (authError) throw new Error(authError.message);
+    const [{ data: roles, error: rolesError }, { data: profiles, error: profilesError }] =
+      await Promise.all([
+        db.from("user_roles").select("user_id, role"),
+        db.from("profiles").select("id, full_name, phone, created_at").order("created_at", { ascending: false }).limit(500),
+      ]);
     if (rolesError) throw new Error(rolesError.message);
+    if (profilesError) throw new Error(profilesError.message);
 
-    const userIds = authData.users.map((u) => u.id);
-    const profiles = userIds.length
-      ? await supabaseAdmin.from("profiles").select("id, full_name, phone").in("id", userIds)
-      : { data: [], error: null };
-    if (profiles.error) throw new Error(profiles.error.message);
-
-    const profileById = new Map((profiles.data ?? []).map((p) => [p.id, p]));
     const rolesByUser = new Map<string, AdminRole[]>();
     for (const row of roles ?? []) {
       const current = rolesByUser.get(row.user_id) ?? [];
       current.push(row.role as AdminRole);
       rolesByUser.set(row.user_id, current);
     }
+    const profileById = new Map((profiles ?? []).map((profile) => [profile.id, profile]));
 
-    return authData.users.map((user) => {
-      const profile = profileById.get(user.id);
-      return {
-        id: user.id,
-        email: user.email ?? null,
-        full_name: profile?.full_name ?? null,
-        phone: profile?.phone ?? null,
-        created_at: user.created_at,
-        last_sign_in_at: user.last_sign_in_at ?? null,
-        email_confirmed_at: user.email_confirmed_at ?? null,
-        roles: rolesByUser.get(user.id) ?? [],
-      };
-    });
+    // Auth Admin really requires a server secret. Use it when available, but never
+    // let its absence crash the admin system page.
+    try {
+      const { getSupabaseAdminOrNull } = await import("@/integrations/supabase/client.server");
+      const admin = getSupabaseAdminOrNull();
+      if (admin) {
+        const { data: authData, error: authError } = await admin.auth.admin.listUsers({ page: 1, perPage: 100 });
+        if (!authError) {
+          return authData.users.map((user) => {
+            const profile = profileById.get(user.id);
+            return {
+              id: user.id,
+              email: user.email ?? null,
+              full_name: profile?.full_name ?? null,
+              phone: profile?.phone ?? null,
+              created_at: user.created_at,
+              last_sign_in_at: user.last_sign_in_at ?? null,
+              email_confirmed_at: user.email_confirmed_at ?? null,
+              roles: rolesByUser.get(user.id) ?? [],
+            };
+          });
+        }
+      }
+    } catch (error) {
+      console.warn("[admin-users] Auth Admin unavailable; using profile fallback", error);
+    }
+
+    return (profiles ?? []).map((profile) => ({
+      id: profile.id,
+      email: null,
+      full_name: profile.full_name ?? null,
+      phone: profile.phone ?? null,
+      created_at: profile.created_at,
+      last_sign_in_at: null,
+      email_confirmed_at: null,
+      roles: rolesByUser.get(profile.id) ?? [],
+    }));
   });
 
 export const updateAdminUserRoles = createServerFn({ method: "POST" })
@@ -97,10 +116,10 @@ export const updateAdminUserRoles = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     await assertSuperAdmin(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const db = context.supabase;
 
     if (!data.roles.includes("superadmin")) {
-      const { data: currentRoles, error } = await supabaseAdmin
+      const { data: currentRoles, error } = await db
         .from("user_roles")
         .select("user_id")
         .eq("role", "superadmin");
@@ -111,16 +130,16 @@ export const updateAdminUserRoles = createServerFn({ method: "POST" })
       }
     }
 
-    const { error: deleteError } = await supabaseAdmin.from("user_roles").delete().eq("user_id", data.userId);
+    const { error: deleteError } = await db.from("user_roles").delete().eq("user_id", data.userId);
     if (deleteError) throw new Error(deleteError.message);
 
     const uniqueRoles = Array.from(new Set(data.roles));
-    const { error: insertError } = await supabaseAdmin
+    const { error: insertError } = await db
       .from("user_roles")
       .insert(uniqueRoles.map((role) => ({ user_id: data.userId, role })));
     if (insertError) throw new Error(insertError.message);
 
-    await supabaseAdmin.from("audit_logs").insert({
+    await db.from("audit_logs").insert({
       actor_id: context.userId,
       action: "admin.user_roles.update",
       entity: "user_roles",
@@ -159,26 +178,26 @@ export const getComplianceOverview = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<ComplianceOverview> => {
     await assertAdmin(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const db = context.supabase;
 
     const [products, reviews, paymentErrors, integrations, auditLogs, paymentEvents] = await Promise.all([
-      supabaseAdmin
+      db
         .from("products")
         .select("id, name, seo:product_seo(meta_title, meta_description), media:product_media(id)")
         .eq("status", "active")
         .limit(500),
-      supabaseAdmin.from("product_reviews").select("id", { count: "exact", head: true }).eq("is_approved", false),
-      supabaseAdmin.from("payment_events").select("id", { count: "exact", head: true }).not("error", "is", null),
-      supabaseAdmin
+      db.from("product_reviews").select("id", { count: "exact", head: true }).eq("is_approved", false),
+      db.from("payment_events").select("id", { count: "exact", head: true }).not("error", "is", null),
+      db
         .from("integrations")
         .select("provider, display_name, last_status, last_error")
         .eq("last_status", "error"),
-      supabaseAdmin
+      db
         .from("audit_logs")
         .select("id, action, entity, actor_id, created_at")
         .order("created_at", { ascending: false })
         .limit(12),
-      supabaseAdmin
+      db
         .from("payment_events")
         .select("id, provider, event_type, processed, error, created_at")
         .order("created_at", { ascending: false })
@@ -248,7 +267,7 @@ export const getUsageOverview = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<UsageOverview> => {
     await assertAdmin(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const db = context.supabase;
     const since30 = new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString();
     const tables = [
       "profiles",
@@ -267,7 +286,7 @@ export const getUsageOverview = createServerFn({ method: "GET" })
     const rowCounts = await Promise.all(
       tables.map(async (table) => {
         // The generated database type only accepts literal table names; this runtime list is intentional.
-        const { count, error } = await supabaseAdmin
+        const { count, error } = await db
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           .from(table as any)
           .select("*", { count: "exact", head: true });
@@ -277,10 +296,10 @@ export const getUsageOverview = createServerFn({ method: "GET" })
     );
 
     const [users30, integrations, aiCalls, imports] = await Promise.all([
-      supabaseAdmin.from("profiles").select("id", { count: "exact", head: true }).gte("created_at", since30),
-      supabaseAdmin.from("integrations").select("provider", { count: "exact", head: true }).eq("enabled", true),
-      supabaseAdmin.from("ai_generations").select("id", { count: "exact", head: true }).gte("created_at", since30),
-      supabaseAdmin.from("product_imports").select("id", { count: "exact", head: true }),
+      db.from("profiles").select("id", { count: "exact", head: true }).gte("created_at", since30),
+      db.from("integrations").select("provider", { count: "exact", head: true }).eq("enabled", true),
+      db.from("ai_generations").select("id", { count: "exact", head: true }).gte("created_at", since30),
+      db.from("product_imports").select("id", { count: "exact", head: true }),
     ]);
 
     for (const result of [users30, integrations, aiCalls, imports]) {
