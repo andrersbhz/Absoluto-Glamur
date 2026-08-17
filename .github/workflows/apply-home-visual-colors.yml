@@ -1,0 +1,32 @@
+name: Apply Home Visual Colors
+
+on:
+  push:
+    branches:
+      - fix/home-visual-colors
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/home-visual-colors
+          fetch-depth: 0
+      - name: Apply color consistency patch
+        run: python scripts/patch-home-visual-colors.py
+      - name: Commit functional changes
+        run: |
+          if git diff --quiet; then
+            echo "No changes"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/storefront-minimal.css src/routes/index.tsx src/components/admin/HomeBuilderPreview.tsx src/routes/_authenticated/admin.home-visual.tsx
+          git commit -m "fix(home): make Hero and Slider respect editor colors"
+          git push origin HEAD:fix/home-visual-colors
