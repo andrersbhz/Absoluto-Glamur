@@ -3,6 +3,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 import {
   buildAnalyticsCsv,
+  loadAnalyticsActivity,
   loadAnalyticsStats,
   loadOperatorNotifications,
   setOperatorNotificationRead,
@@ -16,6 +17,11 @@ export const getAnalyticsStats = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .validator((data) => periodSchema.parse(data))
   .handler(({ data, context }) => loadAnalyticsStats(context, data.period));
+
+export const getAnalyticsActivity = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .validator((data) => periodSchema.parse(data))
+  .handler(({ data, context }) => loadAnalyticsActivity(context, data.period));
 
 export const exportAnalyticsCsv = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])

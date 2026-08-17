@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { StoreLayout } from "@/components/store/StoreLayout";
 import { supabase } from "@/integrations/supabase/client";
 import { formatBRL } from "@/lib/format";
+import { trackCommerce } from "@/lib/commerce-tracking";
 
 export const Route = createFileRoute("/_authenticated/checkout/$orderId")({
   head: () => ({ meta: [{ title: "Pagamento · Absoluto Glamur" }] }),
@@ -58,6 +59,20 @@ function PaymentPage() {
   const order = q.data;
   const payment = order?.payments?.[0];
   const paid = order?.status === "paid";
+
+  useEffect(() => {
+    if (!paid || !order) return;
+    trackCommerce("purchase", {
+      order_id: order.id,
+      value_cents: order.total_cents,
+      current_page: `/checkout/${order.id}`,
+      metadata: {
+        order_code: order.code,
+        paid_at: order.paid_at,
+        funnel_stage: "purchased",
+      },
+    });
+  }, [paid, order?.id, order?.code, order?.paid_at, order?.total_cents]);
 
   return (
     <StoreLayout>

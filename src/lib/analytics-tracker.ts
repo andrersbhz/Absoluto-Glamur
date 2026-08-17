@@ -1,66 +1,99 @@
 import { useEffect } from "react";
 import { useLocation } from "@tanstack/react-router";
-import { getCommerceSessionId, trackCommerce } from "./commerce-tracking";
+import { sendCommercePresence, trackCommerce, type CommerceEventName } from "./commerce-tracking";
 
 const HEARTBEAT_INTERVAL = 30000;
+
+type FunnelStage = "browsing" | "product_view" | "cart" | "checkout" | "purchased";
 
 function shouldTrackPath(pathname: string) {
   return !pathname.startsWith("/admin") && !pathname.startsWith("/auth");
 }
 
+function inferFunnelStage(pathname: string): FunnelStage {
+  if (pathname === "/cart") return "cart";
+  if (pathname === "/checkout" || pathname.startsWith("/checkout/")) return "checkout";
+
+  const segments = pathname.split("/").filter(Boolean);
+  const knownNonProductPrefixes = ["blog", "compliance", "products", "account", "favorites", "orders"];
+  if (segments.length === 2 && !knownNonProductPrefixes.includes(segments[0] ?? "")) {
+    return "product_view";
+  }
+
+  return "browsing";
+}
+
+function navigationEvent(pathname: string, stage: FunnelStage): CommerceEventName {
+  if (stage === "product_view") return "view_item";
+  if (pathname === "/checkout") return "begin_checkout";
+  return "page_view";
+}
+
+function currentMetadata(pathname = window.location.pathname) {
+  return {
+    path: pathname,
+    title: document.title,
+    referrer: document.referrer,
+    utm_source: new URLSearchParams(window.location.search).get("utm_source"),
+    utm_medium: new URLSearchParams(window.location.search).get("utm_medium"),
+    utm_campaign: new URLSearchParams(window.location.search).get("utm_campaign"),
+    browser: navigator.userAgent,
+    device_type: /Mobi|Android/i.test(navigator.userAgent) ? "mobile" : "desktop",
+    funnel_stage: inferFunnelStage(pathname),
+  };
+}
+
 export function useAnalyticsTracker() {
   const location = useLocation();
 
+  // Registra cada navegação como histórico sem confundir páginas comuns com produto.
+  // A entrada real no checkout recebe um evento próprio para tornar a jornada legível.
   useEffect(() => {
-    // O painel e a autenticação não são tráfego de cliente. Além de poluir o mapa,
-    // rastreá-los gerava heartbeats e escritas no banco durante o uso administrativo.
     if (!shouldTrackPath(location.pathname)) return;
 
-    trackCommerce("view_item", {
-      metadata: {
-        path: location.pathname,
-        title: document.title,
-        referrer: document.referrer,
-        utm_source: new URLSearchParams(window.location.search).get("utm_source"),
-        utm_medium: new URLSearchParams(window.location.search).get("utm_medium"),
-        utm_campaign: new URLSearchParams(window.location.search).get("utm_campaign"),
-        browser: navigator.userAgent,
-        device_type: /Mobi|Android/i.test(navigator.userAgent) ? "mobile" : "desktop",
-      },
+    const stage = inferFunnelStage(location.pathname);
+    trackCommerce(navigationEvent(location.pathname, stage), {
+      current_page: location.pathname,
+      metadata: currentMetadata(location.pathname),
     });
 
     const sendHeartbeat = () => {
-      const sessionId = getCommerceSessionId();
-      if (!sessionId) return;
-
-      const body = JSON.stringify({
-        session_id: sessionId,
+      if (!shouldTrackPath(window.location.pathname)) return;
+      sendCommercePresence("active", {
         current_page: window.location.pathname,
-        metadata: {
-          path: window.location.pathname,
-          device_type: /Mobi|Android/i.test(navigator.userAgent) ? "mobile" : "desktop",
-          referrer: document.referrer,
-        },
+        metadata: currentMetadata(window.location.pathname),
       });
-
-      if (navigator.sendBeacon) {
-        navigator.sendBeacon(
-          "/api/public/commerce-event",
-          new Blob([body], { type: "application/json" }),
-        );
-      } else {
-        void fetch("/api/public/commerce-event", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body,
-          keepalive: true,
-        });
-      }
     };
 
     const interval = window.setInterval(sendHeartbeat, HEARTBEAT_INTERVAL);
     sendHeartbeat();
-
     return () => window.clearInterval(interval);
   }, [location.pathname]);
+
+  // Presença é temporária; histórico não. Ao fechar/abandonar a página, apenas a
+  // sessão vira offline. Os eventos permanecem no banco para reconstruir a jornada.
+  useEffect(() => {
+    const sendOffline = () => {
+      if (!shouldTrackPath(window.location.pathname)) return;
+      sendCommercePresence("offline", {
+        current_page: window.location.pathname,
+        metadata: currentMetadata(window.location.pathname),
+      });
+    };
+
+    const sendActive = () => {
+      if (!shouldTrackPath(window.location.pathname)) return;
+      sendCommercePresence("active", {
+        current_page: window.location.pathname,
+        metadata: currentMetadata(window.location.pathname),
+      });
+    };
+
+    window.addEventListener("pagehide", sendOffline);
+    window.addEventListener("pageshow", sendActive);
+    return () => {
+      window.removeEventListener("pagehide", sendOffline);
+      window.removeEventListener("pageshow", sendActive);
+    };
+  }, []);
 }
