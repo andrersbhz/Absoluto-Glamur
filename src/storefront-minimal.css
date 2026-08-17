@@ -59,7 +59,7 @@
   font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
   font-weight: 600;
   letter-spacing: -0.035em;
-  color: #251e23;
+  /* Cor vem do componente/editor; títulos comuns continuam herdando a cor da loja. */
 }
 
 .storefront-shell a,

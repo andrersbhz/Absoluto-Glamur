@@ -110,22 +110,22 @@ function AnnouncementPreview({ value }: { value: HomeContent["announcement"] }) 
 }
 
 function HeroPreview({ value }: { value: NonNullable<HomeContent["hero"]> }) {
+  const titleColor = value.title_color ?? (value.image_url ? "#ffffff" : "#251e23");
+  const highlightColor = value.highlight_color ?? "#d7b47a";
+  const subtitleColor = value.subtitle_color ?? (value.image_url ? "rgba(255,255,255,.9)" : "#70636b");
+  const overlayOpacity = Math.max(0, Math.min(1, value.overlay_opacity ?? 0.4));
+  const x = Math.max(0, Math.min(100, value.image_position_x ?? 50));
+  const y = Math.max(0, Math.min(100, value.image_position_y ?? 50));
   return (
-    <div
-      className="relative flex min-h-[330px] items-center overflow-hidden bg-gradient-to-br from-[#f7efee] to-[#ead7dd] bg-cover bg-center px-7 py-10"
-      style={value.image_url ? { backgroundImage: `url(${value.image_url})` } : undefined}
-    >
-      {value.image_url && <div className="absolute inset-0 bg-black/40" />}
-      <div className={`relative z-10 max-w-[72%] ${value.image_url ? "text-white" : "text-[#251e23]"}`}>
-        {value.badge && <span className="rounded-full border border-[#d7b47a]/60 px-3 py-1 text-[8px] uppercase tracking-[0.22em]">{value.badge}</span>}
-        <h2 className="mt-4 text-3xl font-semibold leading-[1.02]">
-          {value.title_line1 || "Título principal"}<br />
-          <span className="text-[#d7b47a]">{value.title_highlight || "destaque"}</span>
-        </h2>
-        {value.subtitle && <p className={`mt-4 text-[11px] leading-5 ${value.image_url ? "text-white/90" : "text-[#70636b]"}`}>{value.subtitle}</p>}
+    <div className="relative flex min-h-[330px] items-center overflow-hidden bg-gradient-to-br from-[#f7efee] to-[#ead7dd] bg-cover px-7 py-10" style={value.image_url ? { backgroundImage: `url(${value.image_url})`, backgroundPosition: `${x}% ${y}%` } : undefined}>
+      {value.image_url && <div className="absolute inset-0" style={{ backgroundColor: value.overlay_color ?? "#000000", opacity: overlayOpacity }} />}
+      <div className="relative z-10 max-w-[72%]">
+        {value.badge && <span className="rounded-full border border-[#d7b47a]/60 px-3 py-1 text-[8px] uppercase tracking-[0.22em]" style={{ color: titleColor }}>{value.badge}</span>}
+        <h2 className="mt-4 text-3xl font-semibold leading-[1.02]" style={{ color: titleColor }}>{value.title_line1 || "Título principal"}<br /><span style={{ color: highlightColor }}>{value.title_highlight || "destaque"}</span></h2>
+        {value.subtitle && <p className="mt-4 text-[11px] leading-5" style={{ color: subtitleColor }}>{value.subtitle}</p>}
         <div className="mt-5 flex flex-wrap gap-2">
-          {value.cta_primary_label && <span className="rounded-full bg-[#c64b76] px-4 py-2 text-[8px] font-semibold uppercase tracking-wider text-white">{value.cta_primary_label}</span>}
-          {value.cta_secondary_label && <span className="rounded-full border border-current px-4 py-2 text-[8px] font-semibold uppercase tracking-wider">{value.cta_secondary_label}</span>}
+          {value.cta_primary_label && <span className="rounded-full px-4 py-2 text-[8px] font-semibold uppercase tracking-wider" style={{ backgroundColor: value.button_bg ?? "#c64b76", color: value.button_color ?? "#ffffff" }}>{value.cta_primary_label}</span>}
+          {value.cta_secondary_label && <span className="rounded-full border border-current px-4 py-2 text-[8px] font-semibold uppercase tracking-wider" style={{ color: titleColor }}>{value.cta_secondary_label}</span>}
         </div>
       </div>
     </div>
@@ -136,14 +136,19 @@ function SlidePreview({ slide, index }: { slide: NonNullable<NonNullable<HomeCon
   if (!slide) return <EmptyPreview text="Selecione ou crie um slide." />;
   const align = slide.align ?? "center";
   const alignment = align === "left" ? "items-start text-left" : align === "right" ? "items-end text-right ml-auto" : "items-center text-center mx-auto";
+  const titleColor = slide.title_color ?? "#ffffff";
+  const subtitleColor = slide.subtitle_color ?? "rgba(255,255,255,.88)";
+  const overlayOpacity = Math.max(0, Math.min(1, slide.overlay_opacity ?? 0.48));
+  const x = Math.max(0, Math.min(100, slide.image_position_x ?? 50));
+  const y = Math.max(0, Math.min(100, slide.image_position_y ?? 50));
   return (
-    <div className="relative flex min-h-[330px] items-center bg-[#ead7dd] bg-cover bg-center px-7 py-10" style={slide.image_url ? { backgroundImage: `url(${slide.image_url})` } : undefined}>
-      <div className="absolute inset-0 bg-black/40" />
-      <div className={`relative z-10 flex max-w-[75%] flex-col text-white ${alignment}`}>
-        <p className="text-[8px] uppercase tracking-[0.25em] text-[#ead6af]">Slide {index + 1}</p>
-        <h2 className="mt-2 text-3xl font-semibold leading-tight">{slide.title || "Título do slide"}</h2>
-        {slide.subtitle && <p className="mt-3 text-[11px] leading-5 text-white/85">{slide.subtitle}</p>}
-        {slide.cta_label && <span className="mt-5 rounded-full bg-[#c64b76] px-4 py-2 text-[8px] font-semibold uppercase tracking-wider">{slide.cta_label}</span>}
+    <div className="relative flex min-h-[330px] items-center bg-[#ead7dd] bg-cover px-7 py-10" style={slide.image_url ? { backgroundImage: `url(${slide.image_url})`, backgroundPosition: `${x}% ${y}%` } : undefined}>
+      <div className="absolute inset-0" style={{ backgroundColor: slide.overlay_color ?? "#000000", opacity: overlayOpacity }} />
+      <div className={`relative z-10 flex max-w-[75%] flex-col ${alignment}`}>
+        <p className="text-[8px] uppercase tracking-[0.25em]" style={{ color: subtitleColor }}>Slide {index + 1}</p>
+        <h2 className="mt-2 text-3xl font-semibold leading-tight" style={{ color: titleColor }}>{slide.title || "Título do slide"}</h2>
+        {slide.subtitle && <p className="mt-3 text-[11px] leading-5" style={{ color: subtitleColor }}>{slide.subtitle}</p>}
+        {slide.cta_label && <span className="mt-5 rounded-full px-4 py-2 text-[8px] font-semibold uppercase tracking-wider" style={{ backgroundColor: slide.button_bg ?? "#c64b76", color: slide.button_color ?? "#ffffff" }}>{slide.cta_label}</span>}
       </div>
     </div>
   );

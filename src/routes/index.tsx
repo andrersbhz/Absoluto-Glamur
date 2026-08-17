@@ -170,7 +170,13 @@ function Index() {
           <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(1200px_600px_at_20%_-10%,var(--secondary),transparent_60%),radial-gradient(900px_500px_at_100%_10%,color-mix(in_oklab,var(--champagne)_35%,transparent),transparent_60%),linear-gradient(180deg,var(--background),var(--background))]" />
         )}
         {heroImageUrl && (
-          <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-black/60 via-black/35 to-black/10" />
+          <div
+            className="pointer-events-none absolute inset-0"
+            style={{
+              backgroundColor: hero.overlay_color ?? "#000000",
+              opacity: Math.max(0, Math.min(1, hero.overlay_opacity ?? 0.45)),
+            }}
+          />
         )}
         <div
           className="pointer-events-none absolute inset-0 opacity-[0.06] mix-blend-multiply"
@@ -187,22 +193,34 @@ function Index() {
                 <Sparkles className="h-3.5 w-3.5 text-champagne" /> {hero.badge}
               </p>
             ) : null}
-            <h1 className={`mt-8 font-display text-5xl leading-[0.98] tracking-tight sm:text-6xl lg:text-7xl ${heroImageUrl ? "text-white drop-shadow-[0_2px_20px_rgba(0,0,0,0.5)]" : "text-foreground"}`}>
+            <h1
+              className={`mt-8 font-display text-5xl leading-[0.98] tracking-tight sm:text-6xl lg:text-7xl ${heroImageUrl ? "drop-shadow-[0_2px_20px_rgba(0,0,0,0.5)]" : ""}`}
+              style={{ color: hero.title_color ?? (heroImageUrl ? "#ffffff" : "#251e23") }}
+            >
               {hero.title_line1 ?? "Beleza rara,"}
               <br />
-              <span className={heroImageUrl ? "text-champagne" : "bg-gradient-to-r from-plum via-primary to-champagne bg-clip-text text-transparent"}>
+              <span
+                className={!hero.highlight_color && !heroImageUrl ? "bg-gradient-to-r from-plum via-primary to-champagne bg-clip-text text-transparent" : ""}
+                style={hero.highlight_color ? { color: hero.highlight_color } : heroImageUrl ? { color: "#d7b47a" } : undefined}
+              >
                 {hero.title_highlight ?? "assinatura sua."}
               </span>
             </h1>
             {hero.subtitle ? (
-              <p className={`mt-6 max-w-xl text-base leading-relaxed sm:text-lg ${heroImageUrl ? "text-white/90" : "text-muted-foreground"}`}>
+              <p
+                className="mt-6 max-w-xl text-base leading-relaxed sm:text-lg"
+                style={{ color: hero.subtitle_color ?? (heroImageUrl ? "rgba(255,255,255,.9)" : "#70636b") }}
+              >
                 {hero.subtitle}
               </p>
             ) : null}
             <div className="mt-8 flex flex-wrap items-center gap-6">
               <a
                 href={primaryHref}
-                className="group relative inline-flex items-center justify-center overflow-hidden rounded-full bg-primary px-8 py-3.5 text-xs font-medium uppercase tracking-[0.28em] text-primary-foreground shadow-elegant transition hover:shadow-[0_20px_60px_-20px_var(--primary)]"
+                className="group relative inline-flex items-center justify-center overflow-hidden rounded-full px-8 py-3.5 text-xs font-medium uppercase tracking-[0.28em] shadow-elegant transition hover:shadow-[0_20px_60px_-20px_var(--primary)]"
+                style={{ backgroundColor: hero.button_bg ?? "#c64b76", color: hero.button_color ?? "#ffffff" }}
+                onMouseEnter={(event) => { event.currentTarget.style.backgroundColor = hero.button_hover_bg ?? hero.button_bg ?? "#a84c69"; }}
+                onMouseLeave={(event) => { event.currentTarget.style.backgroundColor = hero.button_bg ?? "#c64b76"; }}
               >
                 <span className="relative z-10">{hero.cta_primary_label ?? "Explorar coleção"}</span>
                 <span className="absolute inset-0 -translate-x-[120%] bg-gradient-to-r from-transparent via-white/30 to-transparent transition-transform duration-700 group-hover:translate-x-[120%]" />
