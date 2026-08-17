@@ -28,22 +28,6 @@ src/lib/blog-meta.functions.ts:108:      await (supabaseAdmin as any)
 src/lib/blog-meta.functions.ts:115:      await (supabaseAdmin as any)
 src/lib/gtm.functions.ts:5:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 src/lib/gtm.functions.ts:6:    const { data } = await supabaseAdmin
-src/lib/integrations.functions.ts:57:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-src/lib/integrations.functions.ts:58:    const { data, error } = await supabaseAdmin
-src/lib/integrations.functions.ts:105:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-src/lib/integrations.functions.ts:114:      const { data: existing } = await supabaseAdmin
-src/lib/integrations.functions.ts:132:    const { error } = await supabaseAdmin
-src/lib/integrations.functions.ts:145:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-src/lib/integrations.functions.ts:146:    const { data: row } = await supabaseAdmin
-src/lib/integrations.functions.ts:161:        await supabaseAdmin
-src/lib/integrations.functions.ts:175:        await supabaseAdmin
-src/lib/integrations.functions.ts:196:        await supabaseAdmin
-src/lib/integrations.functions.ts:207:        await supabaseAdmin
-src/lib/integrations.functions.ts:225:        await supabaseAdmin
-src/lib/integrations.functions.ts:239:        await supabaseAdmin
-src/lib/integrations.functions.ts:256:        await supabaseAdmin
-src/lib/integrations.functions.ts:292:        await supabaseAdmin
-src/lib/integrations.functions.ts:307:        await supabaseAdmin
 src/lib/pricing-v12.functions.ts:20:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 src/lib/pricing-v12.functions.ts:21:    const { data, error } = await supabaseAdmin.from("pricing_profiles").select("*").order("is_default", { ascending: false }).order("name");
 src/lib/pricing-v12.functions.ts:47:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -372,22 +356,6 @@ src/lib/blog-meta.functions.ts:108:      await (supabaseAdmin as any)
 src/lib/blog-meta.functions.ts:115:      await (supabaseAdmin as any)
 src/lib/gtm.functions.ts:5:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 src/lib/gtm.functions.ts:6:    const { data } = await supabaseAdmin
-src/lib/integrations.functions.ts:57:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-src/lib/integrations.functions.ts:58:    const { data, error } = await supabaseAdmin
-src/lib/integrations.functions.ts:105:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-src/lib/integrations.functions.ts:114:      const { data: existing } = await supabaseAdmin
-src/lib/integrations.functions.ts:132:    const { error } = await supabaseAdmin
-src/lib/integrations.functions.ts:145:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-src/lib/integrations.functions.ts:146:    const { data: row } = await supabaseAdmin
-src/lib/integrations.functions.ts:161:        await supabaseAdmin
-src/lib/integrations.functions.ts:175:        await supabaseAdmin
-src/lib/integrations.functions.ts:196:        await supabaseAdmin
-src/lib/integrations.functions.ts:207:        await supabaseAdmin
-src/lib/integrations.functions.ts:225:        await supabaseAdmin
-src/lib/integrations.functions.ts:239:        await supabaseAdmin
-src/lib/integrations.functions.ts:256:        await supabaseAdmin
-src/lib/integrations.functions.ts:292:        await supabaseAdmin
-src/lib/integrations.functions.ts:307:        await supabaseAdmin
 src/lib/ai-translate.server.ts:1:import { supabaseAdmin } from "@/integrations/supabase/client.server";
 src/lib/ai-translate.server.ts:40:  const { data } = await supabaseAdmin
 src/lib/ai-translate.server.ts:49:  const { data } = await supabaseAdmin
