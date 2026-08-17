@@ -101,9 +101,13 @@ function signTopMd5(params: Record<string, string>, secret: string): string {
   return md5Hex(`${secret}${base}${secret}`);
 }
 
-async function loadAliTopCredentials() {
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { data, error } = await supabaseAdmin
+async function loadAliTopCredentials(credentialClient?: any) {
+  let client = credentialClient;
+  if (!client) {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    client = supabaseAdmin;
+  }
+  const { data, error } = await client
     .from("integrations")
     .select("config, api_key, webhook_token")
     .eq("provider", "aliexpress")
@@ -197,8 +201,9 @@ async function requestTop(
 export async function callAliTopPublic<T = any>(
   method: string,
   bizParams: Record<string, string | number | boolean | undefined | null>,
+  credentialClient?: any,
 ): Promise<T> {
-  const { appKey, secrets } = await loadAliTopCredentials();
+  const { appKey, secrets } = await loadAliTopCredentials(credentialClient);
   // HTTPS oficial documentado para TOP. O segundo host é mantido apenas como
   // compatibilidade de infraestrutura, nunca como fonte alternativa de dados.
   const endpoints = ["https://eco.taobao.com/router/rest", "https://api.taobao.com/router/rest"];
