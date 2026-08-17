@@ -1,9 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
-import { createClient } from "@supabase/supabase-js";
+
+const FunnelStageSchema = z.enum(["browsing", "product_view", "cart", "checkout", "purchased"]);
+type FunnelStage = z.infer<typeof FunnelStageSchema>;
 
 const EventSchema = z.object({
-  event_name: z.enum(["view_item", "add_to_cart", "remove_from_cart", "cart_change", "begin_checkout", "purchase", "checkout_abandoned"]).optional(),
+  event_name: z.enum(["page_view", "view_item", "add_to_cart", "remove_from_cart", "cart_change", "begin_checkout", "purchase", "checkout_abandoned"]).optional(),
+  presence: z.enum(["active", "offline"]).optional(),
   session_id: z.string().min(6).max(200),
   visitor_id: z.string().max(200).optional(),
   product_id: z.string().uuid().nullable().optional(),
@@ -11,9 +14,36 @@ const EventSchema = z.object({
   value_cents: z.number().int().min(0).nullable().optional(),
   channel: z.string().max(100).nullable().optional(),
   campaign: z.string().max(200).nullable().optional(),
-  current_page: z.string().max(500).optional(),
+  current_page: z.string().max(500).nullable().optional(),
   metadata: z.record(z.string(), z.unknown()).default({}),
 });
+
+const STAGE_RANK: Record<FunnelStage, number> = {
+  browsing: 0,
+  product_view: 1,
+  cart: 2,
+  checkout: 3,
+  purchased: 4,
+};
+
+function parseStage(value: unknown): FunnelStage | null {
+  const parsed = FunnelStageSchema.safeParse(value);
+  return parsed.success ? parsed.data : null;
+}
+
+function furthestStage(current: FunnelStage | null | undefined, next: FunnelStage | null | undefined): FunnelStage {
+  const safeCurrent = current && FunnelStageSchema.safeParse(current).success ? current : "browsing";
+  if (!next) return safeCurrent;
+  return STAGE_RANK[next] >= STAGE_RANK[safeCurrent] ? next : safeCurrent;
+}
+
+function eventStage(eventName: z.infer<typeof EventSchema>["event_name"]): FunnelStage | null {
+  if (eventName === "view_item") return "product_view";
+  if (eventName === "add_to_cart" || eventName === "cart_change") return "cart";
+  if (eventName === "begin_checkout") return "checkout";
+  if (eventName === "purchase") return "purchased";
+  return null;
+}
 
 export const Route = createFileRoute("/api/public/commerce-event")({
   server: {
@@ -26,14 +56,9 @@ export const Route = createFileRoute("/api/public/commerce-event")({
           }
 
           const parsed = EventSchema.parse(await request.json());
-          const url = process.env.SUPABASE_URL;
-          const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-          if (!url || !key) {
-            return Response.json({ ok: false, error: "server_not_configured" }, { status: 503 });
-          }
-
-          const db = createClient(url, key, { auth: { persistSession: false } });
+          const { supabaseAdmin: db } = await import("@/integrations/supabase/client.server");
           const now = new Date().toISOString();
+          const explicitStage = parseStage(parsed.metadata?.funnel_stage);
 
           let verifiedPurchaseValue: number | null = null;
           if (parsed.event_name === "purchase") {
@@ -64,24 +89,34 @@ export const Route = createFileRoute("/api/public/commerce-event")({
           }
 
           const eventValue = verifiedPurchaseValue ?? parsed.value_cents ?? null;
-
-          const { data: session } = await db
+          const { data: session, error: sessionError } = await db
             .from("visitor_sessions")
-            .select("id")
+            .select("id,funnel_stage")
             .eq("session_id", parsed.session_id)
             .maybeSingle();
+          if (sessionError) {
+            return Response.json({ ok: false, error: sessionError.message }, { status: 500 });
+          }
+
+          // Um beacon de saída nunca deve criar uma sessão fantasma.
+          if (!session && parsed.presence === "offline") {
+            return Response.json({ ok: true, presence: "offline" });
+          }
 
           let sessionId = session?.id;
+          let currentStage = (session?.funnel_stage as FunnelStage | null | undefined) ?? "browsing";
+
           if (!sessionId) {
             const country = request.headers.get("cf-ipcountry");
             const city = request.headers.get("cf-ipcity");
             const region = request.headers.get("cf-region");
             const lat = request.headers.get("cf-iplatitude");
             const lon = request.headers.get("cf-iplongitude");
-
             const parsedLat = lat ? Number.parseFloat(lat) : NaN;
             const parsedLon = lon ? Number.parseFloat(lon) : NaN;
-            const { data: newSession } = await db
+            currentStage = explicitStage ?? eventStage(parsed.event_name) ?? "browsing";
+
+            const { data: newSession, error: newSessionError } = await db
               .from("visitor_sessions")
               .insert({
                 visitor_id: parsed.visitor_id || parsed.session_id,
@@ -94,8 +129,9 @@ export const Route = createFileRoute("/api/public/commerce-event")({
                 longitude_approx: Number.isFinite(parsedLon) ? parsedLon : null,
                 referrer: parsed.metadata?.referrer as string,
                 entry_path: parsed.current_page || (parsed.metadata?.path as string),
-                is_online: true,
+                is_online: parsed.presence !== "offline",
                 last_seen_at: now,
+                funnel_stage: currentStage as never,
                 device_type: parsed.metadata?.device_type as string,
                 browser: parsed.metadata?.browser as string,
                 os: parsed.metadata?.os as string,
@@ -105,15 +141,33 @@ export const Route = createFileRoute("/api/public/commerce-event")({
               })
               .select("id")
               .single();
+            if (newSessionError) {
+              return Response.json({ ok: false, error: newSessionError.message }, { status: 500 });
+            }
             sessionId = newSession?.id;
+          } else if (parsed.presence === "offline") {
+            await db
+              .from("visitor_sessions")
+              .update({
+                last_seen_at: now,
+                is_online: false,
+                current_page: parsed.current_page || (parsed.metadata?.path as string),
+              })
+              .eq("id", sessionId);
+            return Response.json({ ok: true, presence: "offline" });
           } else {
+            // Heartbeat não volta mais o funil para browsing. O estágio só avança;
+            // eventos históricos continuam separados do estado de presença.
+            const candidateStage = eventStage(parsed.event_name) ?? explicitStage;
+            currentStage = furthestStage(currentStage, candidateStage);
             await db
               .from("visitor_sessions")
               .update({
                 last_seen_at: now,
                 is_online: true,
                 current_page: parsed.current_page || (parsed.metadata?.path as string),
-                funnel_stage: (parsed.metadata?.funnel_stage || "browsing") as never,
+                funnel_stage: currentStage as never,
+                visitor_id: parsed.visitor_id || parsed.session_id,
               })
               .eq("id", sessionId);
           }
@@ -145,19 +199,15 @@ export const Route = createFileRoute("/api/public/commerce-event")({
                 metadata: parsed.metadata,
               });
 
-              let stage: string | null = null;
-              if (parsed.event_name === "view_item") stage = "product_view";
-              if (parsed.event_name === "add_to_cart") stage = "cart";
-              if (parsed.event_name === "begin_checkout") stage = "checkout";
-              if (parsed.event_name === "purchase") stage = "purchased";
-
+              const stage = eventStage(parsed.event_name);
               if (stage) {
+                const finalStage = furthestStage(currentStage, stage);
                 await db
                   .from("visitor_sessions")
                   .update({
-                    funnel_stage: stage as never,
+                    funnel_stage: finalStage as never,
                     last_seen_at: now,
-                    converted: parsed.event_name === "purchase",
+                    converted: parsed.event_name === "purchase" ? true : undefined,
                   })
                   .eq("id", sessionId);
               }
