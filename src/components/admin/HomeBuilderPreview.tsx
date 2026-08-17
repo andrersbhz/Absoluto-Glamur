@@ -204,11 +204,32 @@ function BlockPreview({ block, categories }: { block: HomepageBlock; categories:
     return <div className="p-6"><p className="text-[8px] uppercase tracking-[0.2em] text-[#d7b47a]">{block.subtitle || "Coleção"}</p><h2 className="mt-1 text-2xl font-semibold text-[#251e23]">{block.title || "Coleção em destaque"}</h2><div className="mt-4 grid grid-cols-4 gap-2">{[1,2,3,4].map((n) => <div key={n} className="aspect-[3/4] rounded-lg bg-[#f7efee]" />)}</div></div>;
   }
   if (block.kind === "category_grid") {
-    const selected = data.mode === "all"
-      ? categories.map((category) => category.slug)
-      : Array.isArray(data.categories) ? data.categories : [];
-    const names = selected.map((slug: string) => categories.find((category) => category.slug === slug)?.name ?? slug);
-    return <div className="p-6"><p className="text-[8px] uppercase tracking-[0.2em] text-[#a84c69]">{block.subtitle || "Explore por categoria"}</p><p className="mt-1 text-2xl font-semibold text-[#251e23]">{block.title || "Categorias"}</p><div className="mt-4 flex flex-wrap gap-2">{names.map((name: string) => <span key={name} className="rounded-full border border-[#e9dddf] bg-white px-3 py-2 text-[9px]">{name}</span>)}</div></div>;
+    const inlineConfigured = data.layout === "inline";
+    const selected = inlineConfigured && data.mode === "selected" && Array.isArray(data.categories)
+      ? data.categories
+      : categories.map((category) => category.slug);
+    const limit = inlineConfigured && typeof data.limit === "number" ? Math.max(1, Math.min(50, data.limit)) : selected.length;
+    const names = selected.slice(0, limit).map((slug: string) => categories.find((category) => category.slug === slug)?.name ?? slug);
+    const pillClass = data.pill_style === "solid"
+      ? "border-[#c64b76] bg-[#c64b76] text-white"
+      : data.pill_style === "soft"
+        ? "border-transparent bg-[#f7efee] text-[#251e23]"
+        : "border-[#e9dddf] bg-white text-[#251e23]";
+    return (
+      <div className="overflow-hidden p-6">
+        {data.show_heading === true ? (
+          <div className={data.align === "left" ? "text-left" : "text-center"}>
+            <p className="text-[8px] uppercase tracking-[0.2em] text-[#a84c69]">{block.subtitle || "Explore por categoria"}</p>
+            <p className="mt-1 text-2xl font-semibold text-[#251e23]">{block.title || "Categorias"}</p>
+          </div>
+        ) : (
+          <div className="flex items-center justify-center gap-2 text-[#d7b47a]"><span className="h-px w-8 bg-[#d7b47a]" /><span>◇</span><span className="h-px w-8 bg-[#d7b47a]" /></div>
+        )}
+        <div className={`mt-4 flex flex-nowrap gap-2 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${data.align === "left" ? "justify-start" : "lg:justify-center"}`}>
+          {names.map((name: string) => <span key={name} className={`shrink-0 whitespace-nowrap rounded-full border px-3 py-2 text-[9px] uppercase tracking-[0.14em] ${pillClass}`}>{name}</span>)}
+        </div>
+      </div>
+    );
   }
   if (block.kind === "category_products") {
     const limit = typeof data.limit === "number" ? Math.max(1, Math.min(8, data.limit)) : 4;

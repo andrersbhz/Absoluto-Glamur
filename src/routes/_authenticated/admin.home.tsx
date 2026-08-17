@@ -51,27 +51,45 @@ type EditableBlockData = Record<string, unknown> & {
   slug?: string;
   collection_slug?: string;
   text_align?: "left" | "center" | "right";
+  mode?: "all" | "selected";
+  categories?: string[];
+  limit?: number;
+  layout?: "inline" | "grid";
+  align?: "left" | "center";
+  pill_style?: "outline" | "soft" | "solid";
+  show_heading?: boolean;
 };
 
 type BlockDraft = HomepageBlock & { data: EditableBlockData };
 
-type AddableBlock = "banner" | "hero" | "collection" | "text";
+type AddableBlock = "banner" | "hero" | "collection" | "text" | "category_grid";
 
 const ADDABLE_BLOCKS: Array<{ kind: AddableBlock; label: string; description: string }> = [
   { kind: "banner", label: "Banner de imagem", description: "Banner clicável usando imagem própria ou URL." },
   { kind: "hero", label: "Hero complementar", description: "Título, subtítulo, imagem e CTA em destaque." },
   { kind: "collection", label: "Coleção destacada", description: "Vitrine conectada a uma coleção existente." },
   { kind: "text", label: "Texto editorial", description: "Bloco simples para mensagem, manifesto curto ou apoio." },
+  { kind: "category_grid", label: "Categorias em linha", description: "Exibe todas as categorias em uma única faixa horizontal responsiva." },
 ];
 
-const KNOWN_PUBLIC_KINDS = new Set(["banner", "hero", "collection", "text"]);
+const KNOWN_PUBLIC_KINDS = new Set(["banner", "hero", "collection", "text", "category_grid"]);
 const BANNER_LIKE_KINDS = new Set(["banner", "hero", "banner_duo", "promo_fullwidth"]);
 
 function cloneBlock(block: HomepageBlock): BlockDraft {
-  return {
-    ...block,
-    data: { ...((block.data ?? {}) as EditableBlockData) },
-  };
+  const rawData = { ...((block.data ?? {}) as EditableBlockData) };
+  const data: EditableBlockData = block.kind === "category_grid"
+    ? {
+        ...rawData,
+        // Old category blocks are upgraded in the draft to the requested all-category inline layout.
+        mode: rawData.layout === "inline" && rawData.mode === "selected" ? "selected" : "all",
+        layout: "inline",
+        limit: typeof rawData.limit === "number" && Number.isFinite(rawData.limit) ? rawData.limit : 50,
+        align: rawData.align === "left" ? "left" : "center",
+        pill_style: rawData.pill_style === "soft" || rawData.pill_style === "solid" ? rawData.pill_style : "outline",
+        show_heading: rawData.show_heading === true,
+      }
+    : rawData;
+  return { ...block, data };
 }
 
 function HomeBuilderPage() {
@@ -204,6 +222,14 @@ function HomeBuilderPage() {
   }
 
   async function addBlock(kind: AddableBlock) {
+    if (kind === "category_grid") {
+      const existing = blockOrder.find((block) => block.kind === "category_grid");
+      if (existing) {
+        selectBlock(existing);
+        toast.info("O bloco de categorias já existe. Ele foi selecionado para edição.");
+        return;
+      }
+    }
     setCreatingBlock(true);
     try {
       const position = (blockOrder.at(-1)?.position ?? 0) + 10;
@@ -212,6 +238,11 @@ function HomeBuilderPage() {
         hero: { title: "Novo destaque", subtitle: "", data: { image_url: "", cta_label: "Ver produtos", cta_href: "/products" } },
         collection: { title: "Coleção em destaque", subtitle: "", data: { slug: collections[0]?.slug ?? "" } },
         text: { title: "Novo conteúdo", subtitle: null, data: { body: "" } },
+        category_grid: {
+          title: "Categorias",
+          subtitle: "Explore por categoria",
+          data: { mode: "all", categories: [], limit: 50, layout: "inline", align: "center", pill_style: "outline", show_heading: false },
+        },
       };
       const preset = defaults[kind];
       const { data, error } = await supabase
@@ -617,6 +648,18 @@ function BlockEditor({ block, dirty, saving, collections, categories, onPatch, o
   onToggle: () => void;
 }) {
   const known = KNOWN_PUBLIC_KINDS.has(block.kind);
+  const categoryMode = block.kind === "category_grid" && block.data.layout === "inline" && block.data.mode === "selected" ? "selected" : "all";
+  const selectedCategorySlugs = Array.isArray(block.data.categories)
+    ? block.data.categories.filter((value): value is string => typeof value === "string")
+    : [];
+
+  function toggleCategorySlug(slug: string, checked: boolean) {
+    const next = checked
+      ? [...selectedCategorySlugs.filter((value) => value !== slug), slug]
+      : selectedCategorySlugs.filter((value) => value !== slug);
+    onPatchData({ categories: next, mode: "selected", layout: "inline" });
+  }
+
   return (
     <section className="rounded-2xl border border-border bg-card shadow-soft">
       <div className="flex flex-wrap items-start justify-between gap-3 border-b border-border p-5">
@@ -693,12 +736,84 @@ function BlockEditor({ block, dirty, saving, collections, categories, onPatch, o
         )}
 
         {block.kind === "category_grid" && (
-          <div>
-            <p className="text-xs font-medium text-muted-foreground">Categorias vinculadas neste bloco existente</p>
-            <div className="mt-2 flex flex-wrap gap-2">
-              {categories.filter((category) => Array.isArray((block.data as { categories?: string[] }).categories) && (block.data as { categories?: string[] }).categories?.includes(category.slug)).map((category) => (
-                <Badge key={category.id} variant="secondary">{category.name}</Badge>
-              ))}
+          <div className="space-y-4 rounded-xl border border-border bg-secondary/20 p-4">
+            <div>
+              <p className="text-sm font-semibold text-foreground">Categorias em linha</p>
+              <p className="mt-1 text-xs leading-5 text-muted-foreground">No desktop ficam em uma única linha; no celular a faixa desliza horizontalmente sem quebrar os botões.</p>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field label="Quais categorias exibir">
+                <select
+                  value={categoryMode}
+                  onChange={(event) => onPatchData({ mode: event.target.value === "selected" ? "selected" : "all", layout: "inline" })}
+                  className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
+                >
+                  <option value="all">Todas as categorias</option>
+                  <option value="selected">Somente selecionadas</option>
+                </select>
+              </Field>
+              <Field label="Máximo de categorias">
+                <Input
+                  type="number"
+                  min={1}
+                  max={50}
+                  value={Number(block.data.limit ?? 50)}
+                  onChange={(event) => onPatchData({ limit: Math.max(1, Math.min(50, Number(event.target.value) || 1)), layout: "inline" })}
+                />
+              </Field>
+              <Field label="Alinhamento no desktop">
+                <select
+                  value={block.data.align === "left" ? "left" : "center"}
+                  onChange={(event) => onPatchData({ align: event.target.value === "left" ? "left" : "center", layout: "inline" })}
+                  className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
+                >
+                  <option value="center">Centralizado</option>
+                  <option value="left">À esquerda</option>
+                </select>
+              </Field>
+              <Field label="Estilo dos botões">
+                <select
+                  value={block.data.pill_style === "soft" || block.data.pill_style === "solid" ? block.data.pill_style : "outline"}
+                  onChange={(event) => onPatchData({ pill_style: event.target.value as "outline" | "soft" | "solid", layout: "inline" })}
+                  className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
+                >
+                  <option value="outline">Contorno elegante</option>
+                  <option value="soft">Fundo suave</option>
+                  <option value="solid">Cor principal</option>
+                </select>
+              </Field>
+            </div>
+
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={block.data.show_heading === true}
+                onChange={(event) => onPatchData({ show_heading: event.target.checked, layout: "inline" })}
+              />
+              Exibir título e subtítulo acima das categorias
+            </label>
+
+            {categoryMode === "selected" && (
+              <div>
+                <p className="text-xs font-medium text-muted-foreground">Selecione as categorias</p>
+                <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                  {categories.map((category) => (
+                    <label key={category.id} className="flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-2 text-xs font-medium">
+                      <input
+                        type="checkbox"
+                        checked={selectedCategorySlugs.includes(category.slug)}
+                        onChange={(event) => toggleCategorySlug(category.slug, event.target.checked)}
+                      />
+                      <span className="truncate">{category.name}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="rounded-lg bg-background px-3 py-2 text-[11px] leading-5 text-muted-foreground">
+              A ordem dos botões segue <strong className="text-foreground">Categorias e posição</strong>. Com “Todas as categorias”, novas categorias entram automaticamente neste bloco.
             </div>
           </div>
         )}
@@ -953,7 +1068,7 @@ function labelForKind(kind: string) {
     hero: "Hero",
     collection: "Coleção",
     text: "Texto editorial",
-    category_grid: "Grade / benefícios",
+    category_grid: "Categorias em linha",
     category_products: "Produtos por categoria",
     products: "Produtos manuais",
     spacer: "Espaçamento",
