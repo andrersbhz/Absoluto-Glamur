@@ -28,8 +28,21 @@ function getPeriodStart(period: AnalyticsPeriod) {
   return since;
 }
 
+async function cleanupStalePresence() {
+  // pagehide remove visitantes quase instantaneamente. Este corte é o fallback para
+  // queda de conexão, navegador encerrado à força ou dispositivo que não envia beacon.
+  const cutoff = new Date(Date.now() - 90_000).toISOString();
+  const { error } = await supabaseAdmin
+    .from("visitor_sessions")
+    .update({ is_online: false })
+    .eq("is_online", true)
+    .lt("last_seen_at", cutoff);
+  if (error) console.warn(`[Analytics] stale presence cleanup failed: ${error.message}`);
+}
+
 export async function loadAnalyticsStats(context: AuthContext, period: AnalyticsPeriod) {
   await assertAdmin(context);
+  await cleanupStalePresence();
 
   const sinceStr = getPeriodStart(period).toISOString();
   const todayStart = new Date();
@@ -42,7 +55,8 @@ export async function loadAnalyticsStats(context: AuthContext, period: Analytics
       .or("status.eq.paid,paid_at.not.is.null"),
     supabaseAdmin.from("visitor_sessions")
       .select("funnel_stage, current_page")
-      .eq("is_online", true),
+      .eq("is_online", true)
+      .gte("last_seen_at", new Date(Date.now() - 90_000).toISOString()),
     supabaseAdmin.from("analytics_events")
       .select("event_name, value_cents")
       .gte("created_at", sinceStr),
@@ -65,9 +79,25 @@ export async function loadAnalyticsStats(context: AuthContext, period: Analytics
       product_view: online.filter((visitor) => visitor.funnel_stage === "product_view").length,
       cart: online.filter((visitor) => visitor.funnel_stage === "cart").length,
       checkout: online.filter((visitor) => visitor.funnel_stage === "checkout").length,
+      purchased: online.filter((visitor) => visitor.funnel_stage === "purchased").length,
     },
     period,
   };
+}
+
+export async function loadAnalyticsActivity(context: AuthContext, period: AnalyticsPeriod) {
+  await assertAdmin(context);
+  await cleanupStalePresence();
+
+  const { data, error } = await supabaseAdmin
+    .from("analytics_events")
+    .select("id,session_id,visitor_id,event_name,page_path,product_name,value_cents,metadata,created_at,session:visitor_sessions(city,state,country,is_online,last_seen_at,funnel_stage,current_page,device_type)")
+    .gte("created_at", getPeriodStart(period).toISOString())
+    .order("created_at", { ascending: false })
+    .limit(160);
+
+  if (error) throw new Error("Não foi possível carregar a jornada dos visitantes");
+  return data ?? [];
 }
 
 export async function buildAnalyticsCsv(context: AuthContext, period: AnalyticsPeriod) {
