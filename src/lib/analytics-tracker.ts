@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { useLocation } from "@tanstack/react-router";
-import { sendCommercePresence, trackCommerce } from "./commerce-tracking";
+import { sendCommercePresence, trackCommerce, type CommerceEventName } from "./commerce-tracking";
 
 const HEARTBEAT_INTERVAL = 30000;
 
@@ -23,6 +23,12 @@ function inferFunnelStage(pathname: string): FunnelStage {
   return "browsing";
 }
 
+function navigationEvent(pathname: string, stage: FunnelStage): CommerceEventName {
+  if (stage === "product_view") return "view_item";
+  if (pathname === "/checkout") return "begin_checkout";
+  return "page_view";
+}
+
 function currentMetadata(pathname = window.location.pathname) {
   return {
     path: pathname,
@@ -40,13 +46,13 @@ function currentMetadata(pathname = window.location.pathname) {
 export function useAnalyticsTracker() {
   const location = useLocation();
 
-  // Registra cada navegação como histórico. Apenas uma rota realmente reconhecida
-  // como produto gera view_item; páginas institucionais, blog e conta usam page_view.
+  // Registra cada navegação como histórico sem confundir páginas comuns com produto.
+  // A entrada real no checkout recebe um evento próprio para tornar a jornada legível.
   useEffect(() => {
     if (!shouldTrackPath(location.pathname)) return;
 
     const stage = inferFunnelStage(location.pathname);
-    trackCommerce(stage === "product_view" ? "view_item" : "page_view", {
+    trackCommerce(navigationEvent(location.pathname, stage), {
       current_page: location.pathname,
       metadata: currentMetadata(location.pathname),
     });
