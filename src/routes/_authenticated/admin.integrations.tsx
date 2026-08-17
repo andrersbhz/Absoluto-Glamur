@@ -138,6 +138,12 @@ function IntegrationCard({ integration }: { integration: Integration }) {
   const [apiKey, setApiKey] = useState("");
   const [webhookToken, setWebhookToken] = useState("");
   const [merchantKey, setMerchantKey] = useState("");
+  const [pageId, setPageId] = useState(
+    String((integration.config as { page_id?: string } | null)?.page_id ?? ""),
+  );
+  const [igUserId, setIgUserId] = useState(
+    String((integration.config as { ig_user_id?: string } | null)?.ig_user_id ?? ""),
+  );
   const [showApiKey, setShowApiKey] = useState(false);
   const [showWebhookToken, setShowWebhookToken] = useState(false);
   const [showMerchantKey, setShowMerchantKey] = useState(false);
@@ -186,7 +192,13 @@ function IntegrationCard({ integration }: { integration: Integration }) {
   const testMut = useMutation({
     mutationFn: () => test({ data: { provider: integration.provider } }),
     onSuccess: (r) => {
-      toast.success(`Conectado a ${r.info?.name ?? "provedor"}`);
+      if (r.ok) {
+        toast.success(`Conexão validada: ${r.info?.name ?? "provedor"}`);
+      } else if ("unsupported" in r && r.unsupported) {
+        toast.info(r.info?.message ?? "Este provedor exige validação manual.");
+      } else {
+        toast.info(r.info?.message ?? "A integração não foi validada automaticamente.");
+      }
       qc.invalidateQueries({ queryKey: ["integrations"] });
     },
     onError: (e: Error) => toast.error(e.message),
@@ -275,6 +287,18 @@ function IntegrationCard({ integration }: { integration: Integration }) {
       instructions:
         "1) Crie conta gratuita em 17track.net e ative o plano API (2.000 rastreios/mês grátis). 2) Acesse Painel → API → 'Access Key' e copie o token de 32 caracteres. 3) Cole no campo 'API Key' abaixo e salve. 4) Opcional: cadastre a URL do webhook abaixo em Painel → API → Push (Webhook) para receber atualizações em tempo real.",
     },
+    facebook: {
+      keyUrl: "https://developers.facebook.com/apps/",
+      keyLabel: "Abrir Meta for Developers",
+      docsUrl: "https://developers.facebook.com/docs/graph-api/",
+      instructions: "Cole um token de acesso com permissão para a Página no campo Chave da API e informe o Facebook Page ID. Salve e use Testar conexão.",
+    },
+    instagram: {
+      keyUrl: "https://developers.facebook.com/apps/",
+      keyLabel: "Abrir Meta for Developers",
+      docsUrl: "https://developers.facebook.com/docs/instagram-api/",
+      instructions: "Cole o token de acesso da conta profissional no campo Chave da API e informe o Instagram Professional User ID. Salve e use Testar conexão.",
+    },
     google_tag_manager: {
       keyUrl: "https://tagmanager.google.com/",
       keyLabel: "Abrir Google Tag Manager",
@@ -287,6 +311,8 @@ function IntegrationCard({ integration }: { integration: Integration }) {
 
   const isNuPay = integration.provider === "nupay";
   const isAliexpress = integration.provider === "aliexpress";
+  const isFacebook = integration.provider === "facebook";
+  const isInstagram = integration.provider === "instagram";
   const isGtm = integration.provider === "google_tag_manager";
   const currentMerchantKey = integration.has_merchant_key;
 
@@ -317,6 +343,7 @@ function IntegrationCard({ integration }: { integration: Integration }) {
           <StatusLight
             connected={integration.last_status === "ok" && integration.enabled}
             errored={integration.last_status === "error"}
+            manual={integration.last_status === "manual"}
             hasKey={integration.has_api_key}
             errorMessage={integration.last_error}
           />
@@ -537,6 +564,36 @@ function IntegrationCard({ integration }: { integration: Integration }) {
               </span>
             </label>
           )}
+          {isFacebook && (
+            <label className="block text-sm">
+              <span className="mb-1 block text-xs text-muted-foreground">Facebook Page ID</span>
+              <input
+                type="text"
+                value={pageId}
+                onChange={(e) => setPageId(e.target.value)}
+                placeholder="ID numérico da Página"
+                className="w-full rounded-lg border border-border bg-background px-3 py-2 font-mono text-sm"
+              />
+              <span className="mt-1 block text-[11px] text-muted-foreground">
+                Use o ID da Página vinculada ao token. O botão Testar valida o Page ID pela Meta Graph API.
+              </span>
+            </label>
+          )}
+          {isInstagram && (
+            <label className="block text-sm">
+              <span className="mb-1 block text-xs text-muted-foreground">Instagram Professional User ID</span>
+              <input
+                type="text"
+                value={igUserId}
+                onChange={(e) => setIgUserId(e.target.value)}
+                placeholder="ID da conta profissional"
+                className="w-full rounded-lg border border-border bg-background px-3 py-2 font-mono text-sm"
+              />
+              <span className="mt-1 block text-[11px] text-muted-foreground">
+                Informe o ID da conta Business/Creator vinculada. O teste consulta o usuário pela Meta Graph API.
+              </span>
+            </label>
+          )}
           {webhookUrl && (
             <label className="block text-sm">
               <span className="mb-1 block text-xs text-muted-foreground">
@@ -604,6 +661,8 @@ function IntegrationCard({ integration }: { integration: Integration }) {
               onClick={() => {
                 const cfg: Record<string, unknown> = {};
                 if (isNuPay && merchantKey) cfg.merchant_key = merchantKey;
+                if (isFacebook) cfg.page_id = pageId.trim() || null;
+                if (isInstagram) cfg.ig_user_id = igUserId.trim() || null;
                 if (isAliexpress) cfg.redirect_uri = redirectUri.trim() || null;
                 saveMut.mutate({
                   provider: integration.provider,
@@ -745,11 +804,13 @@ function RoutingPanel() {
 function StatusLight({
   connected,
   errored,
+  manual,
   hasKey,
   errorMessage,
 }: {
   connected: boolean;
   errored: boolean;
+  manual: boolean;
   hasKey: boolean;
   errorMessage?: string | null;
 }) {
@@ -757,8 +818,10 @@ function StatusLight({
     ? { color: "bg-success", label: "Conectado", pulse: true, title: "Provedor testado e ativo" }
     : errored
       ? { color: "bg-destructive", label: "Erro", pulse: false, title: errorMessage ?? "Falha na última verificação" }
-      : hasKey
-        ? { color: "bg-warning", label: "Aguardando teste", pulse: false, title: "Chave configurada — clique em 'Testar conexão'" }
+      : manual
+        ? { color: "bg-warning", label: "Teste manual", pulse: false, title: "Credencial salva; este provedor ainda exige validação pelo fluxo oficial" }
+        : hasKey
+          ? { color: "bg-warning", label: "Aguardando teste", pulse: false, title: "Chave configurada — clique em 'Testar conexão'" }
         : { color: "bg-muted-foreground/50", label: "Não configurado", pulse: false, title: "Adicione uma chave de API" };
 
   return (
