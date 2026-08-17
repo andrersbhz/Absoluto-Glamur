@@ -1,0 +1,61 @@
+name: Full System Audit
+
+on:
+  push:
+    branches:
+      - fix/full-system-stability-integrations
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+      - run: bun install --frozen-lockfile
+      - name: Secret/service-role dependency audit
+        shell: bash
+        run: |
+          set +e
+          echo '=== client.server imports / supabaseAdmin references ==='
+          rg -n --hidden --glob '!node_modules/**' --glob '!.git/**' 'client\.server|supabaseAdmin' src || true
+          echo '=== server secret env references ==='
+          rg -n --hidden --glob '!node_modules/**' --glob '!.git/**' 'SUPABASE_(SECRET_KEY|SECRET_KEYS|SERVICE_ROLE_KEY)' . || true
+          echo '=== integrations references ==='
+          rg -n --hidden --glob '!node_modules/**' --glob '!.git/**' 'from\("integrations"\)|provider.*integrations|listIntegrations|saveIntegration|testIntegration' src supabase || true
+      - name: Route and auth audit
+        shell: bash
+        run: |
+          set +e
+          echo '=== server functions requiring auth ==='
+          rg -n 'createServerFn|requireSupabaseAuth|assertAdmin|assertCatalog' src/lib src/routes || true
+          echo '=== direct browser supabase mutations in admin ==='
+          rg -n 'supabase\.(from|rpc|auth)' src/routes/_authenticated src/components/admin || true
+      - name: Lint
+        run: bun run lint
+        continue-on-error: true
+      - name: Build
+        run: bun run build
+      - name: SSR smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          bun run dev > /tmp/audit-dev.log 2>&1 &
+          PID=$!
+          trap 'kill "$PID" 2>/dev/null || true' EXIT
+          for i in $(seq 1 60); do
+            for port in $(ss -ltnH 2>/dev/null | awk '{x=$4; sub(/^.*:/,"",x); if (x ~ /^[0-9]+$/) print x}' | sort -nu); do
+              if curl --max-time 2 -fsS "http://127.0.0.1:${port}/" -o /tmp/audit-home.html 2>/dev/null && grep -q 'Absoluto Glamur' /tmp/audit-home.html; then
+                echo "SSR healthy on ${port}"
+                exit 0
+              fi
+            done
+            sleep 1
+          done
+          cat /tmp/audit-dev.log || true
+          exit 1
