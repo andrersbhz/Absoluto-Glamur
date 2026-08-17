@@ -13,7 +13,6 @@ import {
   Filter,
   Globe,
   History,
-  LayoutGrid,
   MapPin,
   Monitor,
   MousePointer2,
@@ -364,11 +363,11 @@ export default function LiveMapView() {
       <div className="z-20 grid grid-cols-2 gap-px border-b border-border bg-border lg:grid-cols-5">
         <KpiCard label="Online agora" value={visitors.length} icon={Users} sub="presença nos últimos 90 s" color="text-success" pulse />
         <KpiCard label="Vendo produtos" value={visitors.filter((v) => v.funnel_stage === "product_view").length} icon={Eye} sub="interesse ativo" color="text-primary" />
-        <KpiCard label="No carrinho" value={visitors.filter((v) => v.funnel_stage === "cart").length} icon={ShoppingBag} sub="potenciais vendas" color="text-warning" />
-        <KpiCard label="No checkout" value={visitors.filter((v) => v.funnel_stage === "checkout").length} icon={CreditCard} sub="etapa de pagamento" color="text-plum" />
+        <KpiCard label="Carrinho alcançado" value={visitors.filter((v) => v.funnel_stage === "cart").length} icon={ShoppingBag} sub="etapa mais avançada" color="text-warning" />
+        <KpiCard label="Checkout alcançado" value={visitors.filter((v) => v.funnel_stage === "checkout").length} icon={CreditCard} sub="etapa mais avançada" color="text-plum" />
         <KpiCard
           label={`Receita ${period === "today" ? "hoje" : period}`}
-          value={formatBRL(((period === "today" ? stats?.revenueToday : stats?.revenuePeriod) || 0) / 100)}
+          value={formatBRL((period === "today" ? stats?.revenueToday : stats?.revenuePeriod) || 0)}
           icon={TrendingUp}
           sub={period === "today" ? `${stats?.ordersToday || 0} pedidos pagos` : "compras confirmadas"}
           color="text-success"
@@ -688,7 +687,7 @@ function JourneyPanel({
                   </div>
                   <p className="mt-0.5 truncate text-[9px] text-white/45">{event.product_name || event.page_path || "Ação na loja"}</p>
                   {event.event_name === "purchase" && event.value_cents ? (
-                    <p className="mt-1 text-[9px] font-medium text-[#76bba4]">{formatBRL(event.value_cents / 100)}</p>
+                    <p className="mt-1 text-[9px] font-medium text-[#76bba4]">{formatBRL(event.value_cents)}</p>
                   ) : null}
                 </div>
               </div>
