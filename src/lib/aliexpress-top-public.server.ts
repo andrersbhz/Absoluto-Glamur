@@ -6,7 +6,13 @@
  * `aliexpress.social.product.evaluation.query` é uma API TOP pública (sem session)
  * e a documentação específica aceita `sign_method=md5` ou `sign_method=hmac`.
  * Usamos MD5 aqui por compatibilidade com o endpoint legado /router/rest.
+ *
+ * A Open Platform moderna e o gateway TOP não devem ser tratados como se a mesma
+ * App Key fosse necessariamente válida nos dois ambientes. Quando configuradas,
+ * `config.top_app_key` + `config.top_app_secret` são usadas exclusivamente aqui.
  */
+
+const TOP_HTTPS_ENDPOINT = "https://eco.taobao.com/router/rest";
 
 function topTimestampGmt8(): string {
   const shifted = new Date(Date.now() + 8 * 60 * 60 * 1000);
@@ -115,6 +121,23 @@ async function loadAliTopCredentials(credentialClient?: any) {
   if (error) throw new Error(`Não foi possível ler a integração AliExpress: ${error.message}`);
 
   const cfg = (data?.config ?? {}) as Record<string, unknown>;
+  const dedicatedTopKey = String(cfg.top_app_key ?? "").trim();
+  const dedicatedTopSecret = String(cfg.top_app_secret ?? "").trim();
+
+  // Se o administrador começou a configurar credenciais TOP, exigimos o par completo
+  // para evitar assinar uma App Key TOP com o Secret da Open Platform por engano.
+  if ((dedicatedTopKey && !dedicatedTopSecret) || (!dedicatedTopKey && dedicatedTopSecret)) {
+    throw new Error(
+      "Complete App Key TOP e App Secret TOP em Admin → Integrações → AliExpress → Credenciais TOP para avaliações.",
+    );
+  }
+
+  if (dedicatedTopKey && dedicatedTopSecret) {
+    return { appKey: dedicatedTopKey, secrets: [dedicatedTopSecret], dedicated: true };
+  }
+
+  // Compatibilidade com instalações antigas: tenta o par principal. Se o gateway TOP
+  // rejeitar a App Key, a mensagem orienta a configurar o par TOP dedicado no painel.
   const appKey = String(data?.api_key ?? cfg.app_key ?? "").trim();
   const primarySecret = String(data?.webhook_token ?? "").trim();
   const configSecret = String(cfg.app_secret ?? "").trim();
@@ -124,20 +147,41 @@ async function loadAliTopCredentials(credentialClient?: any) {
     throw new Error("Configure App Key e App Secret do AliExpress em Integrações antes de sincronizar avaliações.");
   }
 
-  return { appKey, secrets };
+  return { appKey, secrets, dedicated: false };
 }
 
 function responseKey(method: string): string {
   return `${method.replace(/\./g, "_")}_response`;
 }
 
-function readPlatformError(json: any): string | null {
+function getPlatformError(json: any): { code: string; detail: string; requestId: string | null } | null {
   const error = json?.error_response;
   if (!error) return null;
   const code = [error.code, error.sub_code].filter(Boolean).join("/");
-  const detail = error.sub_msg ?? error.msg ?? "erro desconhecido";
-  const requestId = error.request_id ? ` (request_id: ${error.request_id})` : "";
-  return `AliExpress TOP ${code || "erro"}: ${detail}${requestId}`;
+  const detail = String(error.sub_msg ?? error.msg ?? "erro desconhecido");
+  return {
+    code: code || "erro",
+    detail,
+    requestId: error.request_id ? String(error.request_id) : null,
+  };
+}
+
+function formatPlatformError(error: { code: string; detail: string; requestId: string | null }): string {
+  const requestId = error.requestId ? ` (request_id: ${error.requestId})` : "";
+  return `AliExpress TOP ${error.code}: ${error.detail}${requestId}`;
+}
+
+function isInvalidTopAppKey(error: { code: string; detail: string }): boolean {
+  return (
+    error.code.startsWith("29") ||
+    /appkey-not-exists|appkey does not exist|invalid app\s*key|invalid appkey/i.test(`${error.code} ${error.detail}`)
+  );
+}
+
+function invalidTopAppKeyMessage(dedicated: boolean): string {
+  return dedicated
+    ? "A App Key TOP configurada para avaliações não é reconhecida pelo gateway TOP. Confira o par App Key TOP/App Secret TOP e o ambiente no console Alibaba/TOP."
+    : "A App Key principal do AliExpress não é reconhecida pelo gateway TOP usado para avaliações. Configure o par específico em Admin → Integrações → AliExpress → Credenciais TOP para avaliações; a integração principal de importação/estoque não será alterada.";
 }
 
 function readBusinessError(method: string, json: any): string | null {
@@ -203,27 +247,31 @@ export async function callAliTopPublic<T = any>(
   bizParams: Record<string, string | number | boolean | undefined | null>,
   credentialClient?: any,
 ): Promise<T> {
-  const { appKey, secrets } = await loadAliTopCredentials(credentialClient);
-  // HTTPS oficial documentado para TOP. O segundo host é mantido apenas como
-  // compatibilidade de infraestrutura, nunca como fonte alternativa de dados.
-  const endpoints = ["https://eco.taobao.com/router/rest", "https://api.taobao.com/router/rest"];
+  const { appKey, secrets, dedicated } = await loadAliTopCredentials(credentialClient);
   const failures: string[] = [];
 
-  for (const endpoint of endpoints) {
-    for (const secret of secrets) {
-      try {
-        const json = await requestTop(endpoint, method, appKey, secret, bizParams);
-        const platformError = readPlatformError(json);
-        if (platformError) throw new Error(platformError);
-        const businessError = readBusinessError(method, json);
-        if (businessError) throw new Error(businessError);
-        return json as T;
-      } catch (error) {
-        failures.push(error instanceof Error ? error.message : String(error));
+  // A documentação deste método publica eco.taobao.com como endpoint HTTPS de
+  // produção. Não repetimos a mesma requisição em hosts não documentados.
+  for (const secret of secrets) {
+    try {
+      const json = await requestTop(TOP_HTTPS_ENDPOINT, method, appKey, secret, bizParams);
+      const platformError = getPlatformError(json);
+      if (platformError) {
+        // App Key inválida é determinística: trocar secret ou repetir endpoint não resolve
+        // e só poluía a tela com a mesma mensagem três vezes.
+        if (isInvalidTopAppKey(platformError)) throw new Error(invalidTopAppKeyMessage(dedicated));
+        throw new Error(formatPlatformError(platformError));
       }
+      const businessError = readBusinessError(method, json);
+      if (businessError) throw new Error(businessError);
+      return json as T;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (/App Key TOP|App Key principal do AliExpress/i.test(message)) throw new Error(message);
+      failures.push(message);
     }
   }
 
   const unique = [...new Set(failures)].filter(Boolean);
-  throw new Error(unique.slice(0, 3).join(" | ") || "Não foi possível consultar a API TOP oficial do AliExpress.");
+  throw new Error(unique.slice(0, 2).join(" | ") || "Não foi possível consultar a API TOP oficial do AliExpress.");
 }
