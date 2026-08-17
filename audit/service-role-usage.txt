@@ -1,0 +1,676 @@
+# Authenticated/server-role usage audit
+
+## Imports of client.server / supabaseAdmin under src/lib
+src/lib/checkout.functions.ts:88:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/checkout.functions.ts:91:    const { data: route } = await supabaseAdmin
+src/lib/checkout.functions.ts:103:    const { data: integ } = await supabaseAdmin
+src/lib/checkout.functions.ts:120:    const { data: variants, error: varErr } = await supabaseAdmin
+src/lib/checkout.functions.ts:163:      const { data: imports } = await supabaseAdmin
+src/lib/checkout.functions.ts:234:    const { data: codeData } = await supabaseAdmin.rpc("generate_order_code");
+src/lib/checkout.functions.ts:239:    const { data: order, error: orderErr } = await supabaseAdmin
+src/lib/checkout.functions.ts:259:    const { error: itemsErr } = await supabaseAdmin
+src/lib/checkout.functions.ts:265:      await supabaseAdmin.from("addresses").insert({
+src/lib/checkout.functions.ts:305:      await supabaseAdmin
+src/lib/checkout.functions.ts:318:  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/checkout.functions.ts:354:  const { error } = await supabaseAdmin.from("payments").insert({
+src/lib/checkout.functions.ts:375:  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/checkout.functions.ts:408:  const { error } = await supabaseAdmin.from("payments").insert({
+src/lib/checkout.functions.ts:427:  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/checkout.functions.ts:465:  const { error } = await supabaseAdmin.from("payments").insert({
+src/lib/checkout.functions.ts:490:  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/checkout.functions.ts:550:  const { error } = await supabaseAdmin.from("payments").insert({
+src/lib/blog-meta.functions.ts:22:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/blog-meta.functions.ts:23:    const { data, error } = await (supabaseAdmin as any)
+src/lib/blog-meta.functions.ts:61:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/blog-meta.functions.ts:62:    const db = supabaseAdmin as any;
+src/lib/blog-meta.functions.ts:104:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/blog-meta.functions.ts:108:      await (supabaseAdmin as any)
+src/lib/blog-meta.functions.ts:115:      await (supabaseAdmin as any)
+src/lib/gtm.functions.ts:5:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/gtm.functions.ts:6:    const { data } = await supabaseAdmin
+src/lib/integrations.functions.ts:57:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/integrations.functions.ts:58:    const { data, error } = await supabaseAdmin
+src/lib/integrations.functions.ts:105:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/integrations.functions.ts:114:      const { data: existing } = await supabaseAdmin
+src/lib/integrations.functions.ts:132:    const { error } = await supabaseAdmin
+src/lib/integrations.functions.ts:145:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/integrations.functions.ts:146:    const { data: row } = await supabaseAdmin
+src/lib/integrations.functions.ts:161:        await supabaseAdmin
+src/lib/integrations.functions.ts:175:        await supabaseAdmin
+src/lib/integrations.functions.ts:196:        await supabaseAdmin
+src/lib/integrations.functions.ts:207:        await supabaseAdmin
+src/lib/integrations.functions.ts:225:        await supabaseAdmin
+src/lib/integrations.functions.ts:239:        await supabaseAdmin
+src/lib/integrations.functions.ts:256:        await supabaseAdmin
+src/lib/integrations.functions.ts:292:        await supabaseAdmin
+src/lib/integrations.functions.ts:307:        await supabaseAdmin
+src/lib/pricing-v12.functions.ts:20:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/pricing-v12.functions.ts:21:    const { data, error } = await supabaseAdmin.from("pricing_profiles").select("*").order("is_default", { ascending: false }).order("name");
+src/lib/pricing-v12.functions.ts:47:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/pricing-v12.functions.ts:48:    if (data.is_default) await supabaseAdmin.from("pricing_profiles").update({ is_default: false }).eq("is_default", true);
+src/lib/pricing-v12.functions.ts:51:      const { error } = await supabaseAdmin.from("pricing_profiles").update(payload).eq("id", data.id);
+src/lib/pricing-v12.functions.ts:55:    const { data: inserted, error } = await supabaseAdmin.from("pricing_profiles").insert(payload).select("id").single();
+src/lib/pricing-v12.functions.ts:70:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/pricing-v12.functions.ts:73:      supabaseAdmin.from("pricing_cost_components").select("key,label,amount_cents").eq("product_id", data.product_id),
+src/lib/pricing-v12.functions.ts:75:        ? supabaseAdmin.from("pricing_profiles").select("*").eq("id", data.profile_id).maybeSingle()
+src/lib/pricing-v12.functions.ts:76:        : supabaseAdmin.from("pricing_profiles").select("*").eq("is_default", true).eq("enabled", true).maybeSingle(),
+src/lib/intelligence.functions.ts:37:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/intelligence.functions.ts:41:    const { data: productBasic, error: prodErr } = await supabaseAdmin
+src/lib/intelligence.functions.ts:51:      supabaseAdmin.from("product_media").select("id").eq("product_id", data.product_id),
+src/lib/intelligence.functions.ts:52:      supabaseAdmin
+src/lib/intelligence.functions.ts:60:      supabaseAdmin.from("product_reviews").select("rating").eq("product_id", data.product_id),
+src/lib/intelligence.functions.ts:61:      supabaseAdmin
+src/lib/intelligence.functions.ts:66:      supabaseAdmin
+src/lib/intelligence.functions.ts:70:      supabaseAdmin
+src/lib/intelligence.functions.ts:156:    const { data: existing } = await supabaseAdmin
+src/lib/intelligence.functions.ts:178:      await supabaseAdmin.from("product_scores").update(scorePayload).eq("id", scoreId);
+src/lib/intelligence.functions.ts:179:      await supabaseAdmin.from("product_score_components").delete().eq("score_id", scoreId);
+src/lib/intelligence.functions.ts:181:      const { data: inserted } = await supabaseAdmin
+src/lib/intelligence.functions.ts:189:    await supabaseAdmin.from("product_score_components").insert(
+src/lib/intelligence.functions.ts:193:    await supabaseAdmin.from("product_score_versions").insert({
+src/lib/intelligence.functions.ts:208:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/intelligence.functions.ts:211:    const { data: basic, error: basicErr } = await supabaseAdmin
+src/lib/intelligence.functions.ts:221:      supabaseAdmin
+src/lib/intelligence.functions.ts:228:      supabaseAdmin
+src/lib/intelligence.functions.ts:233:      supabaseAdmin
+src/lib/intelligence.functions.ts:238:      supabaseAdmin.from("pricing_rules").select("*").eq("is_active", true).order("priority"),
+src/lib/intelligence.functions.ts:239:      supabaseAdmin
+src/lib/intelligence.functions.ts:278:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/intelligence.functions.ts:279:    await supabaseAdmin.from("pricing_cost_components").delete().eq("product_id", data.product_id);
+src/lib/intelligence.functions.ts:281:      const { error } = await supabaseAdmin
+src/lib/intelligence.functions.ts:295:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/intelligence.functions.ts:296:    const { data } = await supabaseAdmin.from("pricing_rules").select("*").order("priority");
+src/lib/intelligence.functions.ts:321:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/intelligence.functions.ts:323:      await supabaseAdmin.from("pricing_rules").update({ is_default: false }).eq("is_default", true);
+src/lib/intelligence.functions.ts:326:      const { error } = await supabaseAdmin.from("pricing_rules").update(data).eq("id", data.id);
+src/lib/intelligence.functions.ts:330:    const { data: inserted, error } = await supabaseAdmin
+src/lib/intelligence.functions.ts:344:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/intelligence.functions.ts:345:    const { error } = await supabaseAdmin.from("pricing_rules").delete().eq("id", data.id);
+src/lib/intelligence.functions.ts:381:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/intelligence.functions.ts:383:    const { data: costs } = await supabaseAdmin
+src/lib/intelligence.functions.ts:391:      const { data: r } = await supabaseAdmin.from("pricing_rules").select("*").eq("id", data.rule_id).maybeSingle();
+src/lib/intelligence.functions.ts:394:      const { data: r } = await supabaseAdmin
+src/lib/intelligence.functions.ts:448:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/intelligence.functions.ts:451:    const { data: costs } = await supabaseAdmin
+src/lib/intelligence.functions.ts:459:      const { data: r } = await supabaseAdmin.from("pricing_rules").select("*").eq("id", data.rule_id).maybeSingle();
+src/lib/intelligence.functions.ts:462:      const { data: r } = await supabaseAdmin
+src/lib/intelligence.functions.ts:480:    const { data: variants } = await supabaseAdmin
+src/lib/intelligence.functions.ts:489:      await supabaseAdmin
+src/lib/intelligence.functions.ts:494:      await supabaseAdmin.from("product_prices").insert({
+src/lib/intelligence.functions.ts:502:    await supabaseAdmin.from("pricing_calculations").insert({
+src/lib/intelligence.functions.ts:523:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/intelligence.functions.ts:524:    const { data } = await supabaseAdmin
+src/lib/growth-intelligence.functions.ts:35:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/growth-intelligence.functions.ts:41:    const { error } = await supabaseAdmin.from("product_market_metrics").upsert({
+src/lib/growth-intelligence.functions.ts:57:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/growth-intelligence.functions.ts:60:      supabaseAdmin.from("products").select(`
+src/lib/growth-intelligence.functions.ts:64:      supabaseAdmin.from("product_market_metrics").select("*").eq("product_id", data.product_id).maybeSingle(),
+src/lib/growth-intelligence.functions.ts:65:      supabaseAdmin.from("pricing_cost_components").select("amount_cents").eq("product_id", data.product_id),
+src/lib/growth-intelligence.functions.ts:66:      supabaseAdmin.from("favorites").select("product_id", { count: "exact", head: true }).eq("product_id", data.product_id),
+src/lib/growth-intelligence.functions.ts:134:    const { error } = await supabaseAdmin.from("product_scores").upsert(payload, { onConflict: "product_id" });
+src/lib/growth-intelligence.functions.ts:137:    await supabaseAdmin.from("product_score_versions").insert({
+src/lib/growth-intelligence.functions.ts:166:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/growth-intelligence.functions.ts:167:    const { data, error } = await supabaseAdmin.from("products").select(`
+src/lib/aliexpress-import.functions.ts:79:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/aliexpress-import.functions.ts:80:    const { data } = await supabaseAdmin
+src/lib/aliexpress-import.functions.ts:97:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/aliexpress-import.functions.ts:98:    const { data: existing } = await supabaseAdmin
+src/lib/aliexpress-import.functions.ts:105:    const { error } = await supabaseAdmin
+src/lib/aliexpress-import.functions.ts:697:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/aliexpress-import.functions.ts:698:    const settings = await loadSettings(supabaseAdmin);
+src/lib/aliexpress-import.functions.ts:723:      const { data: row, error } = await supabaseAdmin
+src/lib/aliexpress-import.functions.ts:736:        await commitImportRow(supabaseAdmin, row.id, norm, settings, {
+src/lib/aliexpress-import.functions.ts:745:        await supabaseAdmin.from("product_imports").update({ error: msg }).eq("id", row.id);
+src/lib/aliexpress-import.functions.ts:758:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/aliexpress-import.functions.ts:759:    let q = supabaseAdmin
+src/lib/aliexpress-import.functions.ts:786:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/aliexpress-import.functions.ts:787:    const { data: r, error } = await supabaseAdmin
+src/lib/aliexpress-import.functions.ts:815:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/aliexpress-import.functions.ts:816:    const { error } = await supabaseAdmin
+src/lib/aliexpress-import.functions.ts:839:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/aliexpress-import.functions.ts:840:    const { error } = await supabaseAdmin.from("product_imports").delete().eq("id", data.id);
+src/lib/aliexpress-import.functions.ts:874:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/aliexpress-import.functions.ts:876:    const { data: imp, error: ie } = await supabaseAdmin
+src/lib/aliexpress-import.functions.ts:885:    const { data: cfg } = await supabaseAdmin
+src/lib/aliexpress-import.functions.ts:906:      const { error: upErr } = await supabaseAdmin
+src/lib/aliexpress-import.functions.ts:919:      const { data: vrow, error: vrowError } = await supabaseAdmin
+src/lib/aliexpress-import.functions.ts:930:      const { error: disablePriceError } = await supabaseAdmin
+src/lib/aliexpress-import.functions.ts:936:      const { error: newPriceError } = await supabaseAdmin.from("product_prices").insert({
+src/lib/aliexpress-import.functions.ts:944:      const { error: stockError } = await supabaseAdmin
+src/lib/aliexpress-import.functions.ts:949:      const { error: importUpdateError } = await supabaseAdmin
+src/lib/aliexpress-import.functions.ts:957:          supabaseAdmin,
+src/lib/aliexpress-import.functions.ts:963:        await syncImportedProductReviews(supabaseAdmin, imp.product_id);
+src/lib/aliexpress-import.functions.ts:965:      const { data: p, error: productError } = await supabaseAdmin
+src/lib/aliexpress-import.functions.ts:978:    const { data: created, error: pe } = await supabaseAdmin
+src/lib/aliexpress-import.functions.ts:996:    const { data: nv, error: ve } = await supabaseAdmin
+src/lib/aliexpress-import.functions.ts:1009:    const { error: prErr } = await supabaseAdmin.from("product_prices").insert({
+src/lib/aliexpress-import.functions.ts:1017:    const { error: invErr } = await supabaseAdmin
+src/lib/aliexpress-import.functions.ts:1023:      const { error: me } = await supabaseAdmin.from("product_media").insert(
+src/lib/aliexpress-import.functions.ts:1035:    const { error: importUpdateError } = await supabaseAdmin
+src/lib/aliexpress-import.functions.ts:1043:        supabaseAdmin,
+src/lib/aliexpress-import.functions.ts:1049:        await syncImportedProductReviews(supabaseAdmin, productId);
+src/lib/dashboard.functions.ts:48:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/dashboard.functions.ts:62:      supabaseAdmin.from("orders").select("id, status, total_cents, created_at, paid_at").gte("created_at", since30),
+src/lib/dashboard.functions.ts:63:      supabaseAdmin.from("orders").select("id", { count: "exact", head: true }).eq("status", "pending"),
+src/lib/dashboard.functions.ts:64:      supabaseAdmin.from("products").select("id", { count: "exact", head: true }).eq("status", "active"),
+src/lib/dashboard.functions.ts:65:      supabaseAdmin.from("products").select("id", { count: "exact", head: true }).eq("status", "draft"),
+src/lib/dashboard.functions.ts:66:      supabaseAdmin.from("profiles").select("id", { count: "exact", head: true }),
+src/lib/dashboard.functions.ts:67:      supabaseAdmin.from("profiles").select("id", { count: "exact", head: true }).gte("created_at", since30),
+src/lib/dashboard.functions.ts:68:      supabaseAdmin.from("ai_generations").select("id, total_tokens").gte("created_at", since30),
+src/lib/dashboard.functions.ts:69:      supabaseAdmin.from("product_imports").select("id", { count: "exact", head: true }),
+src/lib/dashboard.functions.ts:70:      supabaseAdmin
+src/lib/dashboard.functions.ts:124:      const { count } = await (supabaseAdmin.from(t) as any).select("id", { count: "exact", head: true });
+src/lib/dashboard.functions.ts:161:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/dashboard.functions.ts:163:    const { data, error } = await supabaseAdmin
+src/lib/admin-system.functions.ts:50:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/admin-system.functions.ts:53:      supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 100 }),
+src/lib/admin-system.functions.ts:54:      supabaseAdmin.from("user_roles").select("user_id, role"),
+src/lib/admin-system.functions.ts:61:      ? await supabaseAdmin.from("profiles").select("id, full_name, phone").in("id", userIds)
+src/lib/admin-system.functions.ts:100:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/admin-system.functions.ts:103:      const { data: currentRoles, error } = await supabaseAdmin
+src/lib/admin-system.functions.ts:114:    const { error: deleteError } = await supabaseAdmin.from("user_roles").delete().eq("user_id", data.userId);
+src/lib/admin-system.functions.ts:118:    const { error: insertError } = await supabaseAdmin
+src/lib/admin-system.functions.ts:123:    await supabaseAdmin.from("audit_logs").insert({
+src/lib/admin-system.functions.ts:162:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/admin-system.functions.ts:165:      supabaseAdmin
+src/lib/admin-system.functions.ts:170:      supabaseAdmin.from("product_reviews").select("id", { count: "exact", head: true }).eq("is_approved", false),
+src/lib/admin-system.functions.ts:171:      supabaseAdmin.from("payment_events").select("id", { count: "exact", head: true }).not("error", "is", null),
+src/lib/admin-system.functions.ts:172:      supabaseAdmin
+src/lib/admin-system.functions.ts:176:      supabaseAdmin
+src/lib/admin-system.functions.ts:181:      supabaseAdmin
+src/lib/admin-system.functions.ts:251:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/admin-system.functions.ts:270:        const { count, error } = await supabaseAdmin
+src/lib/admin-system.functions.ts:280:      supabaseAdmin.from("profiles").select("id", { count: "exact", head: true }).gte("created_at", since30),
+src/lib/admin-system.functions.ts:281:      supabaseAdmin.from("integrations").select("provider", { count: "exact", head: true }).eq("enabled", true),
+src/lib/admin-system.functions.ts:282:      supabaseAdmin.from("ai_generations").select("id", { count: "exact", head: true }).gte("created_at", since30),
+src/lib/admin-system.functions.ts:283:      supabaseAdmin.from("product_imports").select("id", { count: "exact", head: true }),
+src/lib/aliexpress-discovery.functions.ts:70:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/aliexpress-discovery.functions.ts:71:    client = supabaseAdmin;
+src/lib/aliexpress-discovery.functions.ts:117:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/aliexpress-discovery.functions.ts:118:    client = supabaseAdmin;
+src/lib/push.functions.ts:26:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/push.functions.ts:27:    await supabaseAdmin
+src/lib/push.functions.ts:46:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/push.functions.ts:47:    await supabaseAdmin
+src/lib/product-reviews-live.functions.ts:488:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/product-reviews-live.functions.ts:489:    return syncLiveReviewsInternal(supabaseAdmin, data.product_id, false);
+src/lib/ai-product-optimize.functions.ts:88:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/ai-product-optimize.functions.ts:90:    const { data: prod, error } = await supabaseAdmin
+src/lib/ai-product-optimize.functions.ts:227:      const { error: upErr } = await supabaseAdmin
+src/lib/ai-product-optimize.functions.ts:237:      const { error: seoErr } = await supabaseAdmin.from("product_seo").upsert(
+src/lib/aliexpress-variants.functions.ts:43:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/aliexpress-variants.functions.ts:46:    const sourceId = await findSourceId(supabaseAdmin, data.product_id);
+src/lib/aliexpress-variants.functions.ts:51:    const result = await syncVariantsForProduct(supabaseAdmin, data.product_id, sourceId);
+src/lib/aliexpress-variants.functions.ts:72:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/aliexpress-variants.functions.ts:77:    const query = supabaseAdmin
+src/lib/aliexpress-variants.functions.ts:95:      const { data: mapped } = await supabaseAdmin
+src/lib/aliexpress-variants.functions.ts:118:        const r = await syncVariantsForProduct(supabaseAdmin, t.product_id, t.source_id);
+src/lib/blog-admin.functions.ts:56:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/blog-admin.functions.ts:57:    const db = supabaseAdmin as any;
+src/lib/blog-admin.functions.ts:103:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/blog-admin.functions.ts:106:    const { data: row, error } = await (supabaseAdmin as any)
+src/lib/blog-admin.functions.ts:126:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/blog-admin.functions.ts:128:    const { data: row, error } = await (supabaseAdmin as any)
+src/lib/blog-admin.functions.ts:174:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/blog-admin.functions.ts:175:    const db = supabaseAdmin as any;
+src/lib/blog-admin.functions.ts:281:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/blog-admin.functions.ts:282:    const db = supabaseAdmin as any;
+src/lib/blog-admin.functions.ts:402:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/blog-admin.functions.ts:403:    const db = supabaseAdmin as any;
+src/lib/blog-admin.functions.ts:470:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/blog-admin.functions.ts:471:    const { error } = await (supabaseAdmin as any)
+src/lib/aliexpress-fulfillment.functions.ts:51:  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/aliexpress-fulfillment.functions.ts:52:  const { data, error } = await supabaseAdmin
+src/lib/aliexpress-fulfillment.functions.ts:67:  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/aliexpress-fulfillment.functions.ts:76:    const { data } = await supabaseAdmin
+src/lib/aliexpress-fulfillment.functions.ts:93:    const { data: imp } = await supabaseAdmin
+src/lib/aliexpress-fulfillment.functions.ts:199:  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/aliexpress-fulfillment.functions.ts:200:  await supabaseAdmin
+src/lib/aliexpress-fulfillment.functions.ts:282:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/aliexpress-fulfillment.functions.ts:283:    const { error } = await supabaseAdmin
+src/lib/admin-catalog.functions.ts:53:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/admin-catalog.functions.ts:54:    let q = supabaseAdmin
+src/lib/admin-catalog.functions.ts:85:    const { data: imports } = await supabaseAdmin
+src/lib/admin-catalog.functions.ts:139:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/admin-catalog.functions.ts:141:      supabaseAdmin.from("brands").select("id, name, slug").order("name"),
+src/lib/admin-catalog.functions.ts:142:      supabaseAdmin.from("categories").select("id, name, slug, parent_id").order("name"),
+src/lib/admin-catalog.functions.ts:188:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/admin-catalog.functions.ts:189:    const { data: p, error } = await supabaseAdmin
+src/lib/admin-catalog.functions.ts:303:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/admin-catalog.functions.ts:310:      const { data: created, error } = await supabaseAdmin
+src/lib/admin-catalog.functions.ts:328:      const { error } = await supabaseAdmin
+src/lib/admin-catalog.functions.ts:346:    const { data: existingVars } = await supabaseAdmin
+src/lib/admin-catalog.functions.ts:353:      const { data: nv, error } = await supabaseAdmin
+src/lib/admin-catalog.functions.ts:366:      const { error } = await supabaseAdmin
+src/lib/admin-catalog.functions.ts:378:    await supabaseAdmin
+src/lib/admin-catalog.functions.ts:382:    const { data: existingPrice } = await supabaseAdmin
+src/lib/admin-catalog.functions.ts:390:      const { error } = await supabaseAdmin
+src/lib/admin-catalog.functions.ts:400:      const { error } = await supabaseAdmin.from("product_prices").insert({
+src/lib/admin-catalog.functions.ts:410:    const { error: invErr } = await supabaseAdmin
+src/lib/admin-catalog.functions.ts:416:    await supabaseAdmin.from("product_media").delete().eq("product_id", productId);
+src/lib/admin-catalog.functions.ts:419:      const { error } = await supabaseAdmin.from("product_media").insert(
+src/lib/admin-catalog.functions.ts:433:      const { error } = await supabaseAdmin.from("product_seo").upsert(
+src/lib/admin-catalog.functions.ts:452:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/admin-catalog.functions.ts:453:    const { error } = await supabaseAdmin.from("products").delete().eq("id", data.id);
+src/lib/admin-catalog.functions.ts:471:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/admin-catalog.functions.ts:472:    let q = supabaseAdmin
+src/lib/performance-v12.functions.ts:28:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/performance-v12.functions.ts:29:    const { error } = await supabaseAdmin.from("marketing_spend_daily").upsert({ ...data, updated_at: new Date().toISOString() }, { onConflict: "day,channel,campaign" });
+src/lib/performance-v12.functions.ts:39:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/performance-v12.functions.ts:45:      supabaseAdmin.from("orders").select("id,status,total_cents,paid_at,created_at").gte("created_at", sinceIso),
+src/lib/performance-v12.functions.ts:46:      supabaseAdmin.from("marketing_spend_daily").select("*").gte("day", sinceDay),
+src/lib/performance-v12.functions.ts:47:      supabaseAdmin.from("commerce_events").select("event_name,session_id,value_cents,channel,campaign,occurred_at").gte("occurred_at", sinceIso),
+src/lib/performance-v12.functions.ts:48:      supabaseAdmin.from("abandoned_checkouts").select("id,total_cents,recovered_at,last_seen_at,source").gte("last_seen_at", sinceIso),
+src/lib/performance-v12.functions.ts:49:      supabaseAdmin.from("profiles").select("id", { count: "exact", head: true }).gte("created_at", sinceIso),
+src/lib/aliexpress-stock.functions.ts:113:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/aliexpress-stock.functions.ts:115:    const { data: imp } = await supabaseAdmin
+src/lib/aliexpress-stock.functions.ts:138:    const { data: variants } = await supabaseAdmin
+src/lib/aliexpress-stock.functions.ts:154:      await supabaseAdmin
+src/lib/aliexpress-stock.functions.ts:161:      await supabaseAdmin.from("pricing_calculations").insert({
+src/lib/aliexpress-stock.functions.ts:173:    await supabaseAdmin
+src/lib/aliexpress-stock.functions.ts:211:  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/aliexpress-stock.functions.ts:212:  const { data: imports } = await supabaseAdmin
+src/lib/aliexpress-stock.functions.ts:239:        const { data: variants } = await supabaseAdmin
+src/lib/aliexpress-stock.functions.ts:250:          await supabaseAdmin
+src/lib/aliexpress-stock.functions.ts:255:          await supabaseAdmin.from("pricing_calculations").insert({
+src/lib/product-reviews.functions.ts:121:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/product-reviews.functions.ts:122:    const { data: rows, error } = await supabaseAdmin
+src/lib/product-reviews.functions.ts:169:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/product-reviews.functions.ts:170:    const sourceId = await findAliSourceId(supabaseAdmin, data.product_id);
+src/lib/product-reviews.functions.ts:174:      supabaseAdmin,
+src/lib/product-reviews.functions.ts:205:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/product-reviews.functions.ts:219:      const { data: row, error } = await supabaseAdmin
+src/lib/product-reviews.functions.ts:228:    const { data: row, error } = await supabaseAdmin
+src/lib/product-reviews.functions.ts:242:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/product-reviews.functions.ts:243:    const { error } = await supabaseAdmin.from("product_external_reviews").delete().eq("id", data.id);
+src/lib/product-reviews.functions.ts:255:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/product-reviews.functions.ts:256:    const { data: linked, error } = await supabaseAdmin
+src/lib/product-reviews.functions.ts:281:        supabaseAdmin,
+src/lib/product-reviews.functions.ts:299:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/product-reviews.functions.ts:301:    const { data: untranslated } = await supabaseAdmin
+src/lib/product-reviews.functions.ts:318:        const { error } = await supabaseAdmin
+src/lib/product-reviews.functions.ts:326:    const { data: latest } = await supabaseAdmin
+src/lib/product-reviews.functions.ts:341:    const sourceId = await findAliSourceId(supabaseAdmin, data.product_id);
+src/lib/product-reviews.functions.ts:346:    const r = await syncReviewsForProductInternal(supabaseAdmin, data.product_id, sourceId, 0);
+src/lib/aliexpress-oauth.functions.ts:18:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/aliexpress-oauth.functions.ts:19:    const { data: integration } = await supabaseAdmin
+src/lib/customer-push.functions.ts:15:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/customer-push.functions.ts:16:    await supabaseAdmin
+src/lib/customer-push.functions.ts:35:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/customer-push.functions.ts:36:    await supabaseAdmin
+src/lib/payment-routing.functions.ts:32:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/payment-routing.functions.ts:33:    const { data, error } = await supabaseAdmin
+src/lib/payment-routing.functions.ts:59:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/payment-routing.functions.ts:60:    const { data, error } = await supabaseAdmin
+src/lib/payment-routing.functions.ts:91:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/payment-routing.functions.ts:95:      const { data: current, error: currentError } = await supabaseAdmin
+src/lib/payment-routing.functions.ts:117:    const { error } = await supabaseAdmin
+
+## Imports of client.server / supabaseAdmin under authenticated routes/components
+
+## All client.server / supabaseAdmin usages
+src/integrations/supabase/client.server.ts:100:let _supabaseAdmin: ReturnType<typeof createSupabaseAdminClient> | undefined;
+src/integrations/supabase/client.server.ts:104:// Load inside server handlers: const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/integrations/supabase/client.server.ts:106:export const supabaseAdmin = new Proxy({} as ReturnType<typeof createSupabaseAdminClient>, {
+src/integrations/supabase/client.server.ts:108:    if (!_supabaseAdmin) _supabaseAdmin = createSupabaseAdminClient();
+src/integrations/supabase/client.server.ts:109:    return Reflect.get(_supabaseAdmin, prop, receiver);
+src/routes/api/public/webhooks/nupay.ts:24:        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/routes/api/public/webhooks/nupay.ts:27:        const { data: integ } = await supabaseAdmin
+src/routes/api/public/webhooks/nupay.ts:59:        await supabaseAdmin.from("payment_events").insert({
+src/routes/api/public/webhooks/nupay.ts:70:          const { data: pay } = await supabaseAdmin
+src/routes/api/public/webhooks/nupay.ts:86:            await supabaseAdmin
+src/routes/api/public/webhooks/whatsapp.ts:44:          const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/routes/api/public/webhooks/whatsapp.ts:47:            const { data: duplicate } = await supabaseAdmin
+src/routes/api/public/webhooks/whatsapp.ts:56:          let { data: contact, error: contactReadError } = await supabaseAdmin
+src/routes/api/public/webhooks/whatsapp.ts:64:            const { data: newContact, error: contactError } = await supabaseAdmin
+src/routes/api/public/webhooks/whatsapp.ts:73:          const { data: existingConv, error: convReadError } = await supabaseAdmin
+src/routes/api/public/webhooks/whatsapp.ts:85:            const { data: newConv, error: convError } = await supabaseAdmin
+src/routes/api/public/webhooks/whatsapp.ts:94:          const { error: msgError } = await supabaseAdmin.from("whatsapp_messages").insert({
+src/routes/api/public/webhooks/whatsapp.ts:103:          const { error: updateError } = await supabaseAdmin
+src/routes/api/public/webhooks/asaas.ts:27:        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/routes/api/public/webhooks/asaas.ts:28:        const { data: integ } = await supabaseAdmin
+src/routes/api/public/webhooks/asaas.ts:46:        await supabaseAdmin.from("payment_events").insert({
+src/routes/api/public/webhooks/asaas.ts:58:          const { data: pay } = await supabaseAdmin
+src/routes/api/public/webhooks/asaas.ts:73:            await supabaseAdmin
+src/routes/api/public/webhooks/pagbank.ts:22:        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/routes/api/public/webhooks/pagbank.ts:25:        const { data: integ } = await supabaseAdmin
+src/routes/api/public/webhooks/pagbank.ts:53:        await supabaseAdmin.from("payment_events").insert({
+src/routes/api/public/webhooks/pagbank.ts:71:            const q = supabaseAdmin
+src/routes/api/public/webhooks/pagbank.ts:85:              await supabaseAdmin
+src/routes/api/public/webhooks/aliexpress.ts:23:  supabaseAdmin: Awaited<typeof import("@/integrations/supabase/client.server")>["supabaseAdmin"],
+src/routes/api/public/webhooks/aliexpress.ts:45:  const { data: isAdmin } = await supabaseAdmin.rpc("is_admin", { _user_id: parsed.uid });
+src/routes/api/public/webhooks/aliexpress.ts:68:        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/routes/api/public/webhooks/aliexpress.ts:69:        const { data: integ } = await supabaseAdmin
+src/routes/api/public/webhooks/aliexpress.ts:87:        if (!(await validateOAuthState(state, appSecret, supabaseAdmin))) {
+src/routes/api/public/webhooks/aliexpress.ts:138:            await supabaseAdmin
+src/routes/api/public/webhooks/aliexpress.ts:154:          await supabaseAdmin
+src/routes/api/public/webhooks/aliexpress.ts:184:          await supabaseAdmin
+src/lib/checkout.functions.ts:88:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/checkout.functions.ts:91:    const { data: route } = await supabaseAdmin
+src/lib/checkout.functions.ts:103:    const { data: integ } = await supabaseAdmin
+src/lib/checkout.functions.ts:120:    const { data: variants, error: varErr } = await supabaseAdmin
+src/lib/checkout.functions.ts:163:      const { data: imports } = await supabaseAdmin
+src/lib/checkout.functions.ts:234:    const { data: codeData } = await supabaseAdmin.rpc("generate_order_code");
+src/lib/checkout.functions.ts:239:    const { data: order, error: orderErr } = await supabaseAdmin
+src/lib/checkout.functions.ts:259:    const { error: itemsErr } = await supabaseAdmin
+src/lib/checkout.functions.ts:265:      await supabaseAdmin.from("addresses").insert({
+src/lib/checkout.functions.ts:305:      await supabaseAdmin
+src/lib/checkout.functions.ts:318:  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/checkout.functions.ts:354:  const { error } = await supabaseAdmin.from("payments").insert({
+src/lib/checkout.functions.ts:375:  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/checkout.functions.ts:408:  const { error } = await supabaseAdmin.from("payments").insert({
+src/lib/checkout.functions.ts:427:  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/checkout.functions.ts:465:  const { error } = await supabaseAdmin.from("payments").insert({
+src/lib/checkout.functions.ts:490:  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/checkout.functions.ts:550:  const { error } = await supabaseAdmin.from("payments").insert({
+src/lib/blog-meta.functions.ts:22:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/blog-meta.functions.ts:23:    const { data, error } = await (supabaseAdmin as any)
+src/lib/blog-meta.functions.ts:61:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/blog-meta.functions.ts:62:    const db = supabaseAdmin as any;
+src/lib/blog-meta.functions.ts:104:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/blog-meta.functions.ts:108:      await (supabaseAdmin as any)
+src/lib/blog-meta.functions.ts:115:      await (supabaseAdmin as any)
+src/lib/gtm.functions.ts:5:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/gtm.functions.ts:6:    const { data } = await supabaseAdmin
+src/lib/integrations.functions.ts:57:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/integrations.functions.ts:58:    const { data, error } = await supabaseAdmin
+src/lib/integrations.functions.ts:105:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/integrations.functions.ts:114:      const { data: existing } = await supabaseAdmin
+src/lib/integrations.functions.ts:132:    const { error } = await supabaseAdmin
+src/lib/integrations.functions.ts:145:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/integrations.functions.ts:146:    const { data: row } = await supabaseAdmin
+src/lib/integrations.functions.ts:161:        await supabaseAdmin
+src/lib/integrations.functions.ts:175:        await supabaseAdmin
+src/lib/integrations.functions.ts:196:        await supabaseAdmin
+src/lib/integrations.functions.ts:207:        await supabaseAdmin
+src/lib/integrations.functions.ts:225:        await supabaseAdmin
+src/lib/integrations.functions.ts:239:        await supabaseAdmin
+src/lib/integrations.functions.ts:256:        await supabaseAdmin
+src/lib/integrations.functions.ts:292:        await supabaseAdmin
+src/lib/integrations.functions.ts:307:        await supabaseAdmin
+src/lib/ai-translate.server.ts:1:import { supabaseAdmin } from "@/integrations/supabase/client.server";
+src/lib/ai-translate.server.ts:40:  const { data } = await supabaseAdmin
+src/lib/ai-translate.server.ts:49:  const { data } = await supabaseAdmin
+src/lib/ai-translate.server.ts:163:    await supabaseAdmin
+src/lib/push.server.ts:2:import { supabaseAdmin } from "@/integrations/supabase/client.server";
+src/lib/push.server.ts:8:  const { data } = await supabaseAdmin.from("push_config").select("*").eq("id", true).maybeSingle();
+src/lib/push.server.ts:18:    await supabaseAdmin.from("push_config").insert({
+src/lib/push.server.ts:39:  const { data: subs } = await supabaseAdmin
+src/lib/push.server.ts:57:        await supabaseAdmin
+src/lib/push.server.ts:64:          await supabaseAdmin.from("admin_push_subscriptions").delete().eq("id", s.id);
+src/lib/push.server.ts:77:  const { data: order } = await supabaseAdmin
+src/lib/pricing-v12.functions.ts:20:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/pricing-v12.functions.ts:21:    const { data, error } = await supabaseAdmin.from("pricing_profiles").select("*").order("is_default", { ascending: false }).order("name");
+src/lib/pricing-v12.functions.ts:47:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/pricing-v12.functions.ts:48:    if (data.is_default) await supabaseAdmin.from("pricing_profiles").update({ is_default: false }).eq("is_default", true);
+src/lib/pricing-v12.functions.ts:51:      const { error } = await supabaseAdmin.from("pricing_profiles").update(payload).eq("id", data.id);
+src/lib/pricing-v12.functions.ts:55:    const { data: inserted, error } = await supabaseAdmin.from("pricing_profiles").insert(payload).select("id").single();
+src/lib/pricing-v12.functions.ts:70:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/pricing-v12.functions.ts:73:      supabaseAdmin.from("pricing_cost_components").select("key,label,amount_cents").eq("product_id", data.product_id),
+src/lib/pricing-v12.functions.ts:75:        ? supabaseAdmin.from("pricing_profiles").select("*").eq("id", data.profile_id).maybeSingle()
+src/lib/pricing-v12.functions.ts:76:        : supabaseAdmin.from("pricing_profiles").select("*").eq("is_default", true).eq("enabled", true).maybeSingle(),
+src/lib/intelligence.functions.ts:37:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/intelligence.functions.ts:41:    const { data: productBasic, error: prodErr } = await supabaseAdmin
+src/lib/intelligence.functions.ts:51:      supabaseAdmin.from("product_media").select("id").eq("product_id", data.product_id),
+src/lib/intelligence.functions.ts:52:      supabaseAdmin
+src/lib/intelligence.functions.ts:60:      supabaseAdmin.from("product_reviews").select("rating").eq("product_id", data.product_id),
+src/lib/intelligence.functions.ts:61:      supabaseAdmin
+src/lib/intelligence.functions.ts:66:      supabaseAdmin
+src/lib/intelligence.functions.ts:70:      supabaseAdmin
+src/lib/intelligence.functions.ts:156:    const { data: existing } = await supabaseAdmin
+src/lib/intelligence.functions.ts:178:      await supabaseAdmin.from("product_scores").update(scorePayload).eq("id", scoreId);
+src/lib/intelligence.functions.ts:179:      await supabaseAdmin.from("product_score_components").delete().eq("score_id", scoreId);
+src/lib/intelligence.functions.ts:181:      const { data: inserted } = await supabaseAdmin
+src/lib/intelligence.functions.ts:189:    await supabaseAdmin.from("product_score_components").insert(
+src/lib/intelligence.functions.ts:193:    await supabaseAdmin.from("product_score_versions").insert({
+src/lib/intelligence.functions.ts:208:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/intelligence.functions.ts:211:    const { data: basic, error: basicErr } = await supabaseAdmin
+src/lib/intelligence.functions.ts:221:      supabaseAdmin
+src/lib/intelligence.functions.ts:228:      supabaseAdmin
+src/lib/intelligence.functions.ts:233:      supabaseAdmin
+src/lib/intelligence.functions.ts:238:      supabaseAdmin.from("pricing_rules").select("*").eq("is_active", true).order("priority"),
+src/lib/intelligence.functions.ts:239:      supabaseAdmin
+src/lib/intelligence.functions.ts:278:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/intelligence.functions.ts:279:    await supabaseAdmin.from("pricing_cost_components").delete().eq("product_id", data.product_id);
+src/lib/intelligence.functions.ts:281:      const { error } = await supabaseAdmin
+src/lib/intelligence.functions.ts:295:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/intelligence.functions.ts:296:    const { data } = await supabaseAdmin.from("pricing_rules").select("*").order("priority");
+src/lib/intelligence.functions.ts:321:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/intelligence.functions.ts:323:      await supabaseAdmin.from("pricing_rules").update({ is_default: false }).eq("is_default", true);
+src/lib/intelligence.functions.ts:326:      const { error } = await supabaseAdmin.from("pricing_rules").update(data).eq("id", data.id);
+src/lib/intelligence.functions.ts:330:    const { data: inserted, error } = await supabaseAdmin
+src/lib/intelligence.functions.ts:344:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/intelligence.functions.ts:345:    const { error } = await supabaseAdmin.from("pricing_rules").delete().eq("id", data.id);
+src/lib/intelligence.functions.ts:381:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/intelligence.functions.ts:383:    const { data: costs } = await supabaseAdmin
+src/lib/intelligence.functions.ts:391:      const { data: r } = await supabaseAdmin.from("pricing_rules").select("*").eq("id", data.rule_id).maybeSingle();
+src/lib/intelligence.functions.ts:394:      const { data: r } = await supabaseAdmin
+src/lib/intelligence.functions.ts:448:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/intelligence.functions.ts:451:    const { data: costs } = await supabaseAdmin
+src/lib/intelligence.functions.ts:459:      const { data: r } = await supabaseAdmin.from("pricing_rules").select("*").eq("id", data.rule_id).maybeSingle();
+src/lib/intelligence.functions.ts:462:      const { data: r } = await supabaseAdmin
+src/lib/intelligence.functions.ts:480:    const { data: variants } = await supabaseAdmin
+src/lib/intelligence.functions.ts:489:      await supabaseAdmin
+src/lib/intelligence.functions.ts:494:      await supabaseAdmin.from("product_prices").insert({
+src/lib/intelligence.functions.ts:502:    await supabaseAdmin.from("pricing_calculations").insert({
+src/lib/intelligence.functions.ts:523:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/intelligence.functions.ts:524:    const { data } = await supabaseAdmin
+src/lib/growth-intelligence.functions.ts:35:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/growth-intelligence.functions.ts:41:    const { error } = await supabaseAdmin.from("product_market_metrics").upsert({
+src/lib/growth-intelligence.functions.ts:57:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/growth-intelligence.functions.ts:60:      supabaseAdmin.from("products").select(`
+src/lib/growth-intelligence.functions.ts:64:      supabaseAdmin.from("product_market_metrics").select("*").eq("product_id", data.product_id).maybeSingle(),
+src/lib/growth-intelligence.functions.ts:65:      supabaseAdmin.from("pricing_cost_components").select("amount_cents").eq("product_id", data.product_id),
+src/lib/growth-intelligence.functions.ts:66:      supabaseAdmin.from("favorites").select("product_id", { count: "exact", head: true }).eq("product_id", data.product_id),
+src/lib/growth-intelligence.functions.ts:134:    const { error } = await supabaseAdmin.from("product_scores").upsert(payload, { onConflict: "product_id" });
+src/lib/growth-intelligence.functions.ts:137:    await supabaseAdmin.from("product_score_versions").insert({
+src/lib/growth-intelligence.functions.ts:166:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/growth-intelligence.functions.ts:167:    const { data, error } = await supabaseAdmin.from("products").select(`
+src/lib/aliexpress-import.functions.ts:79:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/aliexpress-import.functions.ts:80:    const { data } = await supabaseAdmin
+src/lib/aliexpress-import.functions.ts:97:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/aliexpress-import.functions.ts:98:    const { data: existing } = await supabaseAdmin
+src/lib/aliexpress-import.functions.ts:105:    const { error } = await supabaseAdmin
+src/lib/aliexpress-import.functions.ts:697:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/aliexpress-import.functions.ts:698:    const settings = await loadSettings(supabaseAdmin);
+src/lib/aliexpress-import.functions.ts:723:      const { data: row, error } = await supabaseAdmin
+src/lib/aliexpress-import.functions.ts:736:        await commitImportRow(supabaseAdmin, row.id, norm, settings, {
+src/lib/aliexpress-import.functions.ts:745:        await supabaseAdmin.from("product_imports").update({ error: msg }).eq("id", row.id);
+src/lib/aliexpress-import.functions.ts:758:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/aliexpress-import.functions.ts:759:    let q = supabaseAdmin
+src/lib/aliexpress-import.functions.ts:786:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/aliexpress-import.functions.ts:787:    const { data: r, error } = await supabaseAdmin
+src/lib/aliexpress-import.functions.ts:815:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/aliexpress-import.functions.ts:816:    const { error } = await supabaseAdmin
+src/lib/aliexpress-import.functions.ts:839:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/aliexpress-import.functions.ts:840:    const { error } = await supabaseAdmin.from("product_imports").delete().eq("id", data.id);
+src/lib/aliexpress-import.functions.ts:874:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/aliexpress-import.functions.ts:876:    const { data: imp, error: ie } = await supabaseAdmin
+src/lib/aliexpress-import.functions.ts:885:    const { data: cfg } = await supabaseAdmin
+src/lib/aliexpress-import.functions.ts:906:      const { error: upErr } = await supabaseAdmin
+src/lib/aliexpress-import.functions.ts:919:      const { data: vrow, error: vrowError } = await supabaseAdmin
+src/lib/aliexpress-import.functions.ts:930:      const { error: disablePriceError } = await supabaseAdmin
+src/lib/aliexpress-import.functions.ts:936:      const { error: newPriceError } = await supabaseAdmin.from("product_prices").insert({
+src/lib/aliexpress-import.functions.ts:944:      const { error: stockError } = await supabaseAdmin
+src/lib/aliexpress-import.functions.ts:949:      const { error: importUpdateError } = await supabaseAdmin
+src/lib/aliexpress-import.functions.ts:957:          supabaseAdmin,
+src/lib/aliexpress-import.functions.ts:963:        await syncImportedProductReviews(supabaseAdmin, imp.product_id);
+src/lib/aliexpress-import.functions.ts:965:      const { data: p, error: productError } = await supabaseAdmin
+src/lib/aliexpress-import.functions.ts:978:    const { data: created, error: pe } = await supabaseAdmin
+src/lib/aliexpress-import.functions.ts:996:    const { data: nv, error: ve } = await supabaseAdmin
+src/lib/aliexpress-import.functions.ts:1009:    const { error: prErr } = await supabaseAdmin.from("product_prices").insert({
+src/lib/aliexpress-import.functions.ts:1017:    const { error: invErr } = await supabaseAdmin
+src/lib/aliexpress-import.functions.ts:1023:      const { error: me } = await supabaseAdmin.from("product_media").insert(
+src/lib/aliexpress-import.functions.ts:1035:    const { error: importUpdateError } = await supabaseAdmin
+src/lib/aliexpress-import.functions.ts:1043:        supabaseAdmin,
+src/lib/aliexpress-import.functions.ts:1049:        await syncImportedProductReviews(supabaseAdmin, productId);
+src/lib/dashboard.functions.ts:48:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/dashboard.functions.ts:62:      supabaseAdmin.from("orders").select("id, status, total_cents, created_at, paid_at").gte("created_at", since30),
+src/lib/dashboard.functions.ts:63:      supabaseAdmin.from("orders").select("id", { count: "exact", head: true }).eq("status", "pending"),
+src/lib/dashboard.functions.ts:64:      supabaseAdmin.from("products").select("id", { count: "exact", head: true }).eq("status", "active"),
+src/lib/dashboard.functions.ts:65:      supabaseAdmin.from("products").select("id", { count: "exact", head: true }).eq("status", "draft"),
+src/lib/dashboard.functions.ts:66:      supabaseAdmin.from("profiles").select("id", { count: "exact", head: true }),
+src/lib/dashboard.functions.ts:67:      supabaseAdmin.from("profiles").select("id", { count: "exact", head: true }).gte("created_at", since30),
+src/lib/dashboard.functions.ts:68:      supabaseAdmin.from("ai_generations").select("id, total_tokens").gte("created_at", since30),
+src/lib/dashboard.functions.ts:69:      supabaseAdmin.from("product_imports").select("id", { count: "exact", head: true }),
+src/lib/dashboard.functions.ts:70:      supabaseAdmin
+src/lib/dashboard.functions.ts:124:      const { count } = await (supabaseAdmin.from(t) as any).select("id", { count: "exact", head: true });
+src/lib/dashboard.functions.ts:161:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/dashboard.functions.ts:163:    const { data, error } = await supabaseAdmin
+src/lib/admin-system.functions.ts:50:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/admin-system.functions.ts:53:      supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 100 }),
+src/lib/admin-system.functions.ts:54:      supabaseAdmin.from("user_roles").select("user_id, role"),
+src/lib/admin-system.functions.ts:61:      ? await supabaseAdmin.from("profiles").select("id, full_name, phone").in("id", userIds)
+src/lib/admin-system.functions.ts:100:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/admin-system.functions.ts:103:      const { data: currentRoles, error } = await supabaseAdmin
+src/lib/admin-system.functions.ts:114:    const { error: deleteError } = await supabaseAdmin.from("user_roles").delete().eq("user_id", data.userId);
+src/lib/admin-system.functions.ts:118:    const { error: insertError } = await supabaseAdmin
+src/lib/admin-system.functions.ts:123:    await supabaseAdmin.from("audit_logs").insert({
+src/lib/admin-system.functions.ts:162:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/admin-system.functions.ts:165:      supabaseAdmin
+src/lib/admin-system.functions.ts:170:      supabaseAdmin.from("product_reviews").select("id", { count: "exact", head: true }).eq("is_approved", false),
+src/lib/admin-system.functions.ts:171:      supabaseAdmin.from("payment_events").select("id", { count: "exact", head: true }).not("error", "is", null),
+src/lib/admin-system.functions.ts:172:      supabaseAdmin
+src/lib/admin-system.functions.ts:176:      supabaseAdmin
+src/lib/admin-system.functions.ts:181:      supabaseAdmin
+src/lib/admin-system.functions.ts:251:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/admin-system.functions.ts:270:        const { count, error } = await supabaseAdmin
+src/lib/admin-system.functions.ts:280:      supabaseAdmin.from("profiles").select("id", { count: "exact", head: true }).gte("created_at", since30),
+src/lib/admin-system.functions.ts:281:      supabaseAdmin.from("integrations").select("provider", { count: "exact", head: true }).eq("enabled", true),
+src/lib/admin-system.functions.ts:282:      supabaseAdmin.from("ai_generations").select("id", { count: "exact", head: true }).gte("created_at", since30),
+src/lib/admin-system.functions.ts:283:      supabaseAdmin.from("product_imports").select("id", { count: "exact", head: true }),
+src/lib/aliexpress-discovery.functions.ts:70:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/aliexpress-discovery.functions.ts:71:    client = supabaseAdmin;
+src/lib/aliexpress-discovery.functions.ts:117:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/aliexpress-discovery.functions.ts:118:    client = supabaseAdmin;
+src/lib/push.functions.ts:26:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/push.functions.ts:27:    await supabaseAdmin
+src/lib/push.functions.ts:46:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/push.functions.ts:47:    await supabaseAdmin
+src/lib/product-reviews-live.functions.ts:488:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/product-reviews-live.functions.ts:489:    return syncLiveReviewsInternal(supabaseAdmin, data.product_id, false);
+src/lib/ai-product-optimize.functions.ts:88:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/ai-product-optimize.functions.ts:90:    const { data: prod, error } = await supabaseAdmin
+src/lib/ai-product-optimize.functions.ts:227:      const { error: upErr } = await supabaseAdmin
+src/lib/ai-product-optimize.functions.ts:237:      const { error: seoErr } = await supabaseAdmin.from("product_seo").upsert(
+src/lib/aliexpress-variants.functions.ts:43:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/aliexpress-variants.functions.ts:46:    const sourceId = await findSourceId(supabaseAdmin, data.product_id);
+src/lib/aliexpress-variants.functions.ts:51:    const result = await syncVariantsForProduct(supabaseAdmin, data.product_id, sourceId);
+src/lib/aliexpress-variants.functions.ts:72:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/aliexpress-variants.functions.ts:77:    const query = supabaseAdmin
+src/lib/aliexpress-variants.functions.ts:95:      const { data: mapped } = await supabaseAdmin
+src/lib/aliexpress-variants.functions.ts:118:        const r = await syncVariantsForProduct(supabaseAdmin, t.product_id, t.source_id);
+src/lib/analytics.server.ts:1:import { supabaseAdmin } from "@/integrations/supabase/client.server";
+src/lib/analytics.server.ts:39:    supabaseAdmin.from("orders")
+src/lib/analytics.server.ts:43:    supabaseAdmin.from("visitor_sessions")
+src/lib/analytics.server.ts:46:    supabaseAdmin.from("analytics_events")
+src/lib/analytics.server.ts:76:  const { data, error } = await supabaseAdmin
+src/lib/analytics.server.ts:103:  const { data, error } = await supabaseAdmin
+src/lib/analytics.server.ts:117:  const { error } = await supabaseAdmin
+src/lib/blog-admin.functions.ts:56:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/blog-admin.functions.ts:57:    const db = supabaseAdmin as any;
+src/lib/blog-admin.functions.ts:103:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/blog-admin.functions.ts:106:    const { data: row, error } = await (supabaseAdmin as any)
+src/lib/blog-admin.functions.ts:126:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/blog-admin.functions.ts:128:    const { data: row, error } = await (supabaseAdmin as any)
+src/lib/blog-admin.functions.ts:174:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/blog-admin.functions.ts:175:    const db = supabaseAdmin as any;
+src/lib/blog-admin.functions.ts:281:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/blog-admin.functions.ts:282:    const db = supabaseAdmin as any;
+src/lib/blog-admin.functions.ts:402:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/blog-admin.functions.ts:403:    const db = supabaseAdmin as any;
+src/lib/blog-admin.functions.ts:470:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/blog-admin.functions.ts:471:    const { error } = await (supabaseAdmin as any)
+src/lib/aliexpress-fulfillment.functions.ts:51:  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/aliexpress-fulfillment.functions.ts:52:  const { data, error } = await supabaseAdmin
+src/lib/aliexpress-fulfillment.functions.ts:67:  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/aliexpress-fulfillment.functions.ts:76:    const { data } = await supabaseAdmin
+src/lib/aliexpress-fulfillment.functions.ts:93:    const { data: imp } = await supabaseAdmin
+src/lib/aliexpress-fulfillment.functions.ts:199:  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/aliexpress-fulfillment.functions.ts:200:  await supabaseAdmin
+src/lib/aliexpress-fulfillment.functions.ts:282:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/aliexpress-fulfillment.functions.ts:283:    const { error } = await supabaseAdmin
+src/lib/aliexpress-top-public.server.ts:107:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/aliexpress-top-public.server.ts:108:    client = supabaseAdmin;
+src/lib/admin-catalog.functions.ts:53:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/admin-catalog.functions.ts:54:    let q = supabaseAdmin
+src/lib/admin-catalog.functions.ts:85:    const { data: imports } = await supabaseAdmin
+src/lib/admin-catalog.functions.ts:139:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/admin-catalog.functions.ts:141:      supabaseAdmin.from("brands").select("id, name, slug").order("name"),
+src/lib/admin-catalog.functions.ts:142:      supabaseAdmin.from("categories").select("id, name, slug, parent_id").order("name"),
+src/lib/admin-catalog.functions.ts:188:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/admin-catalog.functions.ts:189:    const { data: p, error } = await supabaseAdmin
+src/lib/admin-catalog.functions.ts:303:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/admin-catalog.functions.ts:310:      const { data: created, error } = await supabaseAdmin
+src/lib/admin-catalog.functions.ts:328:      const { error } = await supabaseAdmin
+src/lib/admin-catalog.functions.ts:346:    const { data: existingVars } = await supabaseAdmin
+src/lib/admin-catalog.functions.ts:353:      const { data: nv, error } = await supabaseAdmin
+src/lib/admin-catalog.functions.ts:366:      const { error } = await supabaseAdmin
+src/lib/admin-catalog.functions.ts:378:    await supabaseAdmin
+src/lib/admin-catalog.functions.ts:382:    const { data: existingPrice } = await supabaseAdmin
+src/lib/admin-catalog.functions.ts:390:      const { error } = await supabaseAdmin
+src/lib/admin-catalog.functions.ts:400:      const { error } = await supabaseAdmin.from("product_prices").insert({
+src/lib/admin-catalog.functions.ts:410:    const { error: invErr } = await supabaseAdmin
+src/lib/admin-catalog.functions.ts:416:    await supabaseAdmin.from("product_media").delete().eq("product_id", productId);
+src/lib/admin-catalog.functions.ts:419:      const { error } = await supabaseAdmin.from("product_media").insert(
+src/lib/admin-catalog.functions.ts:433:      const { error } = await supabaseAdmin.from("product_seo").upsert(
+src/lib/admin-catalog.functions.ts:452:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/admin-catalog.functions.ts:453:    const { error } = await supabaseAdmin.from("products").delete().eq("id", data.id);
+src/lib/admin-catalog.functions.ts:471:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/admin-catalog.functions.ts:472:    let q = supabaseAdmin
+src/lib/performance-v12.functions.ts:28:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/performance-v12.functions.ts:29:    const { error } = await supabaseAdmin.from("marketing_spend_daily").upsert({ ...data, updated_at: new Date().toISOString() }, { onConflict: "day,channel,campaign" });
+src/lib/performance-v12.functions.ts:39:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/performance-v12.functions.ts:45:      supabaseAdmin.from("orders").select("id,status,total_cents,paid_at,created_at").gte("created_at", sinceIso),
+src/lib/performance-v12.functions.ts:46:      supabaseAdmin.from("marketing_spend_daily").select("*").gte("day", sinceDay),
+src/lib/performance-v12.functions.ts:47:      supabaseAdmin.from("commerce_events").select("event_name,session_id,value_cents,channel,campaign,occurred_at").gte("occurred_at", sinceIso),
+src/lib/performance-v12.functions.ts:48:      supabaseAdmin.from("abandoned_checkouts").select("id,total_cents,recovered_at,last_seen_at,source").gte("last_seen_at", sinceIso),
+src/lib/performance-v12.functions.ts:49:      supabaseAdmin.from("profiles").select("id", { count: "exact", head: true }).gte("created_at", sinceIso),
+src/lib/meta-social.server.ts:1:import { supabaseAdmin } from "@/integrations/supabase/client.server";
+src/lib/meta-social.server.ts:35:  const { data, error } = await (supabaseAdmin as any)
+src/lib/meta-social.server.ts:122:  const { data: existing } = await (supabaseAdmin as any)
+src/lib/meta-social.server.ts:130:  await (supabaseAdmin as any)
+src/lib/meta-social.server.ts:262:  const { data: post, error } = await (supabaseAdmin as any)
+src/lib/aliexpress-stock.functions.ts:113:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/aliexpress-stock.functions.ts:115:    const { data: imp } = await supabaseAdmin
+src/lib/aliexpress-stock.functions.ts:138:    const { data: variants } = await supabaseAdmin
+src/lib/aliexpress-stock.functions.ts:154:      await supabaseAdmin
+src/lib/aliexpress-stock.functions.ts:161:      await supabaseAdmin.from("pricing_calculations").insert({
+src/lib/aliexpress-stock.functions.ts:173:    await supabaseAdmin
+src/lib/aliexpress-stock.functions.ts:211:  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/aliexpress-stock.functions.ts:212:  const { data: imports } = await supabaseAdmin
+src/lib/aliexpress-stock.functions.ts:239:        const { data: variants } = await supabaseAdmin
+src/lib/aliexpress-stock.functions.ts:250:          await supabaseAdmin
+src/lib/aliexpress-stock.functions.ts:255:          await supabaseAdmin.from("pricing_calculations").insert({
+src/lib/product-reviews.functions.ts:121:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/product-reviews.functions.ts:122:    const { data: rows, error } = await supabaseAdmin
+src/lib/product-reviews.functions.ts:169:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/product-reviews.functions.ts:170:    const sourceId = await findAliSourceId(supabaseAdmin, data.product_id);
+src/lib/product-reviews.functions.ts:174:      supabaseAdmin,
+src/lib/product-reviews.functions.ts:205:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/product-reviews.functions.ts:219:      const { data: row, error } = await supabaseAdmin
+src/lib/product-reviews.functions.ts:228:    const { data: row, error } = await supabaseAdmin
+src/lib/product-reviews.functions.ts:242:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/product-reviews.functions.ts:243:    const { error } = await supabaseAdmin.from("product_external_reviews").delete().eq("id", data.id);
+src/lib/product-reviews.functions.ts:255:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/product-reviews.functions.ts:256:    const { data: linked, error } = await supabaseAdmin
+src/lib/product-reviews.functions.ts:281:        supabaseAdmin,
+src/lib/product-reviews.functions.ts:299:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/product-reviews.functions.ts:301:    const { data: untranslated } = await supabaseAdmin
+src/lib/product-reviews.functions.ts:318:        const { error } = await supabaseAdmin
+src/lib/product-reviews.functions.ts:326:    const { data: latest } = await supabaseAdmin
+src/lib/product-reviews.functions.ts:341:    const sourceId = await findAliSourceId(supabaseAdmin, data.product_id);
+src/lib/product-reviews.functions.ts:346:    const r = await syncReviewsForProductInternal(supabaseAdmin, data.product_id, sourceId, 0);
+src/lib/aliexpress-oauth.functions.ts:18:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/aliexpress-oauth.functions.ts:19:    const { data: integration } = await supabaseAdmin
+src/lib/customer-push.functions.ts:15:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/customer-push.functions.ts:16:    await supabaseAdmin
+src/lib/customer-push.functions.ts:35:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/customer-push.functions.ts:36:    await supabaseAdmin
+src/lib/payment-routing.functions.ts:32:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/payment-routing.functions.ts:33:    const { data, error } = await supabaseAdmin
+src/lib/payment-routing.functions.ts:59:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/payment-routing.functions.ts:60:    const { data, error } = await supabaseAdmin
+src/lib/payment-routing.functions.ts:91:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/payment-routing.functions.ts:95:      const { data: current, error: currentError } = await supabaseAdmin
+src/lib/payment-routing.functions.ts:117:    const { error } = await supabaseAdmin
