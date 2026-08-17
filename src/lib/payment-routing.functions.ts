@@ -26,7 +26,7 @@ function isSupportedPaymentRoute(method: PaymentMethodKey, provider: string) {
 
 /**
  * Lista métodos habilitados (uso público, checkout).
- * Além do flag do banco, só expõe combinações que possuem adapter implementado.
+ * A tabela contém apenas roteamento/labels, nunca credenciais.
  */
 export const listCheckoutMethods = createServerFn({ method: "GET" }).handler(
   async (): Promise<CheckoutMethodDTO[]> => {
@@ -48,7 +48,7 @@ export const listCheckoutMethods = createServerFn({ method: "GET" }).handler(
   },
 );
 
-/** Admin: lista completo (habilitados e desabilitados) */
+/** Admin: lista completo (habilitados e desabilitados). */
 export const listAdminRouting = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<CheckoutMethodDTO[]> => {
@@ -56,7 +56,8 @@ export const listAdminRouting = createServerFn({ method: "GET" })
       _user_id: context.userId,
     });
     if (!adm) throw new Error("Acesso restrito a administradores");
-    const { data, error } = await supabase
+    const db = context.supabase;
+    const { data, error } = await db
       .from("payment_method_routing")
       .select("method, provider, enabled, display_label, sort_order")
       .order("sort_order");
