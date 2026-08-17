@@ -50,8 +50,8 @@ export const listAdminProducts = createServerFn({ method: "GET" })
   )
   .handler(async ({ data, context }): Promise<AdminProductRow[]> => {
     await assertCatalog(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    let q = supabaseAdmin
+    const db = context.supabase;
+    let q = db
       .from("products")
       .select(
         `id, slug, name, status, is_featured, updated_at,
@@ -82,7 +82,7 @@ export const listAdminProducts = createServerFn({ method: "GET" })
     };
     // Busca vínculos AliExpress em paralelo para exibir botão de sync por linha.
     const productIds = (rows as unknown as Row[]).map((r) => r.id);
-    const { data: imports } = await supabaseAdmin
+    const { data: imports } = await db
       .from("product_imports")
       .select("product_id, source_id, created_at")
       .in("product_id", productIds.length > 0 ? productIds : ["00000000-0000-0000-0000-000000000000"])
@@ -136,10 +136,10 @@ export const listBrandsAndCategories = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     await assertCatalog(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const db = context.supabase;
     const [b, c] = await Promise.all([
-      supabaseAdmin.from("brands").select("id, name, slug").order("name"),
-      supabaseAdmin.from("categories").select("id, name, slug, parent_id").order("name"),
+      db.from("brands").select("id, name, slug").order("name"),
+      db.from("categories").select("id, name, slug, parent_id").order("name"),
     ]);
     if (b.error) throw new Error(b.error.message);
     if (c.error) throw new Error(c.error.message);
@@ -185,8 +185,8 @@ export const getAdminProduct = createServerFn({ method: "GET" })
   .inputValidator((v: unknown) => z.object({ id: z.string().uuid() }).parse(v))
   .handler(async ({ data, context }): Promise<AdminProductDetail> => {
     await assertCatalog(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: p, error } = await supabaseAdmin
+    const db = context.supabase;
+    const { data: p, error } = await db
       .from("products")
       .select(
         `id, slug, name, short_description, description, status, is_featured, brand_id, category_id, tags,
@@ -300,14 +300,14 @@ export const upsertAdminProduct = createServerFn({ method: "POST" })
   .inputValidator((v: unknown) => UpsertSchema.parse(v))
   .handler(async ({ data, context }) => {
     await assertCatalog(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const db = context.supabase;
 
     const slug = (data.slug && data.slug.trim()) || slugify(data.name);
 
     let productId = data.id ?? null;
 
     if (!productId) {
-      const { data: created, error } = await supabaseAdmin
+      const { data: created, error } = await db
         .from("products")
         .insert({
           slug,
@@ -325,7 +325,7 @@ export const upsertAdminProduct = createServerFn({ method: "POST" })
       if (error) throw new Error(error.message);
       productId = created.id;
     } else {
-      const { error } = await supabaseAdmin
+      const { error } = await db
         .from("products")
         .update({
           slug,
@@ -343,14 +343,14 @@ export const upsertAdminProduct = createServerFn({ method: "POST" })
     }
 
     // Default variant (upsert single default)
-    const { data: existingVars } = await supabaseAdmin
+    const { data: existingVars } = await db
       .from("product_variants")
       .select("id, is_default")
       .eq("product_id", productId);
     let variantId = existingVars?.find((v) => v.is_default)?.id ?? existingVars?.[0]?.id ?? null;
 
     if (!variantId) {
-      const { data: nv, error } = await supabaseAdmin
+      const { data: nv, error } = await db
         .from("product_variants")
         .insert({
           product_id: productId,
@@ -363,7 +363,7 @@ export const upsertAdminProduct = createServerFn({ method: "POST" })
       if (error) throw new Error(error.message);
       variantId = nv.id;
     } else {
-      const { error } = await supabaseAdmin
+      const { error } = await db
         .from("product_variants")
         .update({
           sku: data.variant.sku,
@@ -375,11 +375,11 @@ export const upsertAdminProduct = createServerFn({ method: "POST" })
     }
 
     // Price: keep only one active row (deactivate others)
-    await supabaseAdmin
+    await db
       .from("product_prices")
       .update({ is_active: false })
       .eq("variant_id", variantId);
-    const { data: existingPrice } = await supabaseAdmin
+    const { data: existingPrice } = await db
       .from("product_prices")
       .select("id")
       .eq("variant_id", variantId)
@@ -387,7 +387,7 @@ export const upsertAdminProduct = createServerFn({ method: "POST" })
       .limit(1)
       .maybeSingle();
     if (existingPrice?.id) {
-      const { error } = await supabaseAdmin
+      const { error } = await db
         .from("product_prices")
         .update({
           list_price_cents: data.variant.list_price_cents,
@@ -397,7 +397,7 @@ export const upsertAdminProduct = createServerFn({ method: "POST" })
         .eq("id", existingPrice.id);
       if (error) throw new Error(error.message);
     } else {
-      const { error } = await supabaseAdmin.from("product_prices").insert({
+      const { error } = await db.from("product_prices").insert({
         variant_id: variantId,
         list_price_cents: data.variant.list_price_cents,
         sale_price_cents: data.variant.sale_price_cents ?? null,
@@ -407,16 +407,16 @@ export const upsertAdminProduct = createServerFn({ method: "POST" })
     }
 
     // Inventory (upsert on variant_id PK)
-    const { error: invErr } = await supabaseAdmin
+    const { error: invErr } = await db
       .from("product_inventory")
       .upsert({ variant_id: variantId, stock: data.variant.stock }, { onConflict: "variant_id" });
     if (invErr) throw new Error(invErr.message);
 
     // Media: replace all
-    await supabaseAdmin.from("product_media").delete().eq("product_id", productId);
+    await db.from("product_media").delete().eq("product_id", productId);
     if (data.media.length > 0) {
       const { isVideoUrl } = await import("@/lib/media-kind");
-      const { error } = await supabaseAdmin.from("product_media").insert(
+      const { error } = await db.from("product_media").insert(
         data.media.map((m, i) => ({
           product_id: productId,
           url: m.url,
@@ -430,7 +430,7 @@ export const upsertAdminProduct = createServerFn({ method: "POST" })
 
     // SEO upsert
     if (data.seo) {
-      const { error } = await supabaseAdmin.from("product_seo").upsert(
+      const { error } = await db.from("product_seo").upsert(
         {
           product_id: productId,
           meta_title: data.seo.title ?? null,
@@ -449,8 +449,8 @@ export const deleteAdminProduct = createServerFn({ method: "POST" })
   .inputValidator((v: unknown) => z.object({ id: z.string().uuid() }).parse(v))
   .handler(async ({ data, context }) => {
     await assertCatalog(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { error } = await supabaseAdmin.from("products").delete().eq("id", data.id);
+    const db = context.supabase;
+    const { error } = await db.from("products").delete().eq("id", data.id);
     if (error) throw new Error(error.message);
     return { ok: true };
   });
@@ -468,8 +468,8 @@ export const exportAdminProductsCsv = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     await assertCatalog(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    let q = supabaseAdmin
+    const db = context.supabase;
+    let q = db
       .from("products")
       .select(
         `id, slug, name, description, short_description, status, is_featured, updated_at, created_at,

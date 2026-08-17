@@ -53,8 +53,7 @@ export const listBlogAdmin = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     await assertAdmin(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const db = supabaseAdmin as any;
+    const db = context.supabase as any;
 
     const [posts, categories, products, social] = await Promise.all([
       db
@@ -100,10 +99,10 @@ export const createBlogDraft = createServerFn({ method: "POST" })
   .inputValidator((value: unknown) => z.object({ title: z.string().trim().min(3).max(180).default("Novo artigo") }).parse(value ?? {}))
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const db = context.supabase as any;
     const base = slugifyBlog(data.title) || "artigo";
     const slug = `${base}-${Date.now().toString(36)}`.slice(0, 96);
-    const { data: row, error } = await (supabaseAdmin as any)
+    const { data: row, error } = await db
       .from("blog_posts")
       .insert({
         title: data.title,
@@ -123,9 +122,9 @@ export const createBlogCategory = createServerFn({ method: "POST" })
   .inputValidator((value: unknown) => z.object({ name: z.string().trim().min(2).max(80), description: z.string().max(500).optional() }).parse(value))
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const db = context.supabase as any;
     const slug = slugifyBlog(data.name);
-    const { data: row, error } = await (supabaseAdmin as any)
+    const { data: row, error } = await db
       .from("blog_categories")
       .insert({ name: data.name, slug, description: data.description ?? null })
       .select("*")
@@ -171,8 +170,7 @@ export const saveBlogPost = createServerFn({ method: "POST" })
   .inputValidator((value: unknown) => PostInputSchema.parse(value))
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const db = supabaseAdmin as any;
+    const db = context.supabase as any;
     const { data: current, error: readError } = await db.from("blog_posts").select("*").eq("id", data.id).single();
     if (readError || !current) throw new Error(readError?.message ?? "Artigo não encontrado.");
     await saveRevision(db, current, context.userId);
@@ -278,10 +276,9 @@ export const generateBlogPostWithGemini = createServerFn({ method: "POST" })
   }).parse(value))
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const db = supabaseAdmin as any;
+    const db = context.supabase as any;
     const { loadAiCredential, callAiProvider } = await import("./ai-translate.server");
-    const credential = await loadAiCredential("gemini");
+    const credential = await loadAiCredential("gemini", db);
     if (!credential) throw new Error("Ative e configure a chave própria do Gemini em Admin → Integrações.");
 
     const [{ data: current }, categoryResult, productsResult] = await Promise.all([
@@ -399,8 +396,7 @@ export const publishBlogPost = createServerFn({ method: "POST" })
   .inputValidator((value: unknown) => z.object({ post_id: z.string().uuid() }).parse(value))
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const db = supabaseAdmin as any;
+    const db = context.supabase as any;
     const [{ data: post, error }, { data: links }, { data: instagram }] = await Promise.all([
       db.from("blog_posts").select("*").eq("id", data.post_id).single(),
       db.from("blog_post_products").select("product_id").eq("post_id", data.post_id),
@@ -467,8 +463,8 @@ export const archiveBlogPost = createServerFn({ method: "POST" })
   .inputValidator((value: unknown) => z.object({ post_id: z.string().uuid() }).parse(value))
   .handler(async ({ data, context }) => {
     await assertAdmin(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { error } = await (supabaseAdmin as any)
+    const db = context.supabase as any;
+    const { error } = await db
       .from("blog_posts")
       .update({ status: "archived" })
       .eq("id", data.post_id);

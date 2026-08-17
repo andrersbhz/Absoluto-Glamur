@@ -45,7 +45,7 @@ export const getDashboardMetrics = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<DashboardMetrics> => {
     await assertAdmin(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const db = context.supabase;
     const since30 = new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString();
 
     const [
@@ -59,15 +59,15 @@ export const getDashboardMetrics = createServerFn({ method: "POST" })
       importsRes,
       orderItemsRes,
     ] = await Promise.all([
-      supabaseAdmin.from("orders").select("id, status, total_cents, created_at, paid_at").gte("created_at", since30),
-      supabaseAdmin.from("orders").select("id", { count: "exact", head: true }).eq("status", "pending"),
-      supabaseAdmin.from("products").select("id", { count: "exact", head: true }).eq("status", "active"),
-      supabaseAdmin.from("products").select("id", { count: "exact", head: true }).eq("status", "draft"),
-      supabaseAdmin.from("profiles").select("id", { count: "exact", head: true }),
-      supabaseAdmin.from("profiles").select("id", { count: "exact", head: true }).gte("created_at", since30),
-      supabaseAdmin.from("ai_generations").select("id, total_tokens").gte("created_at", since30),
-      supabaseAdmin.from("product_imports").select("id", { count: "exact", head: true }),
-      supabaseAdmin
+      db.from("orders").select("id, status, total_cents, created_at, paid_at").gte("created_at", since30),
+      db.from("orders").select("id", { count: "exact", head: true }).eq("status", "pending"),
+      db.from("products").select("id", { count: "exact", head: true }).eq("status", "active"),
+      db.from("products").select("id", { count: "exact", head: true }).eq("status", "draft"),
+      db.from("profiles").select("id", { count: "exact", head: true }),
+      db.from("profiles").select("id", { count: "exact", head: true }).gte("created_at", since30),
+      db.from("ai_generations").select("id, total_tokens").gte("created_at", since30),
+      db.from("product_imports").select("id", { count: "exact", head: true }),
+      db
         .from("order_items")
         .select("product_name, quantity, total_cents, created_at")
         .gte("created_at", since30),
@@ -121,7 +121,7 @@ export const getDashboardMetrics = createServerFn({ method: "POST" })
     const rowTables = ["orders", "products", "profiles", "ai_generations", "product_imports", "order_items"] as const;
     let database_rows = 0;
     for (const t of rowTables) {
-      const { count } = await (supabaseAdmin.from(t) as any).select("id", { count: "exact", head: true });
+      const { count } = await (db.from(t) as any).select("id", { count: "exact", head: true });
       database_rows += count ?? 0;
     }
 
@@ -158,9 +158,9 @@ export const exportOrdersCsv = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     await assertAdmin(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const db = context.supabase;
     const since = new Date(Date.now() - 90 * 24 * 3600 * 1000).toISOString();
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await db
       .from("orders")
       .select("code, status, customer_name, customer_email, total_cents, currency, created_at, paid_at")
       .gte("created_at", since)
