@@ -342,6 +342,7 @@ function IntegrationCard({ integration }: { integration: Integration }) {
         <div className="flex items-center gap-2">
           <StatusLight
             connected={integration.last_status === "ok" && integration.enabled}
+            verified={integration.last_status === "ok"}
             errored={integration.last_status === "error"}
             manual={integration.last_status === "manual"}
             hasKey={integration.has_api_key}
@@ -803,12 +804,14 @@ function RoutingPanel() {
 
 function StatusLight({
   connected,
+  verified,
   errored,
   manual,
   hasKey,
   errorMessage,
 }: {
   connected: boolean;
+  verified: boolean;
   errored: boolean;
   manual: boolean;
   hasKey: boolean;
@@ -816,7 +819,9 @@ function StatusLight({
 }) {
   const { color, label, pulse, title } = connected
     ? { color: "bg-success", label: "Conectado", pulse: true, title: "Provedor testado e ativo" }
-    : errored
+    : verified
+      ? { color: "bg-success", label: "Validada", pulse: false, title: "Credencial testada com sucesso; integração ainda está inativa" }
+      : errored
       ? { color: "bg-destructive", label: "Erro", pulse: false, title: errorMessage ?? "Falha na última verificação" }
       : manual
         ? { color: "bg-warning", label: "Teste manual", pulse: false, title: "Credencial salva; este provedor ainda exige validação pelo fluxo oficial" }
