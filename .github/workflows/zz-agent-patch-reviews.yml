@@ -1,0 +1,157 @@
+name: Agent Patch Reviews
+
+on:
+  push:
+    branches:
+      - agent/reviews-dropshipper-aggregate
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/reviews-dropshipper-aggregate
+          fetch-depth: 0
+      - name: Apply conservative review sync patch
+        shell: bash
+        run: |
+          python <<'PY'
+          from pathlib import Path
+
+          live_path = Path('src/lib/product-reviews-live.functions.ts')
+          live = live_path.read_text()
+
+          live = live.replace(
+              'import { callAliTopPublic } from "./aliexpress-top-public.server";\n',
+              'import { callAliTopPublic } from "./aliexpress-top-public.server";\nimport { callAli } from "./aliexpress-discovery.functions";\n',
+              1,
+          )
+
+          live = live.replace(
+              'export type ReviewSummary = {\n  total: number;\n  average: number;\n  withPhotos: number;\n  distribution: Record<1 | 2 | 3 | 4 | 5, number>;\n};',
+              'export type ReviewSummary = {\n  total: number;\n  average: number;\n  withPhotos: number;\n  distribution: Record<1 | 2 | 3 | 4 | 5, number>;\n  officialTotal: number;\n  officialAverage: number;\n};',
+              1,
+          )
+
+          anchor = '''async function findAliSourceId(admin: any, productId: string): Promise<string | null> {\n  const { data } = await admin\n    .from("product_imports")\n    .select("source_id")\n    .eq("product_id", productId)\n    .in("source", ALI_SOURCES)\n    .not("source_id", "is", null)\n    .order("created_at", { ascending: false })\n    .limit(1)\n    .maybeSingle();\n  return data?.source_id ? String(data.source_id) : null;\n}\n'''
+          helper = anchor + '''\ntype DropshipperReviewAggregate = {\n  productId: string;\n  total: number | null;\n  average: number | null;\n};\n\nfunction optionalRating(value: unknown): number | null {\n  if (value == null || value === "") return null;\n  const n = Number.parseFloat(String(value).replace("%", "").replace(",", ".").trim());\n  if (!Number.isFinite(n)) return null;\n  const normalized = n > 5 && n <= 100 ? n / 20 : n;\n  return Math.round(Math.min(5, Math.max(0, normalized)) * 100) / 100;\n}\n\nfunction optionalCount(value: unknown): number | null {\n  if (value == null || value === "") return null;\n  const n = Number(String(value).replace(/[^\\d.-]/g, ""));\n  return Number.isFinite(n) && n >= 0 ? Math.round(n) : null;\n}\n\nasync function fetchDropshipperReviewAggregate(\n  sourceId: string,\n  credentialClient?: any,\n): Promise<DropshipperReviewAggregate> {\n  const productId = normalizeAliProductId(sourceId);\n  if (!productId) {\n    throw new Error(`ID do produto AliExpress inválido na importação: ${sourceId.slice(0, 120)}`);\n  }\n\n  const payload = await callAli<any>(\n    "aliexpress.ds.product.get",\n    {\n      product_id: productId,\n      ship_to_country: "BR",\n      target_currency: "BRL",\n      target_language: "PT",\n    },\n    credentialClient,\n  );\n  const root = payload?.aliexpress_ds_product_get_response ?? payload;\n  const result = root?.result?.result ?? root?.resp_result?.result ?? root?.result ?? root;\n  const base = result?.ae_item_base_info_dto ?? result?.base_info ?? {};\n  const average = optionalRating(\n    base?.avg_evaluation_rating ?? result?.avg_evaluation_rating ?? result?.evaluate_rate,\n  );\n  const total = optionalCount(\n    base?.evaluation_count ?? result?.evaluation_count ?? base?.evaluate_count ?? result?.evaluate_count,\n  );\n\n  if (average == null && total == null) {\n    throw new Error(\n      `A API Dropshipper não retornou nota nem quantidade de avaliações para o produto ${productId}.`,\n    );\n  }\n  return { productId, total, average };\n}\n\nasync function persistDropshipperReviewAggregate(\n  admin: any,\n  productId: string,\n  aggregate: DropshipperReviewAggregate,\n): Promise<boolean> {\n  const patch: Record<string, number> = {};\n  if (aggregate.average != null) patch.rating_avg = aggregate.average;\n  if (aggregate.total != null) patch.rating_count = aggregate.total;\n  if (!Object.keys(patch).length) return false;\n\n  const { error } = await admin.from("products").update(patch).eq("id", productId);\n  if (error) throw new Error(`Falha ao atualizar a nota oficial do produto: ${error.message}`);\n  return true;\n}\n'''
+          if anchor not in live:
+              raise SystemExit('anchor findAliSourceId not found')
+          live = live.replace(anchor, helper, 1)
+
+          old_cache = '''        source: "cache" as const,\n        error: null,\n      };'''
+          new_cache = '''        source: "cache" as const,\n        error: null,\n        aggregateUpdated: false,\n        remoteTotal: null,\n        remoteAverage: null,\n      };'''
+          if old_cache not in live:
+              raise SystemExit('cache return not found')
+          live = live.replace(old_cache, new_cache, 1)
+
+          old_none = '''    return { fetched: 0, upserted: 0, translated: translatedBacklog, skipped: true, source: "none" as const, error };'''
+          new_none = '''    return {\n      fetched: 0,\n      upserted: 0,\n      translated: translatedBacklog,\n      skipped: true,\n      source: "none" as const,\n      error,\n      aggregateUpdated: false,\n      remoteTotal: null,\n      remoteAverage: null,\n    };'''
+          if old_none not in live:
+              raise SystemExit('none return not found')
+          live = live.replace(old_none, new_none, 1)
+
+          start = live.index('  try {\n    const official = await fetchOfficialReviews')
+          end = live.index('  } catch (error) {', start)
+          new_try = '''  try {\n    // A aplicação internacional Drop Shipping expõe a nota média e a quantidade\n    // oficial pela API aliexpress.ds.product.get. A API TOP antiga de textos\n    // individuais não é chamada aqui: avaliações já salvas permanecem intactas.\n    const aggregate = await fetchDropshipperReviewAggregate(sourceId, credentialClient);\n    const aggregateUpdated = await persistDropshipperReviewAggregate(admin, productId, aggregate);\n    const finishedAt = new Date().toISOString();\n    const status = (aggregate.total ?? 0) > 0 || (aggregate.average ?? 0) > 0 ? "ok" : "empty";\n\n    await admin.from("product_review_sync_state").upsert({\n      product_id: productId,\n      source: "aliexpress",\n      source_id: aggregate.productId,\n      status,\n      fetched_count: 0,\n      remote_total: aggregate.total,\n      last_attempt_at: now,\n      last_success_at: finishedAt,\n      last_error: null,\n      updated_at: finishedAt,\n    }, { onConflict: "product_id" });\n\n    return {\n      fetched: 0,\n      upserted: 0,\n      translated: translatedBacklog,\n      skipped: false,\n      source: "dropshipper_aggregate" as const,\n      error: null,\n      aggregateUpdated,\n      remoteTotal: aggregate.total,\n      remoteAverage: aggregate.average,\n    };\n'''
+          live = live[:start] + new_try + live[end:]
+
+          old_catch_return = '''      source: "official_api" as const,\n      error: message,\n    };'''
+          new_catch_return = '''      source: "dropshipper_aggregate" as const,\n      error: message,\n      aggregateUpdated: false,\n      remoteTotal: null,\n      remoteAverage: null,\n    };'''
+          if old_catch_return not in live:
+              raise SystemExit('catch return not found')
+          live = live.replace(old_catch_return, new_catch_return, 1)
+
+          summary_start = live.index('export async function fetchProductReviewSummary(productId: string): Promise<ReviewSummary> {')
+          summary_end = live.index('\nexport { REVIEW_PAGE_SIZE };', summary_start)
+          new_summary = '''export async function fetchProductReviewSummary(productId: string): Promise<ReviewSummary> {\n  const [reviewsResult, productResult] = await Promise.all([\n    supabase\n      .from("product_external_reviews")\n      .select("rating,images")\n      .eq("product_id", productId)\n      .eq("is_visible", true)\n      .limit(1000),\n    supabase\n      .from("products")\n      .select("rating_avg,rating_count")\n      .eq("id", productId)\n      .maybeSingle(),\n  ]);\n  if (reviewsResult.error) throw reviewsResult.error;\n\n  const distribution: ReviewSummary["distribution"] = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };\n  let sum = 0;\n  let withPhotos = 0;\n  for (const row of reviewsResult.data ?? []) {\n    const rating = Math.min(5, Math.max(1, Math.round(Number(row.rating) || 0))) as 1 | 2 | 3 | 4 | 5;\n    distribution[rating] += 1;\n    sum += Number(row.rating) || 0;\n    if (Array.isArray(row.images) && row.images.length > 0) withPhotos += 1;\n  }\n  const total = reviewsResult.data?.length ?? 0;\n  const officialTotal = Math.max(0, Number(productResult.data?.rating_count) || 0);\n  const officialAverage = Math.min(5, Math.max(0, Number(productResult.data?.rating_avg) || 0));\n  return {\n    total,\n    average: total ? sum / total : 0,\n    withPhotos,\n    distribution,\n    officialTotal,\n    officialAverage,\n  };\n}\n'''
+          live = live[:summary_start] + new_summary + live[summary_end:]
+          live_path.write_text(live)
+
+          ui_path = Path('src/components/store/ProductReviews.tsx')
+          ui = ui_path.read_text()
+
+          old_invalidations = '''      qc.invalidateQueries({ queryKey: ["product-external-reviews", productId] }),\n    ]);'''
+          new_invalidations = '''      qc.invalidateQueries({ queryKey: ["product-external-reviews", productId] }),\n      qc.invalidateQueries({ queryKey: ["product"] }),\n      qc.invalidateQueries({ queryKey: ["products"] }),\n    ]);'''
+          if old_invalidations not in ui:
+              raise SystemExit('review invalidations not found')
+          ui = ui.replace(old_invalidations, new_invalidations, 1)
+
+          ui = ui.replace(
+              'if ((result?.upserted ?? 0) > 0 || (result?.translated ?? 0) > 0) await refetchReviews();',
+              'if (result?.aggregateUpdated || (result?.upserted ?? 0) > 0 || (result?.translated ?? 0) > 0) await refetchReviews();',
+              1,
+          )
+
+          old_handle = '''      if ((result.upserted ?? 0) > 0) {\n        const origem = result.source === "official_api" ? "API oficial" : "fonte compatível";\n        toast.success(`${result.upserted} avaliações sincronizadas do AliExpress (${origem}).`);\n      } else if (result.error) {\n        toast.error(result.error);\n      } else {\n        toast.info("Nenhuma avaliação nova encontrada no AliExpress.");\n      }'''
+          new_handle = '''      if (result.aggregateUpdated) {\n        const rating = result.remoteAverage != null ? `${result.remoteAverage.toFixed(1)}/5` : null;\n        const total = result.remoteTotal != null ? `${result.remoteTotal} avaliações` : null;\n        const details = [rating, total].filter(Boolean).join(" · ");\n        toast.success(`Dados oficiais do AliExpress atualizados${details ? `: ${details}` : "."}`);\n      } else if ((result.upserted ?? 0) > 0) {\n        toast.success(`${result.upserted} avaliações sincronizadas do AliExpress.`);\n      } else if (result.error) {\n        toast.error(result.error);\n      } else {\n        toast.info("Os dados de avaliação do AliExpress já estão atualizados.");\n      }'''
+          if old_handle not in ui:
+              raise SystemExit('handle sync block not found')
+          ui = ui.replace(old_handle, new_handle, 1)
+
+          ui = ui.replace(
+              '{summary && summary.total > 0 && (',
+              '{summary && (summary.total > 0 || summary.officialTotal > 0) && (',
+              1,
+          )
+
+          old_desc = '''          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">\n            Avaliações sincronizadas do produto original e traduzidas automaticamente para PT-BR.\n          </p>'''
+          new_desc = '''          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">\n            {summary?.officialTotal > 0\n              ? "Nota e quantidade sincronizadas do produto original no AliExpress. Comentários disponíveis são exibidos abaixo."\n              : "Avaliações disponíveis do produto original e comentários cadastrados na loja."}\n          </p>'''
+          if old_desc not in ui:
+              raise SystemExit('header description not found')
+          ui = ui.replace(old_desc, new_desc, 1)
+
+          ui = ui.replace(
+              '{!showAll && summary && summary.total > 0 && (\n            <ReviewOverview summary={summary} filter={filter} onFilter={setFilter} />\n          )}',
+              '{!showAll && summary && (summary.total > 0 || summary.officialTotal > 0) && (\n            <ReviewOverview summary={summary} filter={filter} onFilter={setFilter} />\n          )}',
+              1,
+          )
+
+          old_empty = '''              <p className="mt-2 text-sm font-medium text-foreground">\n                {filter === "all" ? "Ainda não há avaliações sincronizadas." : "Nenhuma avaliação neste filtro."}\n              </p>\n              <p className="mt-1 text-xs text-muted-foreground">\n                Assim que o AliExpress disponibilizar avaliações para este item, elas aparecem aqui automaticamente.\n              </p>'''
+          new_empty = '''              <p className="mt-2 text-sm font-medium text-foreground">\n                {filter === "all"\n                  ? summary?.officialTotal > 0\n                    ? "A nota geral do produto foi sincronizada com sucesso."\n                    : "Ainda não há avaliações disponíveis."\n                  : "Nenhuma avaliação neste filtro."}\n              </p>\n              <p className="mt-1 text-xs text-muted-foreground">\n                {summary?.officialTotal > 0\n                  ? "Os comentários individuais deste produto ainda não estão disponíveis para exibição."\n                  : "Quando houver comentários disponíveis, eles aparecerão aqui automaticamente."}\n              </p>'''
+          if old_empty not in ui:
+              raise SystemExit('empty state not found')
+          ui = ui.replace(old_empty, new_empty, 1)
+
+          overview_marker = '''function ReviewOverview({\n  summary,\n  filter,\n  onFilter,\n}: {\n  summary: Awaited<ReturnType<typeof fetchProductReviewSummary>>;\n  filter: ReviewFilter;\n  onFilter: (filter: ReviewFilter) => void;\n}) {\n  return ('''
+          overview_replacement = '''function ReviewOverview({\n  summary,\n  filter,\n  onFilter,\n}: {\n  summary: Awaited<ReturnType<typeof fetchProductReviewSummary>>;\n  filter: ReviewFilter;\n  onFilter: (filter: ReviewFilter) => void;\n}) {\n  const hasOfficial = summary.officialTotal > 0;\n  const displayAverage = hasOfficial && summary.officialAverage > 0 ? summary.officialAverage : summary.average;\n  const displayTotal = hasOfficial ? summary.officialTotal : summary.total;\n  return ('''
+          if overview_marker not in ui:
+              raise SystemExit('overview marker not found')
+          ui = ui.replace(overview_marker, overview_replacement, 1)
+
+          ui = ui.replace(
+              '{summary.average.toFixed(1)}</strong>',
+              '{displayAverage.toFixed(1)}</strong>',
+              1,
+          )
+          ui = ui.replace(
+              '<div className="mt-2"><StarRow rating={summary.average} size="md" /></div>',
+              '<div className="mt-2"><StarRow rating={displayAverage} size="md" /></div>',
+              1,
+          )
+          ui = ui.replace(
+              '<p className="mt-2 text-xs text-muted-foreground">{summary.total} avaliações sincronizadas</p>',
+              '<p className="mt-2 text-xs text-muted-foreground">{hasOfficial ? `${displayTotal} avaliações no produto original` : `${displayTotal} avaliações disponíveis`}</p>',
+              1,
+          )
+
+          old_distribution = '''      <div className="space-y-2">\n        {[5, 4, 3, 2, 1].map((star) => {\n          const typedStar = star as 1 | 2 | 3 | 4 | 5;\n          const count = summary.distribution[typedStar];\n          const pct = summary.total ? Math.round((count / summary.total) * 100) : 0;\n          return (\n            <button\n              key={star}\n              type="button"\n              onClick={() => onFilter(filter === typedStar ? "all" : typedStar)}\n              className="grid w-full grid-cols-[42px_1fr_58px] items-center gap-3 text-left text-xs text-muted-foreground"\n            >\n              <span className="flex items-center gap-1">{star}<Star className="h-3 w-3 fill-champagne text-champagne" /></span>\n              <span className="h-2 overflow-hidden rounded-full bg-background">\n                <span className="block h-full rounded-full bg-champagne transition-all" style={{ width: `${pct}%` }} />\n              </span>\n              <span className="text-right">{pct}%</span>\n            </button>\n          );\n        })}\n      </div>'''
+          new_distribution = '''      {summary.total > 0 ? (\n        <div className="space-y-2">\n          {[5, 4, 3, 2, 1].map((star) => {\n            const typedStar = star as 1 | 2 | 3 | 4 | 5;\n            const count = summary.distribution[typedStar];\n            const pct = Math.round((count / summary.total) * 100);\n            return (\n              <button\n                key={star}\n                type="button"\n                onClick={() => onFilter(filter === typedStar ? "all" : typedStar)}\n                className="grid w-full grid-cols-[42px_1fr_58px] items-center gap-3 text-left text-xs text-muted-foreground"\n              >\n                <span className="flex items-center gap-1">{star}<Star className="h-3 w-3 fill-champagne text-champagne" /></span>\n                <span className="h-2 overflow-hidden rounded-full bg-background">\n                  <span className="block h-full rounded-full bg-champagne transition-all" style={{ width: `${pct}%` }} />\n                </span>\n                <span className="text-right">{pct}%</span>\n              </button>\n            );\n          })}\n        </div>\n      ) : (\n        <div className="flex items-center rounded-xl border border-border bg-background/60 p-4 text-xs leading-relaxed text-muted-foreground">\n          Nota média e quantidade verificadas no produto de origem. Os comentários individuais não são fornecidos pela integração disponível para este item.\n        </div>\n      )}'''
+          if old_distribution not in ui:
+              raise SystemExit('distribution block not found')
+          ui = ui.replace(old_distribution, new_distribution, 1)
+
+          ui_path.write_text(ui)
+          PY
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/lib/product-reviews-live.functions.ts src/components/store/ProductReviews.tsx
+          git diff --cached --check
+          git commit -m "fix: usar avaliações agregadas da API Dropshipper"
+          git push origin HEAD:agent/reviews-dropshipper-aggregate
