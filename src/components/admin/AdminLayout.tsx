@@ -2,7 +2,7 @@ import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import {
   BarChart3, BookOpen, Boxes, Compass, ExternalLink, Gauge, LayoutDashboard, LockKeyhole, LogOut, Mail, Megaphone, MessageSquare, Moon, Package,
-  PanelsTopLeft, Plug, RotateCcw, Settings, ShieldCheck, ShoppingCart, Sparkles, Store, Sun, Target, Users, WalletCards, Zap,
+  PanelsTopLeft, Plug, RotateCcw, Settings, ShieldCheck, ShoppingCart, Sparkles, Star, Store, Sun, Target, Users, WalletCards, Zap,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
@@ -26,6 +26,7 @@ const nav: NavItem[] = [
   { label: "Recuperação de carrinho", icon: RotateCcw, to: "/admin/recovery", phase: 3 },
   { label: "Catálogo", icon: Package, to: "/admin/catalog", phase: 2 },
   { label: "Importador AliExpress", icon: Boxes, to: "/admin/imports", phase: 4 },
+  { label: "AliExpress TOP · Avaliações", icon: Star, to: "/admin/aliexpress-reviews", phase: 4 },
   { label: "Descobrir produtos", icon: Compass, to: "/admin/discover", phase: 4 },
   { label: "Inteligência de produtos", icon: Sparkles, to: "/admin/intelligence", phase: 5 },
   { label: "Oportunidades v1.2", icon: Target, to: "/admin/opportunities", phase: 5 },
