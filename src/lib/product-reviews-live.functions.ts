@@ -266,6 +266,7 @@ function extractOfficialPage(payload: any): { rows: any[]; total: number } {
 
 async function fetchOfficialReviews(
   sourceId: string,
+  credentialClient?: any,
 ): Promise<{ reviews: NormalizedOfficialReview[]; productId: string; total: number }> {
   const productId = normalizeAliProductId(sourceId);
   if (!productId) {
@@ -280,7 +281,7 @@ async function fetchOfficialReviews(
       product_id: productId,
       page,
       page_size: OFFICIAL_SYNC_PAGE_SIZE,
-    });
+    }, credentialClient);
     const { rows, total } = extractOfficialPage(payload);
     remoteTotal = Math.max(remoteTotal, total);
     if (!rows.length) break;
@@ -373,7 +374,12 @@ async function translatePendingReviews(admin: any, productId: string, limit = 36
   return translatedCount;
 }
 
-export async function syncLiveReviewsInternal(admin: any, productId: string, force = false) {
+export async function syncLiveReviewsInternal(
+  admin: any,
+  productId: string,
+  force = false,
+  credentialClient: any = admin,
+) {
   const translatedBacklog = await translatePendingReviews(admin, productId, 24);
   const now = new Date().toISOString();
 
@@ -422,7 +428,7 @@ export async function syncLiveReviewsInternal(admin: any, productId: string, for
   }, { onConflict: "product_id" });
 
   try {
-    const official = await fetchOfficialReviews(sourceId);
+    const official = await fetchOfficialReviews(sourceId, credentialClient);
     const saved = await persistOfficialReviews(admin, productId, official.reviews);
     // Traduz em lotes pequenos depois da persistência. O restante fica na fila
     // e é traduzido nas próximas sincronizações/acessos sem perder o original.
@@ -488,8 +494,10 @@ export const forceSyncLiveProductReviews = createServerFn({ method: "POST" })
   .inputValidator((value: unknown) => z.object({ product_id: z.string().uuid() }).parse(value))
   .handler(async ({ data, context }) => {
     await assertCatalog(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    return syncLiveReviewsInternal(supabaseAdmin, data.product_id, true);
+    // Manual sync is already protected by Bearer auth + admin/catalog authorization.
+    // Use the authenticated RLS-bound client so the button does not depend on a
+    // server service-role/secret key being injected by the hosting runtime.
+    return syncLiveReviewsInternal(context.supabase, data.product_id, true, context.supabase);
   });
 
 function mapReview(row: any): LiveExternalReview {
