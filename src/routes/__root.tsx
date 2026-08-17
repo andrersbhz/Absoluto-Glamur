@@ -1,11 +1,11 @@
-import { useEffect, ReactNode } from "react";
-import { 
-  Outlet, 
-  ScrollRestoration, 
-  Scripts, 
-  HeadContent, 
+import { useEffect, type ReactNode } from "react";
+import {
+  Outlet,
+  ScrollRestoration,
+  Scripts,
+  HeadContent,
   createRootRouteWithContext,
-  useRouter
+  useRouter,
 } from "@tanstack/react-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/sonner";
@@ -15,7 +15,7 @@ import { CustomerPushPrompt } from "@/components/store/CustomerPushPrompt";
 import appCss from "@/styles.css?url";
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
-  head: ({ loaderData }) => ({
+  head: () => ({
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
@@ -38,21 +38,19 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         children: JSON.stringify({
           "@context": "https://schema.org",
           "@type": "BeautyBusiness",
-          "name": "Absoluto Glamur",
-          "url": "https://absolutoglamur.com.br",
-          "logo": "https://absolutoglamur.com.br/logo.png",
-          "sameAs": [
+          name: "Absoluto Glamur",
+          url: "https://absolutoglamur.com.br",
+          logo: "https://absolutoglamur.com.br/logo.png",
+          sameAs: [
             "https://instagram.com/absolutoglamur",
-            "https://facebook.com/absolutoglamur"
-          ]
-        })
-      }
-    ]
+            "https://facebook.com/absolutoglamur",
+          ],
+        }),
+      },
+    ],
   }),
-  loader: async () => {
-    // Tenta carregar o ID do GTM se disponível futuramente
-    return { gtmId: null };
-  },
+  loader: async () => ({ gtmId: null as string | null }),
+  shellComponent: RootShell,
   component: RootComponent,
 });
 
@@ -60,33 +58,40 @@ function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   const router = useRouter();
 
-  // Iniciar Analytics em tempo real
   useAnalyticsTracker();
 
   useEffect(() => {
     const { data } = supabase.auth.onAuthStateChange((event) => {
       if (event !== "SIGNED_IN" && event !== "SIGNED_OUT" && event !== "USER_UPDATED") return;
-      router.invalidate();
-      if (event !== "SIGNED_OUT") queryClient.invalidateQueries();
+
+      // Revalida apenas a árvore de rotas. Antes, o login invalidava todas as queries
+      // do React Query, disparando novamente dashboard, catálogo e módulos admin ao mesmo tempo.
+      void router.invalidate();
+
+      if (event === "SIGNED_OUT") {
+        queryClient.clear();
+      }
     });
+
     return () => data.subscription.unsubscribe();
   }, [router, queryClient]);
 
   return (
     <QueryClientProvider client={queryClient}>
-      <RootShell>
-        <Outlet />
-      </RootShell>
+      <Outlet />
       <CustomerPushPrompt />
-      <audio id="whatsapp-alert" src="https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3" preload="auto" />
+      <audio
+        id="whatsapp-alert"
+        src="https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3"
+        preload="none"
+      />
       <Toaster richColors position="top-right" />
     </QueryClientProvider>
   );
 }
 
 function RootShell({ children }: { children: ReactNode }) {
-  const loaderData = Route.useLoaderData() as { gtmId?: string | null } | undefined;
-  const gtmId = loaderData?.gtmId ?? null;
+  const { gtmId } = Route.useLoaderData();
 
   return (
     <html lang="pt-BR">
