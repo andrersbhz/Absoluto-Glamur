@@ -217,6 +217,7 @@ async function findAliSourceId(admin: any, productId: string): Promise<string | 
 
 async function translateBatch(
   rows: Array<{ title: string | null; body: string | null }>,
+  credentialClient?: any,
 ): Promise<Array<{ title: string | null; body: string | null; translated: boolean }>> {
   if (!rows.length) return [];
   const payload = rows.map((row, i) => ({ i, title: row.title ?? "", body: row.body ?? "" }));
@@ -229,7 +230,7 @@ async function translateBatch(
   const prompt = `Retorne exatamente um array JSON [{"i":0,"title":"...","body":"..."}] para estes dados: ${JSON.stringify(payload)}`;
 
   try {
-    const text = await generateWithOwnKeys(system, prompt);
+    const text = await generateWithOwnKeys(system, prompt, credentialClient);
     if (!text) return rows.map((row) => ({ ...row, translated: false }));
     const json = text.match(/\[[\s\S]*\]/)?.[0];
     if (!json) return rows.map((row) => ({ ...row, translated: false }));
@@ -357,7 +358,7 @@ async function translatePendingReviews(admin: any, productId: string, limit = 36
   let translatedCount = 0;
   for (let i = 0; i < data.length; i += 12) {
     const batch = data.slice(i, i + 12);
-    const translated = await translateBatch(batch.map((row: any) => ({ title: row.title, body: row.body })));
+    const translated = await translateBatch(batch.map((row: any) => ({ title: row.title, body: row.body })), admin);
     for (let j = 0; j < batch.length; j += 1) {
       if (!translated[j]?.translated) continue;
       const { error } = await admin
@@ -485,8 +486,21 @@ export async function syncLiveReviewsInternal(
 export const autoSyncLiveProductReviews = createServerFn({ method: "POST" })
   .inputValidator((value: unknown) => z.object({ product_id: z.string().uuid() }).parse(value))
   .handler(async ({ data }) => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    return syncLiveReviewsInternal(supabaseAdmin, data.product_id, false);
+    const { getSupabaseAdminOrNull } = await import("@/integrations/supabase/client.server");
+    const admin = getSupabaseAdminOrNull();
+    if (!admin) {
+      // Public product pages must remain healthy even when the hosting runtime does
+      // not inject a privileged Supabase secret. Manual admin sync still works via RLS.
+      return {
+        fetched: 0,
+        upserted: 0,
+        translated: 0,
+        skipped: true,
+        source: "server_unavailable" as const,
+        error: null,
+      };
+    }
+    return syncLiveReviewsInternal(admin, data.product_id, false, admin);
   });
 
 export const forceSyncLiveProductReviews = createServerFn({ method: "POST" })
