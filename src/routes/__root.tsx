@@ -12,6 +12,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useAnalyticsTracker } from "@/lib/analytics-tracker";
 import { CustomerPushPrompt } from "@/components/store/CustomerPushPrompt";
+import { AliExpressReviewSyncBridge } from "@/components/store/AliExpressReviewSyncBridge";
 import appCss from "@/styles.css?url";
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
@@ -80,6 +81,7 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       <Outlet />
       <CustomerPushPrompt />
+      <AliExpressReviewSyncBridge />
       <audio
         id="whatsapp-alert"
         src="https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3"
