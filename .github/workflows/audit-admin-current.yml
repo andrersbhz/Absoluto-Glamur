@@ -1,0 +1,51 @@
+name: Audit Current Admin and Reviews
+
+on:
+  push:
+    branches:
+      - fix/admin-stability-complete-20260818
+
+permissions:
+  contents: write
+
+jobs:
+  audit:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/admin-stability-complete-20260818
+          fetch-depth: 0
+      - name: Build audit report
+        shell: bash
+        run: |
+          mkdir -p audit
+          {
+            echo '# Current admin/reviews audit'
+            echo
+            echo '## Remaining service-role usages in src/lib'
+            grep -RInE 'supabaseAdmin|client\.server' src/lib --include='*.ts' --include='*.tsx' || true
+            echo
+            echo '## Authenticated functions that still reference service-role'
+            for f in src/lib/*.functions.ts; do
+              if grep -q 'requireSupabaseAuth' "$f" && grep -qE 'supabaseAdmin|client\.server' "$f"; then
+                echo "### $f"
+                grep -nE 'createServerFn|requireSupabaseAuth|supabaseAdmin|client\.server' "$f" || true
+              fi
+            done
+            echo
+            echo '## Review rating schemas and collection messages'
+            grep -RInE 'rating|reviews|coleta direta|coment[aá]rios|extens[aã]o' src --include='*.ts' --include='*.tsx' | grep -E 'min\(|z\.array|coleta direta|extens[aã]o|rating' || true
+            echo
+            echo '## Admin route imports'
+            grep -RInE 'from ["'\'' ]@/lib/' src/routes/_authenticated --include='*.ts' --include='*.tsx' || true
+          } > audit/current-admin-review-audit.txt
+      - name: Commit report
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add audit/current-admin-review-audit.txt
+          git commit -m "chore: record current admin/review audit" || exit 0
+          git push origin HEAD:fix/admin-stability-complete-20260818
