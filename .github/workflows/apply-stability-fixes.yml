@@ -1,0 +1,34 @@
+name: Apply Stability Fixes
+
+on:
+  push:
+    branches:
+      - fix/admin-stability-complete-20260818
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: fix/admin-stability-complete-20260818
+          fetch-depth: 0
+      - name: Apply patch
+        run: python scripts/apply-stability-fixes-20260818.py
+      - name: Commit functional changes
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add \
+            src/lib/aliexpress-browser-review-auth.functions.ts \
+            src/routes/api/public/aliexpress-review-browser.ts \
+            src/lib/aliexpress-browser-review-import.functions.ts \
+            src/components/store/AliExpressReviewSyncBridge.tsx \
+            src/lib/aliexpress-discovery.functions.ts
+          git commit -m "fix: harden review sync and admin integrations" || exit 0
+          git push origin HEAD:fix/admin-stability-complete-20260818
