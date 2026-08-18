@@ -9,7 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { importAliExpressReviewsByUrl } from "@/lib/aliexpress-direct-review-import.functions";
 
 export const Route = createFileRoute("/_authenticated/admin/aliexpress-reviews")({
-  head: () => ({ meta: [{ title: "AliExpress TOP · Avaliações · Absoluto Glamur" }] }),
+  head: () => ({ meta: [{ title: "AliExpress · Avaliações · Absoluto Glamur" }] }),
   beforeLoad: async () => {
     const { data: userData } = await supabase.auth.getUser();
     if (!userData.user) throw redirect({ to: "/auth" });
@@ -25,11 +25,15 @@ type DirectImportResult = {
   productTitle: string;
   productSlug: string;
   aliExpressProductId: string;
+  resolvedAliExpressProductId: string;
   imported: number;
   translated: number;
   withPhotos: number;
   remoteTotal: number;
+  remoteAverage: number | null;
+  aggregateOnly: boolean;
   status: string;
+  diagnostic: string | null;
 };
 
 function AliExpressReviewsIntegrationPage() {
@@ -81,6 +85,10 @@ function AliExpressReviewsIntegrationPage() {
       ]);
       if (result.imported > 0) {
         toast.success(`${result.imported} avaliações importadas do AliExpress para ${result.productTitle}.`);
+      } else if (result.aggregateOnly) {
+        const rating = result.remoteAverage ? `, nota ${result.remoteAverage.toFixed(1)}` : "";
+        const total = result.remoteTotal > 0 ? `${result.remoteTotal} avaliações` : "dados de avaliação";
+        toast.success(`${total}${rating} sincronizados. O AliExpress não expôs os comentários individuais deste anúncio.`);
       } else {
         toast.info("A consulta foi concluída, mas nenhuma avaliação individual ficou disponível para este produto.");
       }
@@ -95,11 +103,11 @@ function AliExpressReviewsIntegrationPage() {
           <div>
             <div className="flex items-center gap-2 text-primary">
               <Star className="h-5 w-5" />
-              <span className="text-xs font-semibold uppercase tracking-[0.16em]">AliExpress · avaliações oficiais</span>
+              <span className="text-xs font-semibold uppercase tracking-[0.16em]">AliExpress · avaliações</span>
             </div>
-            <h1 className="mt-2 font-display text-3xl">AliExpress TOP · Avaliações</h1>
+            <h1 className="mt-2 font-display text-3xl">AliExpress · Avaliações</h1>
             <p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted-foreground">
-              Importe avaliações reais diretamente por URL ou ID do produto AliExpress. O sistema usa automaticamente a melhor fonte disponível e grava os comentários no banco nativo da Absoluto Glamur, sem depender de WooCommerce, Shopify ou widget externo.
+              Importe avaliações reais diretamente por URL ou ID do produto AliExpress. O sistema tenta automaticamente as fontes disponíveis, resolve o produto principal quando necessário e grava os dados no banco nativo da Absoluto Glamur.
             </p>
           </div>
           <a
@@ -113,24 +121,9 @@ function AliExpressReviewsIntegrationPage() {
         </div>
 
         <div className="mt-7 grid gap-4 md:grid-cols-3">
-          <StatusCard
-            label="Origem"
-            value="AliExpress"
-            detail="Consulta automática"
-            ok
-          />
-          <StatusCard
-            label="Importação"
-            value="URL ou ID"
-            detail="Até 160 avaliações por execução"
-            ok
-          />
-          <StatusCard
-            label="Fallback"
-            value="Automático"
-            detail="Sem configuração manual nesta tela"
-            ok
-          />
+          <StatusCard label="Origem" value="AliExpress" detail="Consulta automática" ok />
+          <StatusCard label="Importação" value="URL ou ID" detail="Até 160 avaliações por execução" ok />
+          <StatusCard label="Fallback" value="Automático" detail="TOP → principal → público/agregado" ok />
         </div>
 
         <div className="mt-6 rounded-2xl border border-primary/25 bg-card p-5 shadow-soft sm:p-6">
@@ -139,7 +132,7 @@ function AliExpressReviewsIntegrationPage() {
             <div>
               <h2 className="font-display text-xl">Importar direto de um produto AliExpress</h2>
               <p className="mt-1 max-w-3xl text-xs leading-relaxed text-muted-foreground">
-                Escolha o produto da loja e cole a URL do anúncio AliExpress correspondente. O sistema extrai o ID, consulta as avaliações, evita duplicatas e salva texto, estrelas, país, data e fotos quando disponíveis.
+                Escolha o produto da loja e cole a URL do anúncio AliExpress correspondente. O sistema extrai o ID, procura também o ID principal quando aplicável, evita duplicatas e salva texto, estrelas, país, data e fotos quando disponíveis.
               </p>
             </div>
           </div>
@@ -204,14 +197,23 @@ function AliExpressReviewsIntegrationPage() {
 
           {directResult && (
             <div className="mt-5 rounded-xl border border-success/30 bg-success/5 p-4">
+              {directResult.aggregateOnly && (
+                <p className="mb-4 text-xs leading-relaxed text-foreground">
+                  O AliExpress disponibilizou a <strong>nota e a quantidade de avaliações</strong>, mas não expôs os comentários individuais para este anúncio. Os dados agregados foram atualizados no produto sem apagar avaliações já salvas.
+                </p>
+              )}
               <div className="grid gap-3 sm:grid-cols-4">
-                <ResultNumber label="Importadas" value={directResult.imported} />
-                <ResultNumber label="Traduzidas" value={directResult.translated} />
+                <ResultNumber label="Comentários" value={directResult.imported} />
                 <ResultNumber label="Com fotos" value={directResult.withPhotos} />
                 <ResultNumber label="Total remoto" value={directResult.remoteTotal} />
+                <ResultNumber label="Nota média" value={directResult.remoteAverage ?? 0} decimals={1} />
               </div>
               <p className="mt-3 text-xs text-muted-foreground">
-                AliExpress ID <span className="font-mono text-foreground">{directResult.aliExpressProductId}</span> → {directResult.productTitle}
+                ID informado <span className="font-mono text-foreground">{directResult.aliExpressProductId}</span>
+                {directResult.resolvedAliExpressProductId !== directResult.aliExpressProductId && (
+                  <> · ID principal <span className="font-mono text-foreground">{directResult.resolvedAliExpressProductId}</span></>
+                )}
+                {" "}→ {directResult.productTitle}
               </p>
             </div>
           )}
@@ -224,10 +226,10 @@ function AliExpressReviewsIntegrationPage() {
               <h3 className="text-sm font-semibold">Como fica o fluxo</h3>
               <ol className="mt-2 space-y-1.5 text-xs leading-relaxed text-muted-foreground">
                 <li>1. Selecione um produto já existente na Absoluto Glamur e cole a URL ou ID do anúncio AliExpress.</li>
-                <li>2. O sistema tenta automaticamente a integração oficial disponível e usa o fallback público quando aplicável.</li>
-                <li>3. As avaliações são gravadas em product_external_reviews e reimportações atualizam os mesmos registros sem duplicar.</li>
-                <li>4. A loja exibe tudo no componente nativo de avaliações, junto com avaliações importadas pelo Ryviu CSV.</li>
-                <li>5. Importação de produto, preço, estoque, OAuth e fulfillment continuam independentes e sem alteração.</li>
+                <li>2. Credenciais TOP antigas inválidas são ignoradas; a integração principal continua sendo tentada automaticamente.</li>
+                <li>3. Se o anúncio usar um ID regional, o sistema tenta localizar o produto principal para buscar as avaliações corretas.</li>
+                <li>4. Quando comentários individuais não estiverem expostos, nota média e quantidade ainda podem ser sincronizadas pela Open Platform.</li>
+                <li>5. Preço, estoque, OAuth, fulfillment e pedidos continuam independentes e sem alteração.</li>
               </ol>
             </div>
           </div>
@@ -250,10 +252,10 @@ function StatusCard({ label, value, detail, ok }: { label: string; value: string
   );
 }
 
-function ResultNumber({ label, value }: { label: string; value: number }) {
+function ResultNumber({ label, value, decimals = 0 }: { label: string; value: number; decimals?: number }) {
   return (
     <div className="rounded-lg bg-background/70 p-3 text-center">
-      <p className="font-display text-xl text-foreground">{value}</p>
+      <p className="font-display text-xl text-foreground">{value.toFixed(decimals)}</p>
       <p className="mt-1 text-[10px] uppercase tracking-wider text-muted-foreground">{label}</p>
     </div>
   );

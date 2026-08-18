@@ -40,6 +40,12 @@ type PublicReviewCacheEntry = {
   diagnostics: string[];
 };
 
+type TopCredentialCandidate = {
+  appKey: string;
+  secrets: string[];
+  source: "dedicated" | "primary";
+};
+
 const publicReviewCache = new Map<string, PublicReviewCacheEntry>();
 
 function topTimestampGmt8(): string {
@@ -145,24 +151,22 @@ async function readCredentialRow(client: any, provider: string) {
   return data;
 }
 
-async function loadAliTopCredentials(credentialClient?: any) {
+async function loadAliTopCredentialCandidates(credentialClient?: any): Promise<TopCredentialCandidate[]> {
   let client = credentialClient;
   if (!client) {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     client = supabaseAdmin;
   }
 
+  const candidates: TopCredentialCandidate[] = [];
+
+  // A credencial dedicada é opcional e pode ser legado de uma tela que já não é
+  // mais exposta no painel. Ela nunca deve bloquear a credencial principal.
   const dedicated = await readCredentialRow(client, TOP_REVIEWS_PROVIDER);
   const dedicatedKey = String(dedicated?.api_key ?? "").trim();
   const dedicatedSecret = String(dedicated?.webhook_token ?? "").trim();
-
-  if (dedicatedKey || dedicatedSecret) {
-    if (!dedicatedKey || !dedicatedSecret) {
-      throw new Error(
-        "Complete App Key TOP e App Secret TOP em Admin → AliExpress TOP · Avaliações antes de sincronizar.",
-      );
-    }
-    return { appKey: dedicatedKey, secrets: [dedicatedSecret], dedicated: true };
+  if (dedicated?.enabled !== false && dedicatedKey && dedicatedSecret) {
+    candidates.push({ appKey: dedicatedKey, secrets: [dedicatedSecret], source: "dedicated" });
   }
 
   const primary = await readCredentialRow(client, "aliexpress");
@@ -171,14 +175,30 @@ async function loadAliTopCredentials(credentialClient?: any) {
   const primarySecret = String(primary?.webhook_token ?? "").trim();
   const configSecret = String(cfg.app_secret ?? "").trim();
   const secrets = [...new Set([primarySecret, configSecret].filter(Boolean))];
-
-  if (!appKey || secrets.length === 0) {
-    throw new Error(
-      "Configure as credenciais do AliExpress ou o par TOP dedicado em Admin → AliExpress TOP · Avaliações antes de sincronizar.",
-    );
+  if (appKey && secrets.length > 0) {
+    candidates.push({ appKey, secrets, source: "primary" });
   }
 
-  return { appKey, secrets, dedicated: false };
+  // Evita repetir a mesma combinação quando a credencial dedicada foi copiada da
+  // integração principal em alguma versão anterior do painel.
+  const deduped: TopCredentialCandidate[] = [];
+  const seen = new Set<string>();
+  for (const candidate of candidates) {
+    const usableSecrets = candidate.secrets.filter((secret) => {
+      const key = `${candidate.appKey}\u241f${secret}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+    if (usableSecrets.length) deduped.push({ ...candidate, secrets: usableSecrets });
+  }
+
+  if (!deduped.length) {
+    throw new Error(
+      "A integração AliExpress não possui credenciais utilizáveis para a consulta oficial de avaliações. O sistema ainda tentará a coleta pública.",
+    );
+  }
+  return deduped;
 }
 
 function responseKey(method: string): string {
@@ -207,12 +227,6 @@ function isInvalidTopAppKey(error: { code: string; detail: string }): boolean {
     error.code.startsWith("29") ||
     /appkey-not-exists|appkey does not exist|invalid app\s*key|invalid appkey/i.test(`${error.code} ${error.detail}`)
   );
-}
-
-function invalidTopAppKeyMessage(dedicated: boolean): string {
-  return dedicated
-    ? "A App Key TOP salva para avaliações não foi reconhecida por nenhum gateway TOP oficial. O sistema tentou também o fallback público do produto."
-    : "A App Key principal do AliExpress não foi reconhecida pelos gateways TOP de avaliações. O sistema tentou também o fallback público do produto.";
 }
 
 function readBusinessError(method: string, json: any): string | null {
@@ -366,41 +380,53 @@ export async function callAliTopPublic<T = any>(
   if (cached) return cached as T;
 
   const failures: string[] = [];
-  let invalidKeyResponses = 0;
-  let attempts = 0;
-  let dedicated = false;
-  let appKey = "";
-  let secrets: string[] = [];
+  let candidates: TopCredentialCandidate[] = [];
 
   try {
-    const credentials = await loadAliTopCredentials(credentialClient);
-    appKey = credentials.appKey;
-    secrets = credentials.secrets;
-    dedicated = credentials.dedicated;
+    candidates = await loadAliTopCredentialCandidates(credentialClient);
   } catch (error) {
     failures.push(error instanceof Error ? error.message : String(error));
   }
 
-  for (const endpoint of TOP_HTTPS_ENDPOINTS) {
-    for (const secret of secrets) {
-      attempts += 1;
-      try {
-        const json = await requestTop(endpoint, method, appKey, secret, bizParams);
-        const platformError = getPlatformError(json);
-        if (platformError) {
-          if (isInvalidTopAppKey(platformError)) {
-            invalidKeyResponses += 1;
-            failures.push(formatPlatformError(platformError));
+  // Tenta a credencial TOP antiga quando existe, mas uma App Key inválida nunca
+  // impede a tentativa seguinte com a integração principal do AliExpress.
+  for (const candidate of candidates) {
+    let invalidForCandidate = 0;
+    let candidateAttempts = 0;
+
+    for (const endpoint of TOP_HTTPS_ENDPOINTS) {
+      for (const secret of candidate.secrets) {
+        candidateAttempts += 1;
+        try {
+          const json = await requestTop(endpoint, method, candidate.appKey, secret, bizParams);
+          const platformError = getPlatformError(json);
+          if (platformError) {
+            if (isInvalidTopAppKey(platformError)) {
+              invalidForCandidate += 1;
+              failures.push(`${candidate.source}: ${formatPlatformError(platformError)}`);
+              continue;
+            }
+            failures.push(`${candidate.source}: ${formatPlatformError(platformError)}`);
             continue;
           }
-          throw new Error(formatPlatformError(platformError));
+          const businessError = readBusinessError(method, json);
+          if (businessError) {
+            failures.push(`${candidate.source}: ${businessError}`);
+            continue;
+          }
+          return json as T;
+        } catch (error) {
+          failures.push(`${candidate.source}: ${error instanceof Error ? error.message : String(error)}`);
         }
-        const businessError = readBusinessError(method, json);
-        if (businessError) throw new Error(businessError);
-        return json as T;
-      } catch (error) {
-        failures.push(error instanceof Error ? error.message : String(error));
       }
+    }
+
+    if (candidateAttempts > 0 && invalidForCandidate === candidateAttempts) {
+      failures.push(
+        candidate.source === "dedicated"
+          ? "A credencial TOP antiga foi ignorada porque a App Key não é reconhecida pelos gateways oficiais."
+          : "A App Key principal também não foi aceita pelo protocolo TOP legado.",
+      );
     }
   }
 
@@ -408,11 +434,12 @@ export async function callAliTopPublic<T = any>(
   if (publicFallback.json) return publicFallback.json as T;
   if (publicFallback.diagnostic) failures.push(`Coleta pública: ${publicFallback.diagnostic}`);
 
-  if (attempts > 0 && invalidKeyResponses === attempts) {
-    const extra = publicFallback.diagnostic ? ` ${publicFallback.diagnostic}` : "";
-    throw new Error(`${invalidTopAppKeyMessage(dedicated)}${extra ? ` Detalhe: ${extra}` : ""}`.slice(0, 1200));
-  }
-
   const unique = [...new Set(failures)].filter(Boolean);
-  throw new Error(unique.slice(0, 4).join(" | ") || "Não foi possível consultar avaliações do AliExpress.");
+  const diagnostic = publicFallback.diagnostic
+    ? ` O AliExpress também não expôs comentários individuais na coleta pública (${publicFallback.diagnostic}).`
+    : "";
+  throw new Error(
+    (`Não foi possível obter comentários individuais deste produto pelas fontes disponíveis.${diagnostic} ` +
+      `As avaliações já salvas permanecem intactas. Detalhes técnicos: ${unique.slice(0, 3).join(" | ")}`).slice(0, 1200),
+  );
 }
