@@ -2,6 +2,7 @@ import { strict as assert } from "node:assert";
 import {
   normalizeAliExpressPublicProductId,
   parseAliExpressPublicReviewHtml,
+  parseAliExpressPublicReviewJson,
   fetchAliExpressPublicReviews,
 } from "../src/lib/aliexpress-public-reviews.server";
 
@@ -50,6 +51,42 @@ assert.match(jsonReviews[0].body ?? "", /excelente/i);
 assert.equal(jsonReviews[0].author_country, "BR");
 assert.equal(jsonReviews[0].images.length, 1);
 
+const feedbackEndpointFixture = JSON.stringify({
+  success: true,
+  data: {
+    evaViewList: [
+      {
+        evaId: "eva-100",
+        starView: 5,
+        evaContent: "Chegou perfeito e igual ao anúncio.",
+        anonymousName: "R***a",
+        buyerCountryCode: "BR",
+        evaDate: "2026-08-12T13:45:00Z",
+        skuInfo: "Cor: Rosa",
+        evaImageList: ["https://ae01.alicdn.com/kf/eva-100.jpg"],
+      },
+      {
+        evaId: "eva-101",
+        starView: 4,
+        evaContent: "Boa qualidade e embalagem intacta.",
+        anonymousName: "C***s",
+        buyerCountryCode: "BR",
+        evaDate: "2026-08-11T09:20:00Z",
+      },
+    ],
+  },
+});
+
+const endpointReviews = parseAliExpressPublicReviewJson(feedbackEndpointFixture, PRODUCT_ID);
+assert.equal(endpointReviews.length, 2);
+assert.equal(endpointReviews[0].source_review_id, "public-eva-100");
+assert.equal(endpointReviews[0].rating, 5);
+assert.equal(endpointReviews[0].author_name, "R***a");
+assert.equal(endpointReviews[0].author_country, "BR");
+assert.equal(endpointReviews[0].title, "Cor: Rosa");
+assert.equal(endpointReviews[0].images.length, 1);
+assert.match(endpointReviews[0].body ?? "", /igual ao anúncio/i);
+
 const htmlFixture = `
 <div class="feedback-item" data-review-id="legacy-1" data-rating="5">
   <span class="buyer-name">J****o</span>
@@ -68,7 +105,7 @@ assert.match(htmlReviews[0].body ?? "", /recomendo/i);
 const noReviews = parseAliExpressPublicReviewHtml("<html><body>Produto sem comentários embutidos.</body></html>", PRODUCT_ID);
 assert.equal(noReviews.length, 0);
 
-console.log("[parser] OK: JSON embutido, HTML legado, deduplicação e produto sem reviews validados.");
+console.log("[parser] OK: JSON do feedback endpoint, JSON embutido, HTML legado e produto sem reviews validados.");
 
 if (process.argv.includes("--live")) {
   const liveId = process.env.ALIEXPRESS_PUBLIC_REVIEW_TEST_PRODUCT_ID || "32839190109";
