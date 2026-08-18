@@ -1,8 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { generateText } from "ai";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { createLovableAiGatewayProvider } from "./ai-gateway.server";
 import { generateWithOwnKeys } from "./ai-translate.server";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -387,7 +385,10 @@ export function toParagraphHtml(text: string | null | undefined): string | null 
     .join("\n");
 }
 
-async function translateToPtBr(input: { title: string; description: string | null }): Promise<{
+async function translateToPtBr(
+  input: { title: string; description: string | null },
+  credentialClient: any,
+): Promise<{
   title: string;
   description: string | null;
 }> {
@@ -399,6 +400,7 @@ async function translateToPtBr(input: { title: string; description: string | nul
     const text = await generateWithOwnKeys(
       "Você traduz descrições de produtos de cosméticos para português do Brasil, mantendo tom elegante, claro e comercial. Preserve unidades, especificações e nomes próprios de ingredientes. Não invente informações. Responda APENAS com JSON válido no formato {\"title\":\"...\",\"description\":\"...\"} sem comentários nem markdown.",
       `Traduza para pt-BR o conteúdo abaixo. Reescreva de forma natural, sem estrangeirismos desnecessários.\n\n${payload}`,
+      credentialClient,
     );
     if (!text) {
       return {
@@ -452,7 +454,10 @@ export const scrapeUrlPreview = createServerFn({ method: "POST" })
     await assertCatalog(context);
     const raw = await loadAliExpressUrlPreview(data.url, context.supabase);
     const settings = await loadSettings(context.supabase);
-    const translated = await translateToPtBr({ title: raw.title, description: raw.description });
+    const translated = await translateToPtBr(
+      { title: raw.title, description: raw.description },
+      context.supabase,
+    );
 
     let priceBrl: number | null = raw.price_original;
     const srcCurrency = (raw.currency ?? "BRL").toUpperCase();
@@ -635,10 +640,13 @@ export const saveImportDraft = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await assertCatalog(context);
     const db = context.supabase;
-    const translated = await translateToPtBr({
-      title: data.normalized.title,
-      description: data.normalized.description ?? null,
-    });
+    const translated = await translateToPtBr(
+      {
+        title: data.normalized.title,
+        description: data.normalized.description ?? null,
+      },
+      db,
+    );
     let priceBrl: number | null = data.normalized.price_original ?? null;
     const srcCurrency = (data.normalized.currency ?? "BRL").toUpperCase();
     if (priceBrl != null && srcCurrency !== "BRL") {
@@ -698,10 +706,13 @@ export const bulkImportJson = createServerFn({ method: "POST" })
     const settings = await loadSettings(db);
     let count = 0;
     for (const n of data.items) {
-      const translated = await translateToPtBr({
-        title: n.title,
-        description: n.description ?? null,
-      });
+      const translated = await translateToPtBr(
+        {
+          title: n.title,
+          description: n.description ?? null,
+        },
+        db,
+      );
       let priceBrl: number | null = n.price_original ?? null;
       const srcCurrency = (n.currency ?? "BRL").toUpperCase();
       if (priceBrl != null && srcCurrency !== "BRL") {

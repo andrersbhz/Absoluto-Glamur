@@ -314,27 +314,34 @@ type FirecrawlSearchResult = {
   imageUrl?: string;
 };
 
-async function searchAliExpressWeb(keyword: string, limit: number): Promise<DiscoveryProduct[]> {
-  const firecrawlKey = process.env.FIRECRAWL_API_KEY;
-  const lovableKey = process.env.LOVABLE_API_KEY;
-  if (!firecrawlKey) throw new Error("Firecrawl não conectado para a busca de produtos");
-
-  const isGateway = firecrawlKey.startsWith("lovc_");
-  const endpoint = isGateway
-    ? "https://connector-gateway.lovable.dev/firecrawl/v2/search"
-    : "https://api.firecrawl.dev/v2/search";
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-    Authorization: `Bearer ${isGateway ? lovableKey ?? "" : firecrawlKey}`,
-  };
-  if (isGateway) {
-    if (!lovableKey) throw new Error("Conexão Firecrawl indisponível no servidor");
-    headers["X-Connection-Api-Key"] = firecrawlKey;
+async function searchAliExpressWeb(
+  keyword: string,
+  limit: number,
+  credentialClient: any,
+): Promise<DiscoveryProduct[]> {
+  const { data: firecrawl, error } = await credentialClient
+    .from("integrations")
+    .select("api_key,enabled")
+    .eq("provider", "firecrawl")
+    .maybeSingle();
+  if (error) throw new Error(`Não foi possível ler a integração Firecrawl: ${error.message}`);
+  const firecrawlKey = String(firecrawl?.api_key ?? "").trim();
+  if (!firecrawlKey) {
+    throw new Error("Firecrawl não conectado. Configure a API Key em Admin → Integrações.");
+  }
+  if (firecrawl?.enabled === false) {
+    throw new Error("Firecrawl está configurado, mas desativado em Admin → Integrações.");
+  }
+  if (firecrawlKey.startsWith("lovc_")) {
+    throw new Error("A chave Firecrawl salva pertence ao antigo gateway do Lovable. Substitua por uma API Key direta do Firecrawl para evitar créditos do Lovable.");
   }
 
-  const res = await fetch(endpoint, {
+  const res = await fetch("https://api.firecrawl.dev/v2/search", {
     method: "POST",
-    headers,
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${firecrawlKey}`,
+    },
     body: JSON.stringify({
       query: `site:aliexpress.com/item ${keyword}`,
       limit: Math.min(limit, 50),
@@ -599,7 +606,7 @@ export const discoverAliexpressProducts = createServerFn({ method: "POST" })
         // store can still discover public products. Keep discovery operational
         // through the connected web catalog instead of returning a false zero.
         try {
-          items = await searchAliExpressWeb(data.keyword.trim(), data.page_size);
+          items = await searchAliExpressWeb(data.keyword.trim(), data.page_size, context.supabase);
           items = await enrichWebResultsWithAliDetails(items, context.supabase);
           json = null;
         } catch (fallbackError) {
@@ -692,7 +699,10 @@ async function loadSettings(admin: any) {
       };
 }
 
-async function translateToPtBr(input: { title: string; description: string | null }): Promise<{
+async function translateToPtBr(
+  input: { title: string; description: string | null },
+  credentialClient: any,
+): Promise<{
   title: string;
   description: string | null;
 }> {
@@ -704,6 +714,7 @@ async function translateToPtBr(input: { title: string; description: string | nul
       `Traduza para pt-BR:
 
 ${payload}`,
+      credentialClient,
     );
     if (!text) return input;
     const cleaned = text.trim().replace(/^```(?:json)?/i, "").replace(/```$/i, "").trim();
@@ -802,7 +813,7 @@ export const importAliexpressProductToStore = createServerFn({ method: "POST" })
     const weight = firstNumber(props.package_weight, firstSku.package_weight);
 
     // Translate
-    const translated = await translateToPtBr({ title, description });
+    const translated = await translateToPtBr({ title, description }, db);
 
     // Convert to BRL
     let priceBrl: number | null = priceRaw;

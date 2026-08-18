@@ -202,7 +202,7 @@ function normalizeReview(raw: any, sourceProductId: string): NormalizedReview | 
   };
 }
 
-async function translateReviews(reviews: NormalizedReview[]) {
+async function translateReviews(reviews: NormalizedReview[], credentialClient: any) {
   if (!reviews.length) return { reviews, translated: 0 };
   let translatedCount = 0;
   const output = reviews.map((review) => ({ ...review, body_translated: false }));
@@ -214,7 +214,7 @@ async function translateReviews(reviews: NormalizedReview[]) {
     const system = "Traduza SOMENTE title e body para português do Brasil. Não invente, resuma, complete nem altere o sentido. Preserve nomes, marcas, números, medidas, emojis e pontuação. Responda exclusivamente com JSON válido.";
     const prompt = `Retorne exatamente um array JSON [{"i":0,"title":"...","body":"..."}] para estes dados: ${JSON.stringify(payload)}`;
     try {
-      const text = await generateWithOwnKeys(system, prompt);
+      const text = await generateWithOwnKeys(system, prompt, credentialClient);
       const json = text?.match(/\[[\s\S]*\]/)?.[0];
       if (!json) continue;
       const parsed = JSON.parse(json) as Array<{ i?: number; title?: unknown; body?: unknown }>;
@@ -422,7 +422,7 @@ export const importAliExpressReviewsByUrl = createServerFn({ method: "POST" })
         );
       }
 
-      const translated = await translateReviews(fetchedReviews);
+      const translated = await translateReviews(fetchedReviews, context.supabase);
       const now = new Date().toISOString();
 
       const rows = translated.reviews.map((review) => ({
