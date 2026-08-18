@@ -119,8 +119,6 @@ export function AliExpressReviewSyncBridge() {
       const label = (target.textContent || "").replace(/\s+/g, " ").trim();
       if (label !== "Sincronizar AliExpress") return;
 
-      // O botão já existe no componente de avaliações. Interceptamos somente esta
-      // ação administrativa para acrescentar o fallback da extensão sem alterar UI.
       event.preventDefault();
       event.stopPropagation();
       event.stopImmediatePropagation();
@@ -133,22 +131,31 @@ export function AliExpressReviewSyncBridge() {
 
       let productId: string | null = null;
       let aggregateUpdated = false;
+      let directSyncError: string | null = null;
       try {
         productId = await resolveCurrentProductId();
 
-        const serverResult = await forceSync({ data: { product_id: productId } });
-        aggregateUpdated = Boolean(serverResult.aggregateUpdated);
+        // A coleta server-side é apenas a primeira tentativa. Se os endpoints
+        // públicos do AliExpress não entregarem comentários, a extensão assume.
+        try {
+          const serverResult = await forceSync({ data: { product_id: productId } });
+          aggregateUpdated = Boolean(serverResult.aggregateUpdated);
 
-        if ((serverResult.upserted ?? 0) > 0) {
-          await Promise.all([
-            qc.invalidateQueries({ queryKey: ["product-external-reviews-live", productId] }),
-            qc.invalidateQueries({ queryKey: ["product-review-summary", productId] }),
-            qc.invalidateQueries({ queryKey: ["admin-external-reviews", productId] }),
-            qc.invalidateQueries({ queryKey: ["product"] }),
-            qc.invalidateQueries({ queryKey: ["products"] }),
-          ]);
-          toast.success(`${serverResult.upserted} avaliações sincronizadas do AliExpress.`);
-          return;
+          if ((serverResult.upserted ?? 0) > 0) {
+            await Promise.all([
+              qc.invalidateQueries({ queryKey: ["product-external-reviews-live", productId] }),
+              qc.invalidateQueries({ queryKey: ["product-review-summary", productId] }),
+              qc.invalidateQueries({ queryKey: ["admin-external-reviews", productId] }),
+              qc.invalidateQueries({ queryKey: ["product"] }),
+              qc.invalidateQueries({ queryKey: ["products"] }),
+            ]);
+            toast.success(`${serverResult.upserted} avaliações sincronizadas do AliExpress.`);
+            return;
+          }
+
+          if (serverResult.error) directSyncError = String(serverResult.error);
+        } catch (error) {
+          directSyncError = error instanceof Error ? error.message : String(error);
         }
 
         await waitForExtension();
@@ -160,7 +167,11 @@ export function AliExpressReviewSyncBridge() {
           },
         });
 
-        toast.info("Abrindo o AliExpress no Chrome para buscar os comentários...");
+        toast.info(
+          directSyncError
+            ? "A coleta direta não trouxe os comentários. Abrindo o AliExpress pelo Chrome..."
+            : "Abrindo o AliExpress no Chrome para buscar os comentários...",
+        );
         const imported = await importWithExtension({
           bridgeCode: bridge.code,
           productId: bridge.sourceProductId,
@@ -182,10 +193,13 @@ export function AliExpressReviewSyncBridge() {
         toast.success(`${count} avaliações importadas pelo Chrome${photos > 0 ? ` · ${photos} com fotos` : ""}${remote > count ? ` · ${remote} detectadas` : ""}.`);
       } catch (error) {
         const message = error instanceof Error ? error.message : "Erro ao sincronizar avaliações.";
+        const suffix = directSyncError && message !== directSyncError
+          ? " A coleta direta também não retornou comentários."
+          : "";
         if (aggregateUpdated) {
-          toast.error(`Nota/quantidade foram atualizadas, mas os comentários não foram importados. ${message}`);
+          toast.error(`Nota/quantidade foram atualizadas, mas os comentários não foram importados. ${message}${suffix}`);
         } else {
-          toast.error(message);
+          toast.error(`${message}${suffix}`);
         }
       } finally {
         target.disabled = false;
