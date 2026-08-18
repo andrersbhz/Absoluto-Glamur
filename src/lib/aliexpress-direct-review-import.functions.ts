@@ -19,6 +19,7 @@ type NormalizedReview = {
   body: string | null;
   images: string[];
   reviewed_at: string | null;
+  body_translated?: boolean;
 };
 
 async function assertCatalog(context: any) {
@@ -175,13 +176,14 @@ function normalizeReview(raw: any, sourceProductId: string): NormalizedReview | 
     body,
     images,
     reviewed_at: reviewedAt,
+    body_translated: false,
   };
 }
 
 async function translateReviews(reviews: NormalizedReview[]) {
   if (!reviews.length) return { reviews, translated: 0 };
   let translatedCount = 0;
-  const output = [...reviews];
+  const output = reviews.map((review) => ({ ...review, body_translated: false }));
 
   for (let start = 0; start < reviews.length; start += 12) {
     const batch = reviews.slice(start, start + 12);
@@ -202,6 +204,7 @@ async function translateReviews(reviews: NormalizedReview[]) {
           ...row,
           title: item.title == null ? row.title : safeText(item.title, 500) ?? row.title,
           body: item.body == null ? row.body : safeText(item.body, 8000) ?? row.body,
+          body_translated: true,
         };
         translatedCount += 1;
       });
@@ -278,7 +281,7 @@ export const importAliExpressReviewsByUrl = createServerFn({ method: "POST" })
       const translated = await translateReviews(fetched.reviews);
       const now = new Date().toISOString();
 
-      const rows = translated.reviews.map((review, index) => ({
+      const rows = translated.reviews.map((review) => ({
         product_id: data.product_id,
         source: "aliexpress",
         source_review_id: review.source_review_id,
@@ -290,7 +293,7 @@ export const importAliExpressReviewsByUrl = createServerFn({ method: "POST" })
         images: review.images,
         reviewed_at: review.reviewed_at,
         is_visible: true,
-        body_translated: index < translated.translated,
+        body_translated: review.body_translated === true,
         last_synced_at: now,
       }));
 
