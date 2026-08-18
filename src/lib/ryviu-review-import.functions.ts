@@ -143,6 +143,14 @@ function toObjects(rows: string[][]): { headers: string[]; rows: CsvRow[] } {
   return { headers, rows: objects };
 }
 
+function hasHeader(headers: string[], aliases: readonly string[]): boolean {
+  return headers.some((header) => aliases.some((alias) => alias === header));
+}
+
+function findHeader(headers: string[], aliases: readonly string[]): string | undefined {
+  return headers.find((header) => aliases.some((alias) => alias === header));
+}
+
 function valueFrom(row: CsvRow, aliases: readonly string[]): string {
   for (const alias of aliases) {
     const value = row[alias];
@@ -211,7 +219,7 @@ function hashText(input: string): string {
   return (hash >>> 0).toString(16).padStart(8, "0");
 }
 
-function normalizeReview(row: CsvRow, productId: string, rowIndex: number, now: string): NormalizedReview | null {
+function normalizeReview(row: CsvRow, productId: string, now: string): NormalizedReview | null {
   const rating = parseRating(valueFrom(row, HEADER_ALIASES.rating));
   if (rating == null) return null;
 
@@ -225,7 +233,7 @@ function normalizeReview(row: CsvRow, productId: string, rowIndex: number, now: 
   const material = [productId, rawId, author, country, rating, title, body, reviewedAt, images.join("|")].join("\u241f");
   const sourceReviewId = rawId
     ? `ryviu-${rawId.replace(/[^a-zA-Z0-9._:-]+/g, "-").slice(0, 180)}`
-    : `ryviu-${hashText(material)}-${rowIndex}`;
+    : `ryviu-${hashText(material)}`;
 
   return {
     product_id: productId,
@@ -267,11 +275,11 @@ export const importRyviuReviewsCsv = createServerFn({ method: "POST" })
     if (!product) throw new Error("Produto não encontrado.");
 
     const parsed = toObjects(parseCsv(data.csv));
-    if (!parsed.headers.some((header) => HEADER_ALIASES.rating.includes(header as never))) {
+    if (!hasHeader(parsed.headers, HEADER_ALIASES.rating)) {
       throw new Error("CSV inválido: a coluna rating (nota) não foi encontrada.");
     }
 
-    const productHandleColumn = parsed.headers.find((header) => HEADER_ALIASES.productHandle.includes(header as never));
+    const productHandleColumn = findHeader(parsed.headers, HEADER_ALIASES.productHandle);
     let candidateRows = parsed.rows;
     let ignoredOtherProducts = 0;
 
@@ -282,17 +290,19 @@ export const importRyviuReviewsCsv = createServerFn({ method: "POST" })
           .filter((handle): handle is string => Boolean(handle)),
       );
 
-      if (handles.size > 0) {
+      // Um CSV de produto único pode vir de outra loja/handle. Como o admin
+      // escolheu explicitamente o destino, permitimos esse mapeamento. Em arquivos
+      // com vários produtos, exigimos o slug correspondente para evitar mistura.
+      if (handles.size > 1) {
         const matching = parsed.rows.filter((row) => row[productHandleColumn]?.trim() === product.slug);
-        if (matching.length > 0) {
-          ignoredOtherProducts = parsed.rows.length - matching.length;
-          candidateRows = matching;
-        } else if (handles.size > 1 || !handles.has(product.slug)) {
+        if (!matching.length) {
           const sample = [...handles].slice(0, 5).join(", ");
           throw new Error(
-            `Este CSV não contém avaliações para o produto selecionado (${product.slug}). Handles encontrados: ${sample}`,
+            `O CSV contém vários produtos e nenhum usa o slug selecionado (${product.slug}). Handles encontrados: ${sample}`,
           );
         }
+        ignoredOtherProducts = parsed.rows.length - matching.length;
+        candidateRows = matching;
       }
     }
 
@@ -303,8 +313,8 @@ export const importRyviuReviewsCsv = createServerFn({ method: "POST" })
     const now = new Date().toISOString();
     const normalized: NormalizedReview[] = [];
     let invalidRows = 0;
-    for (let index = 0; index < candidateRows.length; index += 1) {
-      const review = normalizeReview(candidateRows[index], data.product_id, index + 2, now);
+    for (const row of candidateRows) {
+      const review = normalizeReview(row, data.product_id, now);
       if (review) normalized.push(review);
       else invalidRows += 1;
     }
