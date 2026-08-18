@@ -26,7 +26,11 @@ function allowRecoveryAttempt(email: string): boolean {
 }
 
 function recoveryEmailHtml(resetUrl: string) {
-  const safeUrl = resetUrl.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/\"/g, "&quot;");
+  const safeUrl = resetUrl
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/\"/g, "&quot;");
   return `
     <div style="margin:0;background:#f7f4f6;padding:32px 16px;font-family:Arial,sans-serif;color:#251e23">
       <div style="max-width:560px;margin:0 auto;background:#ffffff;border:1px solid #eadfe5;border-radius:18px;padding:32px">
@@ -49,14 +53,28 @@ function recoveryEmailHtml(resetUrl: string) {
   `;
 }
 
+async function requestSupabaseManagedRecovery(email: string) {
+  try {
+    const { supabase } = await import("@/integrations/supabase/client");
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: RECOVERY_URL,
+    });
+    if (error) {
+      console.warn(`[Auth] Supabase managed recovery was not sent: ${error.message}`);
+    }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.warn(`[Auth] Supabase managed recovery fallback failed: ${message}`);
+  }
+}
+
 /**
  * Public password-recovery entrypoint.
  *
- * Security properties:
- * - the browser never receives Supabase's recovery token except through the email link;
- * - the service/admin key remains server-only;
- * - responses are deliberately generic to avoid account enumeration;
- * - a lightweight per-process throttle reduces automated abuse without changing the DB schema.
+ * Preferred path: generate a one-time link server-side and deliver it with the
+ * email provider configured in Admin. If the privileged Supabase server client
+ * is unavailable, fall back to Supabase Auth's managed recovery email. Both
+ * paths keep responses generic to avoid account enumeration.
  */
 export const requestPasswordRecovery = createServerFn({ method: "POST" })
   .inputValidator((value: unknown) => RecoverySchema.parse(value))
@@ -67,6 +85,7 @@ export const requestPasswordRecovery = createServerFn({ method: "POST" })
       return { ok: true };
     }
 
+    let customDeliverySucceeded = false;
     try {
       const [{ supabaseAdmin }, { sendConfiguredSystemEmail }] = await Promise.all([
         import("@/integrations/supabase/client.server"),
@@ -78,31 +97,34 @@ export const requestPasswordRecovery = createServerFn({ method: "POST" })
         email,
       });
 
-      if (error || !linkData?.properties?.hashed_token) {
-        if (error) console.warn(`[Auth] Recovery link was not generated: ${error.message}`);
-        return { ok: true };
+      if (!error && linkData?.properties?.hashed_token) {
+        const resetUrl = `${RECOVERY_URL}?token_hash=${encodeURIComponent(linkData.properties.hashed_token)}&type=recovery`;
+
+        await sendConfiguredSystemEmail(supabaseAdmin, {
+          to: email,
+          subject: "Redefina sua senha · Absoluto Glamur",
+          text: [
+            "Absoluto Glamur",
+            "",
+            "Recebemos uma solicitação para redefinir a senha da sua conta.",
+            "Abra o link abaixo para criar uma nova senha:",
+            resetUrl,
+            "",
+            "Se você não solicitou esta alteração, ignore este e-mail.",
+          ].join("\n"),
+          html: recoveryEmailHtml(resetUrl),
+        });
+        customDeliverySucceeded = true;
+      } else if (error) {
+        console.warn(`[Auth] Recovery link was not generated: ${error.message}`);
       }
-
-      const resetUrl = `${RECOVERY_URL}?token_hash=${encodeURIComponent(linkData.properties.hashed_token)}&type=recovery`;
-
-      await sendConfiguredSystemEmail(supabaseAdmin, {
-        to: email,
-        subject: "Redefina sua senha · Absoluto Glamur",
-        text: [
-          "Absoluto Glamur",
-          "",
-          "Recebemos uma solicitação para redefinir a senha da sua conta.",
-          "Abra o link abaixo para criar uma nova senha:",
-          resetUrl,
-          "",
-          "Se você não solicitou esta alteração, ignore este e-mail.",
-        ].join("\n"),
-        html: recoveryEmailHtml(resetUrl),
-      });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      console.error(`[Auth] Password recovery delivery failed: ${message}`);
-      // Do not expose whether an account exists or which backend step failed.
+      console.warn(`[Auth] Custom password recovery unavailable: ${message}`);
+    }
+
+    if (!customDeliverySucceeded) {
+      await requestSupabaseManagedRecovery(email);
     }
 
     return { ok: true };
