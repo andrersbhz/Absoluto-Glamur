@@ -10,16 +10,37 @@
  * As credenciais TOP de avaliações ficam isoladas no provider
  * `aliexpress_top_reviews`. A integração principal `aliexpress` permanece como
  * fallback por compatibilidade com instalações anteriores.
+ *
+ * Se a TOP não estiver disponível para a aplicação, somente o método de avaliações
+ * pode usar um fallback best-effort da página pública do produto. Esse fallback não
+ * contorna CAPTCHA/anti-bot, não inventa comentários e não afeta outras APIs.
  */
 
 const TOP_HTTPS_ENDPOINTS = [
-  // A documentação TOP atual recomenda este endpoint para ISVs no exterior.
   "https://api.taobao.com/router/rest",
-  // Endpoint formal atual e endpoint HTTPS legado publicado na página desta API.
   "https://gw.api.taobao.com/router/rest",
   "https://eco.taobao.com/router/rest",
 ] as const;
 const TOP_REVIEWS_PROVIDER = "aliexpress_top_reviews";
+const PUBLIC_REVIEW_METHOD = "aliexpress.social.product.evaluation.query";
+const PUBLIC_REVIEW_CACHE_TTL_MS = 5 * 60 * 1000;
+
+type PublicReviewCacheEntry = {
+  expiresAt: number;
+  productId: string;
+  reviews: Array<{
+    source_review_id: string;
+    author_name: string | null;
+    author_country: string | null;
+    rating: number;
+    body: string | null;
+    images: string[];
+    reviewed_at: string | null;
+  }>;
+  diagnostics: string[];
+};
+
+const publicReviewCache = new Map<string, PublicReviewCacheEntry>();
 
 function topTimestampGmt8(): string {
   const shifted = new Date(Date.now() + 8 * 60 * 60 * 1000);
@@ -144,9 +165,6 @@ async function loadAliTopCredentials(credentialClient?: any) {
     return { appKey: dedicatedKey, secrets: [dedicatedSecret], dedicated: true };
   }
 
-  // Compatibilidade com instalações antigas: tenta o par principal. Se o gateway TOP
-  // rejeitar a App Key, a mensagem orienta a configurar o par TOP dedicado sem alterar
-  // importação, estoque, OAuth ou fulfillment.
   const primary = await readCredentialRow(client, "aliexpress");
   const cfg = (primary?.config ?? {}) as Record<string, unknown>;
   const appKey = String(primary?.api_key ?? cfg.app_key ?? "").trim();
@@ -193,8 +211,8 @@ function isInvalidTopAppKey(error: { code: string; detail: string }): boolean {
 
 function invalidTopAppKeyMessage(dedicated: boolean): string {
   return dedicated
-    ? "A App Key TOP salva para avaliações não foi reconhecida por nenhum gateway TOP oficial (overseas ou formal). Confira se esta chave pertence a uma aplicação TOP com acesso à API de avaliações."
-    : "A App Key principal do AliExpress não foi reconhecida pelos gateways TOP usados para avaliações. Configure uma credencial TOP dedicada em Admin → AliExpress TOP · Avaliações. A integração principal de importação e estoque permanece intacta.";
+    ? "A App Key TOP salva para avaliações não foi reconhecida por nenhum gateway TOP oficial. O sistema tentou também o fallback público do produto."
+    : "A App Key principal do AliExpress não foi reconhecida pelos gateways TOP de avaliações. O sistema tentou também o fallback público do produto.";
 }
 
 function readBusinessError(method: string, json: any): string | null {
@@ -255,20 +273,114 @@ async function requestTop(
   return json;
 }
 
+function publicFallbackProductId(method: string, bizParams: Record<string, unknown>): string | null {
+  if (method !== PUBLIC_REVIEW_METHOD) return null;
+  const raw = String(bizParams.product_id ?? "").trim();
+  return /^\d{5,}$/.test(raw) ? raw : null;
+}
+
+function syntheticTopReviewResponse(entry: PublicReviewCacheEntry, bizParams: Record<string, unknown>) {
+  const page = Math.max(1, Number(bizParams.page) || 1);
+  const pageSize = Math.min(50, Math.max(1, Number(bizParams.page_size) || 20));
+  const from = (page - 1) * pageSize;
+  const rows = entry.reviews.slice(from, from + pageSize).map((review) => ({
+    feedback_id: review.source_review_id,
+    buyer_blured_name: review.author_name,
+    buyer_country_code: review.author_country,
+    evaluation: review.rating,
+    feedback: review.body,
+    feedback_epoch_date: review.reviewed_at
+      ? Math.floor(new Date(review.reviewed_at).getTime() / 1000)
+      : null,
+    image_urls: review.images,
+  }));
+
+  return {
+    aliexpress_social_product_evaluation_query_response: {
+      result: {
+        success: true,
+        result: {
+          evaluations: { buyer_evaluation: rows },
+          total_number: entry.reviews.length,
+        },
+      },
+    },
+  };
+}
+
+function cachedPublicFallback(method: string, bizParams: Record<string, unknown>) {
+  const productId = publicFallbackProductId(method, bizParams);
+  if (!productId) return null;
+  const cached = publicReviewCache.get(productId);
+  if (!cached) return null;
+  if (cached.expiresAt <= Date.now()) {
+    publicReviewCache.delete(productId);
+    return null;
+  }
+  if (!cached.reviews.length) return null;
+  return syntheticTopReviewResponse(cached, bizParams);
+}
+
+async function tryPublicReviewFallback(method: string, bizParams: Record<string, unknown>) {
+  const productId = publicFallbackProductId(method, bizParams);
+  if (!productId) return { json: null as any, diagnostic: null as string | null };
+
+  const cached = publicReviewCache.get(productId);
+  if (cached && cached.expiresAt > Date.now()) {
+    return {
+      json: cached.reviews.length ? syntheticTopReviewResponse(cached, bizParams) : null,
+      diagnostic: cached.diagnostics.join(" | ") || null,
+    };
+  }
+
+  try {
+    const { fetchAliExpressPublicReviews } = await import("./aliexpress-public-reviews.server");
+    const result = await fetchAliExpressPublicReviews(productId);
+    const entry: PublicReviewCacheEntry = {
+      expiresAt: Date.now() + PUBLIC_REVIEW_CACHE_TTL_MS,
+      productId: result.productId,
+      reviews: result.reviews,
+      diagnostics: result.diagnostics,
+    };
+    publicReviewCache.set(productId, entry);
+    return {
+      json: entry.reviews.length ? syntheticTopReviewResponse(entry, bizParams) : null,
+      diagnostic: entry.diagnostics.join(" | ") || "página pública sem comentários expostos",
+    };
+  } catch (error) {
+    return {
+      json: null,
+      diagnostic: `fallback público: ${error instanceof Error ? error.message : String(error)}`.slice(0, 600),
+    };
+  }
+}
+
 export async function callAliTopPublic<T = any>(
   method: string,
   bizParams: Record<string, string | number | boolean | undefined | null>,
   credentialClient?: any,
 ): Promise<T> {
-  const { appKey, secrets, dedicated } = await loadAliTopCredentials(credentialClient);
+  // Se a primeira página já caiu no fallback público, as páginas seguintes usam
+  // o cache e não repetem tentativas TOP nem downloads da página.
+  const cached = cachedPublicFallback(method, bizParams as Record<string, unknown>);
+  if (cached) return cached as T;
+
   const failures: string[] = [];
   let invalidKeyResponses = 0;
   let attempts = 0;
+  let dedicated = false;
+  let appKey = "";
+  let secrets: string[] = [];
 
-  // Aplicações AliExpress internacionais podem estar registradas no ambiente
-  // TOP overseas. Testamos primeiro o gateway overseas documentado e só então
-  // os gateways formais. Uma AppKey só é considerada inválida depois que todos
-  // os endpoints oficiais a rejeitam.
+  try {
+    const credentials = await loadAliTopCredentials(credentialClient);
+    appKey = credentials.appKey;
+    secrets = credentials.secrets;
+    dedicated = credentials.dedicated;
+  } catch (error) {
+    failures.push(error instanceof Error ? error.message : String(error));
+  }
+
   for (const endpoint of TOP_HTTPS_ENDPOINTS) {
     for (const secret of secrets) {
       attempts += 1;
@@ -287,16 +399,20 @@ export async function callAliTopPublic<T = any>(
         if (businessError) throw new Error(businessError);
         return json as T;
       } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        failures.push(message);
+        failures.push(error instanceof Error ? error.message : String(error));
       }
     }
   }
 
+  const publicFallback = await tryPublicReviewFallback(method, bizParams as Record<string, unknown>);
+  if (publicFallback.json) return publicFallback.json as T;
+  if (publicFallback.diagnostic) failures.push(`Coleta pública: ${publicFallback.diagnostic}`);
+
   if (attempts > 0 && invalidKeyResponses === attempts) {
-    throw new Error(invalidTopAppKeyMessage(dedicated));
+    const extra = publicFallback.diagnostic ? ` ${publicFallback.diagnostic}` : "";
+    throw new Error(`${invalidTopAppKeyMessage(dedicated)}${extra ? ` Detalhe: ${extra}` : ""}`.slice(0, 1200));
   }
 
   const unique = [...new Set(failures)].filter(Boolean);
-  throw new Error(unique.slice(0, 3).join(" | ") || "Não foi possível consultar a API TOP oficial do AliExpress.");
+  throw new Error(unique.slice(0, 4).join(" | ") || "Não foi possível consultar avaliações do AliExpress.");
 }
