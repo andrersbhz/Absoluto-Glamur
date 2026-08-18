@@ -67,7 +67,8 @@ async function issueBridge(input: {
   if (!product) throw new Error("Produto de destino não encontrado.");
 
   const origin = new URL(input.origin).origin;
-  const { createAliExpressBrowserReviewBridge } = await import("./aliexpress-browser-review-bridge.server");
+  const { createAliExpressBrowserReviewBridge } =
+    await import("./aliexpress-browser-review-bridge.server");
   const bridge = createAliExpressBrowserReviewBridge({
     productId: input.productId,
     sourceProductId: input.sourceProductId,
@@ -123,7 +124,9 @@ export const createAliExpressBrowserReviewCodeForProduct = createServerFn({ meth
     await assertCatalog(context);
     const sourceProductId = await resolveSourceProductId(context.supabase, data.product_id);
     if (!sourceProductId) {
-      throw new Error("Este produto ainda não possui um ID AliExpress vinculado. Vincule ou importe o produto antes de sincronizar avaliações.");
+      throw new Error(
+        "Este produto ainda não possui um ID AliExpress vinculado. Vincule ou importe o produto antes de sincronizar avaliações.",
+      );
     }
     return issueBridge({
       db: context.supabase,
@@ -147,7 +150,9 @@ export const getAliExpressBrowserReviewState = createServerFn({ method: "POST" }
     const db = context.supabase as any;
     const { data: state, error } = await db
       .from("product_review_sync_state")
-      .select("product_id,source_id,status,fetched_count,remote_total,last_attempt_at,last_success_at,last_error,updated_at")
+      .select(
+        "product_id,source_id,status,fetched_count,remote_total,last_attempt_at,last_success_at,last_error,updated_at",
+      )
       .eq("product_id", data.product_id)
       .maybeSingle();
     if (error) throw new Error(error.message);

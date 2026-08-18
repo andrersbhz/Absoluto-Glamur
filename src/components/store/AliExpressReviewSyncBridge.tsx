@@ -37,9 +37,10 @@ type ExtensionMessage = {
 };
 
 function requestId(prefix: string) {
-  const random = typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
-    ? crypto.randomUUID()
-    : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  const random =
+    typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
   return `${prefix}-${random}`;
 }
 
@@ -64,22 +65,39 @@ function waitForExtension(): Promise<string> {
     const onMessage = (event: MessageEvent<ExtensionMessage>) => {
       if (event.source !== window || event.origin !== window.location.origin) return;
       const data = event.data;
-      if (data?.source !== "absoluto-glamur-extension" || data.type !== "AG_EXTENSION_READY" || data.requestId !== id) return;
+      if (
+        data?.source !== "absoluto-glamur-extension" ||
+        data.type !== "AG_EXTENSION_READY" ||
+        data.requestId !== id
+      )
+        return;
       cleanup();
       const version = data.version || "0.0.0";
       if (data.enabled === false) {
-        reject(new Error("A extensão Absoluto Glamur está DESLIGADA. Clique no ícone da extensão e pressione Ligar."));
+        reject(
+          new Error(
+            "A extensão Absoluto Glamur está DESLIGADA. Clique no ícone da extensão e pressione Ligar.",
+          ),
+        );
         return;
       }
       if (!versionAtLeast(version, "1.6.0")) {
-        reject(new Error(`A extensão Absoluto Glamur ${version} está desatualizada. Instale a versão 1.6.0 ou superior e recarregue esta página.`));
+        reject(
+          new Error(
+            `A extensão Absoluto Glamur ${version} está desatualizada. Instale a versão 1.6.0 ou superior e recarregue esta página.`,
+          ),
+        );
         return;
       }
       resolve(version);
     };
     const timer = window.setTimeout(() => {
       cleanup();
-      reject(new Error("A extensão Absoluto Glamur não respondeu. Recarregue a extensão em chrome://extensions e depois recarregue esta página."));
+      reject(
+        new Error(
+          "A extensão Absoluto Glamur não respondeu. Recarregue a extensão em chrome://extensions e depois recarregue esta página.",
+        ),
+      );
     }, 2500);
 
     window.addEventListener("message", onMessage);
@@ -108,7 +126,9 @@ function collectWithExtension(input: {
       if (data?.source !== "absoluto-glamur-extension" || data.requestId !== id) return;
 
       if (data.type === "AG_REVIEW_SYNC_PROGRESS") {
-        toast.loading(data.stage || "Coletando avaliações no AliExpress...", { id: progressToastId });
+        toast.loading(data.stage || "Coletando avaliações no AliExpress...", {
+          id: progressToastId,
+        });
         return;
       }
       if (data.type !== "AG_REVIEW_SYNC_RESULT") return;
@@ -119,7 +139,11 @@ function collectWithExtension(input: {
     };
     const timer = window.setTimeout(() => {
       cleanup();
-      reject(new Error("A extensão 1.6.0 iniciou o trabalho, mas a página do AliExpress não publicou um resultado. Recarregue a aba do produto no AliExpress e tente novamente."));
+      reject(
+        new Error(
+          "A extensão 1.6.0 iniciou o trabalho, mas a página do AliExpress não publicou um resultado. Recarregue a aba do produto no AliExpress e tente novamente.",
+        ),
+      );
     }, 75_000);
 
     window.addEventListener("message", onMessage);
@@ -222,7 +246,8 @@ export function AliExpressReviewSyncBridge() {
           sourceUrl: browserTarget.sourceUrl,
         });
         const reviews = collected.reviews ?? [];
-        if (!reviews.length) throw new Error("A extensão terminou a coleta, mas não retornou avaliações válidas.");
+        if (!reviews.length)
+          throw new Error("A extensão terminou a coleta, mas não retornou avaliações válidas.");
 
         const saved = await saveBrowserReviews({
           data: {
@@ -242,14 +267,19 @@ export function AliExpressReviewSyncBridge() {
           qc.invalidateQueries({ queryKey: ["products"] }),
         ]);
 
-        toast.success(`${saved.imported} avaliações importadas pelo Chrome${saved.withPhotos > 0 ? ` · ${saved.withPhotos} com fotos` : ""}${saved.remoteTotal > saved.imported ? ` · ${saved.remoteTotal} detectadas` : ""}${saved.skippedInvalid > 0 ? ` · ${saved.skippedInvalid} sem nota ignoradas` : ""}.`);
+        toast.success(
+          `${saved.imported} avaliações importadas pelo Chrome${saved.withPhotos > 0 ? ` · ${saved.withPhotos} com fotos` : ""}${saved.remoteTotal > saved.imported ? ` · ${saved.remoteTotal} detectadas` : ""}${saved.skippedInvalid > 0 ? ` · ${saved.skippedInvalid} sem nota ignoradas` : ""}.`,
+        );
       } catch (error) {
         const message = error instanceof Error ? error.message : "Erro ao sincronizar avaliações.";
-        const suffix = directSyncError && message !== directSyncError
-          ? " A coleta direta também não retornou comentários."
-          : "";
+        const suffix =
+          directSyncError && message !== directSyncError
+            ? " A coleta direta também não retornou comentários."
+            : "";
         if (aggregateUpdated) {
-          toast.error(`Nota/quantidade foram atualizadas, mas os comentários não foram importados. ${message}${suffix}`);
+          toast.error(
+            `Nota/quantidade foram atualizadas, mas os comentários não foram importados. ${message}${suffix}`,
+          );
         } else {
           toast.error(`${message}${suffix}`);
         }

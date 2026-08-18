@@ -53,7 +53,14 @@ function safeImage(value: string): string | null {
     const url = new URL(value.startsWith("//") ? `https:${value}` : value);
     if (url.protocol !== "https:" && url.protocol !== "http:") return null;
     const host = url.hostname.toLowerCase();
-    if (!(host.includes("alicdn") || host.includes("aliexpress") || host.includes("aliimg") || host.includes("ae01"))) {
+    if (
+      !(
+        host.includes("alicdn") ||
+        host.includes("aliexpress") ||
+        host.includes("aliimg") ||
+        host.includes("ae01")
+      )
+    ) {
       return null;
     }
     return url.toString();
@@ -64,7 +71,10 @@ function safeImage(value: string): string | null {
 
 function safeReviewId(value: string | null | undefined): string | null {
   if (!value) return null;
-  const cleaned = value.trim().replace(/[^a-zA-Z0-9_.:-]/g, "").slice(0, 180);
+  const cleaned = value
+    .trim()
+    .replace(/[^a-zA-Z0-9_.:-]/g, "")
+    .slice(0, 180);
   return cleaned || null;
 }
 
@@ -86,20 +96,29 @@ export const Route = createFileRoute("/api/public/aliexpress-review-browser")({
         try {
           const contentLength = Number(request.headers.get("content-length") ?? 0);
           if (contentLength > MAX_PAYLOAD_BYTES) {
-            return Response.json({ ok: false, error: "payload_too_large" }, { status: 413, headers: corsHeaders() });
+            return Response.json(
+              { ok: false, error: "payload_too_large" },
+              { status: 413, headers: corsHeaders() },
+            );
           }
 
           const authorization = request.headers.get("authorization") ?? "";
           const code = authorization.replace(/^Bearer\s+/i, "").trim();
           if (!code) {
-            return Response.json({ ok: false, error: "missing_bridge_code" }, { status: 401, headers: corsHeaders() });
+            return Response.json(
+              { ok: false, error: "missing_bridge_code" },
+              { status: 401, headers: corsHeaders() },
+            );
           }
 
           const verifier = await import("@/lib/aliexpress-browser-review-bridge.server");
           bridge = verifier.verifyAliExpressBrowserReviewBridge(code);
           const body = PayloadSchema.parse(await request.json());
           if (body.source_product_id !== bridge.sid) {
-            return Response.json({ ok: false, error: "source_product_mismatch" }, { status: 409, headers: corsHeaders() });
+            return Response.json(
+              { ok: false, error: "source_product_mismatch" },
+              { status: 409, headers: corsHeaders() },
+            );
           }
 
           const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -111,21 +130,27 @@ export const Route = createFileRoute("/api/public/aliexpress-review-browser")({
             .maybeSingle();
           if (productError) throw new Error(productError.message);
           if (!product) {
-            return Response.json({ ok: false, error: "product_not_found" }, { status: 404, headers: corsHeaders() });
+            return Response.json(
+              { ok: false, error: "product_not_found" },
+              { status: 404, headers: corsHeaders() },
+            );
           }
 
           const startedAt = new Date().toISOString();
-          await db.from("product_review_sync_state").upsert({
-            product_id: bridge.pid,
-            source: "aliexpress",
-            source_id: bridge.sid,
-            status: "running",
-            fetched_count: 0,
-            remote_total: body.remote_total ?? null,
-            last_attempt_at: startedAt,
-            last_error: null,
-            updated_at: startedAt,
-          }, { onConflict: "product_id" });
+          await db.from("product_review_sync_state").upsert(
+            {
+              product_id: bridge.pid,
+              source: "aliexpress",
+              source_id: bridge.sid,
+              status: "running",
+              fetched_count: 0,
+              remote_total: body.remote_total ?? null,
+              last_attempt_at: startedAt,
+              last_error: null,
+              updated_at: startedAt,
+            },
+            { onConflict: "product_id" },
+          );
 
           const validReviews = body.reviews.filter(
             (review) => Number.isFinite(review.rating) && review.rating >= 1 && review.rating <= 5,
@@ -140,7 +165,11 @@ export const Route = createFileRoute("/api/public/aliexpress-review-browser")({
 
           const now = new Date().toISOString();
           const rows = validReviews.map((review) => {
-            const images = [...new Set(review.images.map(safeImage).filter((value): value is string => Boolean(value)))].slice(0, MAX_IMAGES);
+            const images = [
+              ...new Set(
+                review.images.map(safeImage).filter((value): value is string => Boolean(value)),
+              ),
+            ].slice(0, MAX_IMAGES);
             const reviewedAt = safeDate(review.reviewed_at);
             const directId = safeReviewId(review.id);
             const fingerprint = [
@@ -174,38 +203,46 @@ export const Route = createFileRoute("/api/public/aliexpress-review-browser")({
             .upsert(rows, { onConflict: "product_id,source,source_review_id" });
           if (upsertError) throw new Error(`Falha ao salvar avaliações: ${upsertError.message}`);
 
-          const average = Math.round((rows.reduce((sum, row) => sum + row.rating, 0) / rows.length) * 100) / 100;
+          const average =
+            Math.round((rows.reduce((sum, row) => sum + row.rating, 0) / rows.length) * 100) / 100;
           const remoteTotal = Math.max(Number(body.remote_total ?? 0), rows.length);
           const { error: productUpdateError } = await db
             .from("products")
             .update({ rating_avg: average, rating_count: remoteTotal })
             .eq("id", bridge.pid);
-          if (productUpdateError) throw new Error(`Falha ao atualizar a nota do produto: ${productUpdateError.message}`);
+          if (productUpdateError)
+            throw new Error(`Falha ao atualizar a nota do produto: ${productUpdateError.message}`);
 
           const withPhotos = rows.filter((row) => row.images.length > 0).length;
-          await db.from("product_review_sync_state").upsert({
-            product_id: bridge.pid,
-            source: "aliexpress",
-            source_id: bridge.sid,
-            status: "ok",
-            fetched_count: rows.length,
-            remote_total: remoteTotal,
-            last_attempt_at: startedAt,
-            last_success_at: now,
-            last_error: null,
-            updated_at: now,
-          }, { onConflict: "product_id" });
+          await db.from("product_review_sync_state").upsert(
+            {
+              product_id: bridge.pid,
+              source: "aliexpress",
+              source_id: bridge.sid,
+              status: "ok",
+              fetched_count: rows.length,
+              remote_total: remoteTotal,
+              last_attempt_at: startedAt,
+              last_success_at: now,
+              last_error: null,
+              updated_at: now,
+            },
+            { onConflict: "product_id" },
+          );
 
-          return Response.json({
-            ok: true,
-            productTitle: product.name,
-            productSlug: product.slug,
-            imported: rows.length,
-            withPhotos,
-            remoteTotal,
-            average,
-            skippedInvalid,
-          }, { headers: corsHeaders() });
+          return Response.json(
+            {
+              ok: true,
+              productTitle: product.name,
+              productSlug: product.slug,
+              imported: rows.length,
+              withPhotos,
+              remoteTotal,
+              average,
+              skippedInvalid,
+            },
+            { headers: corsHeaders() },
+          );
         } catch (error) {
           const message = error instanceof Error ? error.message : String(error);
           if (bridge?.pid) {
@@ -213,23 +250,29 @@ export const Route = createFileRoute("/api/public/aliexpress-review-browser")({
               const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
               const db = supabaseAdmin as any;
               const now = new Date().toISOString();
-              await db.from("product_review_sync_state").upsert({
-                product_id: bridge.pid,
-                source: "aliexpress",
-                source_id: bridge.sid,
-                status: "error",
-                fetched_count: 0,
-                last_attempt_at: now,
-                last_error: message.slice(0, 1000),
-                updated_at: now,
-              }, { onConflict: "product_id" });
+              await db.from("product_review_sync_state").upsert(
+                {
+                  product_id: bridge.pid,
+                  source: "aliexpress",
+                  source_id: bridge.sid,
+                  status: "error",
+                  fetched_count: 0,
+                  last_attempt_at: now,
+                  last_error: message.slice(0, 1000),
+                  updated_at: now,
+                },
+                { onConflict: "product_id" },
+              );
             } catch {
               // Não mascara o erro original se o registro de diagnóstico falhar.
             }
           }
           return Response.json(
             { ok: false, error: message.slice(0, 500) },
-            { status: /código|assinatura|expirou/i.test(message) ? 401 : 400, headers: corsHeaders() },
+            {
+              status: /código|assinatura|expirou/i.test(message) ? 401 : 400,
+              headers: corsHeaders(),
+            },
           );
         }
       },

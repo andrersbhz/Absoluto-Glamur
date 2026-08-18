@@ -43,7 +43,15 @@ function safeImage(value) {
     const url = new URL(value.startsWith("//") ? `https:${value}` : value);
     if (!/^https?:$/.test(url.protocol)) return null;
     const host = url.hostname.toLowerCase();
-    if (!(host.includes("alicdn") || host.includes("aliexpress") || host.includes("aliimg") || host.includes("ae01"))) return null;
+    if (
+      !(
+        host.includes("alicdn") ||
+        host.includes("aliexpress") ||
+        host.includes("aliimg") ||
+        host.includes("ae01")
+      )
+    )
+      return null;
     return url.toString();
   } catch {
     return null;
@@ -77,21 +85,78 @@ function normalizeJsonReview(raw) {
     return null;
   };
 
-  const rating = ratingOf(pick("buyerEval", "evaluteRate", "evaluateRate", "evaluation", "rating", "star", "stars", "score"));
-  const original = cleanText(pick("buyerFeedback", "feedback", "content", "reviewContent", "review_content", "comment", "evaContent"));
-  const translated = cleanText(pick("buyerTranslationFeedback", "translationFeedback", "translatedFeedback", "translated_content"));
+  const rating = ratingOf(
+    pick(
+      "buyerEval",
+      "evaluteRate",
+      "evaluateRate",
+      "evaluation",
+      "rating",
+      "star",
+      "stars",
+      "score",
+    ),
+  );
+  const original = cleanText(
+    pick(
+      "buyerFeedback",
+      "feedback",
+      "content",
+      "reviewContent",
+      "review_content",
+      "comment",
+      "evaContent",
+    ),
+  );
+  const translated = cleanText(
+    pick(
+      "buyerTranslationFeedback",
+      "translationFeedback",
+      "translatedFeedback",
+      "translated_content",
+    ),
+  );
   const body = translated || original;
   if (!body || rating <= 0) return null;
 
   return {
-    id: cleanText(pick("evaluationIdStr", "evaluationId", "feedbackId", "feedback_id", "reviewId", "review_id", "id"), 180),
-    author: cleanText(pick("buyerName", "buyer_name", "buyer_blured_name", "userName", "author", "displayName"), 180),
-    country: cleanText(pick("buyerCountry", "buyer_country", "buyer_country_code", "country", "countryCode"), 24),
+    id: cleanText(
+      pick(
+        "evaluationIdStr",
+        "evaluationId",
+        "feedbackId",
+        "feedback_id",
+        "reviewId",
+        "review_id",
+        "id",
+      ),
+      180,
+    ),
+    author: cleanText(
+      pick("buyerName", "buyer_name", "buyer_blured_name", "userName", "author", "displayName"),
+      180,
+    ),
+    country: cleanText(
+      pick("buyerCountry", "buyer_country", "buyer_country_code", "country", "countryCode"),
+      24,
+    ),
     rating,
     title: cleanText(pick("skuInfo", "sku_info", "productSku", "product_sku", "title"), 500),
     body,
-    images: collectImages(pick("images", "buyerFeedbackPicList", "imageUrls", "image_urls", "photos", "pictures")),
-    reviewed_at: dateOf(pick("evalDate", "buyerFeedbackDate", "feedbackDate", "feedback_date", "date", "create_time", "createdAt")),
+    images: collectImages(
+      pick("images", "buyerFeedbackPicList", "imageUrls", "image_urls", "photos", "pictures"),
+    ),
+    reviewed_at: dateOf(
+      pick(
+        "evalDate",
+        "buyerFeedbackDate",
+        "feedbackDate",
+        "feedback_date",
+        "date",
+        "create_time",
+        "createdAt",
+      ),
+    ),
   };
 }
 
@@ -104,7 +169,9 @@ function collectJsonReviews(value, output = new Map(), depth = 0) {
   if (typeof value !== "object") return output;
   const review = normalizeJsonReview(value);
   if (review) {
-    const key = review.id || `${review.author || ""}|${review.rating}|${review.reviewed_at || ""}|${review.body}`;
+    const key =
+      review.id ||
+      `${review.author || ""}|${review.rating}|${review.reviewed_at || ""}|${review.body}`;
     output.set(key, review);
   }
   for (const child of Object.values(value)) {
@@ -116,15 +183,21 @@ function collectJsonReviews(value, output = new Map(), depth = 0) {
 
 function findRemoteTotal(value, depth = 0) {
   if (value == null || depth > 12) return 0;
-  if (Array.isArray(value)) return value.reduce((max, child) => Math.max(max, findRemoteTotal(child, depth + 1)), 0);
+  if (Array.isArray(value))
+    return value.reduce((max, child) => Math.max(max, findRemoteTotal(child, depth + 1)), 0);
   if (typeof value !== "object") return 0;
   let best = 0;
   for (const [key, child] of Object.entries(value)) {
-    if (/^(totalNum|total_number|totalCount|totalEvaluation|totalResults|total_results|reviewCount|evaluationCount)$/i.test(key)) {
+    if (
+      /^(totalNum|total_number|totalCount|totalEvaluation|totalResults|total_results|reviewCount|evaluationCount)$/i.test(
+        key,
+      )
+    ) {
       const n = Number(String(child).replace(/[^\d.-]/g, ""));
       if (Number.isFinite(n) && n >= 0 && n <= 2_000_000) best = Math.max(best, Math.round(n));
     }
-    if (child && typeof child === "object") best = Math.max(best, findRemoteTotal(child, depth + 1));
+    if (child && typeof child === "object")
+      best = Math.max(best, findRemoteTotal(child, depth + 1));
   }
   return best;
 }
@@ -143,20 +216,34 @@ async function inspectPage(tabId, clickReviews = false) {
       let ownerMemberId = null;
       for (const pattern of ownerPatterns) {
         const match = html.match(pattern);
-        if (match?.[1]) { ownerMemberId = match[1]; break; }
+        if (match?.[1]) {
+          ownerMemberId = match[1];
+          break;
+        }
       }
 
       const totals = [];
-      for (const match of html.matchAll(/["'](?:reviewCount|evaluationCount|totalEvaluation|totalNum)["']\s*:\s*["']?(\d{1,7})/gi)) {
+      for (const match of html.matchAll(
+        /["'](?:reviewCount|evaluationCount|totalEvaluation|totalNum)["']\s*:\s*["']?(\d{1,7})/gi,
+      )) {
         totals.push(Number(match[1]));
       }
 
       if (shouldClick) {
-        const candidates = [...document.querySelectorAll("button,a,[role='tab'],div")].filter((el) => {
-          const label = (el.textContent || "").replace(/\s+/g, " ").trim().toLowerCase();
-          return label.length > 0 && label.length < 100 && /(reviews?|avaliações|avaliacoes)/.test(label);
-        });
-        const target = candidates.find((el) => /^(reviews?|avaliações|avaliacoes)/.test((el.textContent || "").trim().toLowerCase())) || candidates[0];
+        const candidates = [...document.querySelectorAll("button,a,[role='tab'],div")].filter(
+          (el) => {
+            const label = (el.textContent || "").replace(/\s+/g, " ").trim().toLowerCase();
+            return (
+              label.length > 0 &&
+              label.length < 100 &&
+              /(reviews?|avaliações|avaliacoes)/.test(label)
+            );
+          },
+        );
+        const target =
+          candidates.find((el) =>
+            /^(reviews?|avaliações|avaliacoes)/.test((el.textContent || "").trim().toLowerCase()),
+          ) || candidates[0];
         if (target) {
           target.scrollIntoView({ behavior: "instant", block: "center" });
           target.click();
@@ -164,28 +251,50 @@ async function inspectPage(tabId, clickReviews = false) {
       }
 
       const reviews = [];
-      const blocks = [...document.querySelectorAll("[data-review-id], [data-feedback-id], .feedback-item, .review-item, [class*='reviewItem'], [class*='review-item'], [class*='feedbackItem'], [class*='feedback-item']")].slice(0, 160);
+      const blocks = [
+        ...document.querySelectorAll(
+          "[data-review-id], [data-feedback-id], .feedback-item, .review-item, [class*='reviewItem'], [class*='review-item'], [class*='feedbackItem'], [class*='feedback-item']",
+        ),
+      ].slice(0, 160);
       for (const block of blocks) {
         const rawText = (block.innerText || "").replace(/\s+/g, " ").trim();
         if (rawText.length < 5 || rawText.length > 8000) continue;
-        const ratingNode = block.querySelector("[data-rating],[data-score],[aria-label*='out of 5'],[aria-label*='stars'],[aria-label*='estrelas']");
-        const ratingText = ratingNode?.getAttribute("data-rating") || ratingNode?.getAttribute("data-score") || ratingNode?.getAttribute("aria-label") || "";
+        const ratingNode = block.querySelector(
+          "[data-rating],[data-score],[aria-label*='out of 5'],[aria-label*='stars'],[aria-label*='estrelas']",
+        );
+        const ratingText =
+          ratingNode?.getAttribute("data-rating") ||
+          ratingNode?.getAttribute("data-score") ||
+          ratingNode?.getAttribute("aria-label") ||
+          "";
         const ratingMatch = ratingText.match(/([1-5](?:[.,]\d)?)/);
         let rating = ratingMatch ? Number(ratingMatch[1].replace(",", ".")) : 0;
         if (!rating) {
-          const widthNode = [...block.querySelectorAll("*")].find((el) => /width\s*:\s*\d+(?:\.\d+)?%/i.test(el.getAttribute("style") || ""));
-          const width = widthNode?.getAttribute("style")?.match(/width\s*:\s*(\d+(?:\.\d+)?)%/i)?.[1];
+          const widthNode = [...block.querySelectorAll("*")].find((el) =>
+            /width\s*:\s*\d+(?:\.\d+)?%/i.test(el.getAttribute("style") || ""),
+          );
+          const width = widthNode
+            ?.getAttribute("style")
+            ?.match(/width\s*:\s*(\d+(?:\.\d+)?)%/i)?.[1];
           if (width) rating = Number(width) / 20;
         }
         if (!(rating > 0 && rating <= 5)) continue;
-        const bodyNode = block.querySelector(".buyer-feedback,[class*='review-content'],[class*='feedback-content'],[class*='reviewContent'],[class*='feedbackContent'],[class*='feedback-text']");
+        const bodyNode = block.querySelector(
+          ".buyer-feedback,[class*='review-content'],[class*='feedback-content'],[class*='reviewContent'],[class*='feedbackContent'],[class*='feedback-text']",
+        );
         const body = (bodyNode?.textContent || rawText).replace(/\s+/g, " ").trim().slice(0, 8000);
         if (!body) continue;
-        const authorNode = block.querySelector(".buyer-name,.user-name,[class*='userName'],[class*='buyerName']");
+        const authorNode = block.querySelector(
+          ".buyer-name,.user-name,[class*='userName'],[class*='buyerName']",
+        );
         const countryNode = block.querySelector(".buyer-country,.user-country,[class*='country']");
-        const images = [...block.querySelectorAll("img")].map((img) => img.currentSrc || img.src).filter(Boolean).slice(0, 8);
+        const images = [...block.querySelectorAll("img")]
+          .map((img) => img.currentSrc || img.src)
+          .filter(Boolean)
+          .slice(0, 8);
         reviews.push({
-          id: block.getAttribute("data-review-id") || block.getAttribute("data-feedback-id") || null,
+          id:
+            block.getAttribute("data-review-id") || block.getAttribute("data-feedback-id") || null,
           author: (authorNode?.textContent || "").trim().slice(0, 180) || null,
           country: (countryNode?.textContent || "").trim().slice(0, 24) || null,
           rating,
@@ -221,11 +330,21 @@ async function fetchFeedback(productId, ownerMemberId) {
       const response = await fetch(url.toString(), { credentials: "include", redirect: "follow" });
       if (!response.ok) break;
       const raw = await response.text();
-      if (/captcha|verify you are human|security verification|punish-page|robot check/i.test(raw.slice(0, 150000))) {
-        throw new Error("O AliExpress pediu uma verificação. Conclua a verificação na aba aberta e clique em Sincronizar AliExpress novamente.");
+      if (
+        /captcha|verify you are human|security verification|punish-page|robot check/i.test(
+          raw.slice(0, 150000),
+        )
+      ) {
+        throw new Error(
+          "O AliExpress pediu uma verificação. Conclua a verificação na aba aberta e clique em Sincronizar AliExpress novamente.",
+        );
       }
       let payload;
-      try { payload = JSON.parse(raw); } catch { payload = null; }
+      try {
+        payload = JSON.parse(raw);
+      } catch {
+        payload = null;
+      }
       if (!payload) break;
       remoteTotal = Math.max(remoteTotal, findRemoteTotal(payload));
       const before = output.size;
@@ -261,7 +380,9 @@ async function collectProductReviews(tabId, productId) {
     const images = (review.images || []).map(safeImage).filter(Boolean).slice(0, MAX_IMAGES);
     if (!review.body || !(review.rating > 0)) continue;
     const normalized = { ...review, images };
-    const key = normalized.id || `${normalized.author || ""}|${normalized.rating}|${normalized.reviewed_at || ""}|${normalized.body}`;
+    const key =
+      normalized.id ||
+      `${normalized.author || ""}|${normalized.rating}|${normalized.reviewed_at || ""}|${normalized.body}`;
     merged.set(key, normalized);
     if (merged.size >= MAX_REVIEWS) break;
   }
@@ -269,7 +390,9 @@ async function collectProductReviews(tabId, productId) {
   const reviews = [...merged.values()];
   if (!reviews.length) {
     if (fetchError) throw fetchError;
-    throw new Error("A extensão abriu o produto, mas nenhum comentário ficou disponível. Se o AliExpress pedir login ou verificação, conclua na aba aberta e clique em Sincronizar AliExpress novamente.");
+    throw new Error(
+      "A extensão abriu o produto, mas nenhum comentário ficou disponível. Se o AliExpress pedir login ou verificação, conclua na aba aberta e clique em Sincronizar AliExpress novamente.",
+    );
   }
 
   return {
@@ -307,11 +430,14 @@ function waitForTabComplete(tabId, timeoutMs = 30000) {
 async function collectFromStore(message, sender) {
   const enabledState = await chrome.storage.local.get(["agExtensionEnabled"]);
   if (enabledState.agExtensionEnabled === false) {
-    throw new Error("A extensão Absoluto Glamur está DESLIGADA. Clique no ícone da extensão e pressione Ligar.");
+    throw new Error(
+      "A extensão Absoluto Glamur está DESLIGADA. Clique no ícone da extensão e pressione Ligar.",
+    );
   }
 
   const productId = String(message.productId || "");
-  if (!/^\d{5,}$/.test(productId)) throw new Error("ID AliExpress inválido na solicitação da loja.");
+  if (!/^\d{5,}$/.test(productId))
+    throw new Error("ID AliExpress inválido na solicitação da loja.");
   const sourceUrl = new URL(message.sourceUrl);
   if (!/aliexpress\./i.test(sourceUrl.hostname)) throw new Error("URL AliExpress inválida.");
 
@@ -336,14 +462,17 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message?.type === "AG_COLLECT_FROM_STORE") {
     collectFromStore(message, sender)
       .then((result) => sendResponse({ ok: true, ...result }))
-      .catch((error) => sendResponse({ ok: false, error: error instanceof Error ? error.message : String(error) }));
+      .catch((error) =>
+        sendResponse({ ok: false, error: error instanceof Error ? error.message : String(error) }),
+      );
     return true;
   }
 
   if (message?.type === "AG_IMPORT_ALIEXPRESS_REVIEWS") {
     sendResponse({
       ok: false,
-      error: "Na versão 1.3.0, use o botão Sincronizar AliExpress dentro da página do produto na Absoluto Glamur.",
+      error:
+        "Na versão 1.3.0, use o botão Sincronizar AliExpress dentro da página do produto na Absoluto Glamur.",
     });
     return false;
   }

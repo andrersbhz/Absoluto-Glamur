@@ -112,7 +112,9 @@ async function callAi(context: any, opts: CallOptions) {
 
   if (!output) {
     if (/429|RESOURCE_EXHAUSTED|quota|rate limit/i.test(error ?? "")) {
-      throw new Error("Limite do provedor de IA atingido. Tente novamente ou habilite o provedor de fallback.");
+      throw new Error(
+        "Limite do provedor de IA atingido. Tente novamente ou habilite o provedor de fallback.",
+      );
     }
     throw new Error(error ?? "Falha ao chamar IA configurada.");
   }
@@ -131,15 +133,17 @@ async function callAi(context: any, opts: CallOptions) {
 export const generateProductDescription = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((v: unknown) =>
-    z.object({
-      name: z.string().min(2),
-      category: z.string().optional(),
-      brand: z.string().optional(),
-      attributes: z.string().optional(),
-      audience: z.string().optional(),
-      product_id: z.string().uuid().optional(),
-      model: z.enum(["fast", "quality"]).optional(),
-    }).parse(v),
+    z
+      .object({
+        name: z.string().min(2),
+        category: z.string().optional(),
+        brand: z.string().optional(),
+        attributes: z.string().optional(),
+        audience: z.string().optional(),
+        product_id: z.string().uuid().optional(),
+        model: z.enum(["fast", "quality"]).optional(),
+      })
+      .parse(v),
   )
   .handler(async ({ data, context }) => {
     await assertAiAccess(context);
@@ -180,13 +184,15 @@ Formato de saída (markdown):
 export const generateProductSeo = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((v: unknown) =>
-    z.object({
-      name: z.string().min(2),
-      category: z.string().optional(),
-      brand: z.string().optional(),
-      short_description: z.string().optional(),
-      product_id: z.string().uuid().optional(),
-    }).parse(v),
+    z
+      .object({
+        name: z.string().min(2),
+        category: z.string().optional(),
+        brand: z.string().optional(),
+        short_description: z.string().optional(),
+        product_id: z.string().uuid().optional(),
+      })
+      .parse(v),
   )
   .handler(async ({ data, context }) => {
     await assertAiAccess(context);
@@ -216,13 +222,15 @@ Resumo: ${data.short_description ?? "—"}`;
 export const generateMarketingCopy = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((v: unknown) =>
-    z.object({
-      goal: z.string().min(2),
-      channel: z.enum(["hero", "email", "instagram", "google_ads", "banner"]),
-      context: z.string().optional(),
-      tone: z.string().optional(),
-      model: z.enum(["fast", "quality"]).optional(),
-    }).parse(v),
+    z
+      .object({
+        goal: z.string().min(2),
+        channel: z.enum(["hero", "email", "instagram", "google_ads", "banner"]),
+        context: z.string().optional(),
+        tone: z.string().optional(),
+        model: z.enum(["fast", "quality"]).optional(),
+      })
+      .parse(v),
   )
   .handler(async ({ data, context }) => {
     await assertAiAccess(context);
@@ -252,15 +260,18 @@ Formato: markdown com "### Variação 1/2/3".`;
 export const improveText = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((v: unknown) =>
-    z.object({
-      text: z.string().min(5),
-      action: z.enum(["polish", "shorten", "expand", "translate_en"]),
-    }).parse(v),
+    z
+      .object({
+        text: z.string().min(5),
+        action: z.enum(["polish", "shorten", "expand", "translate_en"]),
+      })
+      .parse(v),
   )
   .handler(async ({ data, context }) => {
     await assertAiAccess(context);
     const actionMap = {
-      polish: "Revise e melhore o texto abaixo mantendo o significado. Corrija gramática e melhore fluidez.",
+      polish:
+        "Revise e melhore o texto abaixo mantendo o significado. Corrija gramática e melhore fluidez.",
       shorten: "Encurte o texto abaixo em ~40%, mantendo os pontos essenciais.",
       expand: "Expanda o texto abaixo com mais detalhes sensoriais e de uso, sem inventar dados.",
       translate_en: "Traduza para inglês natural e comercial (mercado americano).",

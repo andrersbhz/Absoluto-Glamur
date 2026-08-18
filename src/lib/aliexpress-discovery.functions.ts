@@ -83,24 +83,41 @@ async function loadAliCreds(credentialClient?: any) {
   const appKey = String(data?.api_key ?? cfg.app_key ?? "").trim();
   const appSecret = String(data?.webhook_token ?? cfg.app_secret ?? "").trim();
   const legacyAppSecret = String(cfg.app_secret ?? "").trim();
-  const fallbackAppSecret = legacyAppSecret && legacyAppSecret !== appSecret ? legacyAppSecret : null;
+  const fallbackAppSecret =
+    legacyAppSecret && legacyAppSecret !== appSecret ? legacyAppSecret : null;
   const accessToken = String(cfg.access_token ?? "").trim();
   const refreshToken = String(cfg.refresh_token ?? "").trim();
   const refreshedAt: string | null = cfg.refreshed_at ?? cfg.authorized_at ?? null;
   const expiresIn: number = Number(cfg.expires_in ?? 0);
   if (!appKey || !appSecret) {
-    throw new Error("Configure App Key (API Key) e App Secret (Webhook Token) do AliExpress em /admin/integrations.");
+    throw new Error(
+      "Configure App Key (API Key) e App Secret (Webhook Token) do AliExpress em /admin/integrations.",
+    );
   }
   // Só bloqueia quando o access_token realmente não existe. Flag `reauth_required`
   // pode ficar velha após uma renovação/reautorização; se o token está presente,
   // seguimos e deixamos o refresh automático tratar caso o AliExpress rejeite.
   if (!accessToken) {
-    throw new Error("AliExpress precisa ser reautorizado em /admin/integrations (clique em 'Autorizar AliExpress').");
+    throw new Error(
+      "AliExpress precisa ser reautorizado em /admin/integrations (clique em 'Autorizar AliExpress').",
+    );
   }
-  return { appKey, appSecret, fallbackAppSecret, accessToken, refreshToken, refreshedAt, expiresIn };
+  return {
+    appKey,
+    appSecret,
+    fallbackAppSecret,
+    accessToken,
+    refreshToken,
+    refreshedAt,
+    expiresIn,
+  };
 }
 
-async function signRestPath(apiPath: string, params: Record<string, string>, secret: string): Promise<string> {
+async function signRestPath(
+  apiPath: string,
+  params: Record<string, string>,
+  secret: string,
+): Promise<string> {
   const keys = Object.keys(params).sort();
   const base = apiPath + keys.map((k) => `${k}${params[k]}`).join("");
   return hmacSha256Hex(secret, base);
@@ -146,7 +163,8 @@ async function refreshAliToken(
   };
 
   if (!refreshToken) {
-    const msg = "AliExpress access_token expirado e refresh_token indisponível — reautorize em /admin/integrations.";
+    const msg =
+      "AliExpress access_token expirado e refresh_token indisponível — reautorize em /admin/integrations.";
     await markInvalid(msg);
     throw new Error(msg);
   }
@@ -165,9 +183,14 @@ async function refreshAliToken(
   });
   const text = await res.text();
   let json: any = {};
-  try { json = JSON.parse(text); } catch { /* keep */ }
+  try {
+    json = JSON.parse(text);
+  } catch {
+    /* keep */
+  }
   if (!res.ok || json.error || !json.access_token) {
-    const raw = json.error_description ?? json.msg ?? json.message ?? json.error ?? text.slice(0, 300);
+    const raw =
+      json.error_description ?? json.msg ?? json.message ?? json.error ?? text.slice(0, 300);
     const msg = `Falha ao renovar token AliExpress: ${raw}. Reautorize em /admin/integrations.`;
     if (/invalid|expired|IllegalRefreshToken|InvalidRefreshToken/i.test(String(raw))) {
       await markInvalid(msg);
@@ -257,7 +280,8 @@ export async function callAli<T = any>(
   bizParams: Record<string, string | number | boolean | undefined | null>,
   credentialClient?: any,
 ): Promise<T> {
-  let { appKey, appSecret, fallbackAppSecret, accessToken, refreshToken, refreshedAt, expiresIn } = await loadAliCreds(credentialClient);
+  let { appKey, appSecret, fallbackAppSecret, accessToken, refreshToken, refreshedAt, expiresIn } =
+    await loadAliCreds(credentialClient);
 
   // Refresh preventivo: se access_token expira em menos de 5 min, renova antes.
   if (refreshedAt && expiresIn > 0) {
@@ -289,7 +313,9 @@ export async function callAli<T = any>(
     if (!er) return false;
     const code = String(er.code ?? er.sub_code ?? "");
     const msg = String(er.msg ?? er.sub_msg ?? "");
-    return /IllegalAccessToken|InvalidAccessToken|AccessTokenExpired|access_token/i.test(`${code} ${msg}`);
+    return /IllegalAccessToken|InvalidAccessToken|AccessTokenExpired|access_token/i.test(
+      `${code} ${msg}`,
+    );
   };
 
   if (isTokenErr(json)) {
@@ -333,7 +359,9 @@ async function searchAliExpressWeb(
     throw new Error("Firecrawl está configurado, mas desativado em Admin → Integrações.");
   }
   if (firecrawlKey.startsWith("lovc_")) {
-    throw new Error("A chave Firecrawl salva pertence ao antigo gateway do Lovable. Substitua por uma API Key direta do Firecrawl para evitar créditos do Lovable.");
+    throw new Error(
+      "A chave Firecrawl salva pertence ao antigo gateway do Lovable. Substitua por uma API Key direta do Firecrawl para evitar créditos do Lovable.",
+    );
   }
 
   const res = await fetch("https://api.firecrawl.dev/v2/search", {
@@ -350,9 +378,11 @@ async function searchAliExpressWeb(
       sources: ["web", "images"],
     }),
   });
-  const payload = (await res.json().catch(() => null)) as
-    | { success?: boolean; data?: { web?: FirecrawlSearchResult[]; images?: FirecrawlSearchResult[] }; error?: string }
-    | null;
+  const payload = (await res.json().catch(() => null)) as {
+    success?: boolean;
+    data?: { web?: FirecrawlSearchResult[]; images?: FirecrawlSearchResult[] };
+    error?: string;
+  } | null;
   if (!res.ok || !payload?.success) {
     throw new Error(payload?.error ?? `Busca do catálogo falhou [${res.status}]`);
   }
@@ -369,37 +399,47 @@ async function searchAliExpressWeb(
   const seen = new Set<string>();
   const products: DiscoveryProduct[] = [];
   for (const item of combined) {
-      const productId = item.url?.match(/\/item\/(\d+)\.html/i)?.[1] ?? "";
-      if (!productId || seen.has(productId)) continue;
-      seen.add(productId);
-      const description = item.description ?? "";
-      const price = firstNumber(
-        description.match(/(?:R\$|BRL)\s*([\d.,]+)/i)?.[1],
-        description.match(/(?:US\s*\$|USD)\s*([\d.,]+)/i)?.[1],
-      );
-      const isBrl = /(?:R\$|BRL)/i.test(description);
-      const image = item.imageUrl ?? imageByProduct.get(productId) ?? null;
-      products.push({
-        product_id: productId,
-        title: item.title?.replace(/\s*-\s*AliExpress.*$/i, "").replace(/ali[\s\-_]?express/gi, "").replace(/\s{2,}/g, " ").trim() || "Produto importado",
-        image,
-        images: image ? [image] : [],
-        price_original: price,
-        currency: price == null ? null : isBrl ? "BRL" : "USD",
-        price_brl_estimate_cents: null,
-        evaluate_rate: parseRate(description.match(/\b([0-5](?:[.,]\d)?)\s*[౹|]\s*\d+\s*(?:sold|vendidos)/i)?.[1]),
-        lastest_volume: firstNumber(description.match(/([\d.,]+)\s*(?:sold|vendidos)/i)?.[1]),
-        shop_id: null,
-        shop_title: null,
-        shop_rating: null,
-        product_url: item.url ?? `https://www.aliexpress.com/item/${productId}.html`,
-      });
-      if (products.length >= limit) break;
+    const productId = item.url?.match(/\/item\/(\d+)\.html/i)?.[1] ?? "";
+    if (!productId || seen.has(productId)) continue;
+    seen.add(productId);
+    const description = item.description ?? "";
+    const price = firstNumber(
+      description.match(/(?:R\$|BRL)\s*([\d.,]+)/i)?.[1],
+      description.match(/(?:US\s*\$|USD)\s*([\d.,]+)/i)?.[1],
+    );
+    const isBrl = /(?:R\$|BRL)/i.test(description);
+    const image = item.imageUrl ?? imageByProduct.get(productId) ?? null;
+    products.push({
+      product_id: productId,
+      title:
+        item.title
+          ?.replace(/\s*-\s*AliExpress.*$/i, "")
+          .replace(/ali[\s\-_]?express/gi, "")
+          .replace(/\s{2,}/g, " ")
+          .trim() || "Produto importado",
+      image,
+      images: image ? [image] : [],
+      price_original: price,
+      currency: price == null ? null : isBrl ? "BRL" : "USD",
+      price_brl_estimate_cents: null,
+      evaluate_rate: parseRate(
+        description.match(/\b([0-5](?:[.,]\d)?)\s*[౹|]\s*\d+\s*(?:sold|vendidos)/i)?.[1],
+      ),
+      lastest_volume: firstNumber(description.match(/([\d.,]+)\s*(?:sold|vendidos)/i)?.[1]),
+      shop_id: null,
+      shop_title: null,
+      shop_rating: null,
+      product_url: item.url ?? `https://www.aliexpress.com/item/${productId}.html`,
+    });
+    if (products.length >= limit) break;
   }
   return products;
 }
 
-async function enrichWebResultsWithAliDetails(items: DiscoveryProduct[], credentialClient?: any): Promise<DiscoveryProduct[]> {
+async function enrichWebResultsWithAliDetails(
+  items: DiscoveryProduct[],
+  credentialClient?: any,
+): Promise<DiscoveryProduct[]> {
   const enriched = [...items];
   let cursor = 0;
   const workers = Array.from({ length: Math.min(4, items.length) }, async () => {
@@ -407,12 +447,16 @@ async function enrichWebResultsWithAliDetails(items: DiscoveryProduct[], credent
       const index = cursor++;
       const item = items[index];
       try {
-        const json = await callAli("aliexpress.ds.product.get", {
-          product_id: item.product_id,
-          ship_to_country: "BR",
-          target_currency: "BRL",
-          target_language: "PT",
-        }, credentialClient);
+        const json = await callAli(
+          "aliexpress.ds.product.get",
+          {
+            product_id: item.product_id,
+            ship_to_country: "BR",
+            target_currency: "BRL",
+            target_language: "PT",
+          },
+          credentialClient,
+        );
         const root = json.aliexpress_ds_product_get_response ?? json;
         const result = root.result ?? root;
         const base = result.ae_item_base_info_dto ?? result.base_info ?? {};
@@ -459,7 +503,9 @@ async function enrichWebResultsWithAliDetails(items: DiscoveryProduct[], credent
           shop_id: store.store_id ? String(store.store_id) : item.shop_id,
           shop_title: store.store_name ?? item.shop_title,
           shop_rating: storeRates.length
-            ? Math.round((storeRates.reduce((sum, rate) => sum + rate, 0) / storeRates.length) * 100) / 100
+            ? Math.round(
+                (storeRates.reduce((sum, rate) => sum + rate, 0) / storeRates.length) * 100,
+              ) / 100
             : item.shop_rating,
         };
       } catch {
@@ -531,13 +577,13 @@ function normalizeSearchProduct(p: any): DiscoveryProduct {
   const images = extractImages(p);
   const price = firstNumber(p.target_sale_price, p.sale_price, p.app_sale_price, p.original_price);
   const currency: string =
-    p.target_sale_price_currency ??
-    p.sale_price_currency ??
-    p.app_sale_price_currency ??
-    "USD";
+    p.target_sale_price_currency ?? p.sale_price_currency ?? p.app_sale_price_currency ?? "USD";
   return {
     product_id: String(p.product_id ?? p.item_id ?? ""),
-    title: String(p.product_title ?? p.subject ?? p.title ?? "Produto importado").replace(/ali[\s\-_]?express/gi, "").replace(/\s{2,}/g, " ").trim(),
+    title: String(p.product_title ?? p.subject ?? p.title ?? "Produto importado")
+      .replace(/ali[\s\-_]?express/gi, "")
+      .replace(/\s{2,}/g, " ")
+      .trim(),
     image: images[0] ?? null,
     images,
     price_original: price,
@@ -548,7 +594,10 @@ function normalizeSearchProduct(p: any): DiscoveryProduct {
     shop_id: p.shop_id ? String(p.shop_id) : null,
     shop_title: p.shop_title ?? p.store_name ?? null,
     shop_rating: parseRate(p.shop_rating ?? p.store_rating ?? p.positive_rate),
-    product_url: p.product_detail_url ?? p.promotion_link ?? (p.product_id ? `https://www.aliexpress.com/item/${p.product_id}.html` : null),
+    product_url:
+      p.product_detail_url ??
+      p.promotion_link ??
+      (p.product_id ? `https://www.aliexpress.com/item/${p.product_id}.html` : null),
   };
 }
 
@@ -563,7 +612,9 @@ async function fxToBrl(from: string): Promise<number> {
       const bid = parseFloat(j[`${code}BRL`]?.bid ?? "");
       if (Number.isFinite(bid) && bid > 0) return bid;
     }
-  } catch { /* ignore */ }
+  } catch {
+    /* ignore */
+  }
   return FX_FALLBACK[code] ?? 5.5;
 }
 
@@ -611,8 +662,11 @@ export const discoverAliexpressProducts = createServerFn({ method: "POST" })
           json = null;
         } catch (fallbackError) {
           const apiMessage = apiError instanceof Error ? apiError.message : String(apiError);
-          const fallbackMessage = fallbackError instanceof Error ? fallbackError.message : String(fallbackError);
-          throw new Error(`Busca indisponível. API AliExpress: ${apiMessage} Fallback: ${fallbackMessage}`);
+          const fallbackMessage =
+            fallbackError instanceof Error ? fallbackError.message : String(fallbackError);
+          throw new Error(
+            `Busca indisponível. API AliExpress: ${apiMessage} Fallback: ${fallbackMessage}`,
+          );
         }
       }
     } else {
@@ -650,7 +704,11 @@ export const discoverAliexpressProducts = createServerFn({ method: "POST" })
     // Enrich with BRL estimate using live FX for the first currency seen.
     const currencies = Array.from(new Set(items.map((i) => (i.currency ?? "USD").toUpperCase())));
     const rates: Record<string, number> = {};
-    await Promise.all(currencies.map(async (c) => { rates[c] = await fxToBrl(c); }));
+    await Promise.all(
+      currencies.map(async (c) => {
+        rates[c] = await fxToBrl(c);
+      }),
+    );
     for (const it of items) {
       if (it.price_original != null) {
         const rate = rates[(it.currency ?? "USD").toUpperCase()] ?? 5.5;
@@ -683,7 +741,8 @@ async function loadSettings(admin: any) {
     .select("config")
     .eq("provider", "aliexpress")
     .maybeSingle();
-  const raw = (data?.config as Record<string, unknown> | null)?.import_settings ?? data?.config ?? null;
+  const raw =
+    (data?.config as Record<string, unknown> | null)?.import_settings ?? data?.config ?? null;
   const parsed = SettingsSchema.safeParse(raw);
 
   return parsed.success
@@ -710,17 +769,22 @@ async function translateToPtBr(
     const { generateWithOwnKeys } = await import("./ai-translate.server");
     const payload = JSON.stringify({ title: input.title, description: input.description ?? "" });
     const text = await generateWithOwnKeys(
-      "Você traduz descrições de produtos de cosméticos para português do Brasil, com tom elegante, claro e comercial. Preserve unidades, especificações e nomes próprios de ingredientes. Não invente informações. Responda APENAS com JSON válido no formato {\"title\":\"...\",\"description\":\"...\"}.",
+      'Você traduz descrições de produtos de cosméticos para português do Brasil, com tom elegante, claro e comercial. Preserve unidades, especificações e nomes próprios de ingredientes. Não invente informações. Responda APENAS com JSON válido no formato {"title":"...","description":"..."}.',
       `Traduza para pt-BR:
 
 ${payload}`,
       credentialClient,
     );
     if (!text) return input;
-    const cleaned = text.trim().replace(/^```(?:json)?/i, "").replace(/```$/i, "").trim();
+    const cleaned = text
+      .trim()
+      .replace(/^```(?:json)?/i, "")
+      .replace(/```$/i, "")
+      .trim();
     const parsed = JSON.parse(cleaned);
     return {
-      title: typeof parsed.title === "string" && parsed.title.trim() ? parsed.title.trim() : input.title,
+      title:
+        typeof parsed.title === "string" && parsed.title.trim() ? parsed.title.trim() : input.title,
       description:
         typeof parsed.description === "string" && parsed.description.trim()
           ? parsed.description.trim()
@@ -742,7 +806,6 @@ function stripHtml(html: string): string {
     .trim();
 }
 
-
 export const importAliexpressProductToStore = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((v: unknown) =>
@@ -759,12 +822,16 @@ export const importAliexpressProductToStore = createServerFn({ method: "POST" })
     const db = context.supabase;
 
     // Fetch full product details
-    const json = await callAli("aliexpress.ds.product.get", {
-      product_id: data.product_id,
-      target_currency: "BRL",
-      target_language: "PT",
-      ship_to_country: "BR",
-    }, db);
+    const json = await callAli(
+      "aliexpress.ds.product.get",
+      {
+        product_id: data.product_id,
+        target_currency: "BRL",
+        target_language: "PT",
+        ship_to_country: "BR",
+      },
+      db,
+    );
     const root =
       (json as any).aliexpress_ds_product_get_response ??
       (json as any).aliexpress_ds_productdetail_get_response ??
@@ -778,8 +845,7 @@ export const importAliexpressProductToStore = createServerFn({ method: "POST" })
     const shopBlock = result.ae_store_info ?? result.store_info ?? {};
 
     const title: string = base.subject ?? base.product_title ?? "Produto importado";
-    const descHtml: string =
-      base.detail ?? result.package_info_dto?.package_detail ?? "";
+    const descHtml: string = base.detail ?? result.package_info_dto?.package_detail ?? "";
     const description = descHtml ? stripHtml(descHtml).slice(0, 6000) : null;
 
     // Images
@@ -807,8 +873,7 @@ export const importAliexpressProductToStore = createServerFn({ method: "POST" })
     const priceRaw =
       firstNumber(firstSku.offer_sale_price, firstSku.sku_price, firstSku.offer_bulk_sale_price) ??
       firstNumber(result.app_sale_price, base.sale_price);
-    const currency: string =
-      firstSku.currency_code ?? base.currency_code ?? "USD";
+    const currency: string = firstSku.currency_code ?? base.currency_code ?? "USD";
     const sku = firstSku.sku_code ?? firstSku.sku_id ?? `AE-${data.product_id}`;
     const weight = firstNumber(props.package_weight, firstSku.package_weight);
 
@@ -854,7 +919,8 @@ export const importAliexpressProductToStore = createServerFn({ method: "POST" })
     // Build product
     const settings = await loadSettings(db);
     const priceCents = computeSalePriceCents(norm.price_original, norm.currency, settings);
-    const slug = slugify(norm.title) + "-" + (norm.source_id ?? Math.random().toString(36).slice(2, 8));
+    const slug =
+      slugify(norm.title) + "-" + (norm.source_id ?? Math.random().toString(36).slice(2, 8));
 
     const { data: created, error: pe } = await db
       .from("products")

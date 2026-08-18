@@ -32,15 +32,22 @@ async function agFindOrOpenProductTab(productId, sourceUrl) {
 
 async function agStartJob(message, sender) {
   if (!(await agEnabled())) {
-    throw new Error("A extensão Absoluto Glamur está DESLIGADA. Clique no ícone da extensão e pressione Ligar.");
+    throw new Error(
+      "A extensão Absoluto Glamur está DESLIGADA. Clique no ícone da extensão e pressione Ligar.",
+    );
   }
 
   const requestId = String(message.requestId || "");
   const productId = String(message.productId || "");
   const sourceUrl = String(message.sourceUrl || "");
-  if (!requestId || !/^\d{5,}$/.test(productId)) throw new Error("Solicitação de sincronização inválida.");
+  if (!requestId || !/^\d{5,}$/.test(productId))
+    throw new Error("Solicitação de sincronização inválida.");
   let parsed;
-  try { parsed = new URL(sourceUrl); } catch { throw new Error("URL AliExpress inválida."); }
+  try {
+    parsed = new URL(sourceUrl);
+  } catch {
+    throw new Error("URL AliExpress inválida.");
+  }
   if (!/aliexpress\./i.test(parsed.hostname)) throw new Error("URL AliExpress inválida.");
 
   const key = `${AG_JOB_PREFIX}${requestId}`;
@@ -91,6 +98,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message?.type !== "AG_START_REVIEW_JOB_V16") return false;
   agStartJob(message, sender)
     .then((result) => sendResponse({ ok: true, ...result }))
-    .catch((error) => sendResponse({ ok: false, error: error instanceof Error ? error.message : String(error) }));
+    .catch((error) =>
+      sendResponse({ ok: false, error: error instanceof Error ? error.message : String(error) }),
+    );
   return true;
 });

@@ -75,7 +75,14 @@ function safeImage(value: string): string | null {
     const url = new URL(value.startsWith("//") ? `https:${value}` : value);
     if (url.protocol !== "https:" && url.protocol !== "http:") return null;
     const host = url.hostname.toLowerCase();
-    if (!(host.includes("alicdn") || host.includes("aliexpress") || host.includes("aliimg") || host.includes("ae01"))) {
+    if (
+      !(
+        host.includes("alicdn") ||
+        host.includes("aliexpress") ||
+        host.includes("aliimg") ||
+        host.includes("ae01")
+      )
+    ) {
       return null;
     }
     return url.toString();
@@ -86,7 +93,10 @@ function safeImage(value: string): string | null {
 
 function safeReviewId(value: string | null | undefined): string | null {
   if (!value) return null;
-  const cleaned = value.trim().replace(/[^a-zA-Z0-9_.:-]/g, "").slice(0, 180);
+  const cleaned = value
+    .trim()
+    .replace(/[^a-zA-Z0-9_.:-]/g, "")
+    .slice(0, 180);
   return cleaned || null;
 }
 
@@ -108,7 +118,9 @@ export const getAliExpressBrowserReviewTargetForProduct = createServerFn({ metho
     await assertCatalog(context);
     const sourceProductId = await resolveSourceProductId(context.supabase, data.product_id);
     if (!sourceProductId) {
-      throw new Error("Este produto ainda não possui um ID AliExpress vinculado. Vincule ou importe o produto antes de sincronizar avaliações.");
+      throw new Error(
+        "Este produto ainda não possui um ID AliExpress vinculado. Vincule ou importe o produto antes de sincronizar avaliações.",
+      );
     }
     return {
       productId: data.product_id,
@@ -132,9 +144,12 @@ export const importAliExpressBrowserReviewsAuthenticated = createServerFn({ meth
     const db = context.supabase;
 
     const expectedSourceId = await resolveSourceProductId(db, data.product_id);
-    if (!expectedSourceId) throw new Error("Produto sem vínculo AliExpress para receber avaliações.");
+    if (!expectedSourceId)
+      throw new Error("Produto sem vínculo AliExpress para receber avaliações.");
     if (expectedSourceId !== data.source_product_id) {
-      throw new Error("O produto AliExpress coletado não corresponde ao produto vinculado na Absoluto Glamur.");
+      throw new Error(
+        "O produto AliExpress coletado não corresponde ao produto vinculado na Absoluto Glamur.",
+      );
     }
 
     const { data: product, error: productError } = await db
@@ -146,17 +161,20 @@ export const importAliExpressBrowserReviewsAuthenticated = createServerFn({ meth
     if (!product) throw new Error("Produto de destino não encontrado.");
 
     const startedAt = new Date().toISOString();
-    await db.from("product_review_sync_state").upsert({
-      product_id: data.product_id,
-      source: "aliexpress",
-      source_id: data.source_product_id,
-      status: "running",
-      fetched_count: 0,
-      remote_total: data.remote_total ?? null,
-      last_attempt_at: startedAt,
-      last_error: null,
-      updated_at: startedAt,
-    }, { onConflict: "product_id" });
+    await db.from("product_review_sync_state").upsert(
+      {
+        product_id: data.product_id,
+        source: "aliexpress",
+        source_id: data.source_product_id,
+        status: "running",
+        fetched_count: 0,
+        remote_total: data.remote_total ?? null,
+        last_attempt_at: startedAt,
+        last_error: null,
+        updated_at: startedAt,
+      },
+      { onConflict: "product_id" },
+    );
 
     const validReviews = data.reviews.filter(
       (review) => Number.isFinite(review.rating) && review.rating >= 1 && review.rating <= 5,
@@ -168,7 +186,9 @@ export const importAliExpressBrowserReviewsAuthenticated = createServerFn({ meth
 
     const now = new Date().toISOString();
     const rows = validReviews.map((review) => {
-      const images = [...new Set(review.images.map(safeImage).filter((value): value is string => Boolean(value)))].slice(0, MAX_IMAGES);
+      const images = [
+        ...new Set(review.images.map(safeImage).filter((value): value is string => Boolean(value))),
+      ].slice(0, MAX_IMAGES);
       const reviewedAt = safeDate(review.reviewed_at);
       const directId = safeReviewId(review.id);
       const fingerprint = [
@@ -200,29 +220,37 @@ export const importAliExpressBrowserReviewsAuthenticated = createServerFn({ meth
     const { error: upsertError } = await db
       .from("product_external_reviews")
       .upsert(rows, { onConflict: "product_id,source,source_review_id" });
-    if (upsertError) throw new Error(`Falha ao salvar avaliações coletadas pelo Chrome: ${upsertError.message}`);
+    if (upsertError)
+      throw new Error(`Falha ao salvar avaliações coletadas pelo Chrome: ${upsertError.message}`);
 
-    const average = Math.round((rows.reduce((sum, row) => sum + row.rating, 0) / rows.length) * 100) / 100;
+    const average =
+      Math.round((rows.reduce((sum, row) => sum + row.rating, 0) / rows.length) * 100) / 100;
     const remoteTotal = Math.max(Number(data.remote_total ?? 0), rows.length);
     const { error: productUpdateError } = await db
       .from("products")
       .update({ rating_avg: average, rating_count: remoteTotal })
       .eq("id", data.product_id);
-    if (productUpdateError) throw new Error(`Avaliações foram salvas, mas a nota do produto não foi atualizada: ${productUpdateError.message}`);
+    if (productUpdateError)
+      throw new Error(
+        `Avaliações foram salvas, mas a nota do produto não foi atualizada: ${productUpdateError.message}`,
+      );
 
     const withPhotos = rows.filter((row) => row.images.length > 0).length;
-    await db.from("product_review_sync_state").upsert({
-      product_id: data.product_id,
-      source: "aliexpress",
-      source_id: data.source_product_id,
-      status: "ok",
-      fetched_count: rows.length,
-      remote_total: remoteTotal,
-      last_attempt_at: startedAt,
-      last_success_at: now,
-      last_error: null,
-      updated_at: now,
-    }, { onConflict: "product_id" });
+    await db.from("product_review_sync_state").upsert(
+      {
+        product_id: data.product_id,
+        source: "aliexpress",
+        source_id: data.source_product_id,
+        status: "ok",
+        fetched_count: rows.length,
+        remote_total: remoteTotal,
+        last_attempt_at: startedAt,
+        last_success_at: now,
+        last_error: null,
+        updated_at: now,
+      },
+      { onConflict: "product_id" },
+    );
 
     return {
       ok: true,

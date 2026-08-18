@@ -15,31 +15,40 @@ async function isEnabled() {
 }
 
 function postReady(requestId = null, enabled = true) {
-  window.postMessage({
-    source: "absoluto-glamur-extension",
-    type: "AG_EXTENSION_READY",
-    requestId,
-    version: chrome.runtime.getManifest().version,
-    enabled,
-  }, window.location.origin);
+  window.postMessage(
+    {
+      source: "absoluto-glamur-extension",
+      type: "AG_EXTENSION_READY",
+      requestId,
+      version: chrome.runtime.getManifest().version,
+      enabled,
+    },
+    window.location.origin,
+  );
 }
 
 function postResult(requestId, payload) {
-  window.postMessage({
-    source: "absoluto-glamur-extension",
-    type: "AG_REVIEW_SYNC_RESULT",
-    requestId,
-    ...payload,
-  }, window.location.origin);
+  window.postMessage(
+    {
+      source: "absoluto-glamur-extension",
+      type: "AG_REVIEW_SYNC_RESULT",
+      requestId,
+      ...payload,
+    },
+    window.location.origin,
+  );
 }
 
 function postProgress(requestId, stage) {
-  window.postMessage({
-    source: "absoluto-glamur-extension",
-    type: "AG_REVIEW_SYNC_PROGRESS",
-    requestId,
-    stage: String(stage || "Coletando avaliações..."),
-  }, window.location.origin);
+  window.postMessage(
+    {
+      source: "absoluto-glamur-extension",
+      type: "AG_REVIEW_SYNC_PROGRESS",
+      requestId,
+      stage: String(stage || "Coletando avaliações..."),
+    },
+    window.location.origin,
+  );
 }
 
 chrome.storage.onChanged.addListener((changes, areaName) => {
@@ -58,7 +67,10 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
       setTimeout(() => chrome.storage.local.remove(key).catch(() => undefined), 5000);
     } else if (job.status === "error") {
       pendingRequests.delete(requestId);
-      postResult(requestId, { ok: false, error: job.error || "A extensão não conseguiu coletar as avaliações." });
+      postResult(requestId, {
+        ok: false,
+        error: job.error || "A extensão não conseguiu coletar as avaliações.",
+      });
       setTimeout(() => chrome.storage.local.remove(key).catch(() => undefined), 5000);
     }
   }
@@ -81,41 +93,57 @@ window.addEventListener("message", async (event) => {
   if (!enabled) {
     postResult(requestId, {
       ok: false,
-      error: "A extensão Absoluto Glamur está DESLIGADA. Clique no ícone da extensão e pressione Ligar.",
+      error:
+        "A extensão Absoluto Glamur está DESLIGADA. Clique no ícone da extensão e pressione Ligar.",
     });
     return;
   }
 
   const productId = String(data.productId || "");
   const sourceUrl = String(data.sourceUrl || "");
-  if (!requestId || !/^\d{5,}$/.test(productId) || !/^https:\/\/[^/]*aliexpress\./i.test(sourceUrl)) {
+  if (
+    !requestId ||
+    !/^\d{5,}$/.test(productId) ||
+    !/^https:\/\/[^/]*aliexpress\./i.test(sourceUrl)
+  ) {
     postResult(requestId, { ok: false, error: "Solicitação de sincronização inválida." });
     return;
   }
 
   pendingRequests.add(requestId);
   postProgress(requestId, "Abrindo o produto no AliExpress...");
-  chrome.runtime.sendMessage({
-    type: "AG_START_REVIEW_JOB_V16",
-    requestId,
-    productId,
-    sourceUrl,
-  }, (response) => {
-    if (chrome.runtime.lastError) {
-      pendingRequests.delete(requestId);
-      postResult(requestId, {
-        ok: false,
-        error: chrome.runtime.lastError.message || "A extensão não conseguiu iniciar a coleta.",
-      });
-      return;
-    }
-    if (!response?.ok) {
-      pendingRequests.delete(requestId);
-      postResult(requestId, response || { ok: false, error: "A extensão não conseguiu iniciar a coleta." });
-      return;
-    }
-    postProgress(requestId, "Produto aberto. A coleta continua dentro da própria página do AliExpress...");
-  });
+  chrome.runtime.sendMessage(
+    {
+      type: "AG_START_REVIEW_JOB_V16",
+      requestId,
+      productId,
+      sourceUrl,
+    },
+    (response) => {
+      if (chrome.runtime.lastError) {
+        pendingRequests.delete(requestId);
+        postResult(requestId, {
+          ok: false,
+          error: chrome.runtime.lastError.message || "A extensão não conseguiu iniciar a coleta.",
+        });
+        return;
+      }
+      if (!response?.ok) {
+        pendingRequests.delete(requestId);
+        postResult(
+          requestId,
+          response || { ok: false, error: "A extensão não conseguiu iniciar a coleta." },
+        );
+        return;
+      }
+      postProgress(
+        requestId,
+        "Produto aberto. A coleta continua dentro da própria página do AliExpress...",
+      );
+    },
+  );
 });
 
-isEnabled().then((enabled) => postReady(null, enabled)).catch(() => postReady(null, true));
+isEnabled()
+  .then((enabled) => postReady(null, enabled))
+  .catch(() => postReady(null, true));

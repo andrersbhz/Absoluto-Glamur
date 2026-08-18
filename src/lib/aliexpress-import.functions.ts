@@ -114,9 +114,11 @@ export function computeSalePriceCents(
   settings: ImportSettings,
 ): number {
   if (!originalPrice || originalPrice <= 0) return 0;
-  const inBrl = currency && currency.toUpperCase() === "BRL" ? originalPrice : originalPrice * settings.fx_rate;
+  const inBrl =
+    currency && currency.toUpperCase() === "BRL" ? originalPrice : originalPrice * settings.fx_rate;
   const baseCents = Math.round(inBrl * 100);
-  const withMarkup = Math.round(baseCents * (1 + settings.markup_percent / 100)) + settings.markup_fixed_cents;
+  const withMarkup =
+    Math.round(baseCents * (1 + settings.markup_percent / 100)) + settings.markup_fixed_cents;
   if (settings.round_to_99) {
     const reais = Math.floor(withMarkup / 100);
     return reais * 100 + 99;
@@ -155,10 +157,17 @@ function extractAliexpressId(input: string): string | null {
 
 function isAliExpressHost(hostname: string): boolean {
   const host = hostname.toLowerCase().replace(/^www\./, "");
-  return host === "aliexpress.com" || host.endsWith(".aliexpress.com") || host === "aliexpress.us" || host.endsWith(".aliexpress.us");
+  return (
+    host === "aliexpress.com" ||
+    host.endsWith(".aliexpress.com") ||
+    host === "aliexpress.us" ||
+    host.endsWith(".aliexpress.us")
+  );
 }
 
-async function resolveAliExpressInput(input: string): Promise<{ productId: string; sourceUrl: string }> {
+async function resolveAliExpressInput(
+  input: string,
+): Promise<{ productId: string; sourceUrl: string }> {
   const value = input.trim();
   const directId = extractAliexpressId(value);
   if (directId) {
@@ -176,7 +185,9 @@ async function resolveAliExpressInput(input: string): Promise<{ productId: strin
   }
 
   if (!isAliExpressHost(parsed.hostname)) {
-    throw new Error("A importação por URL aceita apenas links de produtos do AliExpress ou o ID numérico do produto.");
+    throw new Error(
+      "A importação por URL aceita apenas links de produtos do AliExpress ou o ID numérico do produto.",
+    );
   }
 
   // Short/share links do AliExpress não carregam o ID no endereço inicial.
@@ -197,12 +208,16 @@ async function resolveAliExpressInput(input: string): Promise<{ productId: strin
     }
     finalUrl = response.url || finalUrl;
   } catch {
-    throw new Error("Não foi possível resolver esse link curto do AliExpress. Cole a URL completa do produto ou o ID numérico.");
+    throw new Error(
+      "Não foi possível resolver esse link curto do AliExpress. Cole a URL completa do produto ou o ID numérico.",
+    );
   }
 
   const resolvedId = extractAliexpressId(finalUrl);
   if (!resolvedId) {
-    throw new Error("Não encontrei o ID do produto nesse link. Cole a URL completa do AliExpress ou o ID numérico.");
+    throw new Error(
+      "Não encontrei o ID do produto nesse link. Cole a URL completa do AliExpress ou o ID numérico.",
+    );
   }
 
   return {
@@ -331,9 +346,49 @@ export function stripBrandMentions(input: string | null | undefined): string | n
 }
 
 const TAG_STOPWORDS = new Set([
-  "a","o","as","os","de","da","do","das","dos","e","em","para","com","sem","por",
-  "um","uma","uns","umas","no","na","nos","nas","ao","aos","the","and","for","of",
-  "com","kit","novo","nova","pcs","pc","ml","g","kg","cm","mm","un","und","pack",
+  "a",
+  "o",
+  "as",
+  "os",
+  "de",
+  "da",
+  "do",
+  "das",
+  "dos",
+  "e",
+  "em",
+  "para",
+  "com",
+  "sem",
+  "por",
+  "um",
+  "uma",
+  "uns",
+  "umas",
+  "no",
+  "na",
+  "nos",
+  "nas",
+  "ao",
+  "aos",
+  "the",
+  "and",
+  "for",
+  "of",
+  "com",
+  "kit",
+  "novo",
+  "nova",
+  "pcs",
+  "pc",
+  "ml",
+  "g",
+  "kg",
+  "cm",
+  "mm",
+  "un",
+  "und",
+  "pack",
 ]);
 export function buildProductTags(input: {
   name?: string | null;
@@ -359,7 +414,11 @@ export function buildProductTags(input: {
   for (const e of input.extras ?? []) push(e ?? undefined);
   if (input.name) {
     for (const tok of input.name.split(/[\s,/|·•\-–—()\\[\]]+/)) {
-      const clean = tok.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "");
+      const clean = tok
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^a-z0-9]/g, "");
       if (clean.length >= 4 && !TAG_STOPWORDS.has(clean) && !/^\d+$/.test(clean)) out.add(clean);
       if (out.size >= 10) break;
     }
@@ -377,12 +436,12 @@ export function toParagraphHtml(text: string | null | undefined): string | null 
       .replace(/<style[\s\S]*?<\/style>/gi, "")
       .trim();
   }
-  const esc = (s: string) =>
-    s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-  const blocks = raw.split(/\n{2,}/).map((b) => b.trim()).filter(Boolean);
-  return blocks
-    .map((b) => `<p>${esc(b).replace(/\n/g, "<br />")}</p>`)
-    .join("\n");
+  const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const blocks = raw
+    .split(/\n{2,}/)
+    .map((b) => b.trim())
+    .filter(Boolean);
+  return blocks.map((b) => `<p>${esc(b).replace(/\n/g, "<br />")}</p>`).join("\n");
 }
 
 async function translateToPtBr(
@@ -398,7 +457,7 @@ async function translateToPtBr(
       description: input.description ?? "",
     });
     const text = await generateWithOwnKeys(
-      "Você traduz descrições de produtos de cosméticos para português do Brasil, mantendo tom elegante, claro e comercial. Preserve unidades, especificações e nomes próprios de ingredientes. Não invente informações. Responda APENAS com JSON válido no formato {\"title\":\"...\",\"description\":\"...\"} sem comentários nem markdown.",
+      'Você traduz descrições de produtos de cosméticos para português do Brasil, mantendo tom elegante, claro e comercial. Preserve unidades, especificações e nomes próprios de ingredientes. Não invente informações. Responda APENAS com JSON válido no formato {"title":"...","description":"..."} sem comentários nem markdown.',
       `Traduza para pt-BR o conteúdo abaixo. Reescreva de forma natural, sem estrangeirismos desnecessários.\n\n${payload}`,
       credentialClient,
     );
@@ -408,9 +467,14 @@ async function translateToPtBr(
         description: stripBrandMentions(input.description),
       };
     }
-    const cleaned = text.trim().replace(/^```(?:json)?/i, "").replace(/```$/i, "").trim();
+    const cleaned = text
+      .trim()
+      .replace(/^```(?:json)?/i, "")
+      .replace(/```$/i, "")
+      .trim();
     const parsed = JSON.parse(cleaned);
-    const rawTitle = typeof parsed.title === "string" && parsed.title.trim() ? parsed.title.trim() : input.title;
+    const rawTitle =
+      typeof parsed.title === "string" && parsed.title.trim() ? parsed.title.trim() : input.title;
     const rawDesc =
       typeof parsed.description === "string" && parsed.description.trim()
         ? parsed.description.trim()
@@ -447,9 +511,7 @@ async function fetchFxToBrl(from: string): Promise<number | null> {
 
 export const scrapeUrlPreview = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((v: unknown) =>
-    z.object({ url: z.string().trim().min(3).max(2048) }).parse(v),
-  )
+  .inputValidator((v: unknown) => z.object({ url: z.string().trim().min(3).max(2048) }).parse(v))
   .handler(async ({ data, context }): Promise<NormalizedProduct> => {
     await assertCatalog(context);
     const raw = await loadAliExpressUrlPreview(data.url, context.supabase);
@@ -498,7 +560,8 @@ async function loadSettings(admin: any): Promise<ImportSettings> {
     .select("config")
     .eq("provider", "aliexpress")
     .maybeSingle();
-  const raw = (data?.config as Record<string, unknown> | null)?.import_settings ?? data?.config ?? null;
+  const raw =
+    (data?.config as Record<string, unknown> | null)?.import_settings ?? data?.config ?? null;
   const parsed = SettingsSchema.safeParse(raw);
   return parsed.success ? parsed.data : DEFAULT_SETTINGS;
 }
@@ -530,10 +593,7 @@ async function syncVariantsAndRecord(
     warning = `Falha ao sincronizar variações: ${e instanceof Error ? e.message : String(e)}`;
   }
   if (warning) {
-    await admin
-      .from("product_imports")
-      .update({ error: warning })
-      .eq("id", importId);
+    await admin.from("product_imports").update({ error: warning }).eq("id", importId);
   }
 }
 
@@ -561,7 +621,8 @@ async function commitImportRow(
     computeSalePriceCents(norm.price_original, norm.currency, effective);
   assertPublishablePrice(opts.status, priceCents);
 
-  const slug = slugify(norm.title) + "-" + (norm.source_id ?? Math.random().toString(36).slice(2, 8));
+  const slug =
+    slugify(norm.title) + "-" + (norm.source_id ?? Math.random().toString(36).slice(2, 8));
   const sku = norm.sku || (norm.source_id ? `AE-${norm.source_id}` : `IMP-${Date.now()}`);
 
   const { data: created, error: pe } = await admin
@@ -584,7 +645,12 @@ async function commitImportRow(
 
   const { data: nv, error: ve } = await admin
     .from("product_variants")
-    .insert({ product_id: productId, sku, is_default: true, weight_grams: norm.weight_grams ?? null })
+    .insert({
+      product_id: productId,
+      sku,
+      is_default: true,
+      weight_grams: norm.weight_grams ?? null,
+    })
     .select("id")
     .single();
   if (ve) throw new Error(ve.message);
@@ -699,7 +765,9 @@ export const saveImportDraft = createServerFn({ method: "POST" })
 
 export const bulkImportJson = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((v: unknown) => z.object({ items: z.array(DraftSchema.shape.normalized).min(1).max(100) }).parse(v))
+  .inputValidator((v: unknown) =>
+    z.object({ items: z.array(DraftSchema.shape.normalized).min(1).max(100) }).parse(v),
+  )
   .handler(async ({ data, context }) => {
     await assertCatalog(context);
     const db = context.supabase;
@@ -762,14 +830,18 @@ export const bulkImportJson = createServerFn({ method: "POST" })
 export const listImports = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .inputValidator((v: unknown) =>
-    z.object({ status: z.enum(["all", "draft", "imported", "failed", "archived"]).optional() }).parse(v ?? {}),
+    z
+      .object({ status: z.enum(["all", "draft", "imported", "failed", "archived"]).optional() })
+      .parse(v ?? {}),
   )
   .handler(async ({ data, context }): Promise<ImportRow[]> => {
     await assertCatalog(context);
     const db = context.supabase;
     let q = db
       .from("product_imports")
-      .select("id, source, source_url, source_id, status, error, product_id, normalized_data, created_at, updated_at")
+      .select(
+        "id, source, source_url, source_id, status, error, product_id, normalized_data, created_at, updated_at",
+      )
       .order("created_at", { ascending: false })
       .limit(200);
     if (data.status && data.status !== "all") q = q.eq("status", data.status);
@@ -797,7 +869,9 @@ export const getImport = createServerFn({ method: "GET" })
     const db = context.supabase;
     const { data: r, error } = await db
       .from("product_imports")
-      .select("id, source, source_url, source_id, status, error, product_id, normalized_data, created_at, updated_at")
+      .select(
+        "id, source, source_url, source_id, status, error, product_id, normalized_data, created_at, updated_at",
+      )
       .eq("id", data.id)
       .maybeSingle();
     if (error) throw new Error(error.message);
@@ -901,7 +975,9 @@ export const commitImport = createServerFn({ method: "POST" })
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const settingsRaw = (cfg?.config as any)?.import_settings ?? cfg?.config ?? null;
     const settingsParsed = SettingsSchema.safeParse(settingsRaw);
-    const settings: ImportSettings = settingsParsed.success ? settingsParsed.data : DEFAULT_SETTINGS;
+    const settings: ImportSettings = settingsParsed.success
+      ? settingsParsed.data
+      : DEFAULT_SETTINGS;
 
     const effective: ImportSettings =
       data.markup_override_percent != null
@@ -935,7 +1011,9 @@ export const commitImport = createServerFn({ method: "POST" })
         .maybeSingle();
       if (vrowError) throw new Error(vrowError.message);
       if (!vrow?.id) {
-        throw new Error("Produto importado sem variação padrão. Corrija o catálogo antes de publicar.");
+        throw new Error(
+          "Produto importado sem variação padrão. Corrija o catálogo antes de publicar.",
+        );
       }
 
       const { error: disablePriceError } = await db
@@ -964,13 +1042,7 @@ export const commitImport = createServerFn({ method: "POST" })
       if (importUpdateError) throw new Error(importUpdateError.message);
 
       if (norm.source_id) {
-        await syncVariantsAndRecord(
-          db,
-          data.id,
-          imp.product_id,
-          String(norm.source_id),
-          settings,
-        );
+        await syncVariantsAndRecord(db, data.id, imp.product_id, String(norm.source_id), settings);
         await syncImportedProductReviews(db, imp.product_id);
       }
       const { data: p, error: productError } = await db
@@ -1050,14 +1122,8 @@ export const commitImport = createServerFn({ method: "POST" })
     if (importUpdateError) throw new Error(importUpdateError.message);
 
     if (norm.source_id) {
-      await syncVariantsAndRecord(
-        db,
-        data.id,
-        productId,
-        String(norm.source_id),
-        settings,
-      );
-        await syncImportedProductReviews(db, productId);
+      await syncVariantsAndRecord(db, data.id, productId, String(norm.source_id), settings);
+      await syncImportedProductReviews(db, productId);
     }
 
     return { id: productId, slug, price_cents: priceCents };

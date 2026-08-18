@@ -27,45 +27,56 @@ async function agV15EnsureProductTab(productId, sourceUrl) {
 }
 
 async function agV15PrepareReviewArea(tabId) {
-  await chrome.scripting.executeScript({
-    target: { tabId },
-    func: async () => {
-      const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
-      const normalize = (value) => (value || "").replace(/\s+/g, " ").trim().toLowerCase();
+  await chrome.scripting
+    .executeScript({
+      target: { tabId },
+      func: async () => {
+        const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+        const normalize = (value) => (value || "").replace(/\s+/g, " ").trim().toLowerCase();
 
-      const selectors = [
-        "button",
-        "a",
-        "[role='tab']",
-        "[role='button']",
-        "[data-pl='product-reviewer']",
-        "[class*='review']",
-        "[class*='feedback']",
-      ];
+        const selectors = [
+          "button",
+          "a",
+          "[role='tab']",
+          "[role='button']",
+          "[data-pl='product-reviewer']",
+          "[class*='review']",
+          "[class*='feedback']",
+        ];
 
-      for (const selector of selectors) {
-        const nodes = [...document.querySelectorAll(selector)];
-        const candidate = nodes.find((node) => {
-          const text = normalize(node.textContent);
-          return text.length > 0 && text.length < 140 && /(avaliações|avaliacoes|reviews?|feedback)/.test(text);
-        });
-        if (candidate) {
-          candidate.scrollIntoView({ block: "center", behavior: "instant" });
-          await sleep(600);
-          try { candidate.click(); } catch {}
-          await sleep(1800);
-          break;
+        for (const selector of selectors) {
+          const nodes = [...document.querySelectorAll(selector)];
+          const candidate = nodes.find((node) => {
+            const text = normalize(node.textContent);
+            return (
+              text.length > 0 &&
+              text.length < 140 &&
+              /(avaliações|avaliacoes|reviews?|feedback)/.test(text)
+            );
+          });
+          if (candidate) {
+            candidate.scrollIntoView({ block: "center", behavior: "instant" });
+            await sleep(600);
+            try {
+              candidate.click();
+            } catch {}
+            await sleep(1800);
+            break;
+          }
         }
-      }
 
-      const height = Math.max(document.body?.scrollHeight || 0, document.documentElement?.scrollHeight || 0);
-      const positions = [0.35, 0.55, 0.72, 0.88, 1];
-      for (const ratio of positions) {
-        window.scrollTo({ top: Math.floor(height * ratio), behavior: "instant" });
-        await sleep(550);
-      }
-    },
-  }).catch(() => undefined);
+        const height = Math.max(
+          document.body?.scrollHeight || 0,
+          document.documentElement?.scrollHeight || 0,
+        );
+        const positions = [0.35, 0.55, 0.72, 0.88, 1];
+        for (const ratio of positions) {
+          window.scrollTo({ top: Math.floor(height * ratio), behavior: "instant" });
+          await sleep(550);
+        }
+      },
+    })
+    .catch(() => undefined);
 }
 
 async function agV15FetchFeedbackInsidePage(tabId, productId, ownerMemberId) {
@@ -103,9 +114,19 @@ async function agV15FetchFeedbackInsidePage(tabId, productId, ownerMemberId) {
           const url = new URL(value.startsWith("//") ? `https:${value}` : value);
           if (!/^https?:$/.test(url.protocol)) return null;
           const host = url.hostname.toLowerCase();
-          if (!(host.includes("alicdn") || host.includes("aliexpress") || host.includes("aliimg") || host.includes("ae01"))) return null;
+          if (
+            !(
+              host.includes("alicdn") ||
+              host.includes("aliexpress") ||
+              host.includes("aliimg") ||
+              host.includes("ae01")
+            )
+          )
+            return null;
           return url.toString();
-        } catch { return null; }
+        } catch {
+          return null;
+        }
       };
       const collectImgs = (value, output = [], depth = 0) => {
         if (value == null || depth > 5 || output.length >= maxImages) return output;
@@ -132,20 +153,84 @@ async function agV15FetchFeedbackInsidePage(tabId, productId, ownerMemberId) {
           for (const key of keys) if (raw[key] != null && raw[key] !== "") return raw[key];
           return null;
         };
-        const rating = ratingOfLocal(pick("buyerEval", "evaluteRate", "evaluateRate", "evaluation", "rating", "star", "stars", "score"));
-        const original = clean(pick("buyerFeedback", "feedback", "content", "reviewContent", "review_content", "comment", "evaContent"));
-        const translated = clean(pick("buyerTranslationFeedback", "translationFeedback", "translatedFeedback", "translated_content"));
+        const rating = ratingOfLocal(
+          pick(
+            "buyerEval",
+            "evaluteRate",
+            "evaluateRate",
+            "evaluation",
+            "rating",
+            "star",
+            "stars",
+            "score",
+          ),
+        );
+        const original = clean(
+          pick(
+            "buyerFeedback",
+            "feedback",
+            "content",
+            "reviewContent",
+            "review_content",
+            "comment",
+            "evaContent",
+          ),
+        );
+        const translated = clean(
+          pick(
+            "buyerTranslationFeedback",
+            "translationFeedback",
+            "translatedFeedback",
+            "translated_content",
+          ),
+        );
         const body = translated || original;
         if (!body || !(rating > 0)) return null;
         return {
-          id: clean(pick("evaluationIdStr", "evaluationId", "feedbackId", "feedback_id", "reviewId", "review_id", "id"), 180),
-          author: clean(pick("buyerName", "buyer_name", "buyer_blured_name", "userName", "author", "displayName"), 180),
-          country: clean(pick("buyerCountry", "buyer_country", "buyer_country_code", "country", "countryCode"), 24),
+          id: clean(
+            pick(
+              "evaluationIdStr",
+              "evaluationId",
+              "feedbackId",
+              "feedback_id",
+              "reviewId",
+              "review_id",
+              "id",
+            ),
+            180,
+          ),
+          author: clean(
+            pick(
+              "buyerName",
+              "buyer_name",
+              "buyer_blured_name",
+              "userName",
+              "author",
+              "displayName",
+            ),
+            180,
+          ),
+          country: clean(
+            pick("buyerCountry", "buyer_country", "buyer_country_code", "country", "countryCode"),
+            24,
+          ),
           rating,
           title: clean(pick("skuInfo", "sku_info", "productSku", "product_sku", "title"), 500),
           body,
-          images: collectImgs(pick("images", "buyerFeedbackPicList", "imageUrls", "image_urls", "photos", "pictures")),
-          reviewed_at: dateOfLocal(pick("evalDate", "buyerFeedbackDate", "feedbackDate", "feedback_date", "date", "create_time", "createdAt")),
+          images: collectImgs(
+            pick("images", "buyerFeedbackPicList", "imageUrls", "image_urls", "photos", "pictures"),
+          ),
+          reviewed_at: dateOfLocal(
+            pick(
+              "evalDate",
+              "buyerFeedbackDate",
+              "feedbackDate",
+              "feedback_date",
+              "date",
+              "create_time",
+              "createdAt",
+            ),
+          ),
         };
       };
       const reviews = new Map();
@@ -159,13 +244,20 @@ async function agV15FetchFeedbackInsidePage(tabId, productId, ownerMemberId) {
         if (typeof value !== "object") return;
         const review = normalizeReview(value);
         if (review) {
-          const key = review.id || `${review.author || ""}|${review.rating}|${review.reviewed_at || ""}|${review.body}`;
+          const key =
+            review.id ||
+            `${review.author || ""}|${review.rating}|${review.reviewed_at || ""}|${review.body}`;
           reviews.set(key, review);
         }
         for (const [key, child] of Object.entries(value)) {
-          if (/^(totalNum|total_number|totalCount|totalEvaluation|totalResults|total_results|reviewCount|evaluationCount)$/i.test(key)) {
+          if (
+            /^(totalNum|total_number|totalCount|totalEvaluation|totalResults|total_results|reviewCount|evaluationCount)$/i.test(
+              key,
+            )
+          ) {
             const n = Number(String(child).replace(/[^\d.-]/g, ""));
-            if (Number.isFinite(n) && n >= 0 && n <= 2000000) remoteTotal = Math.max(remoteTotal, Math.round(n));
+            if (Number.isFinite(n) && n >= 0 && n <= 2000000)
+              remoteTotal = Math.max(remoteTotal, Math.round(n));
           }
           if (child && typeof child === "object") walk(child, depth + 1);
           if (reviews.size >= maxReviews) break;
@@ -193,11 +285,17 @@ async function agV15FetchFeedbackInsidePage(tabId, productId, ownerMemberId) {
             headers: { Accept: "application/json, text/plain, */*" },
           });
           const raw = await response.text();
-          if (/captcha|verify you are human|security verification|punish-page|robot check/i.test(raw.slice(0, 160000))) {
+          if (
+            /captcha|verify you are human|security verification|punish-page|robot check/i.test(
+              raw.slice(0, 160000),
+            )
+          ) {
             return { reviews: [...reviews.values()], remoteTotal, verification: true };
           }
           let payload = null;
-          try { payload = JSON.parse(raw); } catch {}
+          try {
+            payload = JSON.parse(raw);
+          } catch {}
           if (!payload) break;
           const before = reviews.size;
           walk(payload);
@@ -238,7 +336,9 @@ async function agV15CollectProductReviews(tabId, productId) {
   const merged = new Map();
   for (const review of [...(pageFetch.reviews || []), ...(page.reviews || [])]) {
     if (!review?.body || !(review.rating > 0)) continue;
-    const key = review.id || `${review.author || ""}|${review.rating}|${review.reviewed_at || ""}|${review.body}`;
+    const key =
+      review.id ||
+      `${review.author || ""}|${review.rating}|${review.reviewed_at || ""}|${review.body}`;
     merged.set(key, review);
     if (merged.size >= 160) break;
   }
@@ -246,12 +346,18 @@ async function agV15CollectProductReviews(tabId, productId) {
   const reviews = [...merged.values()];
   if (!reviews.length) {
     if (pageFetch.verification) {
-      throw new Error("O AliExpress abriu o produto, mas pediu verificação/login para liberar as avaliações. Conclua a verificação na aba e clique em Sincronizar AliExpress novamente.");
+      throw new Error(
+        "O AliExpress abriu o produto, mas pediu verificação/login para liberar as avaliações. Conclua a verificação na aba e clique em Sincronizar AliExpress novamente.",
+      );
     }
     if (pageFetch.timedOut) {
-      throw new Error("A página do AliExpress abriu, mas a consulta de avaliações não respondeu dentro do limite. Deixe a aba aberta, confirme que está logado e tente novamente.");
+      throw new Error(
+        "A página do AliExpress abriu, mas a consulta de avaliações não respondeu dentro do limite. Deixe a aba aberta, confirme que está logado e tente novamente.",
+      );
     }
-    throw new Error("A página do AliExpress abriu normalmente, mas os comentários não foram expostos à extensão. Abra manualmente a seção Avaliações nessa aba e clique em Sincronizar AliExpress novamente.");
+    throw new Error(
+      "A página do AliExpress abriu normalmente, mas os comentários não foram expostos à extensão. Abra manualmente a seção Avaliações nessa aba e clique em Sincronizar AliExpress novamente.",
+    );
   }
 
   return {
@@ -265,11 +371,14 @@ async function agV15CollectProductReviews(tabId, productId) {
 async function agV15Run(message, sender) {
   const enabledState = await chrome.storage.local.get(["agExtensionEnabled"]);
   if (enabledState.agExtensionEnabled === false) {
-    throw new Error("A extensão Absoluto Glamur está DESLIGADA. Clique no ícone da extensão e pressione Ligar.");
+    throw new Error(
+      "A extensão Absoluto Glamur está DESLIGADA. Clique no ícone da extensão e pressione Ligar.",
+    );
   }
 
   const productId = String(message.productId || "");
-  if (!/^\d{5,}$/.test(productId)) throw new Error("ID AliExpress inválido na solicitação da loja.");
+  if (!/^\d{5,}$/.test(productId))
+    throw new Error("ID AliExpress inválido na solicitação da loja.");
   const sourceUrl = new URL(String(message.sourceUrl || ""));
   if (!/aliexpress\./i.test(sourceUrl.hostname)) throw new Error("URL AliExpress inválida.");
 
@@ -294,7 +403,12 @@ async function agV15Run(message, sender) {
   try {
     return await Promise.race([
       task,
-      new Promise((_, reject) => setTimeout(() => reject(new Error("A coleta no AliExpress atingiu o limite total de 90 segundos.")), AG_V15_TOTAL_TIMEOUT_MS)),
+      new Promise((_, reject) =>
+        setTimeout(
+          () => reject(new Error("A coleta no AliExpress atingiu o limite total de 90 segundos.")),
+          AG_V15_TOTAL_TIMEOUT_MS,
+        ),
+      ),
     ]);
   } finally {
     activeSyncByProduct.delete(productId);
@@ -305,6 +419,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message?.type !== "AG_COLLECT_FROM_STORE_V15") return false;
   agV15Run(message, sender)
     .then((result) => sendResponse({ ok: true, ...result }))
-    .catch((error) => sendResponse({ ok: false, error: error instanceof Error ? error.message : String(error) }));
+    .catch((error) =>
+      sendResponse({ ok: false, error: error instanceof Error ? error.message : String(error) }),
+    );
   return true;
 });

@@ -20,7 +20,9 @@ globalThis.fetch = async (input, init = {}) => {
     return await agNativeFetch(input, { ...init, signal: controller.signal });
   } catch (error) {
     if (controller.signal.aborted && !externalSignal?.aborted) {
-      throw new Error("O AliExpress demorou demais para responder à consulta de avaliações. A extensão cancelou a requisição travada automaticamente.");
+      throw new Error(
+        "O AliExpress demorou demais para responder à consulta de avaliações. A extensão cancelou a requisição travada automaticamente.",
+      );
     }
     throw error;
   } finally {
@@ -34,7 +36,9 @@ importScripts("background-v13.js");
 function agResolveCollector() {
   if (typeof collectFromStore === "function") return collectFromStore;
   if (typeof agCollectFromStore === "function") return agCollectFromStore;
-  throw new Error("O coletor interno da extensão não foi carregado. Reinstale a extensão Absoluto Glamur 1.4.0.");
+  throw new Error(
+    "O coletor interno da extensão não foi carregado. Reinstale a extensão Absoluto Glamur 1.4.0.",
+  );
 }
 
 // v1.4 uses its own message name, so the v1.3 listener ignores it. This lets us
@@ -53,7 +57,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   const watchdog = setTimeout(() => {
     finish({
       ok: false,
-      error: "A extensão interrompeu a coleta porque o AliExpress não respondeu dentro do limite. Verifique se a aba do produto abriu corretamente, conclua qualquer login/CAPTCHA e tente novamente.",
+      error:
+        "A extensão interrompeu a coleta porque o AliExpress não respondeu dentro do limite. Verifique se a aba do produto abriu corretamente, conclua qualquer login/CAPTCHA e tente novamente.",
     });
   }, AG_TOTAL_SYNC_TIMEOUT_MS);
 
@@ -61,10 +66,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     .then(() => agResolveCollector())
     .then((collector) => collector(message, sender))
     .then((result) => finish({ ok: true, ...result }))
-    .catch((error) => finish({
-      ok: false,
-      error: error instanceof Error ? error.message : String(error),
-    }));
+    .catch((error) =>
+      finish({
+        ok: false,
+        error: error instanceof Error ? error.message : String(error),
+      }),
+    );
 
   return true;
 });
