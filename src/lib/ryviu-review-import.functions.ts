@@ -268,7 +268,7 @@ export const importRyviuReviewsCsv = createServerFn({ method: "POST" })
 
     const { data: product, error: productError } = await db
       .from("products")
-      .select("id,title,slug")
+      .select("id,name,slug")
       .eq("id", data.product_id)
       .maybeSingle();
     if (productError) throw productError;
@@ -335,7 +335,7 @@ export const importRyviuReviewsCsv = createServerFn({ method: "POST" })
 
     return {
       productId: product.id,
-      productTitle: product.title,
+      productTitle: product.name,
       productSlug: product.slug,
       imported,
       invalidRows,
