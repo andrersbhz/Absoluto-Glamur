@@ -1,19 +1,12 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 /**
- * Cliente para APIs públicas do protocolo TOP clássico.
+ * Cliente para a API pública TOP de avaliações do AliExpress.
  *
- * `aliexpress.social.product.evaluation.query` é uma API TOP pública (sem session)
- * e a documentação específica aceita `sign_method=md5` ou `sign_method=hmac`.
- * Usamos MD5 aqui por compatibilidade com o endpoint legado /router/rest.
- *
- * As credenciais TOP de avaliações ficam isoladas no provider
- * `aliexpress_top_reviews`. A integração principal `aliexpress` permanece como
- * fallback por compatibilidade com instalações anteriores.
- *
- * Se a TOP não estiver disponível para a aplicação, somente o método de avaliações
- * pode usar um fallback best-effort da página pública do produto. Esse fallback não
- * contorna CAPTCHA/anti-bot, não inventa comentários e não afeta outras APIs.
+ * A consulta TOP continua sendo a primeira fonte quando existe uma App Key aceita
+ * pelo gateway. Quando ela não está disponível, o fluxo degrada para fontes públicas
+ * e, por último, para coleta renderizada SOMENTE com Firecrawl direto configurado.
+ * Chaves `lovc_`/gateway Lovable são deliberadamente ignoradas para este fallback.
  */
 
 const TOP_HTTPS_ENDPOINTS = [
@@ -160,8 +153,8 @@ async function loadAliTopCredentialCandidates(credentialClient?: any): Promise<T
 
   const candidates: TopCredentialCandidate[] = [];
 
-  // A credencial dedicada é opcional e pode ser legado de uma tela que já não é
-  // mais exposta no painel. Ela nunca deve bloquear a credencial principal.
+  // Credencial dedicada legada. Ela pode funcionar, mas nunca bloqueia as fontes
+  // seguintes se o gateway informar que a App Key não existe.
   const dedicated = await readCredentialRow(client, TOP_REVIEWS_PROVIDER);
   const dedicatedKey = String(dedicated?.api_key ?? "").trim();
   const dedicatedSecret = String(dedicated?.webhook_token ?? "").trim();
@@ -169,6 +162,8 @@ async function loadAliTopCredentialCandidates(credentialClient?: any): Promise<T
     candidates.push({ appKey: dedicatedKey, secrets: [dedicatedSecret], source: "dedicated" });
   }
 
+  // Mantém compatibilidade com instalações em que a mesma aplicação principal é
+  // também reconhecida pelo gateway TOP clássico.
   const primary = await readCredentialRow(client, "aliexpress");
   const cfg = (primary?.config ?? {}) as Record<string, unknown>;
   const appKey = String(primary?.api_key ?? cfg.app_key ?? "").trim();
@@ -179,8 +174,6 @@ async function loadAliTopCredentialCandidates(credentialClient?: any): Promise<T
     candidates.push({ appKey, secrets, source: "primary" });
   }
 
-  // Evita repetir a mesma combinação quando a credencial dedicada foi copiada da
-  // integração principal em alguma versão anterior do painel.
   const deduped: TopCredentialCandidate[] = [];
   const seen = new Set<string>();
   for (const candidate of candidates) {
@@ -194,9 +187,7 @@ async function loadAliTopCredentialCandidates(credentialClient?: any): Promise<T
   }
 
   if (!deduped.length) {
-    throw new Error(
-      "A integração AliExpress não possui credenciais utilizáveis para a consulta oficial de avaliações. O sistema ainda tentará a coleta pública.",
-    );
+    throw new Error("nenhuma credencial TOP utilizável; seguindo para fallbacks");
   }
   return deduped;
 }
@@ -335,7 +326,11 @@ function cachedPublicFallback(method: string, bizParams: Record<string, unknown>
   return syntheticTopReviewResponse(cached, bizParams);
 }
 
-async function tryPublicReviewFallback(method: string, bizParams: Record<string, unknown>) {
+async function tryPublicReviewFallback(
+  method: string,
+  bizParams: Record<string, unknown>,
+  credentialClient?: any,
+) {
   const productId = publicFallbackProductId(method, bizParams);
   if (!productId) return { json: null as any, diagnostic: null as string | null };
 
@@ -349,22 +344,39 @@ async function tryPublicReviewFallback(method: string, bizParams: Record<string,
 
   try {
     const { fetchAliExpressPublicReviews } = await import("./aliexpress-public-reviews.server");
-    const result = await fetchAliExpressPublicReviews(productId);
+    const basic = await fetchAliExpressPublicReviews(productId);
+    let reviews = basic.reviews;
+    const diagnostics = [...basic.diagnostics];
+
+    // Segunda camada: resolve ownerMemberId pela Open Platform e usa as formas de
+    // feedback que dependem dele. Se ainda vier vazio, pode usar Firecrawl DIRETO,
+    // nunca o connector-gateway/Lovable.
+    if (!reviews.length) {
+      try {
+        const { fetchAliExpressExtendedReviews } = await import("./aliexpress-review-fallbacks.server");
+        const extended = await fetchAliExpressExtendedReviews(productId, credentialClient);
+        reviews = extended.reviews;
+        diagnostics.push(...extended.diagnostics);
+      } catch (error) {
+        diagnostics.push(`fallback estendido: ${error instanceof Error ? error.message : String(error)}`);
+      }
+    }
+
     const entry: PublicReviewCacheEntry = {
       expiresAt: Date.now() + PUBLIC_REVIEW_CACHE_TTL_MS,
-      productId: result.productId,
-      reviews: result.reviews,
-      diagnostics: result.diagnostics,
+      productId: basic.productId,
+      reviews,
+      diagnostics,
     };
     publicReviewCache.set(productId, entry);
     return {
       json: entry.reviews.length ? syntheticTopReviewResponse(entry, bizParams) : null,
-      diagnostic: entry.diagnostics.join(" | ") || "página pública sem comentários expostos",
+      diagnostic: entry.diagnostics.join(" | ") || "nenhuma fonte pública expôs comentários",
     };
   } catch (error) {
     return {
       json: null,
-      diagnostic: `fallback público: ${error instanceof Error ? error.message : String(error)}`.slice(0, 600),
+      diagnostic: `fallback público: ${error instanceof Error ? error.message : String(error)}`.slice(0, 900),
     };
   }
 }
@@ -374,8 +386,6 @@ export async function callAliTopPublic<T = any>(
   bizParams: Record<string, string | number | boolean | undefined | null>,
   credentialClient?: any,
 ): Promise<T> {
-  // Se a primeira página já caiu no fallback público, as páginas seguintes usam
-  // o cache e não repetem tentativas TOP nem downloads da página.
   const cached = cachedPublicFallback(method, bizParams as Record<string, unknown>);
   if (cached) return cached as T;
 
@@ -388,8 +398,6 @@ export async function callAliTopPublic<T = any>(
     failures.push(error instanceof Error ? error.message : String(error));
   }
 
-  // Tenta a credencial TOP antiga quando existe, mas uma App Key inválida nunca
-  // impede a tentativa seguinte com a integração principal do AliExpress.
   for (const candidate of candidates) {
     let invalidForCandidate = 0;
     let candidateAttempts = 0;
@@ -424,22 +432,26 @@ export async function callAliTopPublic<T = any>(
     if (candidateAttempts > 0 && invalidForCandidate === candidateAttempts) {
       failures.push(
         candidate.source === "dedicated"
-          ? "A credencial TOP antiga foi ignorada porque a App Key não é reconhecida pelos gateways oficiais."
-          : "A App Key principal também não foi aceita pelo protocolo TOP legado.",
+          ? "credencial TOP legada rejeitada pelo gateway"
+          : "App Key principal não reconhecida pelo gateway TOP clássico",
       );
     }
   }
 
-  const publicFallback = await tryPublicReviewFallback(method, bizParams as Record<string, unknown>);
+  const publicFallback = await tryPublicReviewFallback(
+    method,
+    bizParams as Record<string, unknown>,
+    credentialClient,
+  );
   if (publicFallback.json) return publicFallback.json as T;
-  if (publicFallback.diagnostic) failures.push(`Coleta pública: ${publicFallback.diagnostic}`);
+  if (publicFallback.diagnostic) failures.push(`fallback: ${publicFallback.diagnostic}`);
 
+  // Mantém request_ids e detalhes de gateway no log do servidor, sem despejar a
+  // telemetria técnica inteira no toast vermelho do administrador.
   const unique = [...new Set(failures)].filter(Boolean);
-  const diagnostic = publicFallback.diagnostic
-    ? ` O AliExpress também não expôs comentários individuais na coleta pública (${publicFallback.diagnostic}).`
-    : "";
+  if (unique.length) console.warn(`[AliExpress reviews] ${unique.join(" | ")}`);
+
   throw new Error(
-    (`Não foi possível obter comentários individuais deste produto pelas fontes disponíveis.${diagnostic} ` +
-      `As avaliações já salvas permanecem intactas. Detalhes técnicos: ${unique.slice(0, 3).join(" | ")}`).slice(0, 1200),
+    "Nenhuma das fontes disponíveis retornou comentários individuais para este anúncio. Foram tentadas a API TOP quando configurada, a coleta pública, a consulta por ownerMemberId e a coleta renderizada direta quando disponível. As avaliações já salvas permanecem intactas.",
   );
 }
