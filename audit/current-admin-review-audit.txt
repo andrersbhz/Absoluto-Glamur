@@ -31,15 +31,6 @@ src/lib/push.server.ts:10:  const { supabaseAdmin } = await import("@/integratio
 src/lib/push.server.ts:11:  return supabaseAdmin;
 src/lib/aliexpress-review-fallbacks.server.ts:32:  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 src/lib/aliexpress-review-fallbacks.server.ts:33:  return supabaseAdmin;
-src/lib/admin-system.functions.ts:50:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-src/lib/admin-system.functions.ts:53:      supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 100 }),
-src/lib/admin-system.functions.ts:54:      supabaseAdmin.from("user_roles").select("user_id, role"),
-src/lib/admin-system.functions.ts:61:      ? await supabaseAdmin.from("profiles").select("id, full_name, phone").in("id", userIds)
-src/lib/admin-system.functions.ts:100:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-src/lib/admin-system.functions.ts:103:      const { data: currentRoles, error } = await supabaseAdmin
-src/lib/admin-system.functions.ts:114:    const { error: deleteError } = await supabaseAdmin.from("user_roles").delete().eq("user_id", data.userId);
-src/lib/admin-system.functions.ts:118:    const { error: insertError } = await supabaseAdmin
-src/lib/admin-system.functions.ts:123:    await supabaseAdmin.from("audit_logs").insert({
 src/lib/aliexpress-discovery.functions.ts:70:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 src/lib/aliexpress-discovery.functions.ts:71:    client = supabaseAdmin;
 src/lib/aliexpress-discovery.functions.ts:134:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -78,26 +69,6 @@ src/lib/product-reviews.functions.ts:341:    const sourceId = await findAliSourc
 src/lib/product-reviews.functions.ts:346:    const r = await syncReviewsForProductInternal(supabaseAdmin, data.product_id, sourceId, 0);
 
 ## Authenticated functions that still reference service-role
-### src/lib/admin-system.functions.ts
-1:import { createServerFn } from "@tanstack/react-start";
-3:import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-46:export const listAdminUsers = createServerFn({ method: "GET" })
-47:  .middleware([requireSupabaseAuth])
-50:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-53:      supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 100 }),
-54:      supabaseAdmin.from("user_roles").select("user_id, role"),
-61:      ? await supabaseAdmin.from("profiles").select("id, full_name, phone").in("id", userIds)
-88:export const updateAdminUserRoles = createServerFn({ method: "POST" })
-89:  .middleware([requireSupabaseAuth])
-100:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-103:      const { data: currentRoles, error } = await supabaseAdmin
-114:    const { error: deleteError } = await supabaseAdmin.from("user_roles").delete().eq("user_id", data.userId);
-118:    const { error: insertError } = await supabaseAdmin
-123:    await supabaseAdmin.from("audit_logs").insert({
-158:export const getComplianceOverview = createServerFn({ method: "GET" })
-159:  .middleware([requireSupabaseAuth])
-247:export const getUsageOverview = createServerFn({ method: "GET" })
-248:  .middleware([requireSupabaseAuth])
 ### src/lib/aliexpress-discovery.functions.ts
 1:import { createServerFn } from "@tanstack/react-start";
 5:import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
@@ -519,7 +490,7 @@ build exit: 0
   43:15  error  Replace `·path:·`/products?category=${c.slug}`,·lastmod:·c.updated_at,·changefreq:·"weekly",·priority:·"0.6"` with `⏎······path:·`/products?category=${c.slug}`,⏎······lastmod:·c.updated_at,⏎······changefreq:·"weekly",⏎······priority:·"0.6",⏎···`      prettier/prettier
   46:15  error  Replace `·path:·`/products?collection=${c.slug}`,·lastmod:·c.updated_at,·changefreq:·"weekly",·priority:·"0.6"` with `⏎······path:·`/products?collection=${c.slug}`,⏎······lastmod:·c.updated_at,⏎······changefreq:·"weekly",⏎······priority:·"0.6",⏎···`  prettier/prettier
 
-✖ 4988 problems (4973 errors, 15 warnings)
-  4886 errors and 0 warnings potentially fixable with the `--fix` option.
+✖ 4986 problems (4971 errors, 15 warnings)
+  4882 errors and 0 warnings potentially fixable with the `--fix` option.
 
 error: script "lint" exited with code 1
