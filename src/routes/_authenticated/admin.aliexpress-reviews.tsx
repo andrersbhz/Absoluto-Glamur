@@ -1,18 +1,12 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { Download, ExternalLink, KeyRound, Link2, Save, Search, ShieldCheck, Star, TestTube2, Trash2 } from "lucide-react";
+import { Download, ExternalLink, Link2, Search, ShieldCheck, Star } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { supabase } from "@/integrations/supabase/client";
 import { importAliExpressReviewsByUrl } from "@/lib/aliexpress-direct-review-import.functions";
-import {
-  disconnectAliExpressReviewTop,
-  getAliExpressReviewTopConfig,
-  saveAliExpressReviewTopConfig,
-  testAliExpressReviewTop,
-} from "@/lib/aliexpress-review-top.functions";
 
 export const Route = createFileRoute("/_authenticated/admin/aliexpress-reviews")({
   head: () => ({ meta: [{ title: "AliExpress TOP · Avaliações · Absoluto Glamur" }] }),
@@ -40,24 +34,12 @@ type DirectImportResult = {
 
 function AliExpressReviewsIntegrationPage() {
   const qc = useQueryClient();
-  const getConfig = useServerFn(getAliExpressReviewTopConfig);
-  const saveConfig = useServerFn(saveAliExpressReviewTopConfig);
-  const testConfig = useServerFn(testAliExpressReviewTop);
-  const disconnect = useServerFn(disconnectAliExpressReviewTop);
   const directImport = useServerFn(importAliExpressReviewsByUrl);
 
-  const [appKey, setAppKey] = useState("");
-  const [appSecret, setAppSecret] = useState("");
   const [productId, setProductId] = useState("");
   const [productSearch, setProductSearch] = useState("");
   const [aliExpressSource, setAliExpressSource] = useState("");
   const [directResult, setDirectResult] = useState<DirectImportResult | null>(null);
-
-  const q = useQuery({
-    queryKey: ["aliexpress-top-reviews-config"],
-    queryFn: () => getConfig(),
-    staleTime: 15_000,
-  });
 
   const productsQ = useQuery({
     queryKey: ["aliexpress-direct-review-products"],
@@ -81,40 +63,6 @@ function AliExpressReviewsIntegrationPage() {
       `${product.name} ${product.slug}`.toLocaleLowerCase("pt-BR").includes(term),
     );
   }, [productSearch, productsQ.data]);
-
-  const saveMut = useMutation({
-    mutationFn: () => saveConfig({ data: { app_key: appKey.trim() || undefined, app_secret: appSecret.trim() || undefined } }),
-    onSuccess: async () => {
-      setAppKey("");
-      setAppSecret("");
-      await qc.invalidateQueries({ queryKey: ["aliexpress-top-reviews-config"] });
-      toast.success("Credenciais TOP salvas. Agora teste a conexão.");
-    },
-    onError: (error: Error) => toast.error(error.message),
-  });
-
-  const testMut = useMutation({
-    mutationFn: () => testConfig(),
-    onSuccess: async (result) => {
-      await qc.invalidateQueries({ queryKey: ["aliexpress-top-reviews-config"] });
-      toast.success(`API TOP validada com o produto ${result.productId}.`);
-    },
-    onError: async (error: Error) => {
-      await qc.invalidateQueries({ queryKey: ["aliexpress-top-reviews-config"] });
-      toast.error(error.message);
-    },
-  });
-
-  const disconnectMut = useMutation({
-    mutationFn: () => disconnect(),
-    onSuccess: async () => {
-      setAppKey("");
-      setAppSecret("");
-      await qc.invalidateQueries({ queryKey: ["aliexpress-top-reviews-config"] });
-      toast.success("Credenciais TOP de avaliações removidas.");
-    },
-    onError: (error: Error) => toast.error(error.message),
-  });
 
   const directMut = useMutation({
     mutationFn: () => {
@@ -140,9 +88,6 @@ function AliExpressReviewsIntegrationPage() {
     onError: (error: Error) => toast.error(error.message),
   });
 
-  const status = q.data;
-  const busy = saveMut.isPending || testMut.isPending || disconnectMut.isPending;
-
   return (
     <AdminLayout>
       <div className="mx-auto w-full max-w-5xl overflow-y-auto pb-10">
@@ -154,7 +99,7 @@ function AliExpressReviewsIntegrationPage() {
             </div>
             <h1 className="mt-2 font-display text-3xl">AliExpress TOP · Avaliações</h1>
             <p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted-foreground">
-              Configure as credenciais TOP e importe avaliações reais diretamente por URL ou ID do produto AliExpress. Os comentários são gravados no banco nativo da Absoluto Glamur e não dependem de WooCommerce, Shopify ou widget externo.
+              Importe avaliações reais diretamente por URL ou ID do produto AliExpress. O sistema usa automaticamente a melhor fonte disponível e grava os comentários no banco nativo da Absoluto Glamur, sem depender de WooCommerce, Shopify ou widget externo.
             </p>
           </div>
           <a
@@ -169,16 +114,10 @@ function AliExpressReviewsIntegrationPage() {
 
         <div className="mt-7 grid gap-4 md:grid-cols-3">
           <StatusCard
-            label="Credencial"
-            value={status?.configured ? "Configurada" : "Não configurada"}
-            detail={status?.appKeyMasked ?? "App Key TOP ausente"}
-            ok={Boolean(status?.configured)}
-          />
-          <StatusCard
-            label="Último teste"
-            value={status?.lastStatus === "ok" ? "Validada" : status?.lastStatus === "error" ? "Com erro" : "Não testada"}
-            detail={status?.lastVerifiedAt ? new Date(status.lastVerifiedAt).toLocaleString("pt-BR") : "Faça o teste após salvar"}
-            ok={status?.lastStatus === "ok"}
+            label="Origem"
+            value="AliExpress"
+            detail="Consulta automática"
+            ok
           />
           <StatusCard
             label="Importação"
@@ -186,14 +125,13 @@ function AliExpressReviewsIntegrationPage() {
             detail="Até 160 avaliações por execução"
             ok
           />
+          <StatusCard
+            label="Fallback"
+            value="Automático"
+            detail="Sem configuração manual nesta tela"
+            ok
+          />
         </div>
-
-        {status?.lastError && (
-          <div className="mt-4 rounded-xl border border-destructive/30 bg-destructive/5 p-4">
-            <p className="text-xs font-semibold uppercase tracking-wider text-destructive">Último erro da API TOP</p>
-            <p className="mt-2 text-sm leading-relaxed text-destructive/90">{status.lastError}</p>
-          </div>
-        )}
 
         <div className="mt-6 rounded-2xl border border-primary/25 bg-card p-5 shadow-soft sm:p-6">
           <div className="flex items-start gap-3">
@@ -279,78 +217,6 @@ function AliExpressReviewsIntegrationPage() {
           )}
         </div>
 
-        <div className="mt-6 rounded-2xl border border-border bg-card p-5 shadow-soft sm:p-6">
-          <div className="flex items-start gap-3">
-            <div className="rounded-xl bg-primary/10 p-2.5 text-primary"><KeyRound className="h-5 w-5" /></div>
-            <div>
-              <h2 className="font-display text-xl">Credenciais TOP para avaliações</h2>
-              <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                O endpoint oficial de avaliações exige uma AppKey reconhecida pelo TOP. Estas credenciais ficam separadas da integração principal do AliExpress usada por importação, estoque, OAuth e fulfillment.
-              </p>
-            </div>
-          </div>
-
-          <div className="mt-5 grid gap-4 sm:grid-cols-2">
-            <label className="block text-sm">
-              <span className="mb-1.5 block text-xs font-medium text-muted-foreground">App Key TOP</span>
-              <input
-                value={appKey}
-                onChange={(event) => setAppKey(event.target.value)}
-                autoComplete="off"
-                spellCheck={false}
-                placeholder={status?.configured ? "Deixe vazio para manter a atual" : "App Key atribuída pelo TOP"}
-                className="w-full rounded-lg border border-border bg-background px-3 py-2.5 font-mono text-sm outline-none transition focus:border-primary/50 focus:ring-2 focus:ring-primary/10"
-              />
-            </label>
-            <label className="block text-sm">
-              <span className="mb-1.5 block text-xs font-medium text-muted-foreground">App Secret TOP</span>
-              <input
-                type="password"
-                value={appSecret}
-                onChange={(event) => setAppSecret(event.target.value)}
-                autoComplete="new-password"
-                spellCheck={false}
-                placeholder={status?.secretConfigured ? "•••••••• (deixe vazio para manter)" : "App Secret TOP"}
-                className="w-full rounded-lg border border-border bg-background px-3 py-2.5 font-mono text-sm outline-none transition focus:border-primary/50 focus:ring-2 focus:ring-primary/10"
-              />
-              <span className="mt-1.5 block text-[11px] text-muted-foreground">O segredo salvo nunca é devolvido ao navegador.</span>
-            </label>
-          </div>
-
-          <div className="mt-5 flex flex-wrap gap-2">
-            <button
-              type="button"
-              disabled={busy || (!appKey.trim() && !appSecret.trim())}
-              onClick={() => saveMut.mutate()}
-              className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground shadow-soft transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              <Save className="h-4 w-4" /> {saveMut.isPending ? "Salvando..." : "Salvar credenciais TOP"}
-            </button>
-            <button
-              type="button"
-              disabled={busy || !status?.configured}
-              onClick={() => testMut.mutate()}
-              className="inline-flex items-center gap-2 rounded-lg border border-success/35 bg-success/10 px-4 py-2.5 text-sm font-medium text-success transition hover:bg-success/15 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              <TestTube2 className="h-4 w-4" /> {testMut.isPending ? "Testando..." : "Testar conexão TOP"}
-            </button>
-            {status?.configured && (
-              <button
-                type="button"
-                disabled={busy}
-                onClick={() => {
-                  if (window.confirm("Remover somente as credenciais TOP de avaliações? A integração principal do AliExpress será mantida.")) {
-                    disconnectMut.mutate();
-                  }
-                }}
-                className="inline-flex items-center gap-2 rounded-lg border border-destructive/25 px-4 py-2.5 text-sm font-medium text-destructive transition hover:bg-destructive/5 disabled:opacity-50"
-              >
-                <Trash2 className="h-4 w-4" /> Remover credencial TOP
-              </button>
-            )}
-          </div>
-        </div>
-
         <div className="mt-6 rounded-2xl border border-primary/15 bg-primary/[0.035] p-5">
           <div className="flex gap-3">
             <ShieldCheck className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
@@ -358,7 +224,7 @@ function AliExpressReviewsIntegrationPage() {
               <h3 className="text-sm font-semibold">Como fica o fluxo</h3>
               <ol className="mt-2 space-y-1.5 text-xs leading-relaxed text-muted-foreground">
                 <li>1. Selecione um produto já existente na Absoluto Glamur e cole a URL ou ID do anúncio AliExpress.</li>
-                <li>2. O sistema consulta avaliações via TOP e usa o fallback público já existente quando aplicável.</li>
+                <li>2. O sistema tenta automaticamente a integração oficial disponível e usa o fallback público quando aplicável.</li>
                 <li>3. As avaliações são gravadas em product_external_reviews e reimportações atualizam os mesmos registros sem duplicar.</li>
                 <li>4. A loja exibe tudo no componente nativo de avaliações, junto com avaliações importadas pelo Ryviu CSV.</li>
                 <li>5. Importação de produto, preço, estoque, OAuth e fulfillment continuam independentes e sem alteração.</li>
