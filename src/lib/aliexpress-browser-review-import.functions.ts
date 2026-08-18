@@ -4,6 +4,8 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
+const ALI_SOURCES = ["aliexpress", "aliexpress_api", "aliexpress_url"];
+
 async function assertCatalog(context: any) {
   const { data: adm } = await context.supabase.rpc("is_admin", { _user_id: context.userId });
   if (adm) return;
@@ -28,6 +30,65 @@ function normalizeAliProductId(source: string): string | null {
   return null;
 }
 
+async function resolveSourceProductId(db: any, productId: string): Promise<string | null> {
+  const { data: state } = await db
+    .from("product_review_sync_state")
+    .select("source_id")
+    .eq("product_id", productId)
+    .maybeSingle();
+  const fromState = state?.source_id ? normalizeAliProductId(String(state.source_id)) : null;
+  if (fromState) return fromState;
+
+  const { data: imported } = await db
+    .from("product_imports")
+    .select("source_id")
+    .eq("product_id", productId)
+    .in("source", ALI_SOURCES)
+    .not("source_id", "is", null)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  return imported?.source_id ? normalizeAliProductId(String(imported.source_id)) : null;
+}
+
+async function issueBridge(input: {
+  db: any;
+  productId: string;
+  sourceProductId: string;
+  userId: string;
+  origin: string;
+}) {
+  const { data: product, error } = await input.db
+    .from("products")
+    .select("id,name,slug")
+    .eq("id", input.productId)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!product) throw new Error("Produto de destino não encontrado.");
+
+  const origin = new URL(input.origin).origin;
+  const { createAliExpressBrowserReviewBridge } = await import("./aliexpress-browser-review-bridge.server");
+  const bridge = createAliExpressBrowserReviewBridge({
+    productId: input.productId,
+    sourceProductId: input.sourceProductId,
+    userId: input.userId,
+    origin,
+    ttlSeconds: 10 * 60,
+  });
+
+  return {
+    code: bridge.code,
+    productId: input.productId,
+    productTitle: product.name,
+    productSlug: product.slug,
+    sourceProductId: input.sourceProductId,
+    sourceUrl: `https://pt.aliexpress.com/item/${input.sourceProductId}.html`,
+    issuedAt: new Date(bridge.payload.iat * 1000).toISOString(),
+    expiresAt: new Date(bridge.payload.exp * 1000).toISOString(),
+    receiverUrl: `${origin}/api/public/aliexpress-review-browser`,
+  };
+}
+
 const CreateSchema = z.object({
   product_id: z.string().uuid(),
   source: z.string().trim().min(1).max(2000),
@@ -41,35 +102,36 @@ export const createAliExpressBrowserReviewCode = createServerFn({ method: "POST"
     await assertCatalog(context);
     const sourceProductId = normalizeAliProductId(data.source);
     if (!sourceProductId) throw new Error("URL ou ID do produto AliExpress inválido.");
-
-    const { data: product, error } = await context.supabase
-      .from("products")
-      .select("id,name,slug")
-      .eq("id", data.product_id)
-      .maybeSingle();
-    if (error) throw new Error(error.message);
-    if (!product) throw new Error("Produto de destino não encontrado.");
-
-    const origin = new URL(data.origin).origin;
-    const { createAliExpressBrowserReviewBridge } = await import("./aliexpress-browser-review-bridge.server");
-    const bridge = createAliExpressBrowserReviewBridge({
+    return issueBridge({
+      db: context.supabase,
       productId: data.product_id,
       sourceProductId,
       userId: context.userId,
-      origin,
-      ttlSeconds: 10 * 60,
+      origin: data.origin,
     });
+  });
 
-    return {
-      code: bridge.code,
+const CreateForProductSchema = z.object({
+  product_id: z.string().uuid(),
+  origin: z.string().url(),
+});
+
+export const createAliExpressBrowserReviewCodeForProduct = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((value: unknown) => CreateForProductSchema.parse(value))
+  .handler(async ({ data, context }) => {
+    await assertCatalog(context);
+    const sourceProductId = await resolveSourceProductId(context.supabase, data.product_id);
+    if (!sourceProductId) {
+      throw new Error("Este produto ainda não possui um ID AliExpress vinculado. Vincule ou importe o produto antes de sincronizar avaliações.");
+    }
+    return issueBridge({
+      db: context.supabase,
       productId: data.product_id,
-      productTitle: product.name,
-      productSlug: product.slug,
       sourceProductId,
-      issuedAt: new Date(bridge.payload.iat * 1000).toISOString(),
-      expiresAt: new Date(bridge.payload.exp * 1000).toISOString(),
-      receiverUrl: `${origin}/api/public/aliexpress-review-browser`,
-    };
+      userId: context.userId,
+      origin: data.origin,
+    });
   });
 
 const StateSchema = z.object({
