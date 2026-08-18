@@ -27,6 +27,7 @@ const nav: NavItem[] = [
   { label: "Catálogo", icon: Package, to: "/admin/catalog", phase: 2 },
   { label: "Importador AliExpress", icon: Boxes, to: "/admin/imports", phase: 4 },
   { label: "AliExpress TOP · Avaliações", icon: Star, to: "/admin/aliexpress-reviews", phase: 4 },
+  { label: "Ryviu · Importar avaliações", icon: Star, to: "/admin/ryviu-reviews", phase: 4 },
   { label: "Descobrir produtos", icon: Compass, to: "/admin/discover", phase: 4 },
   { label: "Inteligência de produtos", icon: Sparkles, to: "/admin/intelligence", phase: 5 },
   { label: "Oportunidades v1.2", icon: Target, to: "/admin/opportunities", phase: 5 },
