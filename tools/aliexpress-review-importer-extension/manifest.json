@@ -1,20 +1,32 @@
 {
   "manifest_version": 3,
   "name": "Absoluto Glamur · Importador AliExpress",
-  "version": "1.0.0",
-  "description": "Importa avaliações reais do AliExpress usando a sessão do navegador e envia para a Absoluto Glamur.",
-  "permissions": ["activeTab", "storage", "scripting"],
+  "version": "1.1.0",
+  "description": "Sincroniza avaliações reais do AliExpress com a Absoluto Glamur usando a sessão do Chrome.",
+  "permissions": ["activeTab", "storage", "scripting", "tabs"],
   "host_permissions": [
     "https://*.aliexpress.com/*",
     "https://*.aliexpress.us/*",
-    "https://*.aliexpress.ru/*"
+    "https://*.aliexpress.ru/*",
+    "https://absolutoglamur.com.br/*",
+    "https://www.absolutoglamur.com.br/*"
   ],
   "optional_host_permissions": ["https://*/*", "http://*/*"],
   "background": {
     "service_worker": "background.js"
   },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://absolutoglamur.com.br/*",
+        "https://www.absolutoglamur.com.br/*"
+      ],
+      "js": ["store-bridge.js"],
+      "run_at": "document_start"
+    }
+  ],
   "action": {
-    "default_title": "Importar avaliações AliExpress",
+    "default_title": "Sincronizar avaliações AliExpress",
     "default_popup": "popup.html"
   }
 }
