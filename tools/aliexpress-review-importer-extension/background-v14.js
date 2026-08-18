@@ -31,6 +31,12 @@ globalThis.fetch = async (input, init = {}) => {
 
 importScripts("background-v13.js");
 
+function agResolveCollector() {
+  if (typeof collectFromStore === "function") return collectFromStore;
+  if (typeof agCollectFromStore === "function") return agCollectFromStore;
+  throw new Error("O coletor interno da extensão não foi carregado. Reinstale a extensão Absoluto Glamur 1.4.0.");
+}
+
 // v1.4 uses its own message name, so the v1.3 listener ignores it. This lets us
 // add an overall watchdog without duplicating the collector implementation.
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
@@ -52,7 +58,8 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }, AG_TOTAL_SYNC_TIMEOUT_MS);
 
   Promise.resolve()
-    .then(() => collectFromStore(message, sender))
+    .then(() => agResolveCollector())
+    .then((collector) => collector(message, sender))
     .then((result) => finish({ ok: true, ...result }))
     .catch((error) => finish({
       ok: false,
