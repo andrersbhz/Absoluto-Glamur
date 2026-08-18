@@ -1,0 +1,226 @@
+# Remaining admin stability audit
+
+## service-role usages in server functions
+src/lib/checkout.functions.ts:88:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/checkout.functions.ts:91:    const { data: route } = await supabaseAdmin
+src/lib/checkout.functions.ts:103:    const { data: integ } = await supabaseAdmin
+src/lib/checkout.functions.ts:120:    const { data: variants, error: varErr } = await supabaseAdmin
+src/lib/checkout.functions.ts:163:      const { data: imports } = await supabaseAdmin
+src/lib/checkout.functions.ts:234:    const { data: codeData } = await supabaseAdmin.rpc("generate_order_code");
+src/lib/checkout.functions.ts:239:    const { data: order, error: orderErr } = await supabaseAdmin
+src/lib/checkout.functions.ts:259:    const { error: itemsErr } = await supabaseAdmin
+src/lib/checkout.functions.ts:265:      await supabaseAdmin.from("addresses").insert({
+src/lib/checkout.functions.ts:305:      await supabaseAdmin
+src/lib/checkout.functions.ts:318:  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/checkout.functions.ts:354:  const { error } = await supabaseAdmin.from("payments").insert({
+src/lib/checkout.functions.ts:375:  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/checkout.functions.ts:408:  const { error } = await supabaseAdmin.from("payments").insert({
+src/lib/checkout.functions.ts:427:  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/checkout.functions.ts:465:  const { error } = await supabaseAdmin.from("payments").insert({
+src/lib/checkout.functions.ts:490:  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/checkout.functions.ts:550:  const { error } = await supabaseAdmin.from("payments").insert({
+src/lib/gtm.functions.ts:5:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/gtm.functions.ts:6:    const { data } = await supabaseAdmin
+src/lib/admin-system.functions.ts:50:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/admin-system.functions.ts:53:      supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 100 }),
+src/lib/admin-system.functions.ts:54:      supabaseAdmin.from("user_roles").select("user_id, role"),
+src/lib/admin-system.functions.ts:61:      ? await supabaseAdmin.from("profiles").select("id, full_name, phone").in("id", userIds)
+src/lib/admin-system.functions.ts:100:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/admin-system.functions.ts:103:      const { data: currentRoles, error } = await supabaseAdmin
+src/lib/admin-system.functions.ts:114:    const { error: deleteError } = await supabaseAdmin.from("user_roles").delete().eq("user_id", data.userId);
+src/lib/admin-system.functions.ts:118:    const { error: insertError } = await supabaseAdmin
+src/lib/admin-system.functions.ts:123:    await supabaseAdmin.from("audit_logs").insert({
+src/lib/aliexpress-discovery.functions.ts:70:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/aliexpress-discovery.functions.ts:71:    client = supabaseAdmin;
+src/lib/aliexpress-discovery.functions.ts:117:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/aliexpress-discovery.functions.ts:118:    client = supabaseAdmin;
+src/lib/product-reviews-live.functions.ts:488:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/product-reviews-live.functions.ts:489:    return syncLiveReviewsInternal(supabaseAdmin, data.product_id, false);
+src/lib/aliexpress-fulfillment.functions.ts:51:  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/aliexpress-fulfillment.functions.ts:52:  const { data, error } = await supabaseAdmin
+src/lib/aliexpress-fulfillment.functions.ts:67:  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/aliexpress-fulfillment.functions.ts:76:    const { data } = await supabaseAdmin
+src/lib/aliexpress-fulfillment.functions.ts:93:    const { data: imp } = await supabaseAdmin
+src/lib/aliexpress-fulfillment.functions.ts:199:  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/aliexpress-fulfillment.functions.ts:200:  await supabaseAdmin
+src/lib/aliexpress-fulfillment.functions.ts:282:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/aliexpress-fulfillment.functions.ts:283:    const { error } = await supabaseAdmin
+src/lib/aliexpress-stock.functions.ts:210:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/aliexpress-stock.functions.ts:211:    db = supabaseAdmin;
+src/lib/product-reviews.functions.ts:299:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/product-reviews.functions.ts:301:    const { data: untranslated } = await supabaseAdmin
+src/lib/product-reviews.functions.ts:318:        const { error } = await supabaseAdmin
+src/lib/product-reviews.functions.ts:326:    const { data: latest } = await supabaseAdmin
+src/lib/product-reviews.functions.ts:341:    const sourceId = await findAliSourceId(supabaseAdmin, data.product_id);
+src/lib/product-reviews.functions.ts:346:    const r = await syncReviewsForProductInternal(supabaseAdmin, data.product_id, sourceId, 0);
+
+## server functions using auth middleware and service-role in same file
+### src/lib/admin-system.functions.ts
+1:import { createServerFn } from "@tanstack/react-start";
+3:import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+46:export const listAdminUsers = createServerFn({ method: "GET" })
+47:  .middleware([requireSupabaseAuth])
+50:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+53:      supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 100 }),
+54:      supabaseAdmin.from("user_roles").select("user_id, role"),
+61:      ? await supabaseAdmin.from("profiles").select("id, full_name, phone").in("id", userIds)
+88:export const updateAdminUserRoles = createServerFn({ method: "POST" })
+89:  .middleware([requireSupabaseAuth])
+100:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+103:      const { data: currentRoles, error } = await supabaseAdmin
+114:    const { error: deleteError } = await supabaseAdmin.from("user_roles").delete().eq("user_id", data.userId);
+118:    const { error: insertError } = await supabaseAdmin
+123:    await supabaseAdmin.from("audit_logs").insert({
+158:export const getComplianceOverview = createServerFn({ method: "GET" })
+159:  .middleware([requireSupabaseAuth])
+247:export const getUsageOverview = createServerFn({ method: "GET" })
+248:  .middleware([requireSupabaseAuth])
+### src/lib/aliexpress-discovery.functions.ts
+1:import { createServerFn } from "@tanstack/react-start";
+5:import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+70:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+71:    client = supabaseAdmin;
+117:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+118:    client = supabaseAdmin;
+563:export const discoverAliexpressProducts = createServerFn({ method: "POST" })
+564:  .middleware([requireSupabaseAuth])
+739:export const importAliexpressProductToStore = createServerFn({ method: "POST" })
+740:  .middleware([requireSupabaseAuth])
+### src/lib/aliexpress-fulfillment.functions.ts
+1:import { createServerFn } from "@tanstack/react-start";
+3:import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+51:  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+52:  const { data, error } = await supabaseAdmin
+67:  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+76:    const { data } = await supabaseAdmin
+93:    const { data: imp } = await supabaseAdmin
+199:  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+200:  await supabaseAdmin
+213:export const fulfillOrderToAliexpress = createServerFn({ method: "POST" })
+214:  .middleware([requireSupabaseAuth])
+234:export const fulfillOrdersBulk = createServerFn({ method: "POST" })
+235:  .middleware([requireSupabaseAuth])
+269:export const setOrderItemAliexpressMapping = createServerFn({ method: "POST" })
+270:  .middleware([requireSupabaseAuth])
+282:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+283:    const { error } = await supabaseAdmin
+### src/lib/aliexpress-stock.functions.ts
+1:import { createServerFn } from "@tanstack/react-start";
+3:import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+106:export const syncAliexpressStock = createServerFn({ method: "POST" })
+107:  .middleware([requireSupabaseAuth])
+195:export const syncAllAliexpressStock = createServerFn({ method: "POST" })
+196:  .middleware([requireSupabaseAuth])
+210:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+211:    db = supabaseAdmin;
+### src/lib/checkout.functions.ts
+1:import { createServerFn } from "@tanstack/react-start";
+3:import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+84:export const createCheckout = createServerFn({ method: "POST" })
+85:  .middleware([requireSupabaseAuth])
+88:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+91:    const { data: route } = await supabaseAdmin
+103:    const { data: integ } = await supabaseAdmin
+120:    const { data: variants, error: varErr } = await supabaseAdmin
+163:      const { data: imports } = await supabaseAdmin
+234:    const { data: codeData } = await supabaseAdmin.rpc("generate_order_code");
+239:    const { data: order, error: orderErr } = await supabaseAdmin
+259:    const { error: itemsErr } = await supabaseAdmin
+265:      await supabaseAdmin.from("addresses").insert({
+305:      await supabaseAdmin
+318:  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+354:  const { error } = await supabaseAdmin.from("payments").insert({
+375:  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+408:  const { error } = await supabaseAdmin.from("payments").insert({
+427:  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+465:  const { error } = await supabaseAdmin.from("payments").insert({
+490:  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+550:  const { error } = await supabaseAdmin.from("payments").insert({
+### src/lib/product-reviews-live.functions.ts
+1:import { createServerFn } from "@tanstack/react-start";
+3:import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+485:export const autoSyncLiveProductReviews = createServerFn({ method: "POST" })
+488:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+489:    return syncLiveReviewsInternal(supabaseAdmin, data.product_id, false);
+492:export const forceSyncLiveProductReviews = createServerFn({ method: "POST" })
+493:  .middleware([requireSupabaseAuth])
+### src/lib/product-reviews.functions.ts
+1:import { createServerFn } from "@tanstack/react-start";
+4:import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+116:export const listAllReviews = createServerFn({ method: "POST" })
+117:  .middleware([requireSupabaseAuth])
+162:export const syncAliexpressReviews = createServerFn({ method: "POST" })
+163:  .middleware([requireSupabaseAuth])
+200:export const upsertReview = createServerFn({ method: "POST" })
+201:  .middleware([requireSupabaseAuth])
+237:export const deleteReview = createServerFn({ method: "POST" })
+238:  .middleware([requireSupabaseAuth])
+248:export const bulkSyncAliexpressReviews = createServerFn({ method: "POST" })
+249:  .middleware([requireSupabaseAuth])
+296:export const autoSyncProductReviews = createServerFn({ method: "POST" })
+299:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+301:    const { data: untranslated } = await supabaseAdmin
+318:        const { error } = await supabaseAdmin
+326:    const { data: latest } = await supabaseAdmin
+341:    const sourceId = await findAliSourceId(supabaseAdmin, data.product_id);
+346:    const r = await syncReviewsForProductInternal(supabaseAdmin, data.product_id, sourceId, 0);
+
+## review validation / direct collection strings
+src/lib/asaas.server.ts:3: * Nunca importar em código do cliente (extensão .server.ts bloqueia).
+src/lib/intelligence.functions.ts:60:      db.from("product_reviews").select("rating").eq("product_id", data.product_id),
+src/lib/intelligence.functions.ts:89:      ? reviews.reduce((s: number, r: any) => s + Number(r.rating ?? 0), 0) / reviews.length
+src/lib/product-reviews.functions.ts:251:    z.object({ min_rating: z.number().min(0).max(5).default(0), limit: z.number().int().min(1).max(200).default(50) }).parse(v ?? {}),
+
+## authenticated admin route imports
+src/routes/_authenticated/admin.ai.tsx:22:} from "@/lib/ai-content.functions";
+src/routes/_authenticated/admin.blog.tsx:19:} from "@/lib/blog-admin.functions";
+src/routes/_authenticated/admin.blog.tsx:24:} from "@/lib/blog-meta.functions";
+src/routes/_authenticated/admin.catalog.$id.tsx:23:import { isVideoUrl } from "@/lib/media-kind";
+src/routes/_authenticated/admin.catalog.$id.tsx:30:} from "@/lib/admin-catalog.functions";
+src/routes/_authenticated/admin.catalog.$id.tsx:31:import { syncAliexpressStock } from "@/lib/aliexpress-stock.functions";
+src/routes/_authenticated/admin.catalog.$id.tsx:32:import { syncAliexpressVariants } from "@/lib/aliexpress-variants.functions";
+src/routes/_authenticated/admin.catalog.index.tsx:12:import { formatBRL } from "@/lib/format";
+src/routes/_authenticated/admin.catalog.index.tsx:18:} from "@/lib/admin-catalog.functions";
+src/routes/_authenticated/admin.catalog.index.tsx:19:import { optimizeProductCopy } from "@/lib/ai-product-optimize.functions";
+src/routes/_authenticated/admin.catalog.index.tsx:20:import { syncAllAliexpressStock, syncAliexpressStock } from "@/lib/aliexpress-stock.functions";
+src/routes/_authenticated/admin.catalog.index.tsx:21:import { bulkSyncAliexpressReviews } from "@/lib/product-reviews.functions";
+src/routes/_authenticated/admin.catalog.index.tsx:22:import { resyncAliexpressVariantsBulk } from "@/lib/aliexpress-variants.functions";
+src/routes/_authenticated/admin.compliance.tsx:8:import { getComplianceOverview } from "@/lib/admin-system.functions";
+src/routes/_authenticated/admin.dashboard.tsx:20:import { formatBRL } from "@/lib/format";
+src/routes/_authenticated/admin.dashboard.tsx:21:import { getDashboardMetrics, exportOrdersCsv } from "@/lib/dashboard.functions";
+src/routes/_authenticated/admin.discover.tsx:21:} from "@/lib/aliexpress-discovery.functions";
+src/routes/_authenticated/admin.discover.tsx:22:import { categoriesQuery } from "@/lib/catalog";
+src/routes/_authenticated/admin.discover.tsx:24:import { formatBRL } from "@/lib/format";
+src/routes/_authenticated/admin.home-visual.tsx:15:import { homeContentQuery, homepageBlocksAdminQuery, type HeroSlide, type HomeContent, type HomepageBlock } from "@/lib/marketing";
+src/routes/_authenticated/admin.home-visual.tsx:16:import { upsertSiteSetting } from "@/lib/site-settings.functions";
+src/routes/_authenticated/admin.home.tsx:23:import { categoriesQuery, collectionsQuery } from "@/lib/catalog";
+src/routes/_authenticated/admin.home.tsx:29:} from "@/lib/marketing";
+src/routes/_authenticated/admin.home.tsx:30:import { upsertSiteSetting } from "@/lib/site-settings.functions";
+src/routes/_authenticated/admin.imports.$id.tsx:17:} from "@/lib/aliexpress-import.functions";
+src/routes/_authenticated/admin.imports.$id.tsx:18:import { listBrandsAndCategories } from "@/lib/admin-catalog.functions";
+src/routes/_authenticated/admin.imports.$id.tsx:19:import { formatBRL } from "@/lib/format";
+src/routes/_authenticated/admin.imports.tsx:21:import { formatBRL } from "@/lib/format";
+src/routes/_authenticated/admin.imports.tsx:33:} from "@/lib/aliexpress-import.functions";
+src/routes/_authenticated/admin.imports.tsx:38:} from "@/lib/aliexpress-discovery.functions";
+src/routes/_authenticated/admin.imports.tsx:39:import { suggestNicheKeywords } from "@/lib/ai-suggest-keywords.functions";
+src/routes/_authenticated/admin.integrations.tsx:18:} from "@/lib/integrations.functions";
+src/routes/_authenticated/admin.integrations.tsx:19:import { createAliExpressAuthorizationUrl } from "@/lib/aliexpress-oauth.functions";
+src/routes/_authenticated/admin.integrations.tsx:25:} from "@/lib/payment-routing.functions";
+src/routes/_authenticated/admin.intelligence.$id.tsx:16:import { formatBRL } from "@/lib/format";
+src/routes/_authenticated/admin.intelligence.$id.tsx:20:} from "@/lib/intelligence.functions";
+src/routes/_authenticated/admin.intelligence.index.tsx:21:} from "@/lib/intelligence.functions";
+src/routes/_authenticated/admin.marketing.tsx:8:import { homepageBlocksAdminQuery, collectionsAdminQuery, homeContentQuery, type HomeContent, type AnnouncementProduct } from "@/lib/marketing";
+src/routes/_authenticated/admin.marketing.tsx:9:import { upsertSiteSetting } from "@/lib/site-settings.functions";
+src/routes/_authenticated/admin.marketing.tsx:11:import { imageFileToWebpDataUri } from "@/lib/image-webp";
+src/routes/_authenticated/admin.opportunities.tsx:10:import { computeGrowthScore, listGrowthOpportunities } from "@/lib/growth-intelligence.functions";
+src/routes/_authenticated/admin.orders.tsx:7:import { formatBRL } from "@/lib/format";
+src/routes/_authenticated/admin.orders.tsx:15:} from "@/lib/aliexpress-fulfillment.functions";
+src/routes/_authenticated/admin.performance.tsx:10:import { getPerformanceV12, saveMarketingSpend } from "@/lib/performance-v12.functions";
+src/routes/_authenticated/admin.performance.tsx:11:import { formatBRL } from "@/lib/format";
+src/routes/_authenticated/admin.pricing.tsx:10:import { listPricingProfiles, savePricingProfile, simulateProfessionalPrice } from "@/lib/pricing-v12.functions";
+src/routes/_authenticated/admin.pricing.tsx:11:import { formatBRL } from "@/lib/format";
+src/routes/_authenticated/admin.recovery.tsx:8:import { formatBRL } from "@/lib/format";
+src/routes/_authenticated/admin.settings.tsx:12:import { listSiteSettings, upsertSiteSetting } from "@/lib/site-settings.functions";
+src/routes/_authenticated/admin.usage.tsx:7:import { getUsageOverview } from "@/lib/admin-system.functions";
+src/routes/_authenticated/admin.users.tsx:10:import { listAdminUsers, updateAdminUserRoles, type AdminRole, type AdminUserRow } from "@/lib/admin-system.functions";
+src/routes/_authenticated/admin.whatsapp.tsx:32:} from "@/lib/whatsapp.functions";
