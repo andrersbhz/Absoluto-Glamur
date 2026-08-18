@@ -6,11 +6,30 @@ function agJobKey(requestId) {
   return `${AG_JOB_PREFIX}${requestId}`;
 }
 
+function agExtractProductIdFromUrl(value) {
+  if (!value) return "";
+  try {
+    const url = new URL(value, location.href);
+    const pathMatch = url.pathname.match(/\/item\/(\d{5,})/i);
+    if (pathMatch?.[1]) return pathMatch[1];
+    return url.searchParams.get("productId") || url.searchParams.get("product_id") || "";
+  } catch {
+    return "";
+  }
+}
+
 function agPageProductId() {
-  const pathMatch = location.pathname.match(/\/item\/(\d{5,})/i);
-  if (pathMatch?.[1]) return pathMatch[1];
-  const params = new URLSearchParams(location.search);
-  return params.get("productId") || params.get("product_id") || "";
+  const direct = agExtractProductIdFromUrl(location.href);
+  if (direct) return direct;
+  const ref = agExtractProductIdFromUrl(document.referrer);
+  if (ref) return ref;
+  try {
+    if (window.parent !== window) {
+      const parentId = agExtractProductIdFromUrl(window.parent.location.href);
+      if (parentId) return parentId;
+    }
+  } catch {}
+  return "";
 }
 
 function agClean(value, max = 8000) {
@@ -130,7 +149,7 @@ function agCandidateBlocks() {
   if (out.length < 3) {
     const textNodes = agQueryAll("article,li,section,div").filter((node) => {
       const text = agClean(node.innerText || node.textContent, 9000) || "";
-      if (text.length < 20 || text.length > 5000) return false;
+      if (text.length < 20 || text.length > 4500) return false;
       const lower = text.toLowerCase();
       if (/adicionar ao carrinho|compre agora|frete grátis|frete gratis/.test(lower) && text.length > 600) return false;
       return agInferRating(node) > 0;
@@ -149,7 +168,7 @@ function agExtractReviews() {
   const reviews = new Map();
   for (const block of agCandidateBlocks()) {
     const rawText = agClean(block.innerText || block.textContent, 8000);
-    if (!rawText || rawText.length < 8) continue;
+    if (!rawText || rawText.length < 8 || rawText.length > 4500) continue;
     const rating = agInferRating(block);
     if (!(rating > 0 && rating <= 5)) continue;
 
