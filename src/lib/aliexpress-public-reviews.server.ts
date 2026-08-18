@@ -14,6 +14,8 @@
 const MAX_HTML_BYTES = 8_000_000;
 const FETCH_TIMEOUT_MS = 12_000;
 const MAX_REVIEWS = 160;
+const FEEDBACK_PAGE_SIZE = 20;
+const MAX_FEEDBACK_PAGES = 3;
 
 export type AliExpressPublicReview = {
   source_review_id: string;
@@ -156,13 +158,14 @@ function normalizeJsonReview(raw: any, productId: string): AliExpressPublicRevie
 
   const rating = normalizeRating(pick(raw, [
     "evaluation", "rating", "star", "stars", "score", "starRating", "star_rating",
-    "feedbackScore", "feedback_score", "rate",
+    "feedbackScore", "feedback_score", "rate", "starView", "buyer_feedback_rating",
   ]));
   if (rating <= 0) return null;
 
   const feedback = safeText(pick(raw, [
     "feedback", "content", "reviewContent", "review_content", "comment", "text",
     "buyerFeedback", "buyer_feedback", "evaluation_content", "reviewText", "review_text",
+    "evaContent",
   ]));
   const additional = safeText(pick(raw, ["additional_feedback", "additionalFeedback", "appendContent", "append_content"]));
   const body = [feedback, additional ? `Avaliação adicional: ${additional}` : null].filter(Boolean).join("\n\n") || null;
@@ -170,23 +173,23 @@ function normalizeJsonReview(raw: any, productId: string): AliExpressPublicRevie
 
   const author = safeText(pick(raw, [
     "buyer_blured_name", "buyer_blurred_name", "buyer_name", "buyerName", "userName",
-    "user_name", "author", "nick", "nickname", "displayName", "display_name",
+    "user_name", "author", "nick", "nickname", "displayName", "display_name", "anonymousName",
   ]), 180);
   const country = safeText(pick(raw, [
     "buyer_country_code", "buyerCountryCode", "buyer_country", "country_code", "countryCode", "country",
   ]), 24);
   const reviewedAt = toIsoDate(pick(raw, [
     "feedback_epoch_date", "feedbackEpochDate", "feedback_date", "feedbackDate", "reviewed_at",
-    "reviewDate", "date", "create_time", "createdAt", "gmtCreate",
+    "reviewDate", "date", "create_time", "createdAt", "gmtCreate", "evaDate", "evalDate",
   ]));
   const title = safeText(pick(raw, ["title", "sku", "product_sku", "skuInfo", "sku_info"]), 240);
   const directId = safeText(pick(raw, [
-    "feedback_id", "feedbackId", "review_id", "reviewId", "evaluation_id", "evaluationId", "id",
+    "feedback_id", "feedbackId", "review_id", "reviewId", "evaluation_id", "evaluationId", "id", "evaId",
   ]), 180);
   const orderId = safeText(pick(raw, ["order_id", "orderId"]), 180);
   const images = collectImages(pick(raw, [
     "image_urls", "imageUrls", "images", "image_list", "imageList", "pictures", "photos",
-    "reviewImages", "review_images", "photoList",
+    "reviewImages", "review_images", "photoList", "evaImageList", "buyerFeedbackPicList",
   ]));
 
   const fingerprint = [productId, directId, orderId, author, country, rating, reviewedAt, body, images.join("|")].join("\u241f");
@@ -303,6 +306,12 @@ function tryParseJsonish(text: string): unknown[] {
   }
 
   return values;
+}
+
+export function parseAliExpressPublicReviewJson(text: string, productId: string): AliExpressPublicReview[] {
+  const output = new Map<string, AliExpressPublicReview>();
+  for (const value of tryParseJsonish(text)) collectJsonReviews(value, productId, output);
+  return [...output.values()].slice(0, MAX_REVIEWS);
 }
 
 function extractJsonReviewsFromHtml(html: string, productId: string): AliExpressPublicReview[] {
@@ -424,12 +433,54 @@ async function fetchPublicHtml(url: string, referer: string): Promise<string> {
   }
 }
 
+async function fetchFeedbackSearchReviews(
+  productId: string,
+  productUrl: string,
+  diagnostics: string[],
+): Promise<AliExpressPublicReview[]> {
+  const output = new Map<string, AliExpressPublicReview>();
+
+  for (let page = 1; page <= MAX_FEEDBACK_PAGES && output.size < MAX_REVIEWS; page += 1) {
+    const url = new URL("https://feedback.aliexpress.com/pc/searchEvaluation.do");
+    url.searchParams.set("productId", productId);
+    url.searchParams.set("lang", "en_US");
+    url.searchParams.set("country", "US");
+    url.searchParams.set("page", String(page));
+    url.searchParams.set("pageSize", String(FEEDBACK_PAGE_SIZE));
+    url.searchParams.set("filter", "all");
+    url.searchParams.set("sort", "complex_default");
+
+    try {
+      const text = await fetchPublicHtml(url.toString(), productUrl);
+      const pageReviews = parseAliExpressPublicReviewJson(text, productId);
+      diagnostics.push(`feedback_json página ${page}: ${pageReviews.length} comentário(s) encontrado(s)`);
+      for (const review of pageReviews) output.set(review.source_review_id, review);
+      if (pageReviews.length < FEEDBACK_PAGE_SIZE) break;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      diagnostics.push(`feedback_json página ${page}: ${message.slice(0, 240)}`);
+      break;
+    }
+  }
+
+  return [...output.values()].slice(0, MAX_REVIEWS);
+}
+
 export async function fetchAliExpressPublicReviews(sourceId: string): Promise<AliExpressPublicReviewsResult> {
   const productId = normalizeAliExpressPublicProductId(sourceId);
   if (!productId) throw new Error(`ID AliExpress inválido para coleta pública: ${String(sourceId).slice(0, 120)}`);
 
   const diagnostics: string[] = [];
   const productUrl = `https://www.aliexpress.com/item/${productId}.html`;
+
+  // Este endpoint público já foi usado com sucesso pelo projeto e retorna JSON em
+  // `data.evaViewList`. Ele é a primeira tentativa quando a TOP oficial não aceita
+  // a App Key, pois não depende da credencial TOP e preserva comentários reais.
+  const feedbackJsonReviews = await fetchFeedbackSearchReviews(productId, productUrl, diagnostics);
+  if (feedbackJsonReviews.length > 0) {
+    return { productId, reviews: feedbackJsonReviews, source: "feedback_page", diagnostics };
+  }
+
   const attempts: Array<{ source: "product_page" | "feedback_page"; url: string }> = [
     { source: "product_page", url: productUrl },
     {
