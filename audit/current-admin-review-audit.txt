@@ -64,8 +64,6 @@ src/lib/aliexpress-fulfillment.functions.ts:199:  const { supabaseAdmin } = awai
 src/lib/aliexpress-fulfillment.functions.ts:200:  await supabaseAdmin
 src/lib/aliexpress-fulfillment.functions.ts:282:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 src/lib/aliexpress-fulfillment.functions.ts:283:    const { error } = await supabaseAdmin
-src/lib/aliexpress-browser-review-import.functions.ts:147:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-src/lib/aliexpress-browser-review-import.functions.ts:148:    const db = supabaseAdmin as any;
 src/lib/aliexpress-top-public.server.ts:150:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 src/lib/aliexpress-top-public.server.ts:151:    client = supabaseAdmin;
 src/lib/meta-social.server.ts:23:  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -100,17 +98,6 @@ src/lib/product-reviews.functions.ts:346:    const r = await syncReviewsForProdu
 159:  .middleware([requireSupabaseAuth])
 247:export const getUsageOverview = createServerFn({ method: "GET" })
 248:  .middleware([requireSupabaseAuth])
-### src/lib/aliexpress-browser-review-import.functions.ts
-1:import { createServerFn } from "@tanstack/react-start";
-3:import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-98:export const createAliExpressBrowserReviewCode = createServerFn({ method: "POST" })
-99:  .middleware([requireSupabaseAuth])
-119:export const createAliExpressBrowserReviewCodeForProduct = createServerFn({ method: "POST" })
-120:  .middleware([requireSupabaseAuth])
-142:export const getAliExpressBrowserReviewState = createServerFn({ method: "POST" })
-143:  .middleware([requireSupabaseAuth])
-147:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-148:    const db = supabaseAdmin as any;
 ### src/lib/aliexpress-discovery.functions.ts
 1:import { createServerFn } from "@tanstack/react-start";
 5:import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
@@ -120,8 +107,8 @@ src/lib/product-reviews.functions.ts:346:    const r = await syncReviewsForProdu
 118:    client = supabaseAdmin;
 563:export const discoverAliexpressProducts = createServerFn({ method: "POST" })
 564:  .middleware([requireSupabaseAuth])
-739:export const importAliexpressProductToStore = createServerFn({ method: "POST" })
-740:  .middleware([requireSupabaseAuth])
+735:export const importAliexpressProductToStore = createServerFn({ method: "POST" })
+736:  .middleware([requireSupabaseAuth])
 ### src/lib/aliexpress-fulfillment.functions.ts
 1:import { createServerFn } from "@tanstack/react-start";
 3:import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
@@ -218,12 +205,13 @@ src/routes/$categoria.$produto.tsx:77:              p.rating_count > 0
 src/routes/$categoria.$produto.tsx:78:                ? { "@type": "AggregateRating", ratingValue: p.rating_avg, reviewCount: p.rating_count }
 src/routes/$categoria.$produto.tsx:230:              <span>{product.rating_avg?.toFixed(1) ?? "0.0"}</span>
 src/routes/$categoria.$produto.tsx:231:              <span>· {product.rating_count} avaliações</span>
-src/routes/api/public/aliexpress-review-browser.ts:14:  rating: z.number().min(1).max(5),
+src/routes/api/public/aliexpress-review-browser.ts:14:  rating: z.coerce.number().min(0).max(5).default(0),
 src/routes/api/public/aliexpress-review-browser.ts:24:  reviews: z.array(ReviewSchema).min(1).max(MAX_REVIEWS),
-src/routes/api/public/aliexpress-review-browser.ts:139:              review.rating,
-src/routes/api/public/aliexpress-review-browser.ts:150:              rating: Math.round(review.rating * 10) / 10,
-src/routes/api/public/aliexpress-review-browser.ts:166:          const average = Math.round((rows.reduce((sum, row) => sum + row.rating, 0) / rows.length) * 100) / 100;
-src/routes/api/public/aliexpress-review-browser.ts:170:            .update({ rating_avg: average, rating_count: remoteTotal })
+src/routes/api/public/aliexpress-review-browser.ts:131:            (review) => Number.isFinite(review.rating) && review.rating >= 1 && review.rating <= 5,
+src/routes/api/public/aliexpress-review-browser.ts:150:              review.rating,
+src/routes/api/public/aliexpress-review-browser.ts:161:              rating: Math.round(review.rating * 10) / 10,
+src/routes/api/public/aliexpress-review-browser.ts:177:          const average = Math.round((rows.reduce((sum, row) => sum + row.rating, 0) / rows.length) * 100) / 100;
+src/routes/api/public/aliexpress-review-browser.ts:181:            .update({ rating_avg: average, rating_count: remoteTotal })
 src/routes/_authenticated/admin.aliexpress-reviews.tsx:104:        const rating = result.remoteAverage ? `, nota ${result.remoteAverage.toFixed(1)}` : "";
 src/routes/_authenticated/admin.aliexpress-reviews.tsx:106:        toast.success(`${total}${rating} sincronizados. O AliExpress não expôs os comentários individuais deste anúncio.`);
 src/routes/_authenticated/admin.aliexpress-reviews.tsx:316:                  <p className="text-xs font-semibold text-foreground">1. Instale a extensão</p>
@@ -263,12 +251,14 @@ src/components/store/ProductReviews.tsx:513:  const [rating, setRating] = useSta
 src/components/store/ProductReviews.tsx:530:          rating,
 src/components/store/ProductReviews.tsx:559:          <Field label="Nota (0–5)"><input type="number" step="0.1" min={0} max={5} value={rating} onChange={(e) => setRating(Number(e.target.value))} className="w-24 rounded-lg border border-border bg-background px-3 py-2 text-sm" /></Field>
 src/lib/asaas.server.ts:3: * Nunca importar em código do cliente (extensão .server.ts bloqueia).
-src/lib/aliexpress-browser-review-auth.functions.ts:15:  rating: z.number().min(1).max(5),
+src/lib/aliexpress-browser-review-auth.functions.ts:15:  rating: z.coerce.number().min(0).max(5).default(0),
 src/lib/aliexpress-browser-review-auth.functions.ts:124:  reviews: z.array(ReviewSchema).min(1).max(MAX_REVIEWS),
-src/lib/aliexpress-browser-review-auth.functions.ts:170:        review.rating,
-src/lib/aliexpress-browser-review-auth.functions.ts:181:        rating: Math.round(review.rating * 10) / 10,
-src/lib/aliexpress-browser-review-auth.functions.ts:197:    const average = Math.round((rows.reduce((sum, row) => sum + row.rating, 0) / rows.length) * 100) / 100;
-src/lib/aliexpress-browser-review-auth.functions.ts:201:      .update({ rating_avg: average, rating_count: remoteTotal })
+src/lib/aliexpress-browser-review-auth.functions.ts:162:      (review) => Number.isFinite(review.rating) && review.rating >= 1 && review.rating <= 5,
+src/lib/aliexpress-browser-review-auth.functions.ts:166:      throw new Error("A extensão não retornou nenhuma avaliação com nota válida entre 1 e 5.");
+src/lib/aliexpress-browser-review-auth.functions.ts:178:        review.rating,
+src/lib/aliexpress-browser-review-auth.functions.ts:189:        rating: Math.round(review.rating * 10) / 10,
+src/lib/aliexpress-browser-review-auth.functions.ts:205:    const average = Math.round((rows.reduce((sum, row) => sum + row.rating, 0) / rows.length) * 100) / 100;
+src/lib/aliexpress-browser-review-auth.functions.ts:209:      .update({ rating_avg: average, rating_count: remoteTotal })
 src/lib/favorites.ts:67:            id, slug, name, short_description, rating_avg, rating_count,
 src/lib/intelligence.functions.ts:60:      db.from("product_reviews").select("rating").eq("product_id", data.product_id),
 src/lib/intelligence.functions.ts:89:      ? reviews.reduce((s: number, r: any) => s + Number(r.rating ?? 0), 0) / reviews.length
