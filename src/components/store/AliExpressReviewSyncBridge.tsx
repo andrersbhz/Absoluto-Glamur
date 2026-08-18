@@ -242,7 +242,7 @@ export function AliExpressReviewSyncBridge() {
           qc.invalidateQueries({ queryKey: ["products"] }),
         ]);
 
-        toast.success(`${saved.imported} avaliações importadas pelo Chrome${saved.withPhotos > 0 ? ` · ${saved.withPhotos} com fotos` : ""}${saved.remoteTotal > saved.imported ? ` · ${saved.remoteTotal} detectadas` : ""}.`);
+        toast.success(`${saved.imported} avaliações importadas pelo Chrome${saved.withPhotos > 0 ? ` · ${saved.withPhotos} com fotos` : ""}${saved.remoteTotal > saved.imported ? ` · ${saved.remoteTotal} detectadas` : ""}${saved.skippedInvalid > 0 ? ` · ${saved.skippedInvalid} sem nota ignoradas` : ""}.`);
       } catch (error) {
         const message = error instanceof Error ? error.message : "Erro ao sincronizar avaliações.";
         const suffix = directSyncError && message !== directSyncError

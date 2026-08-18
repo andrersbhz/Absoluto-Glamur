@@ -144,8 +144,7 @@ export const getAliExpressBrowserReviewState = createServerFn({ method: "POST" }
   .inputValidator((value: unknown) => StateSchema.parse(value))
   .handler(async ({ data, context }) => {
     await assertCatalog(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const db = supabaseAdmin as any;
+    const db = context.supabase as any;
     const { data: state, error } = await db
       .from("product_review_sync_state")
       .select("product_id,source_id,status,fetched_count,remote_total,last_attempt_at,last_success_at,last_error,updated_at")

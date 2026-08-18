@@ -12,9 +12,9 @@ const ReviewSchema = z.object({
   id: z.string().trim().min(1).max(200).nullable().optional(),
   author: z.string().trim().max(180).nullable().optional(),
   country: z.string().trim().max(24).nullable().optional(),
-  rating: z.number().min(1).max(5),
+  rating: z.coerce.number().min(0).max(5).default(0),
   title: z.string().trim().max(500).nullable().optional(),
-  body: z.string().trim().min(1).max(8000),
+  body: z.string().trim().max(8000).default(""),
   images: z.array(z.string().max(2000)).max(MAX_IMAGES).default([]),
   reviewed_at: z.string().max(120).nullable().optional(),
 });
@@ -158,8 +158,16 @@ export const importAliExpressBrowserReviewsAuthenticated = createServerFn({ meth
       updated_at: startedAt,
     }, { onConflict: "product_id" });
 
+    const validReviews = data.reviews.filter(
+      (review) => Number.isFinite(review.rating) && review.rating >= 1 && review.rating <= 5,
+    );
+    const skippedInvalid = data.reviews.length - validReviews.length;
+    if (!validReviews.length) {
+      throw new Error("A extensão não retornou nenhuma avaliação com nota válida entre 1 e 5.");
+    }
+
     const now = new Date().toISOString();
-    const rows = data.reviews.map((review) => {
+    const rows = validReviews.map((review) => {
       const images = [...new Set(review.images.map(safeImage).filter((value): value is string => Boolean(value)))].slice(0, MAX_IMAGES);
       const reviewedAt = safeDate(review.reviewed_at);
       const directId = safeReviewId(review.id);
@@ -225,5 +233,6 @@ export const importAliExpressBrowserReviewsAuthenticated = createServerFn({ meth
       withPhotos,
       remoteTotal,
       average,
+      skippedInvalid,
     };
   });

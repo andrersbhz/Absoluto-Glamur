@@ -11,9 +11,9 @@ const ReviewSchema = z.object({
   id: z.string().trim().min(1).max(200).nullable().optional(),
   author: z.string().trim().max(180).nullable().optional(),
   country: z.string().trim().max(24).nullable().optional(),
-  rating: z.number().min(1).max(5),
+  rating: z.coerce.number().min(0).max(5).default(0),
   title: z.string().trim().max(500).nullable().optional(),
-  body: z.string().trim().min(1).max(8000),
+  body: z.string().trim().max(8000).default(""),
   images: z.array(z.string().max(2000)).max(MAX_IMAGES).default([]),
   reviewed_at: z.string().max(120).nullable().optional(),
 });
@@ -127,8 +127,19 @@ export const Route = createFileRoute("/api/public/aliexpress-review-browser")({
             updated_at: startedAt,
           }, { onConflict: "product_id" });
 
+          const validReviews = body.reviews.filter(
+            (review) => Number.isFinite(review.rating) && review.rating >= 1 && review.rating <= 5,
+          );
+          const skippedInvalid = body.reviews.length - validReviews.length;
+          if (!validReviews.length) {
+            return Response.json(
+              { ok: false, error: "no_valid_rated_reviews" },
+              { status: 422, headers: corsHeaders() },
+            );
+          }
+
           const now = new Date().toISOString();
-          const rows = body.reviews.map((review) => {
+          const rows = validReviews.map((review) => {
             const images = [...new Set(review.images.map(safeImage).filter((value): value is string => Boolean(value)))].slice(0, MAX_IMAGES);
             const reviewedAt = safeDate(review.reviewed_at);
             const directId = safeReviewId(review.id);
@@ -193,6 +204,7 @@ export const Route = createFileRoute("/api/public/aliexpress-review-browser")({
             withPhotos,
             remoteTotal,
             average,
+            skippedInvalid,
           }, { headers: corsHeaders() });
         } catch (error) {
           const message = error instanceof Error ? error.message : String(error);
