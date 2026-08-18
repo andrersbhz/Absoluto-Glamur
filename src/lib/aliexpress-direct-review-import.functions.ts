@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { callAli } from "./aliexpress-discovery.functions";
 import { callAliTopPublic } from "./aliexpress-top-public.server";
 import { generateWithOwnKeys } from "./ai-translate.server";
 
@@ -20,6 +21,13 @@ type NormalizedReview = {
   images: string[];
   reviewed_at: string | null;
   body_translated?: boolean;
+};
+
+type AliProductReviewMeta = {
+  requestedProductId: string;
+  mainProductId: string | null;
+  total: number | null;
+  average: number | null;
 };
 
 async function assertCatalog(context: any) {
@@ -56,6 +64,20 @@ function safeText(value: unknown, max = 8000): string | null {
 function ratingOf(value: unknown): number {
   const parsed = Number.parseFloat(String(value ?? "0").replace(",", "."));
   return Number.isFinite(parsed) ? Math.min(5, Math.max(0, parsed)) : 0;
+}
+
+function optionalRating(value: unknown): number | null {
+  if (value == null || value === "") return null;
+  const parsed = Number.parseFloat(String(value).replace("%", "").replace(",", ".").trim());
+  if (!Number.isFinite(parsed)) return null;
+  const normalized = parsed > 5 && parsed <= 100 ? parsed / 20 : parsed;
+  return Math.round(Math.min(5, Math.max(0, normalized)) * 100) / 100;
+}
+
+function optionalCount(value: unknown): number | null {
+  if (value == null || value === "") return null;
+  const parsed = Number(String(value).replace(/[^\d.-]/g, ""));
+  return Number.isFinite(parsed) && parsed >= 0 ? Math.round(parsed) : null;
 }
 
 function isoDate(value: unknown): string | null {
@@ -237,7 +259,45 @@ async function fetchReviews(productId: string, credentialClient: any) {
     if (remoteTotal > 0 && page * PAGE_SIZE >= remoteTotal) break;
   }
 
-  return { reviews: [...collected.values()], remoteTotal };
+  return { reviews: [...collected.values()], remoteTotal, productId };
+}
+
+async function fetchProductReviewMeta(productId: string, credentialClient: any): Promise<AliProductReviewMeta> {
+  const payload = await callAli<any>(
+    "aliexpress.ds.product.get",
+    {
+      product_id: productId,
+      ship_to_country: "BR",
+      target_currency: "BRL",
+      target_language: "PT",
+    },
+    credentialClient,
+  );
+  const root = payload?.aliexpress_ds_product_get_response ?? payload;
+  const result = root?.result?.result ?? root?.resp_result?.result ?? root?.result ?? root;
+  const base = result?.ae_item_base_info_dto ?? result?.base_info ?? {};
+  const converter = result?.product_id_converter_result ?? result?.productIdConverterResult ?? {};
+  return {
+    requestedProductId: productId,
+    mainProductId: normalizeAliProductId(String(converter?.main_product_id ?? converter?.mainProductId ?? "")),
+    total: optionalCount(base?.evaluation_count ?? result?.evaluation_count ?? base?.evaluate_count ?? result?.evaluate_count),
+    average: optionalRating(base?.avg_evaluation_rating ?? result?.avg_evaluation_rating ?? result?.evaluate_rate),
+  };
+}
+
+async function updateProductAggregate(
+  client: any,
+  productId: string,
+  total: number | null,
+  average: number | null,
+) {
+  const patch: Record<string, number> = {};
+  if (total != null && total > 0) patch.rating_count = total;
+  if (average != null && average > 0) patch.rating_avg = average;
+  if (!Object.keys(patch).length) return false;
+  const { error } = await client.from("products").update(patch).eq("id", productId);
+  if (error) throw new Error(`Falha ao atualizar a nota do produto: ${error.message}`);
+  return true;
 }
 
 const InputSchema = z.object({
@@ -277,8 +337,92 @@ export const importAliExpressReviewsByUrl = createServerFn({ method: "POST" })
     }, { onConflict: "product_id" });
 
     try {
-      const fetched = await fetchReviews(aliProductId, context.supabase);
-      const translated = await translateReviews(fetched.reviews);
+      let meta: AliProductReviewMeta | null = null;
+      let metaError: string | null = null;
+      try {
+        meta = await fetchProductReviewMeta(aliProductId, context.supabase);
+      } catch (error) {
+        metaError = error instanceof Error ? error.message : String(error);
+      }
+
+      const candidateIds = [aliProductId];
+      if (meta?.mainProductId && meta.mainProductId !== aliProductId) candidateIds.push(meta.mainProductId);
+
+      let fetched: Awaited<ReturnType<typeof fetchReviews>> | null = null;
+      const reviewErrors: string[] = [];
+      for (const candidateId of candidateIds) {
+        try {
+          const candidate = await fetchReviews(candidateId, context.supabase);
+          if (candidate.reviews.length > 0 || candidate.remoteTotal > 0) {
+            fetched = candidate;
+            break;
+          }
+        } catch (error) {
+          reviewErrors.push(`${candidateId}: ${error instanceof Error ? error.message : String(error)}`);
+        }
+      }
+
+      // Se o ID regional não trouxe agregado, tenta o produto principal também.
+      if (meta?.mainProductId && meta.mainProductId !== aliProductId && (meta.total ?? 0) <= 0 && (meta.average ?? 0) <= 0) {
+        try {
+          const mainMeta = await fetchProductReviewMeta(meta.mainProductId, context.supabase);
+          if ((mainMeta.total ?? 0) > 0 || (mainMeta.average ?? 0) > 0) meta = mainMeta;
+        } catch {
+          // Meta do produto principal é complementar; não transforma reviews válidos em erro.
+        }
+      }
+
+      const resolvedProductId = fetched?.productId ?? meta?.mainProductId ?? aliProductId;
+      const fetchedReviews = fetched?.reviews ?? [];
+      const remoteTotal = (meta?.total ?? 0) > 0 ? meta!.total : (fetched?.remoteTotal ?? 0);
+      const remoteAverage = (meta?.average ?? 0) > 0 ? meta!.average : null;
+
+      // Mesmo quando comentários individuais não são expostos, a Open Platform
+      // ainda pode fornecer a nota média e quantidade real. Isso é sucesso parcial,
+      // não deve aparecer como uma falha vermelha para o administrador.
+      if (!fetchedReviews.length) {
+        const aggregateUpdated = await updateProductAggregate(context.supabase, data.product_id, remoteTotal, remoteAverage);
+        if (aggregateUpdated) {
+          const now = new Date().toISOString();
+          const diagnostic = reviewErrors[0] ?? metaError;
+          await context.supabase.from("product_review_sync_state").upsert({
+            product_id: data.product_id,
+            source: "aliexpress",
+            source_id: resolvedProductId,
+            status: "ok",
+            fetched_count: 0,
+            remote_total: remoteTotal,
+            last_attempt_at: startedAt,
+            last_success_at: now,
+            last_error: diagnostic ? diagnostic.slice(0, 1200) : null,
+            updated_at: now,
+          }, { onConflict: "product_id" });
+
+          return {
+            ok: true,
+            productId: data.product_id,
+            productTitle: product.name,
+            productSlug: product.slug,
+            aliExpressProductId: aliProductId,
+            resolvedAliExpressProductId: resolvedProductId,
+            imported: 0,
+            translated: 0,
+            withPhotos: 0,
+            remoteTotal: remoteTotal ?? 0,
+            remoteAverage,
+            aggregateOnly: true,
+            status: "aggregate_only",
+            diagnostic,
+          };
+        }
+
+        const details = [...reviewErrors, metaError].filter(Boolean).slice(0, 2).join(" | ");
+        throw new Error(
+          `O AliExpress não disponibilizou comentários individuais nem dados agregados de avaliações para este anúncio.${details ? ` Detalhe: ${details}` : ""}`.slice(0, 1200),
+        );
+      }
+
+      const translated = await translateReviews(fetchedReviews);
       const now = new Date().toISOString();
 
       const rows = translated.reviews.map((review) => ({
@@ -297,28 +441,23 @@ export const importAliExpressReviewsByUrl = createServerFn({ method: "POST" })
         last_synced_at: now,
       }));
 
-      if (rows.length) {
-        const { error: upsertError } = await context.supabase
-          .from("product_external_reviews")
-          .upsert(rows, { onConflict: "product_id,source,source_review_id" });
-        if (upsertError) throw new Error(`Falha ao salvar avaliações: ${upsertError.message}`);
+      const { error: upsertError } = await context.supabase
+        .from("product_external_reviews")
+        .upsert(rows, { onConflict: "product_id,source,source_review_id" });
+      if (upsertError) throw new Error(`Falha ao salvar avaliações: ${upsertError.message}`);
 
-        const average = Math.round((rows.reduce((sum, row) => sum + row.rating, 0) / rows.length) * 100) / 100;
-        const patch: Record<string, number> = { rating_avg: average };
-        if (fetched.remoteTotal > 0) patch.rating_count = fetched.remoteTotal;
-        else patch.rating_count = rows.length;
-        const { error: ratingError } = await context.supabase.from("products").update(patch).eq("id", data.product_id);
-        if (ratingError) throw new Error(`Avaliações foram salvas, mas a nota do produto não foi atualizada: ${ratingError.message}`);
-      }
+      const localAverage = Math.round((rows.reduce((sum, row) => sum + row.rating, 0) / rows.length) * 100) / 100;
+      const aggregateTotal = (remoteTotal ?? 0) > 0 ? remoteTotal : rows.length;
+      const aggregateAverage = (remoteAverage ?? 0) > 0 ? remoteAverage : localAverage;
+      await updateProductAggregate(context.supabase, data.product_id, aggregateTotal, aggregateAverage);
 
-      const status = rows.length ? "ok" : "empty";
       await context.supabase.from("product_review_sync_state").upsert({
         product_id: data.product_id,
         source: "aliexpress",
-        source_id: aliProductId,
-        status,
+        source_id: resolvedProductId,
+        status: "ok",
         fetched_count: rows.length,
-        remote_total: fetched.remoteTotal,
+        remote_total: aggregateTotal,
         last_attempt_at: startedAt,
         last_success_at: now,
         last_error: null,
@@ -331,11 +470,15 @@ export const importAliExpressReviewsByUrl = createServerFn({ method: "POST" })
         productTitle: product.name,
         productSlug: product.slug,
         aliExpressProductId: aliProductId,
+        resolvedAliExpressProductId: resolvedProductId,
         imported: rows.length,
         translated: translated.translated,
         withPhotos: rows.filter((row) => row.images.length > 0).length,
-        remoteTotal: fetched.remoteTotal,
-        status,
+        remoteTotal: aggregateTotal,
+        remoteAverage: aggregateAverage,
+        aggregateOnly: false,
+        status: "ok",
+        diagnostic: null,
       };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
