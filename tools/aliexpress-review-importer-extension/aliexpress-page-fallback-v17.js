@@ -1,4 +1,5 @@
 const AG_V17_JOB_PREFIX = "agReviewJob:";
+const AG_V17_MIN_ATTEMPT_INTERVAL_MS = 7_000;
 const agV17Running = new Set();
 const agV17Attempts = new Map();
 
@@ -31,9 +32,11 @@ async function agV17WriteSuccess(requestId, response) {
 
 async function agV17Try(requestId, job) {
   if (agV17Running.has(requestId)) return;
-  const attempt = agV17Attempts.get(requestId) || 0;
-  if (attempt >= 4) return;
-  agV17Attempts.set(requestId, attempt + 1);
+  const now = Date.now();
+  const attemptState = agV17Attempts.get(requestId) || { count: 0, lastAt: 0 };
+  if (attemptState.count >= 4) return;
+  if (attemptState.lastAt && now - attemptState.lastAt < AG_V17_MIN_ATTEMPT_INTERVAL_MS) return;
+  agV17Attempts.set(requestId, { count: attemptState.count + 1, lastAt: now });
   agV17Running.add(requestId);
   try {
     const response = await chrome.runtime.sendMessage({
