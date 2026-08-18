@@ -50,9 +50,15 @@ function StarRow({ rating, size = "sm" }: { rating: number; size?: "sm" | "md" }
   );
 }
 
-function countryFlag(country: string | null): string {
-  if (!country || !/^[A-Za-z]{2}$/.test(country)) return "";
-  return [...country.toUpperCase()].map((char) => String.fromCodePoint(127397 + char.charCodeAt(0))).join("");
+function storefrontReviewText(value: string | null | undefined): string {
+  return String(value ?? "").replace(/Ali\s*Express/gi, "Absoluto Glamur").trim();
+}
+
+function storefrontAuthorName(value: string | null | undefined): string {
+  const name = String(value ?? "").trim();
+  if (!name) return "";
+  if (/^(?:Ali\s*Express\s+Shopper|Cliente\s+Ali\s*Express)$/i.test(name)) return "";
+  return storefrontReviewText(name);
 }
 
 function ReviewSkeleton() {
@@ -213,13 +219,13 @@ export function ProductReviews({ productId }: Props) {
             <h2 className="font-display text-2xl text-foreground sm:text-3xl">Avaliações de clientes</h2>
             {summary && (summary.total > 0 || summary.officialTotal > 0) && (
               <span className="rounded-full bg-[#ff4747]/10 px-2.5 py-1 text-[11px] font-semibold text-[#d93636]">
-                AliExpress
+                Absoluto Glamur
               </span>
             )}
           </div>
           <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
             {summary?.officialTotal > 0
-              ? "Nota e quantidade sincronizadas do produto original no AliExpress. Comentários disponíveis são exibidos abaixo."
+              ? "Nota e quantidade sincronizadas do produto original. Comentários disponíveis são exibidos abaixo."
               : "Avaliações disponíveis do produto original e comentários cadastrados na loja."}
           </p>
         </div>
@@ -438,7 +444,9 @@ function ReviewCard({
   const [lightbox, setLightbox] = useState<string | null>(null);
   const translated = "body_translated" in review && review.body_translated === true;
   const isAli = review.source?.startsWith("aliexpress");
-  const flag = countryFlag(review.author_country);
+  const authorName = storefrontAuthorName(review.author_name);
+  const displayTitle = storefrontReviewText(review.title);
+  const displayBody = storefrontReviewText(review.body);
 
   async function handleDelete() {
     if (!confirm("Excluir esta avaliação?")) return;
@@ -461,15 +469,12 @@ function ReviewCard({
           <div className="flex flex-wrap items-center gap-2">
             <StarRow rating={Number(review.rating)} />
             <span className="text-xs font-semibold text-foreground">{Number(review.rating).toFixed(1)}</span>
-            {isAli && <span className="rounded bg-[#ff4747]/10 px-1.5 py-0.5 text-[10px] font-semibold text-[#d93636]">AliExpress</span>}
+            {isAli && <span className="rounded bg-[#ff4747]/10 px-1.5 py-0.5 text-[10px] font-semibold text-[#d93636]">Absoluto Glamur</span>}
           </div>
-          <p className="mt-2 text-sm font-medium text-foreground">
-            {review.author_name || (isAli ? "Cliente AliExpress" : "Cliente")}
-            {review.author_country && (
-              <span className="ml-2 text-xs font-normal text-muted-foreground">{flag ? `${flag} ` : ""}{review.author_country}</span>
-            )}
-          </p>
-          <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
+          {authorName && (
+            <p className="mt-2 text-sm font-medium text-foreground">{authorName}</p>
+          )}
+          <div className={`${authorName ? "mt-1" : "mt-2"} flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground`}>
             {review.reviewed_at && <span>{new Date(review.reviewed_at).toLocaleDateString("pt-BR")}</span>}
             {translated && <span className="inline-flex items-center gap-1"><Check className="h-3 w-3" /> Traduzido para PT-BR</span>}
           </div>
@@ -483,8 +488,8 @@ function ReviewCard({
         )}
       </header>
 
-      {review.title && <p className="mt-3 text-xs font-medium text-muted-foreground">{review.title}</p>}
-      {review.body && <p className="mt-2 max-w-4xl whitespace-pre-line text-sm leading-6 text-foreground/85">{review.body}</p>}
+      {displayTitle && <p className="mt-3 text-xs font-medium text-muted-foreground">{displayTitle}</p>}
+      {displayBody && <p className="mt-2 max-w-4xl whitespace-pre-line text-sm leading-6 text-foreground/85">{displayBody}</p>}
 
       {review.images?.length > 0 && (
         <div className="mt-4 flex flex-wrap gap-2">
