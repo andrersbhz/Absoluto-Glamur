@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Importador AliExpress</title>
+  <link rel="stylesheet" href="popup.css" />
+</head>
+<body>
+  <main>
+    <div class="eyebrow">ABSOLUTO GLAMUR</div>
+    <h1>Importar avaliações</h1>
+    <p class="lead">Abra o produto no AliExpress, cole o código temporário gerado no painel e importe usando sua sessão do Chrome.</p>
+
+    <div class="status-card">
+      <span>Produto detectado</span>
+      <strong id="productId">—</strong>
+    </div>
+
+    <label for="bridgeCode">Código de importação</label>
+    <textarea id="bridgeCode" rows="4" spellcheck="false" placeholder="AG1.eyJ2IjoxLC4uLg..."></textarea>
+
+    <button id="importButton" type="button">Importar avaliações desta página</button>
+    <button id="clearButton" type="button" class="secondary">Limpar código salvo</button>
+
+    <div id="result" class="result" hidden></div>
+    <p class="footnote">O código expira em poucos minutos e só autoriza o produto escolhido no painel. A extensão não recebe senha da loja nem senha do AliExpress.</p>
+  </main>
+  <script src="popup.js"></script>
+</body>
+</html>

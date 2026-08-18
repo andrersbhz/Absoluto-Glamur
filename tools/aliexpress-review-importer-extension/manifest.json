@@ -1,0 +1,20 @@
+{
+  "manifest_version": 3,
+  "name": "Absoluto Glamur · Importador AliExpress",
+  "version": "1.0.0",
+  "description": "Importa avaliações reais do AliExpress usando a sessão do navegador e envia para a Absoluto Glamur.",
+  "permissions": ["activeTab", "storage", "scripting"],
+  "host_permissions": [
+    "https://*.aliexpress.com/*",
+    "https://*.aliexpress.us/*",
+    "https://*.aliexpress.ru/*"
+  ],
+  "optional_host_permissions": ["https://*/*", "http://*/*"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "Importar avaliações AliExpress",
+    "default_popup": "popup.html"
+  }
+}
