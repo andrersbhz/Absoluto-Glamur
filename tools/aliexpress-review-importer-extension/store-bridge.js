@@ -60,7 +60,12 @@ window.addEventListener("message", async (event) => {
     return;
   }
 
-  chrome.runtime.sendMessage({ type: "AG_COLLECT_FROM_STORE", productId, sourceUrl }, (response) => {
+  chrome.runtime.sendMessage({
+    type: "AG_COLLECT_FROM_STORE_V14",
+    requestId,
+    productId,
+    sourceUrl,
+  }, (response) => {
     if (chrome.runtime.lastError) {
       postResult(requestId, {
         ok: false,
