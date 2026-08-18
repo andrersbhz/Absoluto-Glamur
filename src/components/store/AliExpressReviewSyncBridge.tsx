@@ -33,6 +33,7 @@ type ExtensionMessage = {
   average?: number;
   reviews?: BrowserReview[];
   error?: string;
+  stage?: string;
 };
 
 function requestId(prefix: string) {
@@ -70,8 +71,8 @@ function waitForExtension(): Promise<string> {
         reject(new Error("A extensão Absoluto Glamur está DESLIGADA. Clique no ícone da extensão e pressione Ligar."));
         return;
       }
-      if (!versionAtLeast(version, "1.4.0")) {
-        reject(new Error(`A extensão Absoluto Glamur ${version} está desatualizada. Instale a versão 1.4.0 ou superior e recarregue esta página.`));
+      if (!versionAtLeast(version, "1.6.0")) {
+        reject(new Error(`A extensão Absoluto Glamur ${version} está desatualizada. Instale a versão 1.6.0 ou superior e recarregue esta página.`));
         return;
       }
       resolve(version);
@@ -95,24 +96,34 @@ function collectWithExtension(input: {
 }): Promise<ExtensionMessage> {
   return new Promise((resolve, reject) => {
     const id = requestId("ag-sync");
+    const progressToastId = `ag-review-${id}`;
     const cleanup = () => {
       window.removeEventListener("message", onMessage);
       window.clearTimeout(timer);
+      toast.dismiss(progressToastId);
     };
     const onMessage = (event: MessageEvent<ExtensionMessage>) => {
       if (event.source !== window || event.origin !== window.location.origin) return;
       const data = event.data;
-      if (data?.source !== "absoluto-glamur-extension" || data.type !== "AG_REVIEW_SYNC_RESULT" || data.requestId !== id) return;
+      if (data?.source !== "absoluto-glamur-extension" || data.requestId !== id) return;
+
+      if (data.type === "AG_REVIEW_SYNC_PROGRESS") {
+        toast.loading(data.stage || "Coletando avaliações no AliExpress...", { id: progressToastId });
+        return;
+      }
+      if (data.type !== "AG_REVIEW_SYNC_RESULT") return;
+
       cleanup();
       if (data.ok) resolve(data);
       else reject(new Error(data.error || "A extensão não conseguiu coletar as avaliações."));
     };
     const timer = window.setTimeout(() => {
       cleanup();
-      reject(new Error("A extensão 1.4.0 não devolveu resultado dentro do limite. Verifique a aba do AliExpress, conclua qualquer login/CAPTCHA e tente novamente."));
-    }, 95_000);
+      reject(new Error("A extensão 1.6.0 iniciou o trabalho, mas a página do AliExpress não publicou um resultado. Recarregue a aba do produto no AliExpress e tente novamente."));
+    }, 75_000);
 
     window.addEventListener("message", onMessage);
+    toast.loading("Preparando a coleta no Chrome...", { id: progressToastId });
     window.postMessage(
       {
         source: "absoluto-glamur-store",
@@ -148,6 +159,8 @@ export function AliExpressReviewSyncBridge() {
   const saveBrowserReviews = useServerFn(importAliExpressBrowserReviewsAuthenticated);
 
   useEffect(() => {
+    let activeSync = false;
+
     const onClick = async (event: MouseEvent) => {
       const target = event.target instanceof Element ? event.target.closest("button") : null;
       if (!(target instanceof HTMLButtonElement)) return;
@@ -158,7 +171,11 @@ export function AliExpressReviewSyncBridge() {
       event.stopPropagation();
       event.stopImmediatePropagation();
 
-      if (target.disabled) return;
+      if (target.disabled || activeSync) {
+        toast.info("Já existe uma sincronização do AliExpress em andamento.");
+        return;
+      }
+      activeSync = true;
       const originalHtml = target.innerHTML;
       target.disabled = true;
       target.setAttribute("aria-busy", "true");
@@ -237,6 +254,7 @@ export function AliExpressReviewSyncBridge() {
           toast.error(`${message}${suffix}`);
         }
       } finally {
+        activeSync = false;
         target.disabled = false;
         target.removeAttribute("aria-busy");
         target.innerHTML = originalHtml;
