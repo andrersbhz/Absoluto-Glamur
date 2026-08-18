@@ -44,8 +44,8 @@ function RyviuReviewsPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("products")
-        .select("id,title,slug,is_active")
-        .order("title", { ascending: true })
+        .select("id,name,slug,status")
+        .order("name", { ascending: true })
         .limit(1000);
       if (error) throw error;
       return data ?? [];
@@ -58,7 +58,7 @@ function RyviuReviewsPage() {
     const rows = productsQ.data ?? [];
     if (!term) return rows;
     return rows.filter((product) =>
-      `${product.title} ${product.slug}`.toLocaleLowerCase("pt-BR").includes(term),
+      `${product.name} ${product.slug}`.toLocaleLowerCase("pt-BR").includes(term),
     );
   }, [productsQ.data, search]);
 
@@ -123,7 +123,7 @@ function RyviuReviewsPage() {
               <div>
                 <h2 className="font-display text-xl">1. Escolha o produto</h2>
                 <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                  Se o CSV tiver a coluna product_handle, o importador confere o slug para impedir que avaliações de outro produto sejam gravadas por engano.
+                  Se o CSV tiver a coluna product_handle, o importador confere o slug quando houver vários produtos no mesmo arquivo para impedir mistura de avaliações.
                 </p>
               </div>
             </div>
@@ -150,7 +150,7 @@ function RyviuReviewsPage() {
               <option value="">{productsQ.isLoading ? "Carregando produtos..." : "Selecione um produto"}</option>
               {filteredProducts.map((product) => (
                 <option key={product.id} value={product.id}>
-                  {product.title}{product.is_active ? "" : " · inativo"} — {product.slug}
+                  {product.name}{product.status === "active" ? "" : ` · ${product.status}`} — {product.slug}
                 </option>
               ))}
             </select>
@@ -212,7 +212,7 @@ function RyviuReviewsPage() {
                   <h3 className="text-sm font-semibold">Importação segura</h3>
                   <ul className="mt-2 space-y-2 text-xs leading-relaxed text-muted-foreground">
                     <li>• Não altera produtos, preços, estoque ou pedidos.</li>
-                    <li>• Reimportar o mesmo CSV atualiza as mesmas avaliações em vez de duplicá-las quando o arquivo possui ID.</li>
+                    <li>• Reimportar o mesmo CSV atualiza as mesmas avaliações em vez de duplicá-las.</li>
                     <li>• Status disable/draft permanece oculto na loja.</li>
                     <li>• Fotos válidas são exibidas no mesmo lightbox das avaliações atuais.</li>
                   </ul>
@@ -223,7 +223,7 @@ function RyviuReviewsPage() {
             {selectedProduct && (
               <div className="rounded-2xl border border-border bg-card p-5">
                 <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Destino</p>
-                <p className="mt-2 text-sm font-semibold text-foreground">{selectedProduct.title}</p>
+                <p className="mt-2 text-sm font-semibold text-foreground">{selectedProduct.name}</p>
                 <p className="mt-1 break-all font-mono text-[11px] text-muted-foreground">{selectedProduct.slug}</p>
               </div>
             )}
