@@ -70,8 +70,8 @@ function waitForExtension(): Promise<string> {
         reject(new Error("A extensão Absoluto Glamur está DESLIGADA. Clique no ícone da extensão e pressione Ligar."));
         return;
       }
-      if (!versionAtLeast(version, "1.3.0")) {
-        reject(new Error(`A extensão Absoluto Glamur ${version} está desatualizada. Instale a versão 1.3.0 ou superior e recarregue esta página.`));
+      if (!versionAtLeast(version, "1.4.0")) {
+        reject(new Error(`A extensão Absoluto Glamur ${version} está desatualizada. Instale a versão 1.4.0 ou superior e recarregue esta página.`));
         return;
       }
       resolve(version);
@@ -109,8 +109,8 @@ function collectWithExtension(input: {
     };
     const timer = window.setTimeout(() => {
       cleanup();
-      reject(new Error("A importação pelo Chrome excedeu o tempo esperado. Verifique a aba do AliExpress e tente novamente."));
-    }, 120_000);
+      reject(new Error("A extensão 1.4.0 não devolveu resultado dentro do limite. Verifique a aba do AliExpress, conclua qualquer login/CAPTCHA e tente novamente."));
+    }, 95_000);
 
     window.addEventListener("message", onMessage);
     window.postMessage(
