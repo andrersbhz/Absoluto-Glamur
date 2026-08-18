@@ -47,42 +47,24 @@ export const listAdminUsers = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<AdminUserRow[]> => {
     await assertAdmin(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data, error } = await (context.supabase as any).rpc("admin_list_users");
+    if (error) throw new Error(error.message);
 
-    const [{ data: authData, error: authError }, { data: roles, error: rolesError }] = await Promise.all([
-      supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 100 }),
-      supabaseAdmin.from("user_roles").select("user_id, role"),
-    ]);
-    if (authError) throw new Error(authError.message);
-    if (rolesError) throw new Error(rolesError.message);
-
-    const userIds = authData.users.map((u) => u.id);
-    const profiles = userIds.length
-      ? await supabaseAdmin.from("profiles").select("id, full_name, phone").in("id", userIds)
-      : { data: [], error: null };
-    if (profiles.error) throw new Error(profiles.error.message);
-
-    const profileById = new Map((profiles.data ?? []).map((p) => [p.id, p]));
-    const rolesByUser = new Map<string, AdminRole[]>();
-    for (const row of roles ?? []) {
-      const current = rolesByUser.get(row.user_id) ?? [];
-      current.push(row.role as AdminRole);
-      rolesByUser.set(row.user_id, current);
-    }
-
-    return authData.users.map((user) => {
-      const profile = profileById.get(user.id);
-      return {
-        id: user.id,
-        email: user.email ?? null,
-        full_name: profile?.full_name ?? null,
-        phone: profile?.phone ?? null,
-        created_at: user.created_at,
-        last_sign_in_at: user.last_sign_in_at ?? null,
-        email_confirmed_at: user.email_confirmed_at ?? null,
-        roles: rolesByUser.get(user.id) ?? [],
-      };
-    });
+    return ((data ?? []) as Array<Record<string, unknown>>).map((row) => ({
+      id: String(row.id),
+      email: typeof row.email === "string" ? row.email : null,
+      full_name: typeof row.full_name === "string" ? row.full_name : null,
+      phone: typeof row.phone === "string" ? row.phone : null,
+      created_at: String(row.created_at),
+      last_sign_in_at: typeof row.last_sign_in_at === "string" ? row.last_sign_in_at : null,
+      email_confirmed_at:
+        typeof row.email_confirmed_at === "string" ? row.email_confirmed_at : null,
+      roles: Array.isArray(row.roles)
+        ? row.roles.filter((role): role is AdminRole =>
+            APP_ROLES.includes(role as AdminRole),
+          )
+        : [],
+    }));
   });
 
 export const updateAdminUserRoles = createServerFn({ method: "POST" })
@@ -97,37 +79,12 @@ export const updateAdminUserRoles = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     await assertSuperAdmin(context);
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-
-    if (!data.roles.includes("superadmin")) {
-      const { data: currentRoles, error } = await supabaseAdmin
-        .from("user_roles")
-        .select("user_id")
-        .eq("role", "superadmin");
-      if (error) throw new Error(error.message);
-      const targetIsSuperadmin = currentRoles?.some((r) => r.user_id === data.userId) ?? false;
-      if (targetIsSuperadmin && (currentRoles?.length ?? 0) <= 1) {
-        throw new Error("Não é possível remover o último superadmin do sistema");
-      }
-    }
-
-    const { error: deleteError } = await supabaseAdmin.from("user_roles").delete().eq("user_id", data.userId);
-    if (deleteError) throw new Error(deleteError.message);
-
     const uniqueRoles = Array.from(new Set(data.roles));
-    const { error: insertError } = await supabaseAdmin
-      .from("user_roles")
-      .insert(uniqueRoles.map((role) => ({ user_id: data.userId, role })));
-    if (insertError) throw new Error(insertError.message);
-
-    await supabaseAdmin.from("audit_logs").insert({
-      actor_id: context.userId,
-      action: "admin.user_roles.update",
-      entity: "user_roles",
-      entity_id: data.userId,
-      metadata: { roles: uniqueRoles },
+    const { error } = await (context.supabase as any).rpc("admin_set_user_roles", {
+      target_user_id: data.userId,
+      role_names: uniqueRoles,
     });
-
+    if (error) throw new Error(error.message);
     return { ok: true };
   });
 
