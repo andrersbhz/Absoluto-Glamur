@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Absoluto Glamur · Importador AliExpress",
-  "version": "1.6.0",
-  "description": "Sincroniza avaliações reais do AliExpress com a Absoluto Glamur. Permanece ligada por padrão até você desligar manualmente.",
+  "version": "1.7.0",
+  "description": "Sincroniza avaliações reais do AliExpress com a Absoluto Glamur usando o DOM e a sessão real da aba. Permanece ligada por padrão até você desligar manualmente.",
   "permissions": [
     "activeTab",
     "storage",
@@ -21,7 +21,7 @@
     "http://*/*"
   ],
   "background": {
-    "service_worker": "background-v16.js"
+    "service_worker": "background-v17.js"
   },
   "content_scripts": [
     {
@@ -41,7 +41,8 @@
         "https://*.aliexpress.ru/*"
       ],
       "js": [
-        "aliexpress-page-v16.js"
+        "aliexpress-page-v16.js",
+        "aliexpress-page-fallback-v17.js"
       ],
       "run_at": "document_idle",
       "all_frames": true,
