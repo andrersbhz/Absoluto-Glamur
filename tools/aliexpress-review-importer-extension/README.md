@@ -4,7 +4,7 @@ Extensão Chrome Manifest V3 usada como fallback quando o AliExpress não expõe
 
 ## Versão atual
 
-**1.6.0** — a coleta longa roda dentro da própria página do AliExpress e usa `chrome.storage` para persistir o estado do trabalho. O service worker apenas abre/reutiliza a aba e registra a sincronização.
+**1.7.2** — abre ou reutiliza o produto na mesma janela visível do Chrome, força foco na aba do AliExpress e só confirma a abertura depois que a navegação foi detectada. A coleta continua usando a sessão real do navegador, DOM/iframes e estado persistente em `chrome.storage`.
 
 ## Por que existe
 
@@ -23,16 +23,21 @@ O AliExpress pode retornar a lista de avaliações apenas quando a consulta acon
 1. Baixe e extraia a pasta da extensão.
 2. Abra `chrome://extensions`.
 3. Ative **Modo do desenvolvedor**.
-4. Clique em **Carregar sem compactação**.
-5. Escolha a pasta da extensão.
-6. Confirme que a versão exibida é **1.6.0**.
-7. Fixe a extensão na barra do Chrome e deixe-a ligada.
+4. Remova ou desative versões antigas da extensão.
+5. Clique em **Carregar sem compactação**.
+6. Escolha a pasta da extensão.
+7. Confirme que a versão exibida é **1.7.2**.
+8. Fixe a extensão na barra do Chrome e deixe-a ligada.
+9. Recarregue a página da Absoluto Glamur depois de atualizar a extensão.
 
 ## Uso
 
 1. Abra um produto na Absoluto Glamur como administrador.
 2. Clique em **Sincronizar AliExpress** na seção de avaliações.
-3. A extensão abre ou reutiliza a aba do anúncio correspondente.
-4. Na aba do AliExpress aparece o painel **Absoluto Glamur · Avaliações** com o progresso.
-5. A coleta continua dentro da própria página e devolve o resultado para a loja por estado persistido no Chrome.
-6. Repetir a importação não duplica avaliações já identificadas.
+3. A extensão abre ou reutiliza a aba do anúncio correspondente na janela do Chrome em uso.
+4. A janela/aba do AliExpress recebe foco e o produto é confirmado antes de iniciar a coleta.
+5. Na aba do AliExpress aparece o painel **Absoluto Glamur · Avaliações** com o progresso quando os scripts da página estiverem disponíveis.
+6. A coleta devolve o resultado para a loja pela sessão autenticada do administrador.
+7. Repetir a importação não duplica avaliações já identificadas.
+
+Se o AliExpress pedir login, CAPTCHA ou outra verificação, conclua a verificação na aba aberta e clique em **Sincronizar AliExpress** novamente.

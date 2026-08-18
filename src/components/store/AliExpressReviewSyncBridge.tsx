@@ -71,8 +71,8 @@ function waitForExtension(): Promise<string> {
         reject(new Error("A extensão Absoluto Glamur está DESLIGADA. Clique no ícone da extensão e pressione Ligar."));
         return;
       }
-      if (!versionAtLeast(version, "1.6.0")) {
-        reject(new Error(`A extensão Absoluto Glamur ${version} está desatualizada. Instale a versão 1.6.0 ou superior e recarregue esta página.`));
+      if (!versionAtLeast(version, "1.7.2")) {
+        reject(new Error(`A extensão Absoluto Glamur ${version} está desatualizada. Instale a versão 1.7.2 ou superior e recarregue esta página.`));
         return;
       }
       resolve(version);
@@ -80,7 +80,7 @@ function waitForExtension(): Promise<string> {
     const timer = window.setTimeout(() => {
       cleanup();
       reject(new Error("A extensão Absoluto Glamur não respondeu. Recarregue a extensão em chrome://extensions e depois recarregue esta página."));
-    }, 2500);
+    }, 3000);
 
     window.addEventListener("message", onMessage);
     window.postMessage(
@@ -93,6 +93,7 @@ function waitForExtension(): Promise<string> {
 function collectWithExtension(input: {
   productId: string;
   sourceUrl: string;
+  extensionVersion: string;
 }): Promise<ExtensionMessage> {
   return new Promise((resolve, reject) => {
     const id = requestId("ag-sync");
@@ -119,8 +120,8 @@ function collectWithExtension(input: {
     };
     const timer = window.setTimeout(() => {
       cleanup();
-      reject(new Error("A extensão 1.6.0 iniciou o trabalho, mas a página do AliExpress não publicou um resultado. Recarregue a aba do produto no AliExpress e tente novamente."));
-    }, 75_000);
+      reject(new Error(`A extensão ${input.extensionVersion} abriu o fluxo do AliExpress, mas não concluiu a coleta dentro do limite. Verifique a aba do produto e tente novamente.`));
+    }, 150_000);
 
     window.addEventListener("message", onMessage);
     toast.loading("Preparando a coleta no Chrome...", { id: progressToastId });
@@ -208,18 +209,19 @@ export function AliExpressReviewSyncBridge() {
           directSyncError = error instanceof Error ? error.message : String(error);
         }
 
-        await waitForExtension();
+        const extensionVersion = await waitForExtension();
         const browserTarget = await getBrowserTarget({ data: { product_id: productId } });
 
         toast.info(
           directSyncError
-            ? "A coleta direta não trouxe os comentários. A extensão vai buscar usando sua sessão do Chrome..."
-            : "Abrindo o AliExpress no Chrome para buscar os comentários...",
+            ? `A coleta direta não trouxe os comentários. A extensão ${extensionVersion} vai abrir o produto no AliExpress e usar sua sessão do Chrome...`
+            : `Abrindo o AliExpress com a extensão ${extensionVersion} para buscar os comentários...`,
         );
 
         const collected = await collectWithExtension({
           productId: browserTarget.sourceProductId,
           sourceUrl: browserTarget.sourceUrl,
+          extensionVersion,
         });
         const reviews = collected.reviews ?? [];
         if (!reviews.length) throw new Error("A extensão terminou a coleta, mas não retornou avaliações válidas.");
