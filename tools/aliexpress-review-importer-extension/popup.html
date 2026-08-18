@@ -3,28 +3,41 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Importador AliExpress</title>
+  <title>Absoluto Glamur</title>
   <link rel="stylesheet" href="popup.css" />
 </head>
 <body>
   <main>
     <div class="eyebrow">ABSOLUTO GLAMUR</div>
-    <h1>Importar avaliações</h1>
-    <p class="lead">Abra o produto no AliExpress, cole o código temporário gerado no painel e importe usando sua sessão do Chrome.</p>
+    <h1>Importador AliExpress</h1>
+
+    <section id="powerCard" class="power-card on" aria-live="polite">
+      <div class="power-copy">
+        <span class="power-dot" aria-hidden="true"></span>
+        <div>
+          <strong id="powerTitle">Extensão LIGADA</strong>
+          <small id="powerText">Fica ativa automaticamente até você desligar.</small>
+        </div>
+      </div>
+      <button id="powerButton" type="button" class="power-button">Desligar</button>
+    </section>
+
+    <p class="lead">Com a extensão ligada, o botão <strong>Sincronizar AliExpress</strong> da Absoluto Glamur pode chamar o Chrome automaticamente.</p>
 
     <div class="status-card">
       <span>Produto detectado</span>
       <strong id="productId">—</strong>
     </div>
 
-    <label for="bridgeCode">Código de importação</label>
-    <textarea id="bridgeCode" rows="4" spellcheck="false" placeholder="AG1.eyJ2IjoxLC4uLg..."></textarea>
-
-    <button id="importButton" type="button">Importar avaliações desta página</button>
-    <button id="clearButton" type="button" class="secondary">Limpar código salvo</button>
+    <div id="manualArea">
+      <label for="bridgeCode">Código de importação manual</label>
+      <textarea id="bridgeCode" rows="4" spellcheck="false" placeholder="AG1.eyJ2IjoxLC4uLg..."></textarea>
+      <button id="importButton" type="button">Importar avaliações desta página</button>
+      <button id="clearButton" type="button" class="secondary">Limpar código salvo</button>
+    </div>
 
     <div id="result" class="result" hidden></div>
-    <p class="footnote">O código expira em poucos minutos e só autoriza o produto escolhido no painel. A extensão não recebe senha da loja nem senha do AliExpress.</p>
+    <p class="footnote">Estado persistente: ao fechar e abrir o Chrome, a extensão continua LIGADA. Ela só muda para DESLIGADA quando você clicar em “Desligar”.</p>
   </main>
   <script src="popup.js"></script>
 </body>
