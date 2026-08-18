@@ -61,7 +61,7 @@ window.addEventListener("message", async (event) => {
   }
 
   chrome.runtime.sendMessage({
-    type: "AG_COLLECT_FROM_STORE_V14",
+    type: "AG_COLLECT_FROM_STORE_V15",
     requestId,
     productId,
     sourceUrl,
