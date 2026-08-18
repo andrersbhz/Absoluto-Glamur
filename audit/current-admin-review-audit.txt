@@ -4,12 +4,6 @@
 src/lib/ai-gateway.server.ts:5:export function createLovableAiGatewayRunIdFetch(initialRunId?: string) {
 src/lib/ai-gateway.server.ts:43:export function createLovableAiGatewayProvider(
 src/lib/ai-gateway.server.ts:48:  const runIdFetch = createLovableAiGatewayRunIdFetch(initialRunId);
-src/lib/aliexpress-import.functions.ts:5:import { createLovableAiGatewayProvider } from "./ai-gateway.server";
-src/lib/aliexpress-discovery.functions.ts:319:  const lovableKey = process.env.LOVABLE_API_KEY;
-src/lib/ai-content.functions.ts:5:import { createLovableAiGatewayProvider } from "./ai-gateway.server";
-src/lib/ai-content.functions.ts:43:  const key = process.env.LOVABLE_API_KEY;
-src/lib/ai-content.functions.ts:44:  if (!key) throw new Error("LOVABLE_API_KEY ausente. Ative o Lovable AI nas configurações.");
-src/lib/ai-content.functions.ts:47:  const gateway = createLovableAiGatewayProvider(key);
 
 ## Remaining service-role usages in src/lib
 src/lib/checkout.functions.ts:88:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -55,8 +49,8 @@ src/lib/aliexpress-discovery.functions.ts:70:    const { supabaseAdmin } = await
 src/lib/aliexpress-discovery.functions.ts:71:    client = supabaseAdmin;
 src/lib/aliexpress-discovery.functions.ts:117:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 src/lib/aliexpress-discovery.functions.ts:118:    client = supabaseAdmin;
-src/lib/product-reviews-live.functions.ts:719:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-src/lib/product-reviews-live.functions.ts:720:    return syncLiveReviewsInternal(supabaseAdmin, data.product_id, false);
+src/lib/product-reviews-live.functions.ts:723:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+src/lib/product-reviews-live.functions.ts:724:    return syncLiveReviewsInternal(supabaseAdmin, data.product_id, false);
 src/lib/analytics.server.ts:1:import { supabaseAdmin } from "@/integrations/supabase/client.server";
 src/lib/analytics.server.ts:35:  const { error } = await supabaseAdmin
 src/lib/analytics.server.ts:52:    supabaseAdmin.from("orders")
@@ -116,10 +110,10 @@ src/lib/product-reviews.functions.ts:346:    const r = await syncReviewsForProdu
 71:    client = supabaseAdmin;
 117:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 118:    client = supabaseAdmin;
-563:export const discoverAliexpressProducts = createServerFn({ method: "POST" })
-564:  .middleware([requireSupabaseAuth])
-735:export const importAliexpressProductToStore = createServerFn({ method: "POST" })
-736:  .middleware([requireSupabaseAuth])
+570:export const discoverAliexpressProducts = createServerFn({ method: "POST" })
+571:  .middleware([requireSupabaseAuth])
+746:export const importAliexpressProductToStore = createServerFn({ method: "POST" })
+747:  .middleware([requireSupabaseAuth])
 ### src/lib/aliexpress-fulfillment.functions.ts
 1:import { createServerFn } from "@tanstack/react-start";
 3:import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
@@ -173,11 +167,11 @@ src/lib/product-reviews.functions.ts:346:    const r = await syncReviewsForProdu
 ### src/lib/product-reviews-live.functions.ts
 1:import { createServerFn } from "@tanstack/react-start";
 3:import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-716:export const autoSyncLiveProductReviews = createServerFn({ method: "POST" })
-719:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-720:    return syncLiveReviewsInternal(supabaseAdmin, data.product_id, false);
-723:export const forceSyncLiveProductReviews = createServerFn({ method: "POST" })
-724:  .middleware([requireSupabaseAuth])
+720:export const autoSyncLiveProductReviews = createServerFn({ method: "POST" })
+723:    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+724:    return syncLiveReviewsInternal(supabaseAdmin, data.product_id, false);
+727:export const forceSyncLiveProductReviews = createServerFn({ method: "POST" })
+728:  .middleware([requireSupabaseAuth])
 ### src/lib/product-reviews.functions.ts
 1:import { createServerFn } from "@tanstack/react-start";
 4:import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
@@ -291,20 +285,20 @@ src/lib/ryviu-review-import.functions.ts:246:    rating,
 src/lib/ryviu-review-import.functions.ts:278:    if (!hasHeader(parsed.headers, HEADER_ALIASES.rating)) {
 src/lib/ryviu-review-import.functions.ts:279:      throw new Error("CSV inválido: a coluna rating (nota) não foi encontrada.");
 src/lib/ryviu-review-import.functions.ts:323:      throw new Error("Nenhuma avaliação válida foi encontrada. Verifique se rating está entre 1 e 5.");
-src/lib/aliexpress-discovery.functions.ts:387:        shop_rating: null,
-src/lib/aliexpress-discovery.functions.ts:440:          firstNumber(store.item_as_described_rating),
-src/lib/aliexpress-discovery.functions.ts:441:          firstNumber(store.communication_rating),
-src/lib/aliexpress-discovery.functions.ts:442:          firstNumber(store.shipping_speed_rating),
-src/lib/aliexpress-discovery.functions.ts:451:          evaluate_rate: parseRate(base.avg_evaluation_rating) ?? item.evaluate_rate,
-src/lib/aliexpress-discovery.functions.ts:454:          shop_rating: storeRates.length
-src/lib/aliexpress-discovery.functions.ts:456:            : item.shop_rating,
-src/lib/aliexpress-discovery.functions.ts:477:  evaluate_rate: number | null; // product rating 0..5
-src/lib/aliexpress-discovery.functions.ts:481:  shop_rating: number | null;
-src/lib/aliexpress-discovery.functions.ts:539:    evaluate_rate: parseRate(p.evaluate_rate ?? p.average_star ?? p.avg_evaluation_rating),
-src/lib/aliexpress-discovery.functions.ts:543:    shop_rating: parseRate(p.shop_rating ?? p.store_rating ?? p.positive_rate),
-src/lib/aliexpress-discovery.functions.ts:571:        min_rating: z.number().min(0).max(5).nullable().optional(),
-src/lib/aliexpress-discovery.functions.ts:654:    const filtered = data.min_rating
-src/lib/aliexpress-discovery.functions.ts:655:      ? items.filter((i) => i.evaluate_rate == null || i.evaluate_rate >= data.min_rating!)
+src/lib/aliexpress-discovery.functions.ts:394:        shop_rating: null,
+src/lib/aliexpress-discovery.functions.ts:447:          firstNumber(store.item_as_described_rating),
+src/lib/aliexpress-discovery.functions.ts:448:          firstNumber(store.communication_rating),
+src/lib/aliexpress-discovery.functions.ts:449:          firstNumber(store.shipping_speed_rating),
+src/lib/aliexpress-discovery.functions.ts:458:          evaluate_rate: parseRate(base.avg_evaluation_rating) ?? item.evaluate_rate,
+src/lib/aliexpress-discovery.functions.ts:461:          shop_rating: storeRates.length
+src/lib/aliexpress-discovery.functions.ts:463:            : item.shop_rating,
+src/lib/aliexpress-discovery.functions.ts:484:  evaluate_rate: number | null; // product rating 0..5
+src/lib/aliexpress-discovery.functions.ts:488:  shop_rating: number | null;
+src/lib/aliexpress-discovery.functions.ts:546:    evaluate_rate: parseRate(p.evaluate_rate ?? p.average_star ?? p.avg_evaluation_rating),
+src/lib/aliexpress-discovery.functions.ts:550:    shop_rating: parseRate(p.shop_rating ?? p.store_rating ?? p.positive_rate),
+src/lib/aliexpress-discovery.functions.ts:578:        min_rating: z.number().min(0).max(5).nullable().optional(),
+src/lib/aliexpress-discovery.functions.ts:661:    const filtered = data.min_rating
+src/lib/aliexpress-discovery.functions.ts:662:      ? items.filter((i) => i.evaluate_rate == null || i.evaluate_rate >= data.min_rating!)
 src/lib/product-reviews-live.functions.ts:27:  rating: number;
 src/lib/product-reviews-live.functions.ts:52:  rating: number;
 src/lib/product-reviews-live.functions.ts:165:  const rating = toRating(raw.evaluation ?? raw.rating ?? raw.star ?? raw.stars);
@@ -315,16 +309,16 @@ src/lib/product-reviews-live.functions.ts:250:    base?.avg_evaluation_rating ??
 src/lib/product-reviews-live.functions.ts:326:    .select("rating_avg,rating_count")
 src/lib/product-reviews-live.functions.ts:332:  if (hasAverage && Number(current?.rating_avg ?? 0) !== aggregate.average) patch.rating_avg = aggregate.average as number;
 src/lib/product-reviews-live.functions.ts:333:  if (hasTotal && Number(current?.rating_count ?? 0) !== aggregate.total) patch.rating_count = aggregate.total as number;
-src/lib/product-reviews-live.functions.ts:475:      rating: review.rating,
-src/lib/product-reviews-live.functions.ts:603:        ? Math.round((official.reviews.reduce((sum, review) => sum + review.rating, 0) / official.reviews.length) * 100) / 100
-src/lib/product-reviews-live.functions.ts:762:  if (typeof filter === "number") query = query.eq("rating", filter);
-src/lib/product-reviews-live.functions.ts:779:      .select("rating,images")
-src/lib/product-reviews-live.functions.ts:785:      .select("rating_avg,rating_count")
-src/lib/product-reviews-live.functions.ts:795:    const rating = Math.min(5, Math.max(1, Math.round(Number(row.rating) || 0))) as 1 | 2 | 3 | 4 | 5;
-src/lib/product-reviews-live.functions.ts:796:    distribution[rating] += 1;
-src/lib/product-reviews-live.functions.ts:797:    sum += Number(row.rating) || 0;
-src/lib/product-reviews-live.functions.ts:801:  const officialTotal = Math.max(0, Number(productResult.data?.rating_count) || 0);
-src/lib/product-reviews-live.functions.ts:802:  const officialAverage = Math.min(5, Math.max(0, Number(productResult.data?.rating_avg) || 0));
+src/lib/product-reviews-live.functions.ts:476:      rating: review.rating,
+src/lib/product-reviews-live.functions.ts:607:        ? Math.round((official.reviews.reduce((sum, review) => sum + review.rating, 0) / official.reviews.length) * 100) / 100
+src/lib/product-reviews-live.functions.ts:766:  if (typeof filter === "number") query = query.eq("rating", filter);
+src/lib/product-reviews-live.functions.ts:783:      .select("rating,images")
+src/lib/product-reviews-live.functions.ts:789:      .select("rating_avg,rating_count")
+src/lib/product-reviews-live.functions.ts:799:    const rating = Math.min(5, Math.max(1, Math.round(Number(row.rating) || 0))) as 1 | 2 | 3 | 4 | 5;
+src/lib/product-reviews-live.functions.ts:800:    distribution[rating] += 1;
+src/lib/product-reviews-live.functions.ts:801:    sum += Number(row.rating) || 0;
+src/lib/product-reviews-live.functions.ts:805:  const officialTotal = Math.max(0, Number(productResult.data?.rating_count) || 0);
+src/lib/product-reviews-live.functions.ts:806:  const officialAverage = Math.min(5, Math.max(0, Number(productResult.data?.rating_avg) || 0));
 src/lib/aliexpress-public-reviews.server.ts:24:  rating: number;
 src/lib/aliexpress-public-reviews.server.ts:159:  const rating = normalizeRating(pick(raw, [
 src/lib/aliexpress-public-reviews.server.ts:160:    "evaluation", "rating", "star", "stars", "score", "starRating", "star_rating",
@@ -528,7 +522,7 @@ build exit: 0
   118:1   error  Replace `··}` with `····},⏎··`                                                                                                                                                                                                                                   prettier/prettier
   121:12  error  Replace `.then((enabled)·=>·postReady(null,·enabled))` with `⏎··.then((enabled)·=>·postReady(null,·enabled))⏎··`                                                                                                                                                 prettier/prettier
 
-✖ 5608 problems (5593 errors, 15 warnings)
-  5508 errors and 0 warnings potentially fixable with the `--fix` option.
+✖ 5607 problems (5592 errors, 15 warnings)
+  5506 errors and 0 warnings potentially fixable with the `--fix` option.
 
 error: script "lint" exited with code 1
