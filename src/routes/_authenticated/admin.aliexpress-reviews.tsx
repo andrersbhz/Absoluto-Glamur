@@ -283,7 +283,7 @@ function AliExpressReviewsIntegrationPage() {
               <div className="grid gap-3 sm:grid-cols-4">
                 <ResultNumber label="Comentários" value={directResult.imported} />
                 <ResultNumber label="Com fotos" value={directResult.withPhotos} />
-                <ResultNumber label="Total remoto" value={directResult.remoteTotal} />
+                <ResultNumber label="Total remoto" value={directResult.remoteTotal ?? 0} />
                 <ResultNumber label="Nota média" value={directResult.remoteAverage ?? 0} decimals={1} />
               </div>
             </div>

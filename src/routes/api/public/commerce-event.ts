@@ -127,7 +127,7 @@ export const Route = createFileRoute("/api/public/commerce-event")({
                 state: region as never,
                 latitude_approx: Number.isFinite(parsedLat) ? parsedLat : null,
                 longitude_approx: Number.isFinite(parsedLon) ? parsedLon : null,
-                referrer: parsed.metadata?.referrer as string,
+                referrer: parsed.metadata?.referrer as never,
                 entry_path: parsed.current_page || (parsed.metadata?.path as string),
                 is_online: parsed.presence !== "offline",
                 last_seen_at: now,
