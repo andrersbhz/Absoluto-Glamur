@@ -120,32 +120,37 @@ export const Route = createFileRoute("/api/public/commerce-event")({
 
             const { data: newSession, error: newSessionError } = await db
               .from("visitor_sessions")
-              .insert({
-                visitor_id: parsed.visitor_id || parsed.session_id,
-                session_id: parsed.session_id,
-                current_page: parsed.current_page || (parsed.metadata?.path as string),
-                country,
-                city,
-                state: region,
-                latitude_approx: Number.isFinite(parsedLat) ? parsedLat : null,
-                longitude_approx: Number.isFinite(parsedLon) ? parsedLon : null,
-                referrer: parsed.metadata?.referrer as string,
-                is_online: parsed.presence !== "offline",
-                last_seen_at: now,
-                funnel_stage: currentStage as never,
-                device_type: parsed.metadata?.device_type as string,
-                browser: parsed.metadata?.browser as string,
-                os: parsed.metadata?.os as string,
-                utm_source: (parsed.metadata?.utm_source || parsed.campaign) as string,
-                utm_medium: parsed.metadata?.utm_medium as string,
-                utm_campaign: parsed.metadata?.utm_campaign as string,
-              })
+              .upsert(
+                {
+                  visitor_id: parsed.visitor_id || parsed.session_id,
+                  session_id: parsed.session_id,
+                  current_page: parsed.current_page || (parsed.metadata?.path as string),
+                  country,
+                  city,
+                  state: region,
+                  latitude_approx: Number.isFinite(parsedLat) ? parsedLat : null,
+                  longitude_approx: Number.isFinite(parsedLon) ? parsedLon : null,
+                  referrer: parsed.metadata?.referrer as string,
+                  is_online: parsed.presence !== "offline",
+                  last_seen_at: now,
+                  funnel_stage: currentStage as never,
+                  device_type: parsed.metadata?.device_type as string,
+                  browser: parsed.metadata?.browser as string,
+                  os: parsed.metadata?.os as string,
+                  utm_source: (parsed.metadata?.utm_source || parsed.campaign) as string,
+                  utm_medium: parsed.metadata?.utm_medium as string,
+                  utm_campaign: parsed.metadata?.utm_campaign as string,
+                } as never,
+                { onConflict: "session_id" },
+              )
               .select("id")
-              .single();
+              .maybeSingle();
             if (newSessionError) {
-              return Response.json({ ok: false, error: newSessionError.message }, { status: 500 });
+              console.error("[commerce-event] session upsert", newSessionError);
+              return Response.json({ ok: false, error: newSessionError.message });
             }
             sessionId = newSession?.id;
+
           } else if (parsed.presence === "offline") {
             await db
               .from("visitor_sessions")
