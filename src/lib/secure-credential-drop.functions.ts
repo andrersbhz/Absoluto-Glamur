@@ -74,7 +74,7 @@ export const storeSmtpPasswordSecurely = createServerFn({ method: "POST" })
       description: "Provedor SMTP usado para e-mails transacionais e notificações da Absoluto Glamur.",
       enabled: existing?.enabled ?? false,
       mode: "production",
-      config,
+      config: config as never,
       api_key: data.secret,
       last_status: null,
       last_error: null,

@@ -106,7 +106,7 @@ export const sendWhatsAppMessage = createServerFn({ method: "POST" })
         content: data.content,
         type: data.type,
         media_url: data.mediaUrl,
-        status: "pending",
+        status: "pending" as never,
       })
       .select()
       .single();

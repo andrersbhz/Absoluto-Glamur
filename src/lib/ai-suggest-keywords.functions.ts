@@ -41,7 +41,7 @@ async function loadOwnAiCredentials(context: any): Promise<AiCredential[]> {
   const credentials: AiCredential[] = [];
   for (const row of data ?? []) {
     if (row.enabled === false) continue;
-    const provider = row.provider === "gemini" || row.provider === "openai" ? row.provider : null;
+    const provider: AiProvider | null = row.provider === "gemini" ? "gemini" : row.provider === "openai" ? "openai" : null;
     if (!provider) continue;
     const apiKey = typeof row.api_key === "string" ? row.api_key.trim() : "";
     if (!apiKey) continue;

@@ -128,7 +128,6 @@ export const Route = createFileRoute("/api/public/commerce-event")({
                 latitude_approx: Number.isFinite(parsedLat) ? parsedLat : null,
                 longitude_approx: Number.isFinite(parsedLon) ? parsedLon : null,
                 referrer: parsed.metadata?.referrer as string,
-                entry_path: parsed.current_page || (parsed.metadata?.path as string),
                 is_online: parsed.presence !== "offline",
                 last_seen_at: now,
                 funnel_stage: currentStage as never,
@@ -181,7 +180,7 @@ export const Route = createFileRoute("/api/public/commerce-event")({
               value_cents: eventValue,
               channel: parsed.channel,
               campaign: parsed.campaign,
-              metadata: parsed.metadata,
+              metadata: parsed.metadata as never,
             });
             if (legacyError) {
               return Response.json({ ok: false, error: legacyError.message }, { status: 500 });
@@ -196,7 +195,7 @@ export const Route = createFileRoute("/api/public/commerce-event")({
                 product_id: parsed.product_id,
                 product_name: parsed.metadata?.product_name as string,
                 value_cents: eventValue,
-                metadata: parsed.metadata,
+                metadata: parsed.metadata as never,
               });
 
               const stage = eventStage(parsed.event_name);

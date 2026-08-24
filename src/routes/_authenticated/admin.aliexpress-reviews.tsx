@@ -33,7 +33,7 @@ type DirectImportResult = {
   imported: number;
   translated: number;
   withPhotos: number;
-  remoteTotal: number;
+  remoteTotal: number | null;
   remoteAverage: number | null;
   aggregateOnly: boolean;
   status: string;
@@ -102,7 +102,7 @@ function AliExpressReviewsIntegrationPage() {
         toast.success(`${result.imported} avaliações importadas do AliExpress para ${result.productTitle}.`);
       } else if (result.aggregateOnly) {
         const rating = result.remoteAverage ? `, nota ${result.remoteAverage.toFixed(1)}` : "";
-        const total = result.remoteTotal > 0 ? `${result.remoteTotal} avaliações` : "dados de avaliação";
+        const total = (result.remoteTotal ?? 0) > 0 ? `${result.remoteTotal} avaliações` : "dados de avaliação";
         toast.success(`${total}${rating} sincronizados. O AliExpress não expôs os comentários individuais deste anúncio.`);
       } else {
         toast.info("A consulta foi concluída, mas nenhuma avaliação individual ficou disponível para este produto.");
@@ -283,7 +283,7 @@ function AliExpressReviewsIntegrationPage() {
               <div className="grid gap-3 sm:grid-cols-4">
                 <ResultNumber label="Comentários" value={directResult.imported} />
                 <ResultNumber label="Com fotos" value={directResult.withPhotos} />
-                <ResultNumber label="Total remoto" value={directResult.remoteTotal} />
+                <ResultNumber label="Total remoto" value={directResult.remoteTotal ?? 0} />
                 <ResultNumber label="Nota média" value={directResult.remoteAverage ?? 0} decimals={1} />
               </div>
             </div>

@@ -217,14 +217,14 @@ export function ProductReviews({ productId }: Props) {
         <div>
           <div className="flex flex-wrap items-center gap-2">
             <h2 className="font-display text-2xl text-foreground sm:text-3xl">Avaliações de clientes</h2>
-            {summary && (summary.total > 0 || summary.officialTotal > 0) && (
+            {summary && (summary.total > 0 || (summary.officialTotal ?? 0) > 0) && (
               <span className="rounded-full bg-[#ff4747]/10 px-2.5 py-1 text-[11px] font-semibold text-[#d93636]">
                 Absoluto Glamur
               </span>
             )}
           </div>
           <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-            {summary?.officialTotal > 0
+            {(summary?.officialTotal ?? 0) > 0
               ? "Nota e quantidade sincronizadas do produto original. Comentários disponíveis são exibidos abaixo."
               : "Avaliações disponíveis do produto original e comentários cadastrados na loja."}
           </p>
@@ -270,7 +270,7 @@ export function ProductReviews({ productId }: Props) {
         </div>
       ) : (
         <>
-          {!showAll && summary && (summary.total > 0 || summary.officialTotal > 0) && (
+          {!showAll && summary && (summary.total > 0 || (summary.officialTotal ?? 0) > 0) && (
             <ReviewOverview summary={summary} filter={filter} onFilter={setFilter} />
           )}
 
@@ -301,13 +301,13 @@ export function ProductReviews({ productId }: Props) {
               <Star className="mx-auto h-6 w-6 text-muted-foreground/50" />
               <p className="mt-2 text-sm font-medium text-foreground">
                 {filter === "all"
-                  ? summary?.officialTotal > 0
+                  ? (summary?.officialTotal ?? 0) > 0
                     ? "A nota geral do produto foi sincronizada com sucesso."
                     : "Ainda não há avaliações disponíveis."
                   : "Nenhuma avaliação neste filtro."}
               </p>
               <p className="mt-1 text-xs text-muted-foreground">
-                {summary?.officialTotal > 0
+                {(summary?.officialTotal ?? 0) > 0
                   ? "Os comentários individuais deste produto ainda não estão disponíveis para exibição."
                   : "Quando houver comentários disponíveis, eles aparecerão aqui automaticamente."}
               </p>
