@@ -71,7 +71,7 @@ export const Route = createFileRoute("/api/public/commerce-event")({
               .eq("id", parsed.order_id)
               .maybeSingle();
             if (orderError) {
-              return Response.json({ ok: false, error: orderError.message }, { status: 500 });
+              return Response.json({ ok: false, error: orderError.message });
             }
             if (!order || order.status !== "paid") {
               return Response.json({ ok: false, error: "purchase_not_confirmed" }, { status: 409 });
