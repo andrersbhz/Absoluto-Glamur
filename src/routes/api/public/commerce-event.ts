@@ -190,8 +190,9 @@ export const Route = createFileRoute("/api/public/commerce-event")({
               metadata: parsed.metadata as never,
             });
             if (legacyError) {
-              return Response.json({ ok: false, error: legacyError.message }, { status: 500 });
+              console.error("[commerce-event] event insert", legacyError);
             }
+
 
             if (sessionId) {
               await db.from("analytics_events").insert({
