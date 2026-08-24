@@ -192,12 +192,13 @@ function IntegrationCard({ integration }: { integration: Integration }) {
   const testMut = useMutation({
     mutationFn: () => test({ data: { provider: integration.provider } }),
     onSuccess: (r) => {
+      const info = (r as { info?: { name?: string; message?: string } }).info;
       if (r.ok) {
-        toast.success(`Conexão validada: ${r.info?.name ?? "provedor"}`);
+        toast.success(`Conexão validada: ${info?.name ?? "provedor"}`);
       } else if ("unsupported" in r && r.unsupported) {
-        toast.info(r.info?.message ?? "Este provedor exige validação manual.");
+        toast.info(info?.message ?? "Este provedor exige validação manual.");
       } else {
-        toast.info(r.info?.message ?? "A integração não foi validada automaticamente.");
+        toast.info(info?.message ?? "A integração não foi validada automaticamente.");
       }
       qc.invalidateQueries({ queryKey: ["integrations"] });
     },

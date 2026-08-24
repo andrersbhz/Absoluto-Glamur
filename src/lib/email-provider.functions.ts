@@ -169,7 +169,7 @@ export const saveEmailProviderConfig = createServerFn({ method: "POST" })
     };
     if (password) payload.api_key = password;
 
-    const { error } = await db.from("integrations").upsert(payload, { onConflict: "provider" });
+    const { error } = await db.from("integrations").upsert(payload as never, { onConflict: "provider" });
     if (error) throw new Error(error.message);
     return { ok: true };
   });
