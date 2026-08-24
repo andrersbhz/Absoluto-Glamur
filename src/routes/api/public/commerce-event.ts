@@ -95,8 +95,10 @@ export const Route = createFileRoute("/api/public/commerce-event")({
             .eq("session_id", parsed.session_id)
             .maybeSingle();
           if (sessionError) {
-            return Response.json({ ok: false, error: sessionError.message }, { status: 500 });
+            console.error("[commerce-event] session lookup", sessionError);
+            return Response.json({ ok: false, error: sessionError.message });
           }
+
 
           // Um beacon de saída nunca deve criar uma sessão fantasma.
           if (!session && parsed.presence === "offline") {
