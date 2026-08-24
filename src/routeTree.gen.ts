@@ -34,12 +34,15 @@ import { Route as AuthenticatedAccountRouteImport } from './routes/_authenticate
 import { Route as CategoriaProdutoRouteImport } from './routes/$categoria.$produto'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin.index'
 import { Route as ApiPublicCommerceEventRouteImport } from './routes/api/public/commerce-event'
+import { Route as ApiPublicAliexpressReviewBrowserRouteImport } from './routes/api/public/aliexpress-review-browser'
 import { Route as ApiPublicAbandonedCheckoutRouteImport } from './routes/api/public/abandoned-checkout'
 import { Route as AuthenticatedCheckoutOrderIdRouteImport } from './routes/_authenticated/checkout.$orderId'
 import { Route as AuthenticatedAdminWhatsappRouteImport } from './routes/_authenticated/admin.whatsapp'
 import { Route as AuthenticatedAdminUsersRouteImport } from './routes/_authenticated/admin.users'
 import { Route as AuthenticatedAdminUsageRouteImport } from './routes/_authenticated/admin.usage'
 import { Route as AuthenticatedAdminSettingsRouteImport } from './routes/_authenticated/admin.settings'
+import { Route as AuthenticatedAdminSecureCredentialsRouteImport } from './routes/_authenticated/admin.secure-credentials'
+import { Route as AuthenticatedAdminRyviuReviewsRouteImport } from './routes/_authenticated/admin.ryviu-reviews'
 import { Route as AuthenticatedAdminRecoveryRouteImport } from './routes/_authenticated/admin.recovery'
 import { Route as AuthenticatedAdminPricingRouteImport } from './routes/_authenticated/admin.pricing'
 import { Route as AuthenticatedAdminPerformanceRouteImport } from './routes/_authenticated/admin.performance'
@@ -49,11 +52,14 @@ import { Route as AuthenticatedAdminMarketingRouteImport } from './routes/_authe
 import { Route as AuthenticatedAdminMapRouteImport } from './routes/_authenticated/admin.map'
 import { Route as AuthenticatedAdminIntegrationsRouteImport } from './routes/_authenticated/admin.integrations'
 import { Route as AuthenticatedAdminImportsRouteImport } from './routes/_authenticated/admin.imports'
+import { Route as AuthenticatedAdminHomeVisualRouteImport } from './routes/_authenticated/admin.home-visual'
 import { Route as AuthenticatedAdminHomeRouteImport } from './routes/_authenticated/admin.home'
+import { Route as AuthenticatedAdminEmailRouteImport } from './routes/_authenticated/admin.email'
 import { Route as AuthenticatedAdminDiscoverRouteImport } from './routes/_authenticated/admin.discover'
 import { Route as AuthenticatedAdminDashboardRouteImport } from './routes/_authenticated/admin.dashboard'
 import { Route as AuthenticatedAdminComplianceRouteImport } from './routes/_authenticated/admin.compliance'
 import { Route as AuthenticatedAdminBlogRouteImport } from './routes/_authenticated/admin.blog'
+import { Route as AuthenticatedAdminAliexpressReviewsRouteImport } from './routes/_authenticated/admin.aliexpress-reviews'
 import { Route as AuthenticatedAdminAiRouteImport } from './routes/_authenticated/admin.ai'
 import { Route as AuthenticatedAdminIntelligenceIndexRouteImport } from './routes/_authenticated/admin.intelligence.index'
 import { Route as AuthenticatedAdminCatalogIndexRouteImport } from './routes/_authenticated/admin.catalog.index'
@@ -194,6 +200,12 @@ const ApiPublicCommerceEventRoute = ApiPublicCommerceEventRouteImport.update({
   path: '/api/public/commerce-event',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicAliexpressReviewBrowserRoute =
+  ApiPublicAliexpressReviewBrowserRouteImport.update({
+    id: '/api/public/aliexpress-review-browser',
+    path: '/api/public/aliexpress-review-browser',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicAbandonedCheckoutRoute =
   ApiPublicAbandonedCheckoutRouteImport.update({
     id: '/api/public/abandoned-checkout',
@@ -226,6 +238,18 @@ const AuthenticatedAdminSettingsRoute =
   AuthenticatedAdminSettingsRouteImport.update({
     id: '/settings',
     path: '/settings',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const AuthenticatedAdminSecureCredentialsRoute =
+  AuthenticatedAdminSecureCredentialsRouteImport.update({
+    id: '/secure-credentials',
+    path: '/secure-credentials',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
+const AuthenticatedAdminRyviuReviewsRoute =
+  AuthenticatedAdminRyviuReviewsRouteImport.update({
+    id: '/ryviu-reviews',
+    path: '/ryviu-reviews',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
 const AuthenticatedAdminRecoveryRoute =
@@ -281,9 +305,20 @@ const AuthenticatedAdminImportsRoute =
     path: '/imports',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
+const AuthenticatedAdminHomeVisualRoute =
+  AuthenticatedAdminHomeVisualRouteImport.update({
+    id: '/home-visual',
+    path: '/home-visual',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
 const AuthenticatedAdminHomeRoute = AuthenticatedAdminHomeRouteImport.update({
   id: '/home',
   path: '/home',
+  getParentRoute: () => AuthenticatedAdminRoute,
+} as any)
+const AuthenticatedAdminEmailRoute = AuthenticatedAdminEmailRouteImport.update({
+  id: '/email',
+  path: '/email',
   getParentRoute: () => AuthenticatedAdminRoute,
 } as any)
 const AuthenticatedAdminDiscoverRoute =
@@ -309,6 +344,12 @@ const AuthenticatedAdminBlogRoute = AuthenticatedAdminBlogRouteImport.update({
   path: '/blog',
   getParentRoute: () => AuthenticatedAdminRoute,
 } as any)
+const AuthenticatedAdminAliexpressReviewsRoute =
+  AuthenticatedAdminAliexpressReviewsRouteImport.update({
+    id: '/aliexpress-reviews',
+    path: '/aliexpress-reviews',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
 const AuthenticatedAdminAiRoute = AuthenticatedAdminAiRouteImport.update({
   id: '/ai',
   path: '/ai',
@@ -421,11 +462,14 @@ export interface FileRoutesByFullPath {
   '/compliance/terms': typeof ComplianceTermsRoute
   '/products/$slug': typeof ProductsSlugRoute
   '/admin/ai': typeof AuthenticatedAdminAiRoute
+  '/admin/aliexpress-reviews': typeof AuthenticatedAdminAliexpressReviewsRoute
   '/admin/blog': typeof AuthenticatedAdminBlogRoute
   '/admin/compliance': typeof AuthenticatedAdminComplianceRoute
   '/admin/dashboard': typeof AuthenticatedAdminDashboardRoute
   '/admin/discover': typeof AuthenticatedAdminDiscoverRoute
+  '/admin/email': typeof AuthenticatedAdminEmailRoute
   '/admin/home': typeof AuthenticatedAdminHomeRoute
+  '/admin/home-visual': typeof AuthenticatedAdminHomeVisualRoute
   '/admin/imports': typeof AuthenticatedAdminImportsRouteWithChildren
   '/admin/integrations': typeof AuthenticatedAdminIntegrationsRoute
   '/admin/map': typeof AuthenticatedAdminMapRoute
@@ -435,12 +479,15 @@ export interface FileRoutesByFullPath {
   '/admin/performance': typeof AuthenticatedAdminPerformanceRoute
   '/admin/pricing': typeof AuthenticatedAdminPricingRoute
   '/admin/recovery': typeof AuthenticatedAdminRecoveryRoute
+  '/admin/ryviu-reviews': typeof AuthenticatedAdminRyviuReviewsRoute
+  '/admin/secure-credentials': typeof AuthenticatedAdminSecureCredentialsRoute
   '/admin/settings': typeof AuthenticatedAdminSettingsRoute
   '/admin/usage': typeof AuthenticatedAdminUsageRoute
   '/admin/users': typeof AuthenticatedAdminUsersRoute
   '/admin/whatsapp': typeof AuthenticatedAdminWhatsappRoute
   '/checkout/$orderId': typeof AuthenticatedCheckoutOrderIdRoute
   '/api/public/abandoned-checkout': typeof ApiPublicAbandonedCheckoutRoute
+  '/api/public/aliexpress-review-browser': typeof ApiPublicAliexpressReviewBrowserRoute
   '/api/public/commerce-event': typeof ApiPublicCommerceEventRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
   '/admin/catalog/$id': typeof AuthenticatedAdminCatalogIdRoute
@@ -481,11 +528,14 @@ export interface FileRoutesByTo {
   '/compliance/terms': typeof ComplianceTermsRoute
   '/products/$slug': typeof ProductsSlugRoute
   '/admin/ai': typeof AuthenticatedAdminAiRoute
+  '/admin/aliexpress-reviews': typeof AuthenticatedAdminAliexpressReviewsRoute
   '/admin/blog': typeof AuthenticatedAdminBlogRoute
   '/admin/compliance': typeof AuthenticatedAdminComplianceRoute
   '/admin/dashboard': typeof AuthenticatedAdminDashboardRoute
   '/admin/discover': typeof AuthenticatedAdminDiscoverRoute
+  '/admin/email': typeof AuthenticatedAdminEmailRoute
   '/admin/home': typeof AuthenticatedAdminHomeRoute
+  '/admin/home-visual': typeof AuthenticatedAdminHomeVisualRoute
   '/admin/imports': typeof AuthenticatedAdminImportsRouteWithChildren
   '/admin/integrations': typeof AuthenticatedAdminIntegrationsRoute
   '/admin/map': typeof AuthenticatedAdminMapRoute
@@ -495,12 +545,15 @@ export interface FileRoutesByTo {
   '/admin/performance': typeof AuthenticatedAdminPerformanceRoute
   '/admin/pricing': typeof AuthenticatedAdminPricingRoute
   '/admin/recovery': typeof AuthenticatedAdminRecoveryRoute
+  '/admin/ryviu-reviews': typeof AuthenticatedAdminRyviuReviewsRoute
+  '/admin/secure-credentials': typeof AuthenticatedAdminSecureCredentialsRoute
   '/admin/settings': typeof AuthenticatedAdminSettingsRoute
   '/admin/usage': typeof AuthenticatedAdminUsageRoute
   '/admin/users': typeof AuthenticatedAdminUsersRoute
   '/admin/whatsapp': typeof AuthenticatedAdminWhatsappRoute
   '/checkout/$orderId': typeof AuthenticatedCheckoutOrderIdRoute
   '/api/public/abandoned-checkout': typeof ApiPublicAbandonedCheckoutRoute
+  '/api/public/aliexpress-review-browser': typeof ApiPublicAliexpressReviewBrowserRoute
   '/api/public/commerce-event': typeof ApiPublicCommerceEventRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
   '/admin/catalog/$id': typeof AuthenticatedAdminCatalogIdRoute
@@ -544,11 +597,14 @@ export interface FileRoutesById {
   '/compliance/terms': typeof ComplianceTermsRoute
   '/products/$slug': typeof ProductsSlugRoute
   '/_authenticated/admin/ai': typeof AuthenticatedAdminAiRoute
+  '/_authenticated/admin/aliexpress-reviews': typeof AuthenticatedAdminAliexpressReviewsRoute
   '/_authenticated/admin/blog': typeof AuthenticatedAdminBlogRoute
   '/_authenticated/admin/compliance': typeof AuthenticatedAdminComplianceRoute
   '/_authenticated/admin/dashboard': typeof AuthenticatedAdminDashboardRoute
   '/_authenticated/admin/discover': typeof AuthenticatedAdminDiscoverRoute
+  '/_authenticated/admin/email': typeof AuthenticatedAdminEmailRoute
   '/_authenticated/admin/home': typeof AuthenticatedAdminHomeRoute
+  '/_authenticated/admin/home-visual': typeof AuthenticatedAdminHomeVisualRoute
   '/_authenticated/admin/imports': typeof AuthenticatedAdminImportsRouteWithChildren
   '/_authenticated/admin/integrations': typeof AuthenticatedAdminIntegrationsRoute
   '/_authenticated/admin/map': typeof AuthenticatedAdminMapRoute
@@ -558,12 +614,15 @@ export interface FileRoutesById {
   '/_authenticated/admin/performance': typeof AuthenticatedAdminPerformanceRoute
   '/_authenticated/admin/pricing': typeof AuthenticatedAdminPricingRoute
   '/_authenticated/admin/recovery': typeof AuthenticatedAdminRecoveryRoute
+  '/_authenticated/admin/ryviu-reviews': typeof AuthenticatedAdminRyviuReviewsRoute
+  '/_authenticated/admin/secure-credentials': typeof AuthenticatedAdminSecureCredentialsRoute
   '/_authenticated/admin/settings': typeof AuthenticatedAdminSettingsRoute
   '/_authenticated/admin/usage': typeof AuthenticatedAdminUsageRoute
   '/_authenticated/admin/users': typeof AuthenticatedAdminUsersRoute
   '/_authenticated/admin/whatsapp': typeof AuthenticatedAdminWhatsappRoute
   '/_authenticated/checkout/$orderId': typeof AuthenticatedCheckoutOrderIdRoute
   '/api/public/abandoned-checkout': typeof ApiPublicAbandonedCheckoutRoute
+  '/api/public/aliexpress-review-browser': typeof ApiPublicAliexpressReviewBrowserRoute
   '/api/public/commerce-event': typeof ApiPublicCommerceEventRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
   '/_authenticated/admin/catalog/$id': typeof AuthenticatedAdminCatalogIdRoute
@@ -607,11 +666,14 @@ export interface FileRouteTypes {
     | '/compliance/terms'
     | '/products/$slug'
     | '/admin/ai'
+    | '/admin/aliexpress-reviews'
     | '/admin/blog'
     | '/admin/compliance'
     | '/admin/dashboard'
     | '/admin/discover'
+    | '/admin/email'
     | '/admin/home'
+    | '/admin/home-visual'
     | '/admin/imports'
     | '/admin/integrations'
     | '/admin/map'
@@ -621,12 +683,15 @@ export interface FileRouteTypes {
     | '/admin/performance'
     | '/admin/pricing'
     | '/admin/recovery'
+    | '/admin/ryviu-reviews'
+    | '/admin/secure-credentials'
     | '/admin/settings'
     | '/admin/usage'
     | '/admin/users'
     | '/admin/whatsapp'
     | '/checkout/$orderId'
     | '/api/public/abandoned-checkout'
+    | '/api/public/aliexpress-review-browser'
     | '/api/public/commerce-event'
     | '/admin/'
     | '/admin/catalog/$id'
@@ -667,11 +732,14 @@ export interface FileRouteTypes {
     | '/compliance/terms'
     | '/products/$slug'
     | '/admin/ai'
+    | '/admin/aliexpress-reviews'
     | '/admin/blog'
     | '/admin/compliance'
     | '/admin/dashboard'
     | '/admin/discover'
+    | '/admin/email'
     | '/admin/home'
+    | '/admin/home-visual'
     | '/admin/imports'
     | '/admin/integrations'
     | '/admin/map'
@@ -681,12 +749,15 @@ export interface FileRouteTypes {
     | '/admin/performance'
     | '/admin/pricing'
     | '/admin/recovery'
+    | '/admin/ryviu-reviews'
+    | '/admin/secure-credentials'
     | '/admin/settings'
     | '/admin/usage'
     | '/admin/users'
     | '/admin/whatsapp'
     | '/checkout/$orderId'
     | '/api/public/abandoned-checkout'
+    | '/api/public/aliexpress-review-browser'
     | '/api/public/commerce-event'
     | '/admin'
     | '/admin/catalog/$id'
@@ -729,11 +800,14 @@ export interface FileRouteTypes {
     | '/compliance/terms'
     | '/products/$slug'
     | '/_authenticated/admin/ai'
+    | '/_authenticated/admin/aliexpress-reviews'
     | '/_authenticated/admin/blog'
     | '/_authenticated/admin/compliance'
     | '/_authenticated/admin/dashboard'
     | '/_authenticated/admin/discover'
+    | '/_authenticated/admin/email'
     | '/_authenticated/admin/home'
+    | '/_authenticated/admin/home-visual'
     | '/_authenticated/admin/imports'
     | '/_authenticated/admin/integrations'
     | '/_authenticated/admin/map'
@@ -743,12 +817,15 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/performance'
     | '/_authenticated/admin/pricing'
     | '/_authenticated/admin/recovery'
+    | '/_authenticated/admin/ryviu-reviews'
+    | '/_authenticated/admin/secure-credentials'
     | '/_authenticated/admin/settings'
     | '/_authenticated/admin/usage'
     | '/_authenticated/admin/users'
     | '/_authenticated/admin/whatsapp'
     | '/_authenticated/checkout/$orderId'
     | '/api/public/abandoned-checkout'
+    | '/api/public/aliexpress-review-browser'
     | '/api/public/commerce-event'
     | '/_authenticated/admin/'
     | '/_authenticated/admin/catalog/$id'
@@ -782,6 +859,7 @@ export interface RootRouteChildren {
   ComplianceReturnsRoute: typeof ComplianceReturnsRoute
   ComplianceTermsRoute: typeof ComplianceTermsRoute
   ApiPublicAbandonedCheckoutRoute: typeof ApiPublicAbandonedCheckoutRoute
+  ApiPublicAliexpressReviewBrowserRoute: typeof ApiPublicAliexpressReviewBrowserRoute
   ApiPublicCommerceEventRoute: typeof ApiPublicCommerceEventRoute
   ApiPublicAliexpressStartRoute: typeof ApiPublicAliexpressStartRoute
   ApiPublicCronAliexpressStockRoute: typeof ApiPublicCronAliexpressStockRoute
@@ -971,6 +1049,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicCommerceEventRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/aliexpress-review-browser': {
+      id: '/api/public/aliexpress-review-browser'
+      path: '/api/public/aliexpress-review-browser'
+      fullPath: '/api/public/aliexpress-review-browser'
+      preLoaderRoute: typeof ApiPublicAliexpressReviewBrowserRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/abandoned-checkout': {
       id: '/api/public/abandoned-checkout'
       path: '/api/public/abandoned-checkout'
@@ -1011,6 +1096,20 @@ declare module '@tanstack/react-router' {
       path: '/settings'
       fullPath: '/admin/settings'
       preLoaderRoute: typeof AuthenticatedAdminSettingsRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/admin/secure-credentials': {
+      id: '/_authenticated/admin/secure-credentials'
+      path: '/secure-credentials'
+      fullPath: '/admin/secure-credentials'
+      preLoaderRoute: typeof AuthenticatedAdminSecureCredentialsRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/admin/ryviu-reviews': {
+      id: '/_authenticated/admin/ryviu-reviews'
+      path: '/ryviu-reviews'
+      fullPath: '/admin/ryviu-reviews'
+      preLoaderRoute: typeof AuthenticatedAdminRyviuReviewsRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
     '/_authenticated/admin/recovery': {
@@ -1076,11 +1175,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminImportsRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/_authenticated/admin/home-visual': {
+      id: '/_authenticated/admin/home-visual'
+      path: '/home-visual'
+      fullPath: '/admin/home-visual'
+      preLoaderRoute: typeof AuthenticatedAdminHomeVisualRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
     '/_authenticated/admin/home': {
       id: '/_authenticated/admin/home'
       path: '/home'
       fullPath: '/admin/home'
       preLoaderRoute: typeof AuthenticatedAdminHomeRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/admin/email': {
+      id: '/_authenticated/admin/email'
+      path: '/email'
+      fullPath: '/admin/email'
+      preLoaderRoute: typeof AuthenticatedAdminEmailRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
     '/_authenticated/admin/discover': {
@@ -1109,6 +1222,13 @@ declare module '@tanstack/react-router' {
       path: '/blog'
       fullPath: '/admin/blog'
       preLoaderRoute: typeof AuthenticatedAdminBlogRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/_authenticated/admin/aliexpress-reviews': {
+      id: '/_authenticated/admin/aliexpress-reviews'
+      path: '/aliexpress-reviews'
+      fullPath: '/admin/aliexpress-reviews'
+      preLoaderRoute: typeof AuthenticatedAdminAliexpressReviewsRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
     '/_authenticated/admin/ai': {
@@ -1235,11 +1355,14 @@ const AuthenticatedAdminImportsRouteWithChildren =
 
 interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminAiRoute: typeof AuthenticatedAdminAiRoute
+  AuthenticatedAdminAliexpressReviewsRoute: typeof AuthenticatedAdminAliexpressReviewsRoute
   AuthenticatedAdminBlogRoute: typeof AuthenticatedAdminBlogRoute
   AuthenticatedAdminComplianceRoute: typeof AuthenticatedAdminComplianceRoute
   AuthenticatedAdminDashboardRoute: typeof AuthenticatedAdminDashboardRoute
   AuthenticatedAdminDiscoverRoute: typeof AuthenticatedAdminDiscoverRoute
+  AuthenticatedAdminEmailRoute: typeof AuthenticatedAdminEmailRoute
   AuthenticatedAdminHomeRoute: typeof AuthenticatedAdminHomeRoute
+  AuthenticatedAdminHomeVisualRoute: typeof AuthenticatedAdminHomeVisualRoute
   AuthenticatedAdminImportsRoute: typeof AuthenticatedAdminImportsRouteWithChildren
   AuthenticatedAdminIntegrationsRoute: typeof AuthenticatedAdminIntegrationsRoute
   AuthenticatedAdminMapRoute: typeof AuthenticatedAdminMapRoute
@@ -1249,6 +1372,8 @@ interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminPerformanceRoute: typeof AuthenticatedAdminPerformanceRoute
   AuthenticatedAdminPricingRoute: typeof AuthenticatedAdminPricingRoute
   AuthenticatedAdminRecoveryRoute: typeof AuthenticatedAdminRecoveryRoute
+  AuthenticatedAdminRyviuReviewsRoute: typeof AuthenticatedAdminRyviuReviewsRoute
+  AuthenticatedAdminSecureCredentialsRoute: typeof AuthenticatedAdminSecureCredentialsRoute
   AuthenticatedAdminSettingsRoute: typeof AuthenticatedAdminSettingsRoute
   AuthenticatedAdminUsageRoute: typeof AuthenticatedAdminUsageRoute
   AuthenticatedAdminUsersRoute: typeof AuthenticatedAdminUsersRoute
@@ -1262,11 +1387,15 @@ interface AuthenticatedAdminRouteChildren {
 
 const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminAiRoute: AuthenticatedAdminAiRoute,
+  AuthenticatedAdminAliexpressReviewsRoute:
+    AuthenticatedAdminAliexpressReviewsRoute,
   AuthenticatedAdminBlogRoute: AuthenticatedAdminBlogRoute,
   AuthenticatedAdminComplianceRoute: AuthenticatedAdminComplianceRoute,
   AuthenticatedAdminDashboardRoute: AuthenticatedAdminDashboardRoute,
   AuthenticatedAdminDiscoverRoute: AuthenticatedAdminDiscoverRoute,
+  AuthenticatedAdminEmailRoute: AuthenticatedAdminEmailRoute,
   AuthenticatedAdminHomeRoute: AuthenticatedAdminHomeRoute,
+  AuthenticatedAdminHomeVisualRoute: AuthenticatedAdminHomeVisualRoute,
   AuthenticatedAdminImportsRoute: AuthenticatedAdminImportsRouteWithChildren,
   AuthenticatedAdminIntegrationsRoute: AuthenticatedAdminIntegrationsRoute,
   AuthenticatedAdminMapRoute: AuthenticatedAdminMapRoute,
@@ -1276,6 +1405,9 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminPerformanceRoute: AuthenticatedAdminPerformanceRoute,
   AuthenticatedAdminPricingRoute: AuthenticatedAdminPricingRoute,
   AuthenticatedAdminRecoveryRoute: AuthenticatedAdminRecoveryRoute,
+  AuthenticatedAdminRyviuReviewsRoute: AuthenticatedAdminRyviuReviewsRoute,
+  AuthenticatedAdminSecureCredentialsRoute:
+    AuthenticatedAdminSecureCredentialsRoute,
   AuthenticatedAdminSettingsRoute: AuthenticatedAdminSettingsRoute,
   AuthenticatedAdminUsageRoute: AuthenticatedAdminUsageRoute,
   AuthenticatedAdminUsersRoute: AuthenticatedAdminUsersRoute,
@@ -1374,6 +1506,7 @@ const rootRouteChildren: RootRouteChildren = {
   ComplianceReturnsRoute: ComplianceReturnsRoute,
   ComplianceTermsRoute: ComplianceTermsRoute,
   ApiPublicAbandonedCheckoutRoute: ApiPublicAbandonedCheckoutRoute,
+  ApiPublicAliexpressReviewBrowserRoute: ApiPublicAliexpressReviewBrowserRoute,
   ApiPublicCommerceEventRoute: ApiPublicCommerceEventRoute,
   ApiPublicAliexpressStartRoute: ApiPublicAliexpressStartRoute,
   ApiPublicCronAliexpressStockRoute: ApiPublicCronAliexpressStockRoute,

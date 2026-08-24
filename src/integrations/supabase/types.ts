@@ -1875,6 +1875,56 @@ export type Database = {
           },
         ]
       }
+      product_review_sync_state: {
+        Row: {
+          created_at: string
+          fetched_count: number
+          last_attempt_at: string | null
+          last_error: string | null
+          last_success_at: string | null
+          product_id: string
+          remote_total: number | null
+          source: string
+          source_id: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          fetched_count?: number
+          last_attempt_at?: string | null
+          last_error?: string | null
+          last_success_at?: string | null
+          product_id: string
+          remote_total?: number | null
+          source?: string
+          source_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          fetched_count?: number
+          last_attempt_at?: string | null
+          last_error?: string | null
+          last_success_at?: string | null
+          product_id?: string
+          remote_total?: number | null
+          source?: string
+          source_id?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "product_review_sync_state_product_id_fkey"
+            columns: ["product_id"]
+            isOneToOne: true
+            referencedRelation: "products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       product_reviews: {
         Row: {
           body: string | null
