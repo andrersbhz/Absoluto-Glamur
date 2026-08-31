@@ -11,6 +11,9 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as ProductsRouteImport } from './routes/products'
+import { Route as EsMxRouteImport } from './routes/es-mx'
+import { Route as EsRouteImport } from './routes/es'
+import { Route as EnRouteImport } from './routes/en'
 import { Route as CartRouteImport } from './routes/cart'
 import { Route as BlogRouteImport } from './routes/blog'
 import { Route as AuthRouteImport } from './routes/auth'
@@ -84,6 +87,21 @@ const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
 const ProductsRoute = ProductsRouteImport.update({
   id: '/products',
   path: '/products',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EsMxRoute = EsMxRouteImport.update({
+  id: '/es-mx',
+  path: '/es-mx',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EsRoute = EsRouteImport.update({
+  id: '/es',
+  path: '/es',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EnRoute = EnRouteImport.update({
+  id: '/en',
+  path: '/en',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CartRoute = CartRouteImport.update({
@@ -443,6 +461,9 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRouteWithChildren
   '/blog': typeof BlogRouteWithChildren
   '/cart': typeof CartRoute
+  '/en': typeof EnRoute
+  '/es': typeof EsRoute
+  '/es-mx': typeof EsMxRoute
   '/products': typeof ProductsRouteWithChildren
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/$categoria/$produto': typeof CategoriaProdutoRoute
@@ -510,6 +531,9 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRouteWithChildren
   '/blog': typeof BlogRouteWithChildren
   '/cart': typeof CartRoute
+  '/en': typeof EnRoute
+  '/es': typeof EsRoute
+  '/es-mx': typeof EsMxRoute
   '/products': typeof ProductsRouteWithChildren
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/$categoria/$produto': typeof CategoriaProdutoRoute
@@ -578,6 +602,9 @@ export interface FileRoutesById {
   '/auth': typeof AuthRouteWithChildren
   '/blog': typeof BlogRouteWithChildren
   '/cart': typeof CartRoute
+  '/en': typeof EnRoute
+  '/es': typeof EsRoute
+  '/es-mx': typeof EsMxRoute
   '/products': typeof ProductsRouteWithChildren
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/$categoria/$produto': typeof CategoriaProdutoRoute
@@ -647,6 +674,9 @@ export interface FileRouteTypes {
     | '/auth'
     | '/blog'
     | '/cart'
+    | '/en'
+    | '/es'
+    | '/es-mx'
     | '/products'
     | '/sitemap.xml'
     | '/$categoria/$produto'
@@ -714,6 +744,9 @@ export interface FileRouteTypes {
     | '/auth'
     | '/blog'
     | '/cart'
+    | '/en'
+    | '/es'
+    | '/es-mx'
     | '/products'
     | '/sitemap.xml'
     | '/$categoria/$produto'
@@ -781,6 +814,9 @@ export interface FileRouteTypes {
     | '/auth'
     | '/blog'
     | '/cart'
+    | '/en'
+    | '/es'
+    | '/es-mx'
     | '/products'
     | '/sitemap.xml'
     | '/$categoria/$produto'
@@ -850,6 +886,9 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRouteWithChildren
   BlogRoute: typeof BlogRouteWithChildren
   CartRoute: typeof CartRoute
+  EnRoute: typeof EnRoute
+  EsRoute: typeof EsRoute
+  EsMxRoute: typeof EsMxRoute
   ProductsRoute: typeof ProductsRouteWithChildren
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   CategoriaProdutoRoute: typeof CategoriaProdutoRoute
@@ -886,6 +925,27 @@ declare module '@tanstack/react-router' {
       path: '/products'
       fullPath: '/products'
       preLoaderRoute: typeof ProductsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/es-mx': {
+      id: '/es-mx'
+      path: '/es-mx'
+      fullPath: '/es-mx'
+      preLoaderRoute: typeof EsMxRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/es': {
+      id: '/es'
+      path: '/es'
+      fullPath: '/es'
+      preLoaderRoute: typeof EsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/en': {
+      id: '/en'
+      path: '/en'
+      fullPath: '/en'
+      preLoaderRoute: typeof EnRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/cart': {
@@ -1497,6 +1557,9 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRouteWithChildren,
   BlogRoute: BlogRouteWithChildren,
   CartRoute: CartRoute,
+  EnRoute: EnRoute,
+  EsRoute: EsRoute,
+  EsMxRoute: EsMxRoute,
   ProductsRoute: ProductsRouteWithChildren,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   CategoriaProdutoRoute: CategoriaProdutoRoute,

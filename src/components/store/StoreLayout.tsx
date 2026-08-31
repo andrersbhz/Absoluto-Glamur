@@ -7,6 +7,8 @@ import { categoriesQuery } from "@/lib/catalog";
 import { useCart } from "@/lib/cart-store";
 import { LatestBlogCarousel } from "@/components/store/LatestBlogCarousel";
 import { ProductRelatedBlog } from "@/components/store/ProductRelatedBlog";
+import { LocaleSwitcher } from "@/components/store/LocaleSwitcher";
+import { useI18n } from "@/lib/i18n";
 import "@/storefront-minimal.css";
 import "@/blog.css";
 
@@ -22,6 +24,7 @@ function pageKind(pathname: string): "home" | "cart" | "checkout" | "catalog" | 
 
 export function StoreLayout({ children }: { children: ReactNode }) {
   const { user } = useAuth();
+  const { t } = useI18n();
   const navigate = useNavigate();
   const location = useLocation();
   const { data: categories = [] } = useQuery(categoriesQuery());
@@ -73,14 +76,15 @@ export function StoreLayout({ children }: { children: ReactNode }) {
               </Link>
             ))}
             <Link to="/blog" search={{} as never} className="store-nav-link">
-              Blog
+              {t("nav.blog")}
             </Link>
           </nav>
 
           <div className="flex items-center gap-0.5 sm:gap-1">
+            <LocaleSwitcher />
             <button
               type="button"
-              aria-label={openSearch ? "Fechar busca" : "Buscar"}
+              aria-label={openSearch ? t("nav.searchClose") : t("nav.search")}
               onClick={() => setOpenSearch((v) => !v)}
               className="store-icon-button rounded-full p-2.5"
             >
@@ -88,21 +92,21 @@ export function StoreLayout({ children }: { children: ReactNode }) {
             </button>
             <Link
               to={user ? "/favorites" : "/auth"}
-              aria-label="Favoritos"
+              aria-label={t("nav.favorites")}
               className="store-icon-button rounded-full p-2.5"
             >
               <Heart className="h-[18px] w-[18px]" />
             </Link>
             <Link
               to={user ? "/account" : "/auth"}
-              aria-label="Minha conta"
+              aria-label={t("nav.account")}
               className="store-icon-button rounded-full p-2.5"
             >
               <User className="h-[18px] w-[18px]" />
             </Link>
             <Link
               to="/cart"
-              aria-label="Carrinho"
+              aria-label={t("nav.cart")}
               className="store-icon-button relative rounded-full p-2.5"
             >
               <ShoppingBag className="h-[18px] w-[18px]" />
@@ -124,7 +128,7 @@ export function StoreLayout({ children }: { children: ReactNode }) {
                   autoFocus
                   value={q}
                   onChange={(e) => setQ(e.target.value)}
-                  placeholder="Buscar produtos, marcas e categorias"
+                  placeholder={t("nav.searchPlaceholder")}
                   className="store-search-input w-full border border-border bg-white pl-11 pr-5 text-foreground outline-none placeholder:text-muted-foreground"
                 />
               </div>
@@ -143,11 +147,11 @@ export function StoreLayout({ children }: { children: ReactNode }) {
           <div>
             <p className="store-logo text-[1.55rem]">absoluto glamur<span className="text-plum">.</span></p>
             <p className="mt-4 max-w-sm text-sm leading-6 text-muted-foreground">
-              Curadoria feminina de skincare, maquiagem e cabelos com uma experiência de compra simples, segura e elegante.
+              {t("footer.tagline")}
             </p>
           </div>
           <div>
-            <p className="store-footer-title">Loja</p>
+            <p className="store-footer-title">{t("footer.store")}</p>
             <ul className="mt-4 space-y-2.5 text-sm text-muted-foreground">
               {categories.slice(0, 4).map((c) => (
                 <li key={c.id}>
@@ -156,29 +160,29 @@ export function StoreLayout({ children }: { children: ReactNode }) {
                   </Link>
                 </li>
               ))}
-              <li><Link to="/blog" search={{} as never} className="hover:text-foreground">Blog de beleza</Link></li>
+              <li><Link to="/blog" search={{} as never} className="hover:text-foreground">{t("footer.blog")}</Link></li>
             </ul>
           </div>
           <div>
-            <p className="store-footer-title">Atendimento</p>
+            <p className="store-footer-title">{t("footer.support")}</p>
             <ul className="mt-4 space-y-2.5 text-sm text-muted-foreground">
-              <li><Link to="/compliance/privacy" className="hover:text-foreground">Central de ajuda</Link></li>
-              <li><Link to="/compliance/privacy" className="hover:text-foreground">Contato</Link></li>
-              <li><Link to="/compliance/returns" className="hover:text-foreground">Trocas e devoluções</Link></li>
+              <li><Link to="/compliance/privacy" className="hover:text-foreground">{t("footer.help")}</Link></li>
+              <li><Link to="/compliance/privacy" className="hover:text-foreground">{t("footer.contact")}</Link></li>
+              <li><Link to="/compliance/returns" className="hover:text-foreground">{t("footer.returns")}</Link></li>
             </ul>
           </div>
           <div>
-            <p className="store-footer-title">Institucional</p>
+            <p className="store-footer-title">{t("footer.institutional")}</p>
             <ul className="mt-4 space-y-2.5 text-sm text-muted-foreground">
-              <li><Link to="/compliance/ads" className="hover:text-foreground">Políticas de Anúncios</Link></li>
-              <li><Link to="/compliance/terms" className="hover:text-foreground">Termos de uso</Link></li>
-              <li><Link to="/compliance/privacy" className="hover:text-foreground">Privacidade</Link></li>
-              <li><Link to="/compliance/cookies" className="hover:text-foreground">Cookies</Link></li>
+              <li><Link to="/compliance/ads" className="hover:text-foreground">{t("footer.ads")}</Link></li>
+              <li><Link to="/compliance/terms" className="hover:text-foreground">{t("footer.terms")}</Link></li>
+              <li><Link to="/compliance/privacy" className="hover:text-foreground">{t("footer.privacy")}</Link></li>
+              <li><Link to="/compliance/cookies" className="hover:text-foreground">{t("footer.cookies")}</Link></li>
             </ul>
           </div>
         </div>
         <div className="border-t border-border/80 py-5 text-center text-[11px] tracking-wide text-muted-foreground">
-          © {new Date().getFullYear()} Absoluto Glamur Cosméticos. Todos os direitos reservados.
+          © {new Date().getFullYear()} Absoluto Glamur Cosméticos. {t("footer.rights")}
         </div>
       </footer>
     </div>
