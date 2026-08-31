@@ -20,6 +20,8 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ProductsSlugRouteImport } from './routes/products.$slug'
+import { Route as EsSplatRouteImport } from './routes/es.$'
+import { Route as EsMxSplatRouteImport } from './routes/es-mx.$'
 import { Route as EnSplatRouteImport } from './routes/en.$'
 import { Route as ComplianceTermsRouteImport } from './routes/compliance/terms'
 import { Route as ComplianceReturnsRouteImport } from './routes/compliance/returns'
@@ -133,6 +135,16 @@ const ProductsSlugRoute = ProductsSlugRouteImport.update({
   id: '/$slug',
   path: '/$slug',
   getParentRoute: () => ProductsRoute,
+} as any)
+const EsSplatRoute = EsSplatRouteImport.update({
+  id: '/$',
+  path: '/$',
+  getParentRoute: () => EsRoute,
+} as any)
+const EsMxSplatRoute = EsMxSplatRouteImport.update({
+  id: '/$',
+  path: '/$',
+  getParentRoute: () => EsMxRoute,
 } as any)
 const EnSplatRoute = EnSplatRouteImport.update({
   id: '/$',
@@ -468,8 +480,8 @@ export interface FileRoutesByFullPath {
   '/blog': typeof BlogRouteWithChildren
   '/cart': typeof CartRoute
   '/en': typeof EnRouteWithChildren
-  '/es': typeof EsRoute
-  '/es-mx': typeof EsMxRoute
+  '/es': typeof EsRouteWithChildren
+  '/es-mx': typeof EsMxRouteWithChildren
   '/products': typeof ProductsRouteWithChildren
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/$categoria/$produto': typeof CategoriaProdutoRoute
@@ -488,6 +500,8 @@ export interface FileRoutesByFullPath {
   '/compliance/returns': typeof ComplianceReturnsRoute
   '/compliance/terms': typeof ComplianceTermsRoute
   '/en/$': typeof EnSplatRoute
+  '/es-mx/$': typeof EsMxSplatRoute
+  '/es/$': typeof EsSplatRoute
   '/products/$slug': typeof ProductsSlugRoute
   '/admin/ai': typeof AuthenticatedAdminAiRoute
   '/admin/aliexpress-reviews': typeof AuthenticatedAdminAliexpressReviewsRoute
@@ -539,8 +553,8 @@ export interface FileRoutesByTo {
   '/blog': typeof BlogRouteWithChildren
   '/cart': typeof CartRoute
   '/en': typeof EnRouteWithChildren
-  '/es': typeof EsRoute
-  '/es-mx': typeof EsMxRoute
+  '/es': typeof EsRouteWithChildren
+  '/es-mx': typeof EsMxRouteWithChildren
   '/products': typeof ProductsRouteWithChildren
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/$categoria/$produto': typeof CategoriaProdutoRoute
@@ -558,6 +572,8 @@ export interface FileRoutesByTo {
   '/compliance/returns': typeof ComplianceReturnsRoute
   '/compliance/terms': typeof ComplianceTermsRoute
   '/en/$': typeof EnSplatRoute
+  '/es-mx/$': typeof EsMxSplatRoute
+  '/es/$': typeof EsSplatRoute
   '/products/$slug': typeof ProductsSlugRoute
   '/admin/ai': typeof AuthenticatedAdminAiRoute
   '/admin/aliexpress-reviews': typeof AuthenticatedAdminAliexpressReviewsRoute
@@ -611,8 +627,8 @@ export interface FileRoutesById {
   '/blog': typeof BlogRouteWithChildren
   '/cart': typeof CartRoute
   '/en': typeof EnRouteWithChildren
-  '/es': typeof EsRoute
-  '/es-mx': typeof EsMxRoute
+  '/es': typeof EsRouteWithChildren
+  '/es-mx': typeof EsMxRouteWithChildren
   '/products': typeof ProductsRouteWithChildren
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/$categoria/$produto': typeof CategoriaProdutoRoute
@@ -631,6 +647,8 @@ export interface FileRoutesById {
   '/compliance/returns': typeof ComplianceReturnsRoute
   '/compliance/terms': typeof ComplianceTermsRoute
   '/en/$': typeof EnSplatRoute
+  '/es-mx/$': typeof EsMxSplatRoute
+  '/es/$': typeof EsSplatRoute
   '/products/$slug': typeof ProductsSlugRoute
   '/_authenticated/admin/ai': typeof AuthenticatedAdminAiRoute
   '/_authenticated/admin/aliexpress-reviews': typeof AuthenticatedAdminAliexpressReviewsRoute
@@ -704,6 +722,8 @@ export interface FileRouteTypes {
     | '/compliance/returns'
     | '/compliance/terms'
     | '/en/$'
+    | '/es-mx/$'
+    | '/es/$'
     | '/products/$slug'
     | '/admin/ai'
     | '/admin/aliexpress-reviews'
@@ -774,6 +794,8 @@ export interface FileRouteTypes {
     | '/compliance/returns'
     | '/compliance/terms'
     | '/en/$'
+    | '/es-mx/$'
+    | '/es/$'
     | '/products/$slug'
     | '/admin/ai'
     | '/admin/aliexpress-reviews'
@@ -846,6 +868,8 @@ export interface FileRouteTypes {
     | '/compliance/returns'
     | '/compliance/terms'
     | '/en/$'
+    | '/es-mx/$'
+    | '/es/$'
     | '/products/$slug'
     | '/_authenticated/admin/ai'
     | '/_authenticated/admin/aliexpress-reviews'
@@ -899,8 +923,8 @@ export interface RootRouteChildren {
   BlogRoute: typeof BlogRouteWithChildren
   CartRoute: typeof CartRoute
   EnRoute: typeof EnRouteWithChildren
-  EsRoute: typeof EsRoute
-  EsMxRoute: typeof EsMxRoute
+  EsRoute: typeof EsRouteWithChildren
+  EsMxRoute: typeof EsMxRouteWithChildren
   ProductsRoute: typeof ProductsRouteWithChildren
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   CategoriaProdutoRoute: typeof CategoriaProdutoRoute
@@ -1001,6 +1025,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/products/$slug'
       preLoaderRoute: typeof ProductsSlugRouteImport
       parentRoute: typeof ProductsRoute
+    }
+    '/es/$': {
+      id: '/es/$'
+      path: '/$'
+      fullPath: '/es/$'
+      preLoaderRoute: typeof EsSplatRouteImport
+      parentRoute: typeof EsRoute
+    }
+    '/es-mx/$': {
+      id: '/es-mx/$'
+      path: '/$'
+      fullPath: '/es-mx/$'
+      preLoaderRoute: typeof EsMxSplatRouteImport
+      parentRoute: typeof EsMxRoute
     }
     '/en/$': {
       id: '/en/$'
@@ -1568,6 +1606,26 @@ const EnRouteChildren: EnRouteChildren = {
 
 const EnRouteWithChildren = EnRoute._addFileChildren(EnRouteChildren)
 
+interface EsRouteChildren {
+  EsSplatRoute: typeof EsSplatRoute
+}
+
+const EsRouteChildren: EsRouteChildren = {
+  EsSplatRoute: EsSplatRoute,
+}
+
+const EsRouteWithChildren = EsRoute._addFileChildren(EsRouteChildren)
+
+interface EsMxRouteChildren {
+  EsMxSplatRoute: typeof EsMxSplatRoute
+}
+
+const EsMxRouteChildren: EsMxRouteChildren = {
+  EsMxSplatRoute: EsMxSplatRoute,
+}
+
+const EsMxRouteWithChildren = EsMxRoute._addFileChildren(EsMxRouteChildren)
+
 interface ProductsRouteChildren {
   ProductsSlugRoute: typeof ProductsSlugRoute
 }
@@ -1587,8 +1645,8 @@ const rootRouteChildren: RootRouteChildren = {
   BlogRoute: BlogRouteWithChildren,
   CartRoute: CartRoute,
   EnRoute: EnRouteWithChildren,
-  EsRoute: EsRoute,
-  EsMxRoute: EsMxRoute,
+  EsRoute: EsRouteWithChildren,
+  EsMxRoute: EsMxRouteWithChildren,
   ProductsRoute: ProductsRouteWithChildren,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
   CategoriaProdutoRoute: CategoriaProdutoRoute,
