@@ -1,5 +1,6 @@
 import { queryOptions } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import type { ProductTranslationRow } from "@/lib/i18n/product";
 
 export type ProductListItem = {
   id: string;
@@ -11,6 +12,7 @@ export type ProductListItem = {
   brand: { name: string; slug: string } | null;
   category: { name: string; slug: string } | null;
   media: { url: string; alt: string | null; kind: "image" | "video" | null }[];
+  translations?: ProductTranslationRow[] | null;
   variants: {
     id: string;
     is_default: boolean;
@@ -24,6 +26,7 @@ const PRODUCT_SELECT = `
   brand:brands(name, slug),
   category:categories(name, slug),
   media:product_media(url, alt, position, kind),
+  translations:product_translations(locale, name, short_description, description, seo),
   variants:product_variants(
     id, is_default, is_available,
     prices:product_prices(list_price_cents, sale_price_cents, is_active)
@@ -165,6 +168,7 @@ export function productDetailQuery(slug: string) {
           brand:brands(name, slug),
           category:categories(name, slug),
           media:product_media(url, alt, position, kind),
+          translations:product_translations(locale, name, short_description, description, seo),
           variants:product_variants(
             id, sku, name, options, is_default, is_available, external_sku_id, external_sku_attr,
             prices:product_prices(list_price_cents, sale_price_cents, is_active),
