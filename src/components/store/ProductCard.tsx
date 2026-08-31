@@ -1,15 +1,17 @@
 import { Link } from "@tanstack/react-router";
 import { Heart, Star } from "lucide-react";
 import { pickActivePrice, pickDefaultVariant, type ProductListItem } from "@/lib/catalog";
-import { effectivePrice, formatBRL } from "@/lib/format";
+import { effectivePrice } from "@/lib/format";
 import { useFavorites } from "@/lib/favorites";
 import { useCart } from "@/lib/cart-store";
 import { toast } from "sonner";
 import { isVideoMedia } from "@/lib/media-kind";
 import { useLocalizedProduct } from "@/lib/i18n/product";
+import { useCurrency } from "@/lib/currency-context";
 
 export function ProductCard({ product }: { product: ProductListItem }) {
   const localized = useLocalizedProduct(product);
+  const { format: formatPrice } = useCurrency();
   const variant = pickDefaultVariant(product);
   const priceRow = pickActivePrice(variant);
   const price = priceRow ? effectivePrice(priceRow.list_price_cents, priceRow.sale_price_cents) : null;
@@ -91,9 +93,9 @@ export function ProductCard({ product }: { product: ProductListItem }) {
         <div className="mt-1 flex items-baseline gap-2">
           {price ? (
             <>
-              <span className="font-display text-lg text-foreground">{formatBRL(price.price)}</span>
+              <span className="font-display text-lg text-foreground">{formatPrice(price.price)}</span>
               {price.hasSale && (
-                <span className="text-xs text-muted-foreground line-through">{formatBRL(price.listPrice)}</span>
+                <span className="text-xs text-muted-foreground line-through">{formatPrice(price.listPrice)}</span>
               )}
             </>
           ) : (

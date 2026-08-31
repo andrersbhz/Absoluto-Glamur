@@ -14,6 +14,7 @@ import { useAnalyticsTracker } from "@/lib/analytics-tracker";
 import { CustomerPushPrompt } from "@/components/store/CustomerPushPrompt";
 import { AliExpressReviewSyncBridge } from "@/components/store/AliExpressReviewSyncBridge";
 import { I18nProvider } from "@/lib/i18n";
+import { CurrencyProvider } from "@/lib/currency-context";
 import appCss from "@/styles.css?url";
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({

@@ -7,6 +7,7 @@ import { StoreLayout } from "@/components/store/StoreLayout";
 import { pickActivePrice, productDetailQuery, publicAttrValues, variantAttrValues, variantImage } from "@/lib/catalog";
 import { VariantSelector } from "@/components/store/VariantSelector";
 import { effectivePrice, formatBRL } from "@/lib/format";
+import { useCurrency } from "@/lib/currency-context";
 import { useCart } from "@/lib/cart-store";
 import { useFavorites } from "@/lib/favorites";
 import { useAuth } from "@/hooks/use-auth";
@@ -240,9 +241,9 @@ function ProductPage() {
             <div className="mt-6 flex items-baseline gap-3">
               {price ? (
                 <>
-                  <span className="font-display text-3xl text-foreground">{formatBRL(price.price)}</span>
+                  <span className="font-display text-3xl text-foreground">{formatPrice(price.price)}</span>
                   {price.hasSale && (
-                    <span className="text-sm text-muted-foreground line-through">{formatBRL(price.listPrice)}</span>
+                    <span className="text-sm text-muted-foreground line-through">{formatPrice(price.listPrice)}</span>
                   )}
                 </>
               ) : (
