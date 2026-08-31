@@ -1,6 +1,7 @@
 import { Globe } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { LOCALE_LIST, useI18n, type Locale } from "@/lib/i18n";
+import { useCurrency } from "@/lib/currency-context";
 
 /**
  * Seletor discreto de idioma no header da loja.
@@ -8,6 +9,7 @@ import { LOCALE_LIST, useI18n, type Locale } from "@/lib/i18n";
  */
 export function LocaleSwitcher() {
   const { locale, setLocale, t } = useI18n();
+  const { currency, setCurrency, available } = useCurrency();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -63,6 +65,33 @@ export function LocaleSwitcher() {
               </button>
             </li>
           ))}
+          <li className="mt-1 border-t border-border px-3 pb-1 pt-2">
+            <p className="mb-1 text-[10px] uppercase tracking-widest text-muted-foreground">
+              {t("nav.currency")}
+            </p>
+            <div className="flex flex-wrap gap-1">
+              {available.map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => {
+                    setOpen(false);
+                    setCurrency(c);
+                  }}
+                  className={`rounded-md px-2 py-1 text-[11px] transition ${
+                    c === currency
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-secondary/60 text-foreground hover:bg-secondary"
+                  }`}
+                >
+                  {c}
+                </button>
+              ))}
+            </div>
+            <p className="mt-2 text-[10px] leading-tight text-muted-foreground">
+              {t("nav.currencyNote")}
+            </p>
+          </li>
         </ul>
       )}
     </div>
