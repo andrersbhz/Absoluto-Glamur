@@ -87,13 +87,18 @@ export function stripLocalePrefix(pathname: string): string {
   return rest.startsWith("/") ? rest : `/${rest}`;
 }
 
-/** Aplica o prefixo do idioma a um caminho canônico. */
+/**
+ * Aplica o prefixo do idioma a um caminho canônico.
+ * Hoje apenas a home possui variantes com prefixo (/en, /es, /es-mx);
+ * as demais rotas mantêm a URL canônica e o idioma persiste por preferência.
+ */
 export function localizePath(pathname: string, locale: Locale): string {
-  const canonical = stripLocalePrefix(pathname);
+  const canonical = stripLocalePrefix(pathname) || "/";
   const prefix = LOCALE_CONFIG[locale].prefix;
-  if (!prefix) return canonical || "/";
-  return canonical === "/" ? `/${prefix}` : `/${prefix}${canonical}`;
+  if (!prefix || canonical !== "/") return canonical;
+  return `/${prefix}`;
 }
+
 
 /** Converte um idioma de navegador (navigator.language) no locale suportado mais próximo. */
 export function matchSupportedLocale(input: string | undefined | null): Locale | null {
