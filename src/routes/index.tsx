@@ -6,6 +6,7 @@ import { StoreLayout } from "@/components/store/StoreLayout";
 import { ProductCard } from "@/components/store/ProductCard";
 import { HeroSlider } from "@/components/store/HeroSlider";
 import { categoriesQuery, collectionsQuery, featuredProductsQuery, productsByCategoryQuery } from "@/lib/catalog";
+import { hreflangLinks } from "@/lib/i18n/seo";
 import { homepageBlocksQuery, homeContentQuery, type HomepageBlock, type AnnouncementProduct } from "@/lib/marketing";
 
 export const Route = createFileRoute("/")({
@@ -36,7 +37,10 @@ export const Route = createFileRoute("/")({
           "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/be040f5f-bd15-4a98-8b8d-e90c140eacaf/id-preview-0aae106e--c8e28b23-eac8-4d4a-9c23-26a7e47a2ec8.lovable.app-1784319380473.png",
       },
     ],
-    links: [{ rel: "canonical", href: "https://absolutoglamur.com.br/" }],
+    links: [
+      { rel: "canonical", href: "https://absolutoglamur.com.br/" },
+      ...hreflangLinks("/"),
+    ],
   }),
   component: Index,
 });
