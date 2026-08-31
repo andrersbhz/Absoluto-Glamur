@@ -81,16 +81,19 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <I18nProvider>
-        <Outlet />
-        <CustomerPushPrompt />
-        <AliExpressReviewSyncBridge />
-        <audio
-          id="whatsapp-alert"
-          src="https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3"
-          preload="none"
-        />
-        <Toaster richColors position="top-right" />
+        <CurrencyProvider>
+          <Outlet />
+          <CustomerPushPrompt />
+          <AliExpressReviewSyncBridge />
+          <audio
+            id="whatsapp-alert"
+            src="https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3"
+            preload="none"
+          />
+          <Toaster richColors position="top-right" />
+        </CurrencyProvider>
       </I18nProvider>
+
     </QueryClientProvider>
   );
 }
