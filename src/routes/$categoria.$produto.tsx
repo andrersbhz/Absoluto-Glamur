@@ -184,7 +184,7 @@ function ProductPage() {
                 activeIsVideo ? (
                   <video key={activeUrl} src={activeUrl} className="h-full w-full object-cover" controls playsInline loop autoPlay muted />
                 ) : (
-                  <img src={activeUrl} alt={active?.alt ?? product.name} className="h-full w-full object-cover" />
+                  <img src={activeUrl} alt={active?.alt ?? localized.name} className="h-full w-full object-cover" />
                 )
               ) : (
                 <div className="flex h-full items-center justify-center bg-gradient-to-br from-primary/40 to-plum">
@@ -226,15 +226,15 @@ function ProductPage() {
             {product.brand && (
               <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">{product.brand.name}</p>
             )}
-            <h1 className="mt-2 font-display text-4xl text-foreground">{product.name}</h1>
+            <h1 className="mt-2 font-display text-4xl text-foreground">{localized.name}</h1>
             <div className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
               <Star className="h-4 w-4 fill-champagne text-champagne" />
               <span>{product.rating_avg?.toFixed(1) ?? "0.0"}</span>
               <span>· {product.rating_count} avaliações</span>
             </div>
 
-            {product.short_description && (
-              <p className="mt-5 text-base text-muted-foreground">{product.short_description}</p>
+            {localized.short_description && (
+              <p className="mt-5 text-base text-muted-foreground">{localized.short_description}</p>
             )}
 
             <div className="mt-6 flex items-baseline gap-3">
@@ -271,7 +271,7 @@ function ProductPage() {
                     productId: product.id,
                     variantId: selectedVariant.id,
                     slug: product.slug,
-                    name: product.name,
+                    name: localized.name,
                     variantName:
                       selectedVariant.name ??
                       (Object.keys(publicAttrValues(attrs)).length > 0
@@ -304,12 +304,12 @@ function ProductPage() {
               </button>
             </div>
 
-            {product.description && (
+            {localized.description && (
               <div className="mt-10 border-t border-border pt-6">
                 <h2 className="font-display text-xl">Sobre o produto</h2>
                 <div
                   className="prose prose-sm prose-invert mt-3 max-w-none text-sm leading-relaxed text-muted-foreground [&_p]:mb-3 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_strong]:text-foreground [&_h2]:font-display [&_h2]:text-lg [&_h2]:text-foreground [&_h3]:font-display [&_h3]:text-base [&_h3]:text-foreground"
-                  dangerouslySetInnerHTML={{ __html: sanitizeDescriptionHtml(product.description) }}
+                  dangerouslySetInnerHTML={{ __html: sanitizeDescriptionHtml(localized.description) }}
                 />
               </div>
             )}
