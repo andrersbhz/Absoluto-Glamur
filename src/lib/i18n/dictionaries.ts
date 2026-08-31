@@ -16,6 +16,8 @@ export const DICTIONARIES = {
     "nav.account": "Minha conta",
     "nav.cart": "Carrinho",
     "nav.language": "Idioma",
+    "nav.currency": "Moeda",
+    "nav.currencyNote": "Preços convertidos a partir do real (BRL). O pagamento é processado em BRL.",
     "footer.tagline":
       "Curadoria feminina de skincare, maquiagem e cabelos com uma experiência de compra simples, segura e elegante.",
     "footer.store": "Loja",
@@ -58,6 +60,8 @@ export const DICTIONARIES = {
     "nav.account": "My account",
     "nav.cart": "Cart",
     "nav.language": "Language",
+    "nav.currency": "Currency",
+    "nav.currencyNote": "Prices converted from Brazilian real (BRL). Payment is processed in BRL.",
     "footer.tagline":
       "A curated selection of skincare, makeup and hair care with a simple, safe and elegant shopping experience.",
     "footer.store": "Shop",
@@ -100,6 +104,8 @@ export const DICTIONARIES = {
     "nav.account": "Mi cuenta",
     "nav.cart": "Carrito",
     "nav.language": "Idioma",
+    "nav.currency": "Moneda",
+    "nav.currencyNote": "Precios convertidos desde el real brasileño (BRL). El pago se procesa en BRL.",
     "footer.tagline":
       "Selección de skincare, maquillaje y cuidado del cabello con una experiencia de compra simple, segura y elegante.",
     "footer.store": "Tienda",
