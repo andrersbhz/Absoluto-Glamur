@@ -6,8 +6,10 @@ import { useFavorites } from "@/lib/favorites";
 import { useCart } from "@/lib/cart-store";
 import { toast } from "sonner";
 import { isVideoMedia } from "@/lib/media-kind";
+import { useLocalizedProduct } from "@/lib/i18n/product";
 
 export function ProductCard({ product }: { product: ProductListItem }) {
+  const localized = useLocalizedProduct(product);
   const variant = pickDefaultVariant(product);
   const priceRow = pickActivePrice(variant);
   const price = priceRow ? effectivePrice(priceRow.list_price_cents, priceRow.sale_price_cents) : null;
@@ -28,7 +30,7 @@ export function ProductCard({ product }: { product: ProductListItem }) {
       <Link
         to="/$categoria/$produto"
         params={{ categoria: product.category?.slug ?? "produto", produto: product.slug }}
-        aria-label={product.name}
+        aria-label={localized.name}
         className="absolute inset-0 z-10"
       />
       <div className="relative block aspect-square overflow-hidden bg-secondary/40">
@@ -46,7 +48,7 @@ export function ProductCard({ product }: { product: ProductListItem }) {
           ) : (
             <img
               src={cover}
-              alt={media[0]?.alt ?? product.name}
+              alt={media[0]?.alt ?? localized.name}
               loading="lazy"
               className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
             />
@@ -79,7 +81,7 @@ export function ProductCard({ product }: { product: ProductListItem }) {
         {product.brand && (
           <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground">{product.brand.name}</p>
         )}
-        <h3 className="font-display text-base leading-snug text-foreground">{product.name}</h3>
+        <h3 className="font-display text-base leading-snug text-foreground">{localized.name}</h3>
         <div className="flex items-center gap-1 text-xs text-muted-foreground">
           <Star className="h-3.5 w-3.5 fill-champagne text-champagne" />
           <span>{product.rating_avg?.toFixed(1) ?? "0.0"}</span>
@@ -110,7 +112,7 @@ export function ProductCard({ product }: { product: ProductListItem }) {
               productId: product.id,
               variantId: variant.id,
               slug: product.slug,
-              name: product.name,
+              name: localized.name,
               variantName: null,
               imageUrl: cover,
               unitCents: price.price,

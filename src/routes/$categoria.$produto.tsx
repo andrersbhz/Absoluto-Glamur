@@ -12,6 +12,7 @@ import { useFavorites } from "@/lib/favorites";
 import { useAuth } from "@/hooks/use-auth";
 import { isVideoMedia } from "@/lib/media-kind";
 import { ProductReviews } from "@/components/store/ProductReviews";
+import { useLocalizedProduct } from "@/lib/i18n/product";
 
 const ALLOWED_TAGS = new Set(["p", "br", "ul", "ol", "li", "strong", "b", "em", "i", "h2", "h3", "h4"]);
 function sanitizeDescriptionHtml(html: string): string {
@@ -110,6 +111,7 @@ export const Route = createFileRoute("/$categoria/$produto")({
 function ProductPage() {
   const { produto } = Route.useParams();
   const { data: product } = useQuery(productDetailQuery(produto));
+  const localized = useLocalizedProduct(product);
 
   const [variantId, setVariantId] = useState<string | null>(null);
   useEffect(() => {
