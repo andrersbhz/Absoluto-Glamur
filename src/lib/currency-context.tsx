@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { getCurrencyTable, type CurrencyCode, type CurrencyTable } from "@/lib/currency.functions";
+import { getCurrencyTable, refreshExchangeRates, type CurrencyCode, type CurrencyTable } from "@/lib/currency.functions";
 import { LOCALE_CONFIG, useI18n } from "@/lib/i18n";
 import { formatBRL } from "@/lib/format";
 
@@ -38,11 +38,28 @@ function convert(brlCents: number, table: CurrencyTable | undefined, currency: C
 export function CurrencyProvider({ children }: { children: ReactNode }) {
   const { locale } = useI18n();
   const fetchTable = useServerFn(getCurrencyTable);
-  const { data: table } = useQuery({
+  const refresh = useServerFn(refreshExchangeRates);
+  const { data: table, refetch } = useQuery({
     queryKey: ["currency-table"],
     queryFn: () => fetchTable({}),
     staleTime: 60 * 60 * 1000,
   });
+
+  // Atualiza as cotações no máximo a cada 6 horas (o servidor respeita o cache).
+  useEffect(() => {
+    if (!table) return;
+    const newest = table.rates
+      .map((r) => (r.fetchedAt ? new Date(r.fetchedAt).getTime() : 0))
+      .sort((a, b) => b - a)[0];
+    if (newest && Date.now() - newest < 6 * 60 * 60 * 1000) return;
+    let cancelled = false;
+    refresh({}).then((res) => {
+      if (!cancelled && res?.ok && !res.skipped) void refetch();
+    }).catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [table, refresh, refetch]);
 
   const localeCurrency = LOCALE_CONFIG[locale].currency as CurrencyCode;
   const [override, setOverride] = useState<CurrencyCode | null>(null);
