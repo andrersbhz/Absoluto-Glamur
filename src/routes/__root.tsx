@@ -13,6 +13,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAnalyticsTracker } from "@/lib/analytics-tracker";
 import { CustomerPushPrompt } from "@/components/store/CustomerPushPrompt";
 import { AliExpressReviewSyncBridge } from "@/components/store/AliExpressReviewSyncBridge";
+import { I18nProvider } from "@/lib/i18n";
 import appCss from "@/styles.css?url";
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
@@ -79,15 +80,17 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <Outlet />
-      <CustomerPushPrompt />
-      <AliExpressReviewSyncBridge />
-      <audio
-        id="whatsapp-alert"
-        src="https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3"
-        preload="none"
-      />
-      <Toaster richColors position="top-right" />
+      <I18nProvider>
+        <Outlet />
+        <CustomerPushPrompt />
+        <AliExpressReviewSyncBridge />
+        <audio
+          id="whatsapp-alert"
+          src="https://assets.mixkit.co/active_storage/sfx/2358/2358-preview.mp3"
+          preload="none"
+        />
+        <Toaster richColors position="top-right" />
+      </I18nProvider>
     </QueryClientProvider>
   );
 }
