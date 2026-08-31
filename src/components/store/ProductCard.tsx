@@ -13,7 +13,7 @@ export function ProductCard({ product }: { product: ProductListItem }) {
   const price = priceRow ? effectivePrice(priceRow.list_price_cents, priceRow.sale_price_cents) : null;
 
   const media = [...(product.media ?? [])].sort(
-    (a, b) => (a as { position?: number }).position ?? 0 - ((b as { position?: number }).position ?? 0),
+    (a, b) => Number((a as { position?: number }).position ?? 0) - Number((b as { position?: number }).position ?? 0),
   );
   const coverMedia = media[0] ?? null;
   const cover = coverMedia?.url ?? null;
