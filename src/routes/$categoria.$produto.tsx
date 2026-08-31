@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { StoreLayout } from "@/components/store/StoreLayout";
 import { pickActivePrice, productDetailQuery, publicAttrValues, variantAttrValues, variantImage } from "@/lib/catalog";
 import { VariantSelector } from "@/components/store/VariantSelector";
-import { effectivePrice, formatBRL } from "@/lib/format";
+import { effectivePrice } from "@/lib/format";
 import { useCurrency } from "@/lib/currency-context";
 import { useCart } from "@/lib/cart-store";
 import { useFavorites } from "@/lib/favorites";
@@ -113,6 +113,7 @@ function ProductPage() {
   const { produto } = Route.useParams();
   const { data: product } = useQuery(productDetailQuery(produto));
   const localized = useLocalizedProduct(product);
+  const { format: formatPrice } = useCurrency();
 
   const [variantId, setVariantId] = useState<string | null>(null);
   useEffect(() => {
