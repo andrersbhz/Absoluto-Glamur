@@ -20,10 +20,15 @@ export type CurrencyTable = {
   rates: CurrencyRate[];
 };
 
+// Valores públicos (já enviados ao navegador). O fallback evita falha quando o host
+// não injeta SUPABASE_URL / SUPABASE_PUBLISHABLE_KEY no runtime do servidor.
+const PUBLIC_SUPABASE_URL = "https://bnbksevtmbmlirnwglqb.supabase.co";
+const PUBLIC_SUPABASE_PUBLISHABLE_KEY = "sb_publishable_LPohaeKkLFO_6PrEB7F-sQ_dflToR4l";
+
 function publicClient() {
   return createClient<Database>(
-    process.env["SUPABASE_URL"]!,
-    process.env["SUPABASE_PUBLISHABLE_KEY"]!,
+    process.env["SUPABASE_URL"] || PUBLIC_SUPABASE_URL,
+    process.env["SUPABASE_PUBLISHABLE_KEY"] || PUBLIC_SUPABASE_PUBLISHABLE_KEY,
     { auth: { storage: undefined, persistSession: false, autoRefreshToken: false } },
   );
 }
