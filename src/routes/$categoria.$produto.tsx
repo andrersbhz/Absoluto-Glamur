@@ -1,10 +1,16 @@
 import { createFileRoute, Link, notFound, redirect } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { Heart, Star, ShoppingBag, ChevronLeft, Pencil } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { Heart, Star, ShoppingBag, ChevronLeft, ChevronRight, Pencil } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { StoreLayout } from "@/components/store/StoreLayout";
-import { pickActivePrice, productDetailQuery, publicAttrValues, variantAttrValues, variantImage } from "@/lib/catalog";
+import {
+  pickActivePrice,
+  productDetailQuery,
+  publicAttrValues,
+  variantAttrValues,
+  variantImage,
+} from "@/lib/catalog";
 import { VariantSelector } from "@/components/store/VariantSelector";
 import { effectivePrice } from "@/lib/format";
 import { useCurrency } from "@/lib/currency-context";
@@ -15,7 +21,20 @@ import { isVideoMedia } from "@/lib/media-kind";
 import { ProductReviews } from "@/components/store/ProductReviews";
 import { useLocalizedProduct } from "@/lib/i18n/product";
 
-const ALLOWED_TAGS = new Set(["p", "br", "ul", "ol", "li", "strong", "b", "em", "i", "h2", "h3", "h4"]);
+const ALLOWED_TAGS = new Set([
+  "p",
+  "br",
+  "ul",
+  "ol",
+  "li",
+  "strong",
+  "b",
+  "em",
+  "i",
+  "h2",
+  "h3",
+  "h4",
+]);
 function sanitizeDescriptionHtml(html: string): string {
   // strip script/style blocks entirely
   let out = html.replace(/<(script|style)[\s\S]*?<\/\1>/gi, "");
@@ -26,7 +45,10 @@ function sanitizeDescriptionHtml(html: string): string {
     return _m.startsWith("</") ? `</${t}>` : `<${t}>`;
   });
   // collapse excess whitespace between block tags
-  out = out.replace(/(&nbsp;|\u00a0)+/g, " ").replace(/[ \t]{2,}/g, " ").trim();
+  out = out
+    .replace(/(&nbsp;|\u00a0)+/g, " ")
+    .replace(/[ \t]{2,}/g, " ")
+    .trim();
   return out;
 }
 
@@ -46,23 +68,38 @@ export const Route = createFileRoute("/$categoria/$produto")({
     return { product };
   },
   head: ({ loaderData, params }) => {
-    if (!loaderData) return { meta: [{ title: "Produto não encontrado · Absoluto Glamur" }, { name: "robots", content: "noindex" }] };
+    if (!loaderData)
+      return {
+        meta: [
+          { title: "Produto não encontrado · Absoluto Glamur" },
+          { name: "robots", content: "noindex" },
+        ],
+      };
     const p = loaderData.product;
     const image = p.seo?.og_image_url ?? p.media?.[0]?.url ?? undefined;
     const defaultVariant = p.variants?.find((v) => v.is_default) ?? p.variants?.[0];
     const activePrice = defaultVariant?.prices?.find((pr) => pr.is_active);
     const priceBRL =
-      activePrice && ((activePrice.sale_price_cents ?? activePrice.list_price_cents) / 100).toFixed(2);
+      activePrice &&
+      ((activePrice.sale_price_cents ?? activePrice.list_price_cents) / 100).toFixed(2);
     const url = `/${params.categoria}/${params.produto}`;
     return {
       meta: [
         { title: (p.seo?.meta_title ?? p.name) + " · Absoluto Glamur" },
         { name: "description", content: p.seo?.meta_description ?? p.short_description ?? p.name },
         { property: "og:title", content: p.seo?.meta_title ?? p.name },
-        { property: "og:description", content: p.seo?.meta_description ?? p.short_description ?? "" },
+        {
+          property: "og:description",
+          content: p.seo?.meta_description ?? p.short_description ?? "",
+        },
         { property: "og:type", content: "product" },
         { property: "og:url", content: url },
-        ...(image ? [{ property: "og:image", content: image }, { property: "twitter:image", content: image }] : []),
+        ...(image
+          ? [
+              { property: "og:image", content: image },
+              { property: "twitter:image", content: image },
+            ]
+          : []),
       ],
       links: [{ rel: "canonical", href: url }],
       scripts: [
@@ -77,10 +114,19 @@ export const Route = createFileRoute("/$categoria/$produto")({
             brand: p.brand?.name ? { "@type": "Brand", name: p.brand.name } : undefined,
             aggregateRating:
               p.rating_count > 0
-                ? { "@type": "AggregateRating", ratingValue: p.rating_avg, reviewCount: p.rating_count }
+                ? {
+                    "@type": "AggregateRating",
+                    ratingValue: p.rating_avg,
+                    reviewCount: p.rating_count,
+                  }
                 : undefined,
             offers: priceBRL
-              ? { "@type": "Offer", priceCurrency: "BRL", price: priceBRL, availability: "https://schema.org/InStock" }
+              ? {
+                  "@type": "Offer",
+                  priceCurrency: "BRL",
+                  price: priceBRL,
+                  availability: "https://schema.org/InStock",
+                }
               : undefined,
           }),
         },
@@ -91,8 +137,14 @@ export const Route = createFileRoute("/$categoria/$produto")({
     <StoreLayout>
       <div className="mx-auto max-w-3xl px-4 py-24 text-center">
         <h1 className="font-display text-4xl">Produto não encontrado</h1>
-        <p className="mt-3 text-muted-foreground">Pode ter sido arquivado ou o link está incorreto.</p>
-        <Link to="/products" search={{} as never} className="mt-6 inline-block rounded-lg bg-primary px-5 py-2.5 text-sm text-primary-foreground">
+        <p className="mt-3 text-muted-foreground">
+          Pode ter sido arquivado ou o link está incorreto.
+        </p>
+        <Link
+          to="/products"
+          search={{} as never}
+          className="mt-6 inline-block rounded-lg bg-primary px-5 py-2.5 text-sm text-primary-foreground"
+        >
           Ver todos os produtos
         </Link>
       </div>
@@ -130,11 +182,14 @@ function ProductPage() {
   }, [product]);
 
   const selectedVariant = useMemo(
-    () => variants.find((v) => v.id === variantId) ?? variants.find((v) => v.is_default) ?? variants[0],
+    () =>
+      variants.find((v) => v.id === variantId) ?? variants.find((v) => v.is_default) ?? variants[0],
     [variants, variantId],
   );
   const priceRow = pickActivePrice(selectedVariant);
-  const price = priceRow ? effectivePrice(priceRow.list_price_cents, priceRow.sale_price_cents) : null;
+  const price = priceRow
+    ? effectivePrice(priceRow.list_price_cents, priceRow.sale_price_cents)
+    : null;
   const stock = selectedVariant?.inventory?.stock ?? 0;
   const selectedAttributes = selectedVariant ? variantAttrValues(selectedVariant) : {};
 
@@ -144,21 +199,43 @@ function ProductPage() {
 
   const media = useMemo(() => [...(product?.media ?? [])], [product]);
   const [activeIdx, setActiveIdx] = useState(0);
+  const [thumbnailStart, setThumbnailStart] = useState(0);
+  const visibleThumbnailCount = 4;
+  const maxThumbnailStart = Math.max(0, media.length - visibleThumbnailCount);
+
+  const selectMedia = useCallback(
+    (index: number) => {
+      setActiveIdx(index);
+      setThumbnailStart((current) => {
+        if (index < current) return index;
+        if (index >= current + visibleThumbnailCount)
+          return Math.min(index - visibleThumbnailCount + 1, maxThumbnailStart);
+        return current;
+      });
+    },
+    [maxThumbnailStart],
+  );
+
+  const moveThumbnails = (direction: -1 | 1) => {
+    setThumbnailStart((current) => Math.min(Math.max(current + direction, 0), maxThumbnailStart));
+  };
 
   // Ao trocar de variação, se ela tiver imagem própria, tenta ativar essa mídia.
   const variantImageUrl = variantImage(selectedVariant);
   useEffect(() => {
     if (!variantImageUrl) return;
     const idx = media.findIndex((m) => m.url === variantImageUrl);
-    if (idx >= 0) setActiveIdx(idx);
-  }, [variantImageUrl, media]);
+    if (idx >= 0) selectMedia(idx);
+  }, [variantImageUrl, media, selectMedia]);
 
   if (!product) return null;
   const active = media[activeIdx] ?? media[0];
-  const activeUrl = variantImageUrl && !media.some((m) => m.url === variantImageUrl)
-    ? variantImageUrl
-    : active?.url;
-  const activeIsVideo = isVideoMedia(active) && !(variantImageUrl && !media.some((m) => m.url === variantImageUrl));
+  const activeUrl =
+    variantImageUrl && !media.some((m) => m.url === variantImageUrl)
+      ? variantImageUrl
+      : active?.url;
+  const activeIsVideo =
+    isVideoMedia(active) && !(variantImageUrl && !media.some((m) => m.url === variantImageUrl));
 
   const fav = isFavorite(product.id);
 
@@ -166,7 +243,11 @@ function ProductPage() {
     <StoreLayout>
       <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
         <div className="mb-6 flex items-center justify-between gap-3">
-          <Link to="/products" search={{} as never} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+          <Link
+            to="/products"
+            search={{} as never}
+            className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
+          >
             <ChevronLeft className="h-4 w-4" /> Voltar ao catálogo
           </Link>
           {isAdmin && (
@@ -184,49 +265,104 @@ function ProductPage() {
             <div className="aspect-square overflow-hidden rounded-3xl bg-secondary/40">
               {activeUrl ? (
                 activeIsVideo ? (
-                  <video key={activeUrl} src={activeUrl} className="h-full w-full object-cover" controls playsInline loop autoPlay muted />
+                  <video
+                    key={activeUrl}
+                    src={activeUrl}
+                    className="h-full w-full object-cover"
+                    controls
+                    playsInline
+                    loop
+                    autoPlay
+                    muted
+                  />
                 ) : (
-                  <img src={activeUrl} alt={active?.alt ?? localized.name} className="h-full w-full object-cover" />
+                  <img
+                    src={activeUrl}
+                    alt={active?.alt ?? localized.name}
+                    className="h-full w-full object-cover"
+                  />
                 )
               ) : (
                 <div className="flex h-full items-center justify-center bg-gradient-to-br from-primary/40 to-plum">
-                  <span className="font-display text-6xl text-primary-foreground/40">absoluto glamur.</span>
+                  <span className="font-display text-6xl text-primary-foreground/40">
+                    absoluto glamur.
+                  </span>
                 </div>
               )}
             </div>
             {media.length > 1 && (
-              <div className="grid grid-cols-5 gap-2">
-                {media.map((m, i) => {
-                  const video = isVideoMedia(m);
-                  return (
-                    <button
-                      type="button"
-                      key={i}
-                      onClick={() => setActiveIdx(i)}
-                      className={`relative aspect-square overflow-hidden rounded-lg bg-secondary/40 ring-2 transition ${
-                        i === activeIdx ? "ring-primary" : "ring-transparent hover:ring-border"
-                      }`}
-                      aria-label={`Ver mídia ${i + 1}`}
-                    >
-                      {video ? (
-                        <>
-                          <video src={m.url} className="h-full w-full object-cover" muted playsInline preload="metadata" />
-                          <span className="absolute bottom-1 right-1 rounded bg-black/60 px-1 py-0.5 text-[9px] font-medium uppercase text-white">
-                            Vídeo
-                          </span>
-                        </>
-                      ) : (
-                        <img src={m.url} alt={m.alt ?? ""} className="h-full w-full object-cover" />
-                      )}
-                    </button>
-                  );
-                })}
+              <div className="flex items-center gap-2" aria-label="Galeria de mídias do produto">
+                {media.length > visibleThumbnailCount && (
+                  <button
+                    type="button"
+                    onClick={() => moveThumbnails(-1)}
+                    disabled={thumbnailStart === 0}
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border bg-background text-foreground transition hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-35"
+                    aria-label="Mostrar mídias anteriores"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </button>
+                )}
+                <div className="grid min-w-0 flex-1 grid-cols-4 gap-2">
+                  {media
+                    .slice(thumbnailStart, thumbnailStart + visibleThumbnailCount)
+                    .map((m, visibleIndex) => {
+                      const i = thumbnailStart + visibleIndex;
+                      const video = isVideoMedia(m);
+                      return (
+                        <button
+                          type="button"
+                          key={`${m.url}-${i}`}
+                          onClick={() => selectMedia(i)}
+                          onMouseEnter={() => selectMedia(i)}
+                          className={`relative aspect-square overflow-hidden rounded-lg bg-secondary/40 ring-2 transition ${
+                            i === activeIdx ? "ring-primary" : "ring-transparent hover:ring-border"
+                          }`}
+                          aria-label={`Ver mídia ${i + 1}`}
+                        >
+                          {video ? (
+                            <>
+                              <video
+                                src={m.url}
+                                className="h-full w-full object-cover"
+                                muted
+                                playsInline
+                                preload="metadata"
+                              />
+                              <span className="absolute bottom-1 right-1 rounded bg-black/60 px-1 py-0.5 text-[9px] font-medium uppercase text-white">
+                                Vídeo
+                              </span>
+                            </>
+                          ) : (
+                            <img
+                              src={m.url}
+                              alt={m.alt ?? ""}
+                              className="h-full w-full object-cover"
+                            />
+                          )}
+                        </button>
+                      );
+                    })}
+                </div>
+                {media.length > visibleThumbnailCount && (
+                  <button
+                    type="button"
+                    onClick={() => moveThumbnails(1)}
+                    disabled={thumbnailStart === maxThumbnailStart}
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-border bg-background text-foreground transition hover:border-primary hover:text-primary disabled:cursor-not-allowed disabled:opacity-35"
+                    aria-label="Mostrar próximas mídias"
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
+                )}
               </div>
             )}
           </div>
           <div>
             {product.brand && (
-              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">{product.brand.name}</p>
+              <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">
+                {product.brand.name}
+              </p>
             )}
             <h1 className="mt-2 font-display text-4xl text-foreground">{localized.name}</h1>
             <div className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
@@ -242,9 +378,13 @@ function ProductPage() {
             <div className="mt-6 flex items-baseline gap-3">
               {price ? (
                 <>
-                  <span className="font-display text-3xl text-foreground">{formatPrice(price.price)}</span>
+                  <span className="font-display text-3xl text-foreground">
+                    {formatPrice(price.price)}
+                  </span>
                   {price.hasSale && (
-                    <span className="text-sm text-muted-foreground line-through">{formatPrice(price.listPrice)}</span>
+                    <span className="text-sm text-muted-foreground line-through">
+                      {formatPrice(price.listPrice)}
+                    </span>
                   )}
                 </>
               ) : (
@@ -311,7 +451,9 @@ function ProductPage() {
                 <h2 className="font-display text-xl">Sobre o produto</h2>
                 <div
                   className="prose prose-sm prose-invert mt-3 max-w-none text-sm leading-relaxed text-muted-foreground [&_p]:mb-3 [&_ul]:list-disc [&_ul]:pl-5 [&_ol]:list-decimal [&_ol]:pl-5 [&_strong]:text-foreground [&_h2]:font-display [&_h2]:text-lg [&_h2]:text-foreground [&_h3]:font-display [&_h3]:text-base [&_h3]:text-foreground"
-                  dangerouslySetInnerHTML={{ __html: sanitizeDescriptionHtml(localized.description) }}
+                  dangerouslySetInnerHTML={{
+                    __html: sanitizeDescriptionHtml(localized.description),
+                  }}
                 />
               </div>
             )}
