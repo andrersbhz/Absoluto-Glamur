@@ -672,7 +672,7 @@ function StructurePanel({
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="text-lg font-semibold">Estrutura e ordem</h2>
-            <p className="mt-1 text-xs text-muted-foreground">Arraste os blocos pela alça ou use as setas. A ordem é salva imediatamente.</p>
+            <p className="mt-1 max-w-xl text-xs leading-5 text-muted-foreground">Esta é a ordem real das seções da Home, de cima para baixo. Arraste pela alça (ou use as setas) para reposicionar — a ordem é salva na hora. Clique no bloco para editar o conteúdo e no ícone de olho para publicar/ocultar.</p>
           </div>
           <div className="relative">
             <Button onClick={() => setShowLibrary((value) => !value)} disabled={creatingBlock}>
