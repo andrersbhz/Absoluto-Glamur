@@ -424,6 +424,45 @@ function HomeBuilderPage() {
     setCategoryDirty(false);
   }
 
+  async function refreshCategories() {
+    setCategoryDirty(false);
+    await Promise.all([
+      qc.invalidateQueries({ queryKey: ["categories"] }),
+      qc.invalidateQueries({ queryKey: ["products-by-category"] }),
+    ]);
+  }
+
+  async function handleCreateCategory(name: string) {
+    try {
+      await createCategoryFn({ data: { name } });
+      await refreshCategories();
+      toast.success("Categoria criada. Ela já aparece no menu e nos blocos automáticos.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Não foi possível criar a categoria.");
+    }
+  }
+
+  async function handleRenameCategory(id: string, name: string) {
+    try {
+      await renameCategoryFn({ data: { id, name } });
+      await refreshCategories();
+      toast.success("Nome da categoria atualizado em toda a loja.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Não foi possível renomear a categoria.");
+    }
+  }
+
+  async function handleDeleteCategory(id: string, name: string) {
+    if (!window.confirm(`Remover a categoria “${name}”? Ela sairá do menu e da Home.`)) return;
+    try {
+      await deleteCategoryFn({ data: { id } });
+      await refreshCategories();
+      toast.success("Categoria removida.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Não foi possível remover a categoria.");
+    }
+  }
+
   if (isLoading) {
     return (
       <AdminLayout>
