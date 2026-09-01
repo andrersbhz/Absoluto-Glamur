@@ -3,7 +3,14 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabase } from "@/integrations/supabase/client";
 
-export type PaymentMethodKey = "pix" | "credit_card" | "boleto" | "nubank_redirect";
+export type PaymentMethodKey =
+  | "pix"
+  | "credit_card"
+  | "boleto"
+  | "nubank_redirect"
+  | "paypal"
+  | "ebanx_card"
+  | "ebanx_boleto";
 
 export type CheckoutMethodDTO = {
   method: PaymentMethodKey;
@@ -18,6 +25,9 @@ const SUPPORTED_PAYMENT_ROUTES: Record<PaymentMethodKey, readonly string[]> = {
   credit_card: ["pagbank"],
   boleto: ["asaas", "pagbank"],
   nubank_redirect: ["nupay"],
+  paypal: ["paypal"],
+  ebanx_card: ["ebanx"],
+  ebanx_boleto: ["ebanx"],
 };
 
 function isSupportedPaymentRoute(method: PaymentMethodKey, provider: string) {
@@ -72,7 +82,15 @@ export const listAdminRouting = createServerFn({ method: "GET" })
   });
 
 const RoutingUpdateSchema = z.object({
-  method: z.enum(["pix", "credit_card", "boleto", "nubank_redirect"]),
+  method: z.enum([
+    "pix",
+    "credit_card",
+    "boleto",
+    "nubank_redirect",
+    "paypal",
+    "ebanx_card",
+    "ebanx_boleto",
+  ]),
   provider: z.string().min(2).optional(),
   enabled: z.boolean().optional(),
   display_label: z.string().max(80).optional(),
