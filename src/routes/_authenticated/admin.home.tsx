@@ -584,6 +584,9 @@ function HomeBuilderPage() {
                   onMove={moveCategory}
                   onSave={saveCategoryOrder}
                   onReset={resetCategoryOrder}
+                  onCreate={handleCreateCategory}
+                  onRename={handleRenameCategory}
+                  onDeleteCategory={handleDeleteCategory}
                 />
               </TabsContent>
             </div>
