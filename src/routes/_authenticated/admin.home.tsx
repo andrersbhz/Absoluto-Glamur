@@ -1105,7 +1105,7 @@ function BannersPanel({ value, dirty, saving, focus, onFocus, onPatch, onSave, o
   );
 }
 
-function CategoryOrderPanel({ categories, dirty, saving, dragIndex, onDragIndex, onDrop, onMove, onSave, onReset }: {
+function CategoryOrderPanel({ categories, dirty, saving, dragIndex, onDragIndex, onDrop, onMove, onSave, onReset, onCreate, onRename, onDeleteCategory }: {
   categories: CategoryRow[];
   dirty: boolean;
   saving: boolean;
@@ -1115,16 +1115,35 @@ function CategoryOrderPanel({ categories, dirty, saving, dragIndex, onDragIndex,
   onMove: (index: number, direction: -1 | 1) => void;
   onSave: () => void;
   onReset: () => void;
+  onCreate: (name: string) => void | Promise<void>;
+  onRename: (id: string, name: string) => void | Promise<void>;
+  onDeleteCategory: (id: string, name: string) => void | Promise<void>;
 }) {
+  const [newName, setNewName] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState("");
+
+  function startEdit(category: CategoryRow) {
+    setEditingId(category.id);
+    setEditingName(category.name);
+  }
+
+  async function confirmEdit(category: CategoryRow) {
+    const name = editingName.trim();
+    setEditingId(null);
+    if (name.length < 2 || name === category.name) return;
+    await onRename(category.id, name);
+  }
+
   return (
     <div className="space-y-4">
       <section className="rounded-2xl border border-border bg-card p-5 shadow-soft">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">Posicionamento real</p>
-            <h2 className="mt-1 text-lg font-semibold">Onde cada categoria aparece</h2>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">Categorias da loja</p>
+            <h2 className="mt-1 text-lg font-semibold">Nomes, ordem e onde cada categoria aparece</h2>
             <p className="mt-2 max-w-2xl text-xs leading-5 text-muted-foreground">
-              A ordem abaixo controla a sequência usada pela Home nas vitrines “Novidades e mais vendidos” e também a ordem dos atalhos de categorias. Arraste para posicionar cada categoria exatamente onde deseja dentro dessa área da página.
+              Renomeie uma categoria (ex.: trocar “Skincare” por “Bolsas”) e o novo nome muda na loja inteira. Arraste para reordenar: a mesma sequência é usada no menu do topo, nos atalhos de categoria e nas vitrines “Novidades e mais vendidos” da Home.
             </p>
           </div>
           <div className="flex gap-2">
@@ -1135,32 +1154,85 @@ function CategoryOrderPanel({ categories, dirty, saving, dragIndex, onDragIndex,
         <div className={`mt-4 rounded-lg px-3 py-2 text-xs ${dirty ? "bg-warning/10 font-semibold text-warning" : "bg-success/10 text-success"}`}>
           {dirty ? "Preview atualizado. Salve para aplicar a nova ordem na Home." : "A ordem exibida corresponde ao que está salvo no catálogo."}
         </div>
+        <div className="mt-3">
+          <HelpNote>
+            Toda categoria criada aqui entra <strong className="text-foreground">automaticamente</strong> no menu do topo, nos atalhos da Home e no bloco “Categorias em linha” quando ele estiver no modo “Todas”. Renomear e reordenar não exige nenhuma outra configuração.
+          </HelpNote>
+        </div>
+      </section>
+
+      <section className="rounded-2xl border border-border bg-card p-5 shadow-soft">
+        <p className="text-sm font-semibold">Criar nova categoria</p>
+        <p className="mt-1 text-xs text-muted-foreground">Digite o nome como o cliente deve ver (ex.: Bolsas, Perfumes, Cabelos).</p>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <Input
+            className="max-w-xs"
+            value={newName}
+            placeholder="Nome da categoria"
+            onChange={(event) => setNewName(event.target.value)}
+          />
+          <Button
+            size="sm"
+            disabled={newName.trim().length < 2}
+            onClick={async () => { const name = newName.trim(); setNewName(""); await onCreate(name); }}
+          >
+            <Plus className="mr-2 h-3.5 w-3.5" /> Criar categoria
+          </Button>
+        </div>
       </section>
 
       <section className="rounded-2xl border border-border bg-card p-4 shadow-soft">
         <div className="space-y-2">
-          {categories.map((category, index) => (
-            <div
-              key={category.id}
-              draggable
-              onDragStart={() => onDragIndex(index)}
-              onDragEnd={() => onDragIndex(null)}
-              onDragOver={(event) => event.preventDefault()}
-              onDrop={() => onDrop(index)}
-              className={`flex items-center gap-3 rounded-xl border p-3 transition ${dragIndex === index ? "border-dashed border-primary bg-primary/5" : "border-border bg-background hover:border-primary/30"}`}
-            >
-              <button type="button" className="cursor-grab text-muted-foreground active:cursor-grabbing"><GripVertical className="h-5 w-5" /></button>
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">{index + 1}</div>
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-semibold">{category.name}</p>
-                <p className="text-[10px] text-muted-foreground">/{category.slug} · posição salva atualizada ao confirmar</p>
+          {categories.map((category, index) => {
+            const editing = editingId === category.id;
+            return (
+              <div
+                key={category.id}
+                draggable={!editing}
+                onDragStart={() => onDragIndex(index)}
+                onDragEnd={() => onDragIndex(null)}
+                onDragOver={(event) => event.preventDefault()}
+                onDrop={() => onDrop(index)}
+                className={`flex items-center gap-3 rounded-xl border p-3 transition ${dragIndex === index ? "border-dashed border-primary bg-primary/5" : "border-border bg-background hover:border-primary/30"}`}
+              >
+                <button type="button" className="cursor-grab text-muted-foreground active:cursor-grabbing" title="Arrastar para reposicionar"><GripVertical className="h-5 w-5" /></button>
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">{index + 1}</div>
+                <div className="min-w-0 flex-1">
+                  {editing ? (
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Input
+                        autoFocus
+                        className="h-8 max-w-[240px]"
+                        value={editingName}
+                        onChange={(event) => setEditingName(event.target.value)}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter") void confirmEdit(category);
+                          if (event.key === "Escape") setEditingId(null);
+                        }}
+                      />
+                      <Button size="icon" variant="ghost" title="Salvar nome" onClick={() => void confirmEdit(category)}><Check className="h-4 w-4 text-success" /></Button>
+                      <Button size="icon" variant="ghost" title="Cancelar" onClick={() => setEditingId(null)}><X className="h-4 w-4" /></Button>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="truncate text-sm font-semibold">{category.name}</p>
+                        {index < 5 && <Badge variant="secondary" className="h-5 text-[9px]">Aparece no menu do topo</Badge>}
+                      </div>
+                      <p className="text-[10px] text-muted-foreground">Endereço /{category.slug} · o endereço não muda ao renomear (links antigos continuam funcionando)</p>
+                    </>
+                  )}
+                </div>
+                <div className="flex shrink-0">
+                  <Button size="icon" variant="ghost" title="Renomear" onClick={() => startEdit(category)}><Pencil className="h-4 w-4" /></Button>
+                  <Button size="icon" variant="ghost" disabled={index === 0} title="Subir" onClick={() => onMove(index, -1)}><ArrowUp className="h-4 w-4" /></Button>
+                  <Button size="icon" variant="ghost" disabled={index === categories.length - 1} title="Descer" onClick={() => onMove(index, 1)}><ArrowDown className="h-4 w-4" /></Button>
+                  <Button size="icon" variant="ghost" title="Remover categoria" onClick={() => void onDeleteCategory(category.id, category.name)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                </div>
               </div>
-              <div className="flex">
-                <Button size="icon" variant="ghost" disabled={index === 0} onClick={() => onMove(index, -1)}><ArrowUp className="h-4 w-4" /></Button>
-                <Button size="icon" variant="ghost" disabled={index === categories.length - 1} onClick={() => onMove(index, 1)}><ArrowDown className="h-4 w-4" /></Button>
-              </div>
-            </div>
-          ))}
+            );
+          })}
+          {categories.length === 0 && <div className="rounded-xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">Nenhuma categoria cadastrada ainda.</div>}
         </div>
       </section>
     </div>
