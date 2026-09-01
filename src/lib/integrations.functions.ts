@@ -405,10 +405,11 @@ export const testIntegration = createServerFn({ method: "POST" })
       const provider = data.provider as "openai" | "gemini";
       const config = row.config && typeof row.config === "object" ? (row.config as Record<string, unknown>) : {};
       const apiKey = typeof row.api_key === "string" ? row.api_key.trim() : "";
+      const label = provider === "openai" ? "OpenAI" : "Gemini";
       if (!apiKey) {
         const message = "Preencha a chave da API antes de testar.";
         await writeVerification(db, provider, message);
-        throw new Error(message);
+        return { ok: false, info: { name: label, message } };
       }
       const { DEFAULT_AI_MODEL, callAiProvider } = await import("./ai-translate.server");
       const model = typeof config.model === "string" && config.model.trim() ? config.model.trim() : DEFAULT_AI_MODEL[provider];
@@ -416,12 +417,13 @@ export const testIntegration = createServerFn({ method: "POST" })
         const text = await callAiProvider({ provider, apiKey, model }, "Responda apenas com: OK", "ping");
         if (!text) throw new Error("O modelo respondeu vazio.");
         await writeVerification(db, provider, null);
-        return { ok: true, info: { name: `${provider === "openai" ? "OpenAI" : "Gemini"} · ${model}`, email: null } };
+        return { ok: true, info: { name: `${label} · ${model}`, email: null } };
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         await writeVerification(db, provider, message);
-        throw new Error(message);
+        return { ok: false, info: { name: `${label} · ${model}`, message } };
       }
+
     }
 
     if (data.provider === "aliexpress") {
