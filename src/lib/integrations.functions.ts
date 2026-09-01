@@ -378,17 +378,22 @@ export const testIntegration = createServerFn({ method: "POST" })
     }
 
     if (data.provider === "facebook" || data.provider === "instagram") {
+      const label = data.provider === "facebook" ? "Facebook" : "Instagram";
       try {
         const { testMetaIntegration } = await import("./meta-social.server");
         const info = await testMetaIntegration(data.provider, db);
         await writeVerification(db, data.provider, null);
         return { ok: true, info: { name: info.name, email: null } };
       } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
+        const raw = error instanceof Error ? error.message : String(error);
+        const message = /190|access token/i.test(raw)
+          ? "Token de acesso da Meta inválido ou expirado. Gere um novo token e salve novamente."
+          : raw;
         await writeVerification(db, data.provider, message);
-        throw new Error(message);
+        return { ok: false, info: { name: label, message } };
       }
     }
+
 
     if (data.provider === "google_tag_manager") {
       const containerId = String(row.api_key ?? "").trim().toUpperCase();
