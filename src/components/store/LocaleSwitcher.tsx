@@ -88,9 +88,6 @@ export function LocaleSwitcher() {
                 </button>
               ))}
             </div>
-            <p className="mt-2 text-[10px] leading-tight text-muted-foreground">
-              {t("nav.currencyNote")}
-            </p>
           </li>
         </ul>
       )}
