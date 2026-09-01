@@ -26,6 +26,7 @@ import {
   getAdminProduct,
   listBrandsAndCategories,
   upsertAdminProduct,
+  translateProductGlobal,
   type AdminProductInput,
 } from "@/lib/admin-catalog.functions";
 import { syncAliexpressStock } from "@/lib/aliexpress-stock.functions";
@@ -117,6 +118,7 @@ function CatalogEditor() {
   const getProd = useServerFn(getAdminProduct);
   const meta = useServerFn(listBrandsAndCategories);
   const upsert = useServerFn(upsertAdminProduct);
+  const translateGlobalFn = useServerFn(translateProductGlobal);
 
   const metaQ = useQuery({ queryKey: ["admin-cat-meta"], queryFn: () => meta() });
   const prodQ = useQuery({
@@ -176,6 +178,7 @@ function CatalogEditor() {
     },
     onError: (e: Error) => toast.error(e.message),
   });
+  const translateGlobal = useMutation({ mutationFn: () => translateGlobalFn({ data: { productId: id } }), onSuccess: (r) => toast.success(`${r.translated} idiomas atualizados`), onError: (e: Error) => toast.error(e.message) });
 
   const syncStockFn = useServerFn(syncAliexpressStock);
   const syncStock = useMutation({
@@ -1056,6 +1059,7 @@ function CatalogEditor() {
                     : "As alterações entram no ar assim que você salvar."}
                 </p>
                 <div className="flex items-center gap-2">
+                  {!isNew && <button type="button" disabled={translateGlobal.isPending || save.isPending} onClick={() => translateGlobal.mutate()} className="rounded-lg border border-primary/30 px-4 py-2.5 text-sm text-primary hover:bg-primary/5 disabled:opacity-60">{translateGlobal.isPending ? "Traduzindo…" : "Traduzir globalmente"}</button>}
                   <Link
                     to="/admin/catalog"
                     className="rounded-lg border border-border px-4 py-2.5 text-sm text-muted-foreground hover:bg-secondary"
@@ -1217,4 +1221,3 @@ function MediaThumb({ url, alt, isVideo }: { url: string; alt: string; isVideo: 
     />
   );
 }
-

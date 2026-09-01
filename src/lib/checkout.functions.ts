@@ -5,13 +5,14 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 const onlyDigits = (value: string) => value.replace(/\D/g, "");
 
 const AddressSchema = z.object({
-  zipCode: z.string().refine((value) => onlyDigits(value).length === 8, "CEP inválido"),
+  country: z.string().length(2).default("BR"),
+  zipCode: z.string().trim().min(3).max(20),
   street: z.string().min(2),
   number: z.string().min(1),
   complement: z.string().nullable().optional(),
   district: z.string().min(2),
   city: z.string().min(2),
-  state: z.string().regex(/^[A-Za-z]{2}$/, "UF inválida"),
+  state: z.string().trim().min(1).max(80),
 });
 
 const CheckoutItemsSchema = z
@@ -41,14 +42,14 @@ const CheckoutSchema = z.object({
   customer: z.object({
     name: z.string().trim().min(2),
     email: z.string().trim().email(),
-    document: z.string().refine((value) => {
+    document: z.string().optional().default("").refine((value) => {
       const size = onlyDigits(value).length;
-      return size === 11 || size === 14;
-    }, "CPF/CNPJ inválido"),
+      return size === 0 || size === 11 || size === 14;
+    }, "Documento inválido"),
     phone: z.string().refine((value) => {
       const size = onlyDigits(value).length;
-      return size === 10 || size === 11;
-    }, "Celular inválido"),
+      return size >= 8 && size <= 15;
+    }, "Telefone inválido"),
   }),
   address: AddressSchema,
   saveAddress: z.boolean().optional(),
@@ -65,6 +66,9 @@ const CheckoutSchema = z.object({
     ])
     .optional(),
   returnUrl: z.string().url().optional(),
+}).superRefine((value, ctx) => {
+  if (value.address.country === "BR" && ![11, 14].includes(onlyDigits(value.customer.document).length)) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "CPF/CNPJ é obrigatório no Brasil", path: ["customer", "document"] });
+  if (value.address.country === "BR" && onlyDigits(value.address.zipCode).length !== 8) ctx.addIssue({ code: z.ZodIssueCode.custom, message: "CEP inválido", path: ["address", "zipCode"] });
 });
 export type CheckoutInput = z.infer<typeof CheckoutSchema>;
 
@@ -112,7 +116,7 @@ export const createCheckout = createServerFn({ method: "POST" })
 
     const { data: integ } = await supabaseAdmin
       .from("integrations")
-      .select("api_key, mode, enabled, webhook_token, config")
+      .select("api_key, api_secret, mode, enabled, webhook_token, config")
       .eq("provider", provider)
       .maybeSingle();
     if (!integ?.enabled || !integ.api_key) {
@@ -120,7 +124,7 @@ export const createCheckout = createServerFn({ method: "POST" })
         `Provedor "${provider}" não está configurado. Peça ao administrador para configurá-lo em Admin → Integrações.`,
       );
     }
-    if (["asaas", "nupay", "pagbank", "ebanx"].includes(provider) && !integ.webhook_token) {
+    if (["asaas", "nupay", "pagbank", "ebanx", "mercadopago"].includes(provider) && !integ.webhook_token) {
       throw new Error(
         `Configure o Token do webhook de ${provider} em Admin → Integrações antes de receber pagamentos.`,
       );
@@ -259,7 +263,8 @@ export const createCheckout = createServerFn({ method: "POST" })
         customer_email: data.customer.email,
         customer_document: document,
         customer_phone: phone,
-        shipping_address: { ...data.address, zipCode: onlyDigits(data.address.zipCode), state: data.address.state.toUpperCase() },
+        currency: "BRL",
+        shipping_address: { ...data.address, zipCode: data.address.country === "BR" ? onlyDigits(data.address.zipCode) : data.address.zipCode.trim(), state: data.address.state.toUpperCase() },
         notes: data.notes ?? null,
       })
       .select("id, code")
@@ -277,7 +282,8 @@ export const createCheckout = createServerFn({ method: "POST" })
         recipient_name: data.customer.name,
         document,
         phone,
-        zip_code: onlyDigits(data.address.zipCode),
+        country: data.address.country,
+        zip_code: data.address.country === "BR" ? onlyDigits(data.address.zipCode) : data.address.zipCode.trim(),
         street: data.address.street,
         number: data.address.number,
         complement: data.address.complement ?? null,
@@ -290,7 +296,7 @@ export const createCheckout = createServerFn({ method: "POST" })
     const normalizedData: CheckoutInput = {
       ...data,
       customer: { ...data.customer, document, phone },
-      address: { ...data.address, zipCode: onlyDigits(data.address.zipCode), state: data.address.state.toUpperCase() },
+      address: { ...data.address, zipCode: data.address.country === "BR" ? onlyDigits(data.address.zipCode) : data.address.zipCode.trim(), state: data.address.state.toUpperCase() },
     };
     const ctx: OrderContext = { orderId: order.id, code: order.code, total, document, phone, data: normalizedData };
 
@@ -312,6 +318,9 @@ export const createCheckout = createServerFn({ method: "POST" })
       }
       if (provider === "pagbank") {
         return await handlePagBankCheckout(ctx, integ, method);
+      }
+      if (provider === "mercadopago" && ["pix", "credit_card", "boleto"].includes(method)) {
+        return await handleMercadoPagoCheckout(ctx, integ, method);
       }
       throw new Error(
         `Combinação provedor="${provider}" + método="${method}" ainda não é suportada.`,
@@ -704,4 +713,28 @@ async function handleEbanxCheckout(ctx: OrderContext, integ: any, method: string
     method: method as "ebanx_card" | "ebanx_boleto",
     redirectUrl: result.redirectUrl ?? undefined,
   };
+}
+
+// Mercado Pago Checkout Pro oferece PIX, cartão, boleto e saldo em um único fluxo hospedado.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function handleMercadoPagoCheckout(ctx: OrderContext, integ: any, method: string) {
+  const { createMercadoPagoPreference } = await import("./mercadopago.server");
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const origin = (integ.config?.checkout_origin as string | undefined) ?? "https://www.absolutoglamur.com.br";
+  const returnUrl = ctx.data.returnUrl ?? `${origin}/checkout/${ctx.orderId}`;
+  const notificationUrl = `${origin}/api/public/webhooks/mercadopago`;
+  const result = await createMercadoPagoPreference({ accessToken: integ.api_key }, {
+    orderId: ctx.orderId, code: ctx.code, amountCents: ctx.total, currency: "BRL",
+    customer: { name: ctx.data.customer.name, email: ctx.data.customer.email },
+    returnUrl, notificationUrl, sandbox: integ.mode !== "production",
+  });
+  const { error } = await supabaseAdmin.from("payments").insert({
+    order_id: ctx.orderId, provider: "mercadopago", method: method as any, status: "pending",
+    amount_cents: ctx.total, external_id: result.preference.id, session_id: result.preference.id,
+    redirect_url: result.redirectUrl, return_url: returnUrl,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    raw: result.preference as any,
+  });
+  if (error) throw new Error(error.message);
+  return { orderId: ctx.orderId, code: ctx.code, method: method as "pix" | "credit_card" | "boleto", redirectUrl: result.redirectUrl };
 }

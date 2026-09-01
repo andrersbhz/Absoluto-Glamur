@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
 
-export type CurrencyCode = "BRL" | "USD" | "EUR" | "MXN";
+export type CurrencyCode = "BRL" | "USD" | "EUR" | "GBP" | "CAD" | "MXN" | "COP" | "CLP" | "ARS" | "PEN";
 
 export type CurrencyRate = {
   currency: CurrencyCode;
@@ -95,7 +95,7 @@ export const refreshExchangeRates = createServerFn({ method: "POST" }).handler(a
     const res = await fetch("https://open.er-api.com/v6/latest/BRL");
     if (!res.ok) return { ok: false, skipped: false as const };
     const json = (await res.json()) as { rates?: Record<string, number> };
-    const targets: CurrencyCode[] = ["USD", "EUR", "MXN"];
+    const targets: CurrencyCode[] = ["USD", "EUR", "GBP", "CAD", "MXN", "COP", "CLP", "ARS", "PEN"];
     const now = new Date().toISOString();
 
     for (const currency of targets) {

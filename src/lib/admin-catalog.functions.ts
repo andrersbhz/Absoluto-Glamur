@@ -146,6 +146,30 @@ export const listBrandsAndCategories = createServerFn({ method: "GET" })
     return { brands: b.data ?? [], categories: c.data ?? [] };
   });
 
+export const translateProductGlobal = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((v: unknown) => z.object({ productId: z.string().uuid() }).parse(v))
+  .handler(async ({ data, context }) => {
+    await assertCatalog(context);
+    const { data: product, error } = await context.supabase.from("products").select("id,name,short_description,description").eq("id", data.productId).single();
+    if (error || !product) throw new Error(error?.message ?? "Produto não encontrado");
+    const { generateWithOwnKeys } = await import("./ai-translate.server");
+    const locales = ["en-US", "es", "es-MX", "fr-FR", "it-IT", "de-DE"];
+    const raw = await generateWithOwnKeys(
+      "Você é um tradutor profissional de e-commerce de beleza. Preserve nomes de marca, ingredientes, medidas e informações legais. Responda somente JSON válido.",
+      `Traduza o produto para ${locales.join(", ")}. Formato: {"en-US":{"name":"","short_description":"","description":""},...}. Produto: ${JSON.stringify(product)}`,
+      context.supabase,
+    );
+    if (!raw) throw new Error("Nenhum provedor de IA configurado conseguiu traduzir o produto.");
+    let parsed: Record<string, { name?: string; short_description?: string; description?: string }>;
+    try { parsed = JSON.parse(raw.replace(/^```json\s*|\s*```$/g, "")); } catch { throw new Error("A IA retornou uma tradução em formato inválido."); }
+    const rows = locales.filter((locale) => parsed[locale]?.name).map((locale) => ({ product_id: product.id, locale, name: parsed[locale].name ?? null, short_description: parsed[locale].short_description ?? null, description: parsed[locale].description ?? null, translated_at: new Date().toISOString(), is_stale: false }));
+    if (!rows.length) throw new Error("Nenhuma tradução válida foi gerada.");
+    const { error: upsertError } = await context.supabase.from("product_translations").upsert(rows, { onConflict: "product_id,locale" });
+    if (upsertError) throw new Error(upsertError.message);
+    return { translated: rows.length };
+  });
+
 export type AdminProductDetail = {
   id: string;
   slug: string;

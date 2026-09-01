@@ -11,7 +11,13 @@ export const CURRENCY_LOCALE: Record<CurrencyCode, string> = {
   BRL: "pt-BR",
   USD: "en-US",
   EUR: "es-ES",
+  GBP: "en-GB",
+  CAD: "en-CA",
   MXN: "es-MX",
+  COP: "es-CO",
+  CLP: "es-CL",
+  ARS: "es-AR",
+  PEN: "es-PE",
 };
 
 type CurrencyValue = {

@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { Minus, Plus, Trash2, ShoppingBag } from "lucide-react";
 import { StoreLayout } from "@/components/store/StoreLayout";
 import { cartTotals, useCart } from "@/lib/cart-store";
-import { formatBRL } from "@/lib/format";
+import { useCurrency } from "@/lib/currency-context";
 import { publicAttrValues } from "@/lib/catalog";
 
 export const Route = createFileRoute("/cart")({
@@ -30,6 +30,7 @@ export const Route = createFileRoute("/cart")({
 
 
 function CartPage() {
+  const { format } = useCurrency();
   const items = useCart((s) => s.items);
   const setQuantity = useCart((s) => s.setQuantity);
   const remove = useCart((s) => s.remove);
@@ -77,7 +78,7 @@ function CartPage() {
                       i.variantName && <p className="text-xs text-muted-foreground">{i.variantName}</p>
                     )}
                     {i.sku && <p className="text-[11px] text-muted-foreground/70">SKU: {i.sku}</p>}
-                    <p className="text-sm text-foreground">{formatBRL(i.unitCents)}</p>
+                    <p className="text-sm text-foreground">{format(i.unitCents)}</p>
                     <div className="mt-1 flex items-center gap-2">
                       <button
                         onClick={() => setQuantity(i.variantId, i.quantity - 1)}
@@ -103,7 +104,7 @@ function CartPage() {
                       </button>
                     </div>
                   </div>
-                  <p className="font-display text-base">{formatBRL(i.unitCents * i.quantity)}</p>
+                  <p className="font-display text-base">{format(i.unitCents * i.quantity)}</p>
                 </li>
               ))}
             </ul>
@@ -113,7 +114,7 @@ function CartPage() {
               <dl className="mt-4 space-y-2 text-sm">
                 <div className="flex justify-between">
                   <dt className="text-muted-foreground">Subtotal</dt>
-                  <dd className="font-medium">{formatBRL(subtotal)}</dd>
+                  <dd className="font-medium">{format(subtotal)}</dd>
                 </div>
                 <div className="flex justify-between">
                   <dt className="text-muted-foreground">Frete</dt>
@@ -122,7 +123,7 @@ function CartPage() {
               </dl>
               <div className="mt-4 flex justify-between border-t border-border pt-4">
                 <span className="font-display text-lg">Total</span>
-                <span className="font-display text-lg">{formatBRL(subtotal)}</span>
+                <span className="font-display text-lg">{format(subtotal)}</span>
               </div>
               <Link
                 to="/checkout"

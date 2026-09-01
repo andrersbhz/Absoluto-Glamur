@@ -4,18 +4,18 @@
  * pt-BR continua sendo o idioma padrão e as URLs atuais permanecem canônicas.
  */
 
-export const LOCALES = ["pt-BR", "en-US", "es", "es-MX"] as const;
+export const LOCALES = ["pt-BR", "en-US", "es", "es-MX", "fr-FR", "it-IT", "de-DE"] as const;
 export type Locale = (typeof LOCALES)[number];
 
 /** Idiomas preparados para ativação futura (Fase 1 — arquitetura). */
-export const PLANNED_LOCALES = ["fr-FR", "it-IT", "de-DE"] as const;
+export const PLANNED_LOCALES = [] as const;
 
 export const DEFAULT_LOCALE: Locale = "pt-BR";
 
 export type LocaleConfig = {
   code: Locale;
   /** Prefixo de URL. O idioma padrão não usa prefixo (URLs atuais preservadas). */
-  prefix: "" | "en" | "es" | "es-mx";
+  prefix: "" | "en" | "es" | "es-mx" | "fr" | "it" | "de";
   label: string;
   flag: string;
   /** Moeda sugerida (a conversão em si chega na Fase 4). */
@@ -61,6 +61,9 @@ export const LOCALE_CONFIG: Record<Locale, LocaleConfig> = {
     htmlLang: "es-MX",
     hreflang: "es-MX",
   },
+  "fr-FR": { code: "fr-FR", prefix: "fr", label: "Français", flag: "🇫🇷", currency: "EUR", htmlLang: "fr", hreflang: "fr-FR" },
+  "it-IT": { code: "it-IT", prefix: "it", label: "Italiano", flag: "🇮🇹", currency: "EUR", htmlLang: "it", hreflang: "it-IT" },
+  "de-DE": { code: "de-DE", prefix: "de", label: "Deutsch", flag: "🇩🇪", currency: "EUR", htmlLang: "de", hreflang: "de-DE" },
 };
 
 export const LOCALE_LIST: LocaleConfig[] = LOCALES.map((l) => LOCALE_CONFIG[l]);
@@ -69,6 +72,9 @@ const PREFIX_TO_LOCALE: Record<string, Locale> = {
   en: "en-US",
   es: "es",
   "es-mx": "es-MX",
+  fr: "fr-FR",
+  it: "it-IT",
+  de: "de-DE",
 };
 
 /** Descobre o idioma a partir do primeiro segmento da URL. */
@@ -108,5 +114,8 @@ export function matchSupportedLocale(input: string | undefined | null): Locale |
   if (value === "es-mx") return "es-MX";
   if (value.startsWith("es")) return "es";
   if (value.startsWith("en")) return "en-US";
+  if (value.startsWith("fr")) return "fr-FR";
+  if (value.startsWith("it")) return "it-IT";
+  if (value.startsWith("de")) return "de-DE";
   return null;
 }

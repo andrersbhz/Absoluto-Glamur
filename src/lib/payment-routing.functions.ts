@@ -21,9 +21,9 @@ export type CheckoutMethodDTO = {
 };
 
 const SUPPORTED_PAYMENT_ROUTES: Record<PaymentMethodKey, readonly string[]> = {
-  pix: ["asaas", "pagbank"],
-  credit_card: ["pagbank"],
-  boleto: ["asaas", "pagbank"],
+  pix: ["asaas", "pagbank", "mercadopago"],
+  credit_card: ["pagbank", "mercadopago"],
+  boleto: ["asaas", "pagbank", "mercadopago"],
   nubank_redirect: ["nupay"],
   paypal: ["paypal"],
   ebanx_card: ["ebanx"],
