@@ -789,6 +789,13 @@ function BlockEditor({ block, dirty, saving, collections, categories, onPatch, o
       </div>
 
       <div className="space-y-4 p-5">
+        <HelpNote>
+          <strong className="text-foreground">O que é este bloco:</strong> {helpForKind(block.kind)}{" "}
+          {block.is_active
+            ? "Ele está publicado e visível na loja."
+            : "Ele está oculto — clique no ícone de olho acima para publicar."}
+        </HelpNote>
+
         {!known && (
           <div className="rounded-xl border border-warning/30 bg-warning/5 p-4 text-xs leading-5 text-muted-foreground">
             <strong className="text-foreground">Bloco preservado.</strong> Este tipo já existia no projeto. Para evitar qualquer regressão, o Builder não muda automaticamente a lógica dele; você pode editar título, subtítulo e dados avançados sem converter o bloco.
@@ -796,13 +803,14 @@ function BlockEditor({ block, dirty, saving, collections, categories, onPatch, o
         )}
 
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Título">
-            <Input value={block.title ?? ""} onChange={(event) => onPatch({ title: event.target.value })} />
+          <Field label="Título (texto grande da seção)">
+            <Input value={block.title ?? ""} onChange={(event) => onPatch({ title: event.target.value })} placeholder="Ex.: Novidades da semana" />
           </Field>
-          <Field label="Subtítulo">
-            <Input value={block.subtitle ?? ""} onChange={(event) => onPatch({ subtitle: event.target.value })} />
+          <Field label="Subtítulo (linha pequena acima/abaixo do título)">
+            <Input value={block.subtitle ?? ""} onChange={(event) => onPatch({ subtitle: event.target.value })} placeholder="Ex.: Selecionados pela nossa curadoria" />
           </Field>
         </div>
+
 
         {(block.kind === "banner" || block.kind === "hero") && (
           <>
