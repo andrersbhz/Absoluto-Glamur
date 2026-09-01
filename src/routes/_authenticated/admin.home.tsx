@@ -496,15 +496,36 @@ function HomeBuilderPage() {
           <Metric icon={<Move className="h-4 w-4" />} label="Categorias ordenáveis" value={orderedCategories.length} />
         </div>
 
+        <div className="mt-6 rounded-2xl border border-primary/25 bg-primary/5 p-5">
+          <p className="flex items-center gap-2 text-sm font-semibold text-foreground"><Info className="h-4 w-4 text-primary" /> Como funciona esta página (leia uma vez)</p>
+          <div className="mt-3 grid gap-3 md:grid-cols-3">
+            <GuideCard
+              step="1"
+              title="Topo e banners"
+              text="Barra de anúncio, Hero principal e Slider — tudo que aparece no alto da Home, antes dos blocos."
+            />
+            <GuideCard
+              step="2"
+              title="Blocos da Home"
+              text="A sequência de seções abaixo do topo. Arraste para mudar a ordem, clique para editar e use o olho para publicar ou ocultar."
+            />
+            <GuideCard
+              step="3"
+              title="Categorias"
+              text="Renomeie (ex.: “Skincare” → “Bolsas”), crie, remova e ordene. As 5 primeiras viram o menu do topo e a mesma ordem vale nas vitrines da Home."
+            />
+          </div>
+        </div>
+
         <Tabs value={tab} onValueChange={(value) => {
           setTab(value);
           if (value === "banners") setFocus({ type: "hero" });
           if (value === "categories") setFocus({ type: "categories" });
         }} className="mt-6">
           <TabsList className="h-auto flex-wrap justify-start gap-1 bg-secondary/60 p-1">
-            <TabsTrigger value="structure" className="gap-2"><LayoutDashboard className="h-4 w-4" /> Estrutura da Home</TabsTrigger>
-            <TabsTrigger value="banners" className="gap-2"><ImageIcon className="h-4 w-4" /> Banners principais</TabsTrigger>
-            <TabsTrigger value="categories" className="gap-2"><Move className="h-4 w-4" /> Categorias e posição</TabsTrigger>
+            <TabsTrigger value="banners" className="gap-2"><ImageIcon className="h-4 w-4" /> 1 · Topo e banners</TabsTrigger>
+            <TabsTrigger value="structure" className="gap-2"><LayoutDashboard className="h-4 w-4" /> 2 · Blocos da Home</TabsTrigger>
+            <TabsTrigger value="categories" className="gap-2"><Move className="h-4 w-4" /> 3 · Categorias e menu</TabsTrigger>
           </TabsList>
 
           <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1.15fr)_minmax(420px,0.85fr)]">
