@@ -76,6 +76,28 @@ const ADDABLE_BLOCKS: Array<{ kind: AddableBlock; label: string; description: st
 const KNOWN_PUBLIC_KINDS = new Set(["banner", "hero", "collection", "text", "category_grid"]);
 const BANNER_LIKE_KINDS = new Set(["banner", "hero", "banner_duo", "promo_fullwidth"]);
 
+/** Explica, em linguagem simples, o que cada bloco faz e onde ele aparece na loja. */
+const KIND_HELP: Record<string, string> = {
+  banner: "Imagem larga clicável no meio da Home. Use para campanhas e promoções.",
+  hero: "Faixa de destaque com título, imagem de fundo e botão. Aparece na posição em que estiver na lista.",
+  collection: "Vitrine que puxa automaticamente os produtos de uma coleção cadastrada.",
+  text: "Texto editorial (manifesto, aviso, história da marca). Sem imagem.",
+  category_grid: "Faixa com os atalhos de categorias. Novas categorias entram sozinhas quando o modo é “Todas”.",
+  category_products: "Vitrines “Novidades e mais vendidos” separadas por categoria, na ordem definida na aba Categorias.",
+  products: "Lista de produtos escolhidos manualmente.",
+  spacer: "Espaço em branco entre blocos.",
+  divider: "Linha decorativa entre blocos.",
+  product_showcase: "Vitrine de produtos em destaque.",
+  banner_duo: "Dois banners lado a lado.",
+  promo_fullwidth: "Banner promocional de largura total.",
+  manifesto: "Bloco de texto institucional.",
+  newsletter: "Bloco de captura de e-mail.",
+};
+
+function helpForKind(kind: string) {
+  return KIND_HELP[kind] ?? "Bloco existente do projeto. O Builder mantém a função original dele.";
+}
+
 function cloneBlock(block: HomepageBlock): BlockDraft {
   const rawData = { ...((block.data ?? {}) as EditableBlockData) };
   const data: EditableBlockData = block.kind === "category_grid"
