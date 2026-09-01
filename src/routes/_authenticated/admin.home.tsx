@@ -118,6 +118,9 @@ function cloneBlock(block: HomepageBlock): BlockDraft {
 function HomeBuilderPage() {
   const qc = useQueryClient();
   const saveSetting = useServerFn(upsertSiteSetting);
+  const createCategoryFn = useServerFn(createCategory);
+  const renameCategoryFn = useServerFn(renameCategory);
+  const deleteCategoryFn = useServerFn(deleteCategory);
   const { data: blocks = [], isLoading: blocksLoading } = useQuery(homepageBlocksAdminQuery());
   const { data: categories = [], isLoading: categoriesLoading } = useQuery(categoriesQuery());
   const { data: collections = [] } = useQuery(collectionsQuery());
