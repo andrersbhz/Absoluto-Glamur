@@ -3,8 +3,8 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useMemo, useState } from "react";
 import {
-  ArrowDown, ArrowUp, Check, ChevronDown, Copy, Eye, EyeOff, GripVertical, ImageIcon,
-  LayoutDashboard, Loader2, MonitorPlay, Move, Plus, RotateCcw, Save, Sparkles, Trash2,
+  ArrowDown, ArrowUp, Check, ChevronDown, Copy, Eye, EyeOff, GripVertical, ImageIcon, Info,
+  LayoutDashboard, Loader2, MonitorPlay, Move, Pencil, Plus, RotateCcw, Save, Sparkles, Trash2, X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { AdminLayout } from "@/components/admin/AdminLayout";
