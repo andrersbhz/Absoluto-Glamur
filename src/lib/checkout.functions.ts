@@ -53,7 +53,17 @@ const CheckoutSchema = z.object({
   address: AddressSchema,
   saveAddress: z.boolean().optional(),
   notes: z.string().max(500).optional().nullable(),
-  method: z.enum(["pix", "credit_card", "boleto", "nubank_redirect"]).optional(),
+  method: z
+    .enum([
+      "pix",
+      "credit_card",
+      "boleto",
+      "nubank_redirect",
+      "paypal",
+      "ebanx_card",
+      "ebanx_boleto",
+    ])
+    .optional(),
   returnUrl: z.string().url().optional(),
 });
 export type CheckoutInput = z.infer<typeof CheckoutSchema>;
@@ -110,7 +120,7 @@ export const createCheckout = createServerFn({ method: "POST" })
         `Provedor "${provider}" não está configurado. Peça ao administrador para configurá-lo em Admin → Integrações.`,
       );
     }
-    if (["asaas", "nupay", "pagbank"].includes(provider) && !integ.webhook_token) {
+    if (["asaas", "nupay", "pagbank", "ebanx"].includes(provider) && !integ.webhook_token) {
       throw new Error(
         `Configure o Token do webhook de ${provider} em Admin → Integrações antes de receber pagamentos.`,
       );
@@ -293,6 +303,12 @@ export const createCheckout = createServerFn({ method: "POST" })
       }
       if (provider === "nupay" && method === "nubank_redirect") {
         return await handleNuPayRedirect(ctx, integ);
+      }
+      if (provider === "paypal" && method === "paypal") {
+        return await handlePayPalCheckout(ctx, integ);
+      }
+      if (provider === "ebanx" && (method === "ebanx_card" || method === "ebanx_boleto")) {
+        return await handleEbanxCheckout(ctx, integ, method);
       }
       if (provider === "pagbank") {
         return await handlePagBankCheckout(ctx, integ, method);
@@ -567,5 +583,125 @@ async function handlePagBankCheckout(ctx: OrderContext, integ: any, method: stri
     code: ctx.code,
     method: method as "pix" | "credit_card" | "boleto",
     redirectUrl: redirect,
+  };
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function handlePayPalCheckout(ctx: OrderContext, integ: any) {
+  const { createPayPalOrder } = await import("./paypal.server");
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+  const clientId = (integ.api_key as string | null) ?? "";
+  const clientSecret = (integ.api_secret as string | null) ?? "";
+  if (!clientId || !clientSecret) {
+    throw new Error("Configure o Client ID e o Secret do PayPal em Admin → Integrações.");
+  }
+
+  const origin =
+    (integ.config?.checkout_origin as string | undefined) ?? "https://www.absolutoglamur.com.br";
+  const returnUrl = ctx.data.returnUrl ?? `${origin}/checkout/${ctx.orderId}`;
+  const currency = (integ.config?.currency as string | undefined) ?? "BRL";
+
+  const { order, approveUrl } = await createPayPalOrder(
+    {
+      clientId,
+      clientSecret,
+      env: (integ.mode as "sandbox" | "production") ?? "sandbox",
+    },
+    {
+      referenceId: ctx.orderId,
+      description: `Pedido ${ctx.code} · Absoluto Glamur`,
+      amountCents: ctx.total,
+      currency,
+      returnUrl,
+      cancelUrl: returnUrl,
+    },
+  );
+
+  const { error } = await supabaseAdmin.from("payments").insert({
+    order_id: ctx.orderId,
+    provider: "paypal",
+    method: "paypal",
+    status: "pending",
+    amount_cents: ctx.total,
+    external_id: order.id,
+    session_id: order.id,
+    redirect_url: approveUrl,
+    return_url: returnUrl,
+    raw: order as any,
+  });
+  if (error) throw new Error(error.message);
+
+  return {
+    orderId: ctx.orderId,
+    code: ctx.code,
+    method: "paypal" as const,
+    redirectUrl: approveUrl,
+  };
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function handleEbanxCheckout(ctx: OrderContext, integ: any, method: string) {
+  const { createEbanxPayment } = await import("./ebanx.server");
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+  const integrationKey = (integ.api_key as string | null) ?? "";
+  if (!integrationKey) {
+    throw new Error("Configure a Integration Key do EBANX em Admin → Integrações.");
+  }
+
+  const origin =
+    (integ.config?.checkout_origin as string | undefined) ?? "https://www.absolutoglamur.com.br";
+  const returnUrl = ctx.data.returnUrl ?? `${origin}/checkout/${ctx.orderId}`;
+  const currency = (integ.config?.currency as string | undefined) ?? "BRL";
+  const country = (integ.config?.country as string | undefined) ?? "br";
+
+  const result = await createEbanxPayment(
+    { integrationKey, env: (integ.mode as "sandbox" | "production") ?? "sandbox" },
+    {
+      merchantPaymentCode: ctx.code,
+      amountCents: ctx.total,
+      currency,
+      countryCode: country,
+      paymentType: method === "ebanx_boleto" ? "boleto" : "creditcard",
+      customer: {
+        name: ctx.data.customer.name,
+        email: ctx.data.customer.email,
+        document: ctx.document,
+        phone: ctx.phone,
+      },
+      address: {
+        street: ctx.data.address.street,
+        number: ctx.data.address.number,
+        complement: ctx.data.address.complement ?? null,
+        district: ctx.data.address.district,
+        city: ctx.data.address.city,
+        state: ctx.data.address.state,
+        zipCode: ctx.data.address.zipCode,
+      },
+      returnUrl,
+    },
+  );
+
+  const { error } = await supabaseAdmin.from("payments").insert({
+    order_id: ctx.orderId,
+    provider: "ebanx",
+    method: method as any,
+    status: "pending",
+    amount_cents: ctx.total,
+    external_id: result.hash,
+    session_id: result.hash,
+    redirect_url: result.redirectUrl,
+    invoice_url: result.boletoUrl,
+    return_url: returnUrl,
+    raw: result.raw as any,
+  });
+  if (error) throw new Error(error.message);
+
+  return {
+    orderId: ctx.orderId,
+    code: ctx.code,
+    method: method as "ebanx_card" | "ebanx_boleto",
+    redirectUrl: result.redirectUrl ?? undefined,
   };
 }

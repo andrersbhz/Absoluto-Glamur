@@ -7,7 +7,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { useLocation } from "@tanstack/react-router";
+import { useLocation, useNavigate } from "@tanstack/react-router";
 import { DICTIONARIES, type TranslationKey } from "./dictionaries";
 import {
   DEFAULT_LOCALE,
@@ -74,6 +74,7 @@ function persistLocale(locale: Locale) {
 
 export function I18nProvider({ children }: { children: ReactNode }) {
   const location = useLocation();
+  const navigate = useNavigate();
   const urlLocale = localeFromPathname(location.pathname);
   const [preferred, setPreferred] = useState<Locale | null>(null);
 
@@ -106,10 +107,11 @@ export function I18nProvider({ children }: { children: ReactNode }) {
       if (typeof window === "undefined") return;
       const target = localizePath(window.location.pathname, next);
       if (target !== window.location.pathname) {
-        window.location.assign(`${target}${window.location.search}`);
+        // Navegação SPA: troca de idioma sem recarregar a página (sem piscar).
+        void navigate({ href: `${target}${window.location.search}`, replace: true });
       }
     },
-    [],
+    [navigate],
   );
 
   const value = useMemo<I18nValue>(

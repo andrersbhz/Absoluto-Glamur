@@ -694,6 +694,8 @@ const PROVIDER_OPTIONS: { id: string; label: string }[] = [
   { id: "pagbank", label: "PagBank" },
   { id: "stripe", label: "Stripe" },
   { id: "mercadopago", label: "Mercado Pago" },
+  { id: "paypal", label: "PayPal" },
+  { id: "ebanx", label: "EBANX" },
 ];
 
 const SUPPORTED_PROVIDERS_BY_METHOD: Record<PaymentMethodKey, string[]> = {
@@ -701,6 +703,9 @@ const SUPPORTED_PROVIDERS_BY_METHOD: Record<PaymentMethodKey, string[]> = {
   credit_card: ["pagbank"],
   boleto: ["asaas", "pagbank"],
   nubank_redirect: ["nupay"],
+  paypal: ["paypal"],
+  ebanx_card: ["ebanx"],
+  ebanx_boleto: ["ebanx"],
 };
 
 const METHOD_LABELS: Record<PaymentMethodKey, string> = {
@@ -708,6 +713,9 @@ const METHOD_LABELS: Record<PaymentMethodKey, string> = {
   credit_card: "Cartão de crédito",
   boleto: "Boleto bancário",
   nubank_redirect: "Pagar com Nubank",
+  paypal: "PayPal (internacional)",
+  ebanx_card: "Cartão internacional (EBANX)",
+  ebanx_boleto: "Boleto EBANX",
 };
 
 function RoutingPanel() {

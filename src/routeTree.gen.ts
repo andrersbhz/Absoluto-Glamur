@@ -70,8 +70,10 @@ import { Route as AuthenticatedAdminAiRouteImport } from './routes/_authenticate
 import { Route as AuthenticatedAdminIntelligenceIndexRouteImport } from './routes/_authenticated/admin.intelligence.index'
 import { Route as AuthenticatedAdminCatalogIndexRouteImport } from './routes/_authenticated/admin.catalog.index'
 import { Route as ApiPublicWebhooksWhatsappRouteImport } from './routes/api/public/webhooks/whatsapp'
+import { Route as ApiPublicWebhooksPaypalRouteImport } from './routes/api/public/webhooks/paypal'
 import { Route as ApiPublicWebhooksPagbankRouteImport } from './routes/api/public/webhooks/pagbank'
 import { Route as ApiPublicWebhooksNupayRouteImport } from './routes/api/public/webhooks/nupay'
+import { Route as ApiPublicWebhooksEbanxRouteImport } from './routes/api/public/webhooks/ebanx'
 import { Route as ApiPublicWebhooksAsaasRouteImport } from './routes/api/public/webhooks/asaas'
 import { Route as ApiPublicWebhooksAliexpressRouteImport } from './routes/api/public/webhooks/aliexpress'
 import { Route as ApiPublicFeedsMetaCatalogDotcsvRouteImport } from './routes/api/public/feeds/meta-catalog[.]csv'
@@ -409,6 +411,11 @@ const ApiPublicWebhooksWhatsappRoute =
     path: '/api/public/webhooks/whatsapp',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicWebhooksPaypalRoute = ApiPublicWebhooksPaypalRouteImport.update({
+  id: '/api/public/webhooks/paypal',
+  path: '/api/public/webhooks/paypal',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicWebhooksPagbankRoute =
   ApiPublicWebhooksPagbankRouteImport.update({
     id: '/api/public/webhooks/pagbank',
@@ -418,6 +425,11 @@ const ApiPublicWebhooksPagbankRoute =
 const ApiPublicWebhooksNupayRoute = ApiPublicWebhooksNupayRouteImport.update({
   id: '/api/public/webhooks/nupay',
   path: '/api/public/webhooks/nupay',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPublicWebhooksEbanxRoute = ApiPublicWebhooksEbanxRouteImport.update({
+  id: '/api/public/webhooks/ebanx',
+  path: '/api/public/webhooks/ebanx',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPublicWebhooksAsaasRoute = ApiPublicWebhooksAsaasRouteImport.update({
@@ -541,8 +553,10 @@ export interface FileRoutesByFullPath {
   '/api/public/feeds/meta-catalog.csv': typeof ApiPublicFeedsMetaCatalogDotcsvRoute
   '/api/public/webhooks/aliexpress': typeof ApiPublicWebhooksAliexpressRoute
   '/api/public/webhooks/asaas': typeof ApiPublicWebhooksAsaasRoute
+  '/api/public/webhooks/ebanx': typeof ApiPublicWebhooksEbanxRoute
   '/api/public/webhooks/nupay': typeof ApiPublicWebhooksNupayRoute
   '/api/public/webhooks/pagbank': typeof ApiPublicWebhooksPagbankRoute
+  '/api/public/webhooks/paypal': typeof ApiPublicWebhooksPaypalRoute
   '/api/public/webhooks/whatsapp': typeof ApiPublicWebhooksWhatsappRoute
   '/admin/catalog/': typeof AuthenticatedAdminCatalogIndexRoute
   '/admin/intelligence/': typeof AuthenticatedAdminIntelligenceIndexRoute
@@ -613,8 +627,10 @@ export interface FileRoutesByTo {
   '/api/public/feeds/meta-catalog.csv': typeof ApiPublicFeedsMetaCatalogDotcsvRoute
   '/api/public/webhooks/aliexpress': typeof ApiPublicWebhooksAliexpressRoute
   '/api/public/webhooks/asaas': typeof ApiPublicWebhooksAsaasRoute
+  '/api/public/webhooks/ebanx': typeof ApiPublicWebhooksEbanxRoute
   '/api/public/webhooks/nupay': typeof ApiPublicWebhooksNupayRoute
   '/api/public/webhooks/pagbank': typeof ApiPublicWebhooksPagbankRoute
+  '/api/public/webhooks/paypal': typeof ApiPublicWebhooksPaypalRoute
   '/api/public/webhooks/whatsapp': typeof ApiPublicWebhooksWhatsappRoute
   '/admin/catalog': typeof AuthenticatedAdminCatalogIndexRoute
   '/admin/intelligence': typeof AuthenticatedAdminIntelligenceIndexRoute
@@ -688,8 +704,10 @@ export interface FileRoutesById {
   '/api/public/feeds/meta-catalog.csv': typeof ApiPublicFeedsMetaCatalogDotcsvRoute
   '/api/public/webhooks/aliexpress': typeof ApiPublicWebhooksAliexpressRoute
   '/api/public/webhooks/asaas': typeof ApiPublicWebhooksAsaasRoute
+  '/api/public/webhooks/ebanx': typeof ApiPublicWebhooksEbanxRoute
   '/api/public/webhooks/nupay': typeof ApiPublicWebhooksNupayRoute
   '/api/public/webhooks/pagbank': typeof ApiPublicWebhooksPagbankRoute
+  '/api/public/webhooks/paypal': typeof ApiPublicWebhooksPaypalRoute
   '/api/public/webhooks/whatsapp': typeof ApiPublicWebhooksWhatsappRoute
   '/_authenticated/admin/catalog/': typeof AuthenticatedAdminCatalogIndexRoute
   '/_authenticated/admin/intelligence/': typeof AuthenticatedAdminIntelligenceIndexRoute
@@ -763,8 +781,10 @@ export interface FileRouteTypes {
     | '/api/public/feeds/meta-catalog.csv'
     | '/api/public/webhooks/aliexpress'
     | '/api/public/webhooks/asaas'
+    | '/api/public/webhooks/ebanx'
     | '/api/public/webhooks/nupay'
     | '/api/public/webhooks/pagbank'
+    | '/api/public/webhooks/paypal'
     | '/api/public/webhooks/whatsapp'
     | '/admin/catalog/'
     | '/admin/intelligence/'
@@ -835,8 +855,10 @@ export interface FileRouteTypes {
     | '/api/public/feeds/meta-catalog.csv'
     | '/api/public/webhooks/aliexpress'
     | '/api/public/webhooks/asaas'
+    | '/api/public/webhooks/ebanx'
     | '/api/public/webhooks/nupay'
     | '/api/public/webhooks/pagbank'
+    | '/api/public/webhooks/paypal'
     | '/api/public/webhooks/whatsapp'
     | '/admin/catalog'
     | '/admin/intelligence'
@@ -909,8 +931,10 @@ export interface FileRouteTypes {
     | '/api/public/feeds/meta-catalog.csv'
     | '/api/public/webhooks/aliexpress'
     | '/api/public/webhooks/asaas'
+    | '/api/public/webhooks/ebanx'
     | '/api/public/webhooks/nupay'
     | '/api/public/webhooks/pagbank'
+    | '/api/public/webhooks/paypal'
     | '/api/public/webhooks/whatsapp'
     | '/_authenticated/admin/catalog/'
     | '/_authenticated/admin/intelligence/'
@@ -942,8 +966,10 @@ export interface RootRouteChildren {
   ApiPublicFeedsMetaCatalogDotcsvRoute: typeof ApiPublicFeedsMetaCatalogDotcsvRoute
   ApiPublicWebhooksAliexpressRoute: typeof ApiPublicWebhooksAliexpressRoute
   ApiPublicWebhooksAsaasRoute: typeof ApiPublicWebhooksAsaasRoute
+  ApiPublicWebhooksEbanxRoute: typeof ApiPublicWebhooksEbanxRoute
   ApiPublicWebhooksNupayRoute: typeof ApiPublicWebhooksNupayRoute
   ApiPublicWebhooksPagbankRoute: typeof ApiPublicWebhooksPagbankRoute
+  ApiPublicWebhooksPaypalRoute: typeof ApiPublicWebhooksPaypalRoute
   ApiPublicWebhooksWhatsappRoute: typeof ApiPublicWebhooksWhatsappRoute
 }
 
@@ -1376,6 +1402,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicWebhooksWhatsappRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/webhooks/paypal': {
+      id: '/api/public/webhooks/paypal'
+      path: '/api/public/webhooks/paypal'
+      fullPath: '/api/public/webhooks/paypal'
+      preLoaderRoute: typeof ApiPublicWebhooksPaypalRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/webhooks/pagbank': {
       id: '/api/public/webhooks/pagbank'
       path: '/api/public/webhooks/pagbank'
@@ -1388,6 +1421,13 @@ declare module '@tanstack/react-router' {
       path: '/api/public/webhooks/nupay'
       fullPath: '/api/public/webhooks/nupay'
       preLoaderRoute: typeof ApiPublicWebhooksNupayRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/webhooks/ebanx': {
+      id: '/api/public/webhooks/ebanx'
+      path: '/api/public/webhooks/ebanx'
+      fullPath: '/api/public/webhooks/ebanx'
+      preLoaderRoute: typeof ApiPublicWebhooksEbanxRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/webhooks/asaas': {
@@ -1665,8 +1705,10 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicFeedsMetaCatalogDotcsvRoute: ApiPublicFeedsMetaCatalogDotcsvRoute,
   ApiPublicWebhooksAliexpressRoute: ApiPublicWebhooksAliexpressRoute,
   ApiPublicWebhooksAsaasRoute: ApiPublicWebhooksAsaasRoute,
+  ApiPublicWebhooksEbanxRoute: ApiPublicWebhooksEbanxRoute,
   ApiPublicWebhooksNupayRoute: ApiPublicWebhooksNupayRoute,
   ApiPublicWebhooksPagbankRoute: ApiPublicWebhooksPagbankRoute,
+  ApiPublicWebhooksPaypalRoute: ApiPublicWebhooksPaypalRoute,
   ApiPublicWebhooksWhatsappRoute: ApiPublicWebhooksWhatsappRoute,
 }
 export const routeTree = rootRouteImport

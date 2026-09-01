@@ -3045,7 +3045,14 @@ export type Database = {
         | "cancelled"
         | "refunded"
         | "failed"
-      payment_method: "pix" | "credit_card" | "boleto" | "nubank_redirect"
+      payment_method:
+        | "pix"
+        | "credit_card"
+        | "boleto"
+        | "nubank_redirect"
+        | "paypal"
+        | "ebanx_card"
+        | "ebanx_boleto"
       payment_status:
         | "pending"
         | "confirmed"
@@ -3219,7 +3226,15 @@ export const Constants = {
         "refunded",
         "failed",
       ],
-      payment_method: ["pix", "credit_card", "boleto", "nubank_redirect"],
+      payment_method: [
+        "pix",
+        "credit_card",
+        "boleto",
+        "nubank_redirect",
+        "paypal",
+        "ebanx_card",
+        "ebanx_boleto",
+      ],
       payment_status: [
         "pending",
         "confirmed",
