@@ -3,8 +3,8 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useMemo, useState } from "react";
 import {
-  ArrowDown, ArrowUp, Check, ChevronDown, Copy, Eye, EyeOff, GripVertical, ImageIcon,
-  LayoutDashboard, Loader2, MonitorPlay, Move, Plus, RotateCcw, Save, Sparkles, Trash2,
+  ArrowDown, ArrowUp, Check, ChevronDown, Copy, Eye, EyeOff, GripVertical, ImageIcon, Info,
+  LayoutDashboard, Loader2, MonitorPlay, Move, Pencil, Plus, RotateCcw, Save, Sparkles, Trash2, X,
 } from "lucide-react";
 import { toast } from "sonner";
 import { AdminLayout } from "@/components/admin/AdminLayout";
@@ -28,6 +28,7 @@ import {
   type HomepageBlock,
 } from "@/lib/marketing";
 import { upsertSiteSetting } from "@/lib/site-settings.functions";
+import { createCategory, deleteCategory, renameCategory } from "@/lib/admin-categories.functions";
 
 export const Route = createFileRoute("/_authenticated/admin/home")({
   head: () => ({ meta: [{ title: "Home Page Builder · Admin Absoluto Glamur" }] }),
@@ -75,6 +76,28 @@ const ADDABLE_BLOCKS: Array<{ kind: AddableBlock; label: string; description: st
 const KNOWN_PUBLIC_KINDS = new Set(["banner", "hero", "collection", "text", "category_grid"]);
 const BANNER_LIKE_KINDS = new Set(["banner", "hero", "banner_duo", "promo_fullwidth"]);
 
+/** Explica, em linguagem simples, o que cada bloco faz e onde ele aparece na loja. */
+const KIND_HELP: Record<string, string> = {
+  banner: "Imagem larga clicável no meio da Home. Use para campanhas e promoções.",
+  hero: "Faixa de destaque com título, imagem de fundo e botão. Aparece na posição em que estiver na lista.",
+  collection: "Vitrine que puxa automaticamente os produtos de uma coleção cadastrada.",
+  text: "Texto editorial (manifesto, aviso, história da marca). Sem imagem.",
+  category_grid: "Faixa com os atalhos de categorias. Novas categorias entram sozinhas quando o modo é “Todas”.",
+  category_products: "Vitrines “Novidades e mais vendidos” separadas por categoria, na ordem definida na aba Categorias.",
+  products: "Lista de produtos escolhidos manualmente.",
+  spacer: "Espaço em branco entre blocos.",
+  divider: "Linha decorativa entre blocos.",
+  product_showcase: "Vitrine de produtos em destaque.",
+  banner_duo: "Dois banners lado a lado.",
+  promo_fullwidth: "Banner promocional de largura total.",
+  manifesto: "Bloco de texto institucional.",
+  newsletter: "Bloco de captura de e-mail.",
+};
+
+function helpForKind(kind: string) {
+  return KIND_HELP[kind] ?? "Bloco existente do projeto. O Builder mantém a função original dele.";
+}
+
 function cloneBlock(block: HomepageBlock): BlockDraft {
   const rawData = { ...((block.data ?? {}) as EditableBlockData) };
   const data: EditableBlockData = block.kind === "category_grid"
@@ -95,6 +118,9 @@ function cloneBlock(block: HomepageBlock): BlockDraft {
 function HomeBuilderPage() {
   const qc = useQueryClient();
   const saveSetting = useServerFn(upsertSiteSetting);
+  const createCategoryFn = useServerFn(createCategory);
+  const renameCategoryFn = useServerFn(renameCategory);
+  const deleteCategoryFn = useServerFn(deleteCategory);
   const { data: blocks = [], isLoading: blocksLoading } = useQuery(homepageBlocksAdminQuery());
   const { data: categories = [], isLoading: categoriesLoading } = useQuery(categoriesQuery());
   const { data: collections = [] } = useQuery(collectionsQuery());
@@ -398,6 +424,45 @@ function HomeBuilderPage() {
     setCategoryDirty(false);
   }
 
+  async function refreshCategories() {
+    setCategoryDirty(false);
+    await Promise.all([
+      qc.invalidateQueries({ queryKey: ["categories"] }),
+      qc.invalidateQueries({ queryKey: ["products-by-category"] }),
+    ]);
+  }
+
+  async function handleCreateCategory(name: string) {
+    try {
+      await createCategoryFn({ data: { name } });
+      await refreshCategories();
+      toast.success("Categoria criada. Ela já aparece no menu e nos blocos automáticos.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Não foi possível criar a categoria.");
+    }
+  }
+
+  async function handleRenameCategory(id: string, name: string) {
+    try {
+      await renameCategoryFn({ data: { id, name } });
+      await refreshCategories();
+      toast.success("Nome da categoria atualizado em toda a loja.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Não foi possível renomear a categoria.");
+    }
+  }
+
+  async function handleDeleteCategory(id: string, name: string) {
+    if (!window.confirm(`Remover a categoria “${name}”? Ela sairá do menu e da Home.`)) return;
+    try {
+      await deleteCategoryFn({ data: { id } });
+      await refreshCategories();
+      toast.success("Categoria removida.");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Não foi possível remover a categoria.");
+    }
+  }
+
   if (isLoading) {
     return (
       <AdminLayout>
@@ -431,15 +496,36 @@ function HomeBuilderPage() {
           <Metric icon={<Move className="h-4 w-4" />} label="Categorias ordenáveis" value={orderedCategories.length} />
         </div>
 
+        <div className="mt-6 rounded-2xl border border-primary/25 bg-primary/5 p-5">
+          <p className="flex items-center gap-2 text-sm font-semibold text-foreground"><Info className="h-4 w-4 text-primary" /> Como funciona esta página (leia uma vez)</p>
+          <div className="mt-3 grid gap-3 md:grid-cols-3">
+            <GuideCard
+              step="1"
+              title="Topo e banners"
+              text="Barra de anúncio, Hero principal e Slider — tudo que aparece no alto da Home, antes dos blocos."
+            />
+            <GuideCard
+              step="2"
+              title="Blocos da Home"
+              text="A sequência de seções abaixo do topo. Arraste para mudar a ordem, clique para editar e use o olho para publicar ou ocultar."
+            />
+            <GuideCard
+              step="3"
+              title="Categorias"
+              text="Renomeie (ex.: “Skincare” → “Bolsas”), crie, remova e ordene. As 5 primeiras viram o menu do topo e a mesma ordem vale nas vitrines da Home."
+            />
+          </div>
+        </div>
+
         <Tabs value={tab} onValueChange={(value) => {
           setTab(value);
           if (value === "banners") setFocus({ type: "hero" });
           if (value === "categories") setFocus({ type: "categories" });
         }} className="mt-6">
           <TabsList className="h-auto flex-wrap justify-start gap-1 bg-secondary/60 p-1">
-            <TabsTrigger value="structure" className="gap-2"><LayoutDashboard className="h-4 w-4" /> Estrutura da Home</TabsTrigger>
-            <TabsTrigger value="banners" className="gap-2"><ImageIcon className="h-4 w-4" /> Banners principais</TabsTrigger>
-            <TabsTrigger value="categories" className="gap-2"><Move className="h-4 w-4" /> Categorias e posição</TabsTrigger>
+            <TabsTrigger value="banners" className="gap-2"><ImageIcon className="h-4 w-4" /> 1 · Topo e banners</TabsTrigger>
+            <TabsTrigger value="structure" className="gap-2"><LayoutDashboard className="h-4 w-4" /> 2 · Blocos da Home</TabsTrigger>
+            <TabsTrigger value="categories" className="gap-2"><Move className="h-4 w-4" /> 3 · Categorias e menu</TabsTrigger>
           </TabsList>
 
           <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1.15fr)_minmax(420px,0.85fr)]">
@@ -498,6 +584,9 @@ function HomeBuilderPage() {
                   onMove={moveCategory}
                   onSave={saveCategoryOrder}
                   onReset={resetCategoryOrder}
+                  onCreate={handleCreateCategory}
+                  onRename={handleRenameCategory}
+                  onDeleteCategory={handleDeleteCategory}
                 />
               </TabsContent>
             </div>
@@ -525,6 +614,29 @@ function Metric({ icon, label, value }: { icon: React.ReactNode; label: string; 
     </div>
   );
 }
+
+function GuideCard({ step, title, text }: { step: string; title: string; text: string }) {
+  return (
+    <div className="rounded-xl border border-border bg-card p-4">
+      <div className="flex items-center gap-2">
+        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-[11px] font-bold text-primary-foreground">{step}</span>
+        <p className="text-sm font-semibold text-foreground">{title}</p>
+      </div>
+      <p className="mt-2 text-xs leading-5 text-muted-foreground">{text}</p>
+    </div>
+  );
+}
+
+function HelpNote({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex gap-2 rounded-xl border border-border bg-secondary/30 p-3 text-[11px] leading-5 text-muted-foreground">
+      <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
+      <span>{children}</span>
+    </div>
+  );
+}
+
+
 
 function StructurePanel({
   blocks, selectedBlockId, blockDraft, blockDirty, savingBlock, creatingBlock, collections, categories,
@@ -560,7 +672,7 @@ function StructurePanel({
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="text-lg font-semibold">Estrutura e ordem</h2>
-            <p className="mt-1 text-xs text-muted-foreground">Arraste os blocos pela alça ou use as setas. A ordem é salva imediatamente.</p>
+            <p className="mt-1 max-w-xl text-xs leading-5 text-muted-foreground">Esta é a ordem real das seções da Home, de cima para baixo. Arraste pela alça (ou use as setas) para reposicionar — a ordem é salva na hora. Clique no bloco para editar o conteúdo e no ícone de olho para publicar/ocultar.</p>
           </div>
           <div className="relative">
             <Button onClick={() => setShowLibrary((value) => !value)} disabled={creatingBlock}>
@@ -600,7 +712,8 @@ function StructurePanel({
                     <Badge variant={block.is_active ? "default" : "outline"} className="h-5 text-[9px]">{block.is_active ? "Ativo" : "Oculto"}</Badge>
                     {!supported && <Badge variant="secondary" className="h-5 text-[9px]">Preservado</Badge>}
                   </div>
-                  <p className="mt-0.5 truncate text-[10px] uppercase tracking-[0.12em] text-muted-foreground">#{index + 1} · {labelForKind(block.kind)}</p>
+                  <p className="mt-0.5 truncate text-[10px] uppercase tracking-[0.12em] text-muted-foreground">Posição #{index + 1} · {labelForKind(block.kind)}</p>
+                  <p className="mt-1 line-clamp-2 text-[11px] leading-4 text-muted-foreground">{helpForKind(block.kind)}</p>
                 </button>
                 <div className="flex shrink-0 items-center">
                   <Button size="icon" variant="ghost" disabled={index === 0} onClick={() => onMove(index, -1)} title="Subir"><ArrowUp className="h-3.5 w-3.5" /></Button>
@@ -676,6 +789,13 @@ function BlockEditor({ block, dirty, saving, collections, categories, onPatch, o
       </div>
 
       <div className="space-y-4 p-5">
+        <HelpNote>
+          <strong className="text-foreground">O que é este bloco:</strong> {helpForKind(block.kind)}{" "}
+          {block.is_active
+            ? "Ele está publicado e visível na loja."
+            : "Ele está oculto — clique no ícone de olho acima para publicar."}
+        </HelpNote>
+
         {!known && (
           <div className="rounded-xl border border-warning/30 bg-warning/5 p-4 text-xs leading-5 text-muted-foreground">
             <strong className="text-foreground">Bloco preservado.</strong> Este tipo já existia no projeto. Para evitar qualquer regressão, o Builder não muda automaticamente a lógica dele; você pode editar título, subtítulo e dados avançados sem converter o bloco.
@@ -683,13 +803,14 @@ function BlockEditor({ block, dirty, saving, collections, categories, onPatch, o
         )}
 
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Título">
-            <Input value={block.title ?? ""} onChange={(event) => onPatch({ title: event.target.value })} />
+          <Field label="Título (texto grande da seção)">
+            <Input value={block.title ?? ""} onChange={(event) => onPatch({ title: event.target.value })} placeholder="Ex.: Novidades da semana" />
           </Field>
-          <Field label="Subtítulo">
-            <Input value={block.subtitle ?? ""} onChange={(event) => onPatch({ subtitle: event.target.value })} />
+          <Field label="Subtítulo (linha pequena acima/abaixo do título)">
+            <Input value={block.subtitle ?? ""} onChange={(event) => onPatch({ subtitle: event.target.value })} placeholder="Ex.: Selecionados pela nossa curadoria" />
           </Field>
         </div>
+
 
         {(block.kind === "banner" || block.kind === "hero") && (
           <>
@@ -984,7 +1105,7 @@ function BannersPanel({ value, dirty, saving, focus, onFocus, onPatch, onSave, o
   );
 }
 
-function CategoryOrderPanel({ categories, dirty, saving, dragIndex, onDragIndex, onDrop, onMove, onSave, onReset }: {
+function CategoryOrderPanel({ categories, dirty, saving, dragIndex, onDragIndex, onDrop, onMove, onSave, onReset, onCreate, onRename, onDeleteCategory }: {
   categories: CategoryRow[];
   dirty: boolean;
   saving: boolean;
@@ -994,16 +1115,35 @@ function CategoryOrderPanel({ categories, dirty, saving, dragIndex, onDragIndex,
   onMove: (index: number, direction: -1 | 1) => void;
   onSave: () => void;
   onReset: () => void;
+  onCreate: (name: string) => void | Promise<void>;
+  onRename: (id: string, name: string) => void | Promise<void>;
+  onDeleteCategory: (id: string, name: string) => void | Promise<void>;
 }) {
+  const [newName, setNewName] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState("");
+
+  function startEdit(category: CategoryRow) {
+    setEditingId(category.id);
+    setEditingName(category.name);
+  }
+
+  async function confirmEdit(category: CategoryRow) {
+    const name = editingName.trim();
+    setEditingId(null);
+    if (name.length < 2 || name === category.name) return;
+    await onRename(category.id, name);
+  }
+
   return (
     <div className="space-y-4">
       <section className="rounded-2xl border border-border bg-card p-5 shadow-soft">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">Posicionamento real</p>
-            <h2 className="mt-1 text-lg font-semibold">Onde cada categoria aparece</h2>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-primary">Categorias da loja</p>
+            <h2 className="mt-1 text-lg font-semibold">Nomes, ordem e onde cada categoria aparece</h2>
             <p className="mt-2 max-w-2xl text-xs leading-5 text-muted-foreground">
-              A ordem abaixo controla a sequência usada pela Home nas vitrines “Novidades e mais vendidos” e também a ordem dos atalhos de categorias. Arraste para posicionar cada categoria exatamente onde deseja dentro dessa área da página.
+              Renomeie uma categoria (ex.: trocar “Skincare” por “Bolsas”) e o novo nome muda na loja inteira. Arraste para reordenar: a mesma sequência é usada no menu do topo, nos atalhos de categoria e nas vitrines “Novidades e mais vendidos” da Home.
             </p>
           </div>
           <div className="flex gap-2">
@@ -1014,32 +1154,85 @@ function CategoryOrderPanel({ categories, dirty, saving, dragIndex, onDragIndex,
         <div className={`mt-4 rounded-lg px-3 py-2 text-xs ${dirty ? "bg-warning/10 font-semibold text-warning" : "bg-success/10 text-success"}`}>
           {dirty ? "Preview atualizado. Salve para aplicar a nova ordem na Home." : "A ordem exibida corresponde ao que está salvo no catálogo."}
         </div>
+        <div className="mt-3">
+          <HelpNote>
+            Toda categoria criada aqui entra <strong className="text-foreground">automaticamente</strong> no menu do topo, nos atalhos da Home e no bloco “Categorias em linha” quando ele estiver no modo “Todas”. Renomear e reordenar não exige nenhuma outra configuração.
+          </HelpNote>
+        </div>
+      </section>
+
+      <section className="rounded-2xl border border-border bg-card p-5 shadow-soft">
+        <p className="text-sm font-semibold">Criar nova categoria</p>
+        <p className="mt-1 text-xs text-muted-foreground">Digite o nome como o cliente deve ver (ex.: Bolsas, Perfumes, Cabelos).</p>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <Input
+            className="max-w-xs"
+            value={newName}
+            placeholder="Nome da categoria"
+            onChange={(event) => setNewName(event.target.value)}
+          />
+          <Button
+            size="sm"
+            disabled={newName.trim().length < 2}
+            onClick={async () => { const name = newName.trim(); setNewName(""); await onCreate(name); }}
+          >
+            <Plus className="mr-2 h-3.5 w-3.5" /> Criar categoria
+          </Button>
+        </div>
       </section>
 
       <section className="rounded-2xl border border-border bg-card p-4 shadow-soft">
         <div className="space-y-2">
-          {categories.map((category, index) => (
-            <div
-              key={category.id}
-              draggable
-              onDragStart={() => onDragIndex(index)}
-              onDragEnd={() => onDragIndex(null)}
-              onDragOver={(event) => event.preventDefault()}
-              onDrop={() => onDrop(index)}
-              className={`flex items-center gap-3 rounded-xl border p-3 transition ${dragIndex === index ? "border-dashed border-primary bg-primary/5" : "border-border bg-background hover:border-primary/30"}`}
-            >
-              <button type="button" className="cursor-grab text-muted-foreground active:cursor-grabbing"><GripVertical className="h-5 w-5" /></button>
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">{index + 1}</div>
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-semibold">{category.name}</p>
-                <p className="text-[10px] text-muted-foreground">/{category.slug} · posição salva atualizada ao confirmar</p>
+          {categories.map((category, index) => {
+            const editing = editingId === category.id;
+            return (
+              <div
+                key={category.id}
+                draggable={!editing}
+                onDragStart={() => onDragIndex(index)}
+                onDragEnd={() => onDragIndex(null)}
+                onDragOver={(event) => event.preventDefault()}
+                onDrop={() => onDrop(index)}
+                className={`flex items-center gap-3 rounded-xl border p-3 transition ${dragIndex === index ? "border-dashed border-primary bg-primary/5" : "border-border bg-background hover:border-primary/30"}`}
+              >
+                <button type="button" className="cursor-grab text-muted-foreground active:cursor-grabbing" title="Arrastar para reposicionar"><GripVertical className="h-5 w-5" /></button>
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">{index + 1}</div>
+                <div className="min-w-0 flex-1">
+                  {editing ? (
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Input
+                        autoFocus
+                        className="h-8 max-w-[240px]"
+                        value={editingName}
+                        onChange={(event) => setEditingName(event.target.value)}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter") void confirmEdit(category);
+                          if (event.key === "Escape") setEditingId(null);
+                        }}
+                      />
+                      <Button size="icon" variant="ghost" title="Salvar nome" onClick={() => void confirmEdit(category)}><Check className="h-4 w-4 text-success" /></Button>
+                      <Button size="icon" variant="ghost" title="Cancelar" onClick={() => setEditingId(null)}><X className="h-4 w-4" /></Button>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="truncate text-sm font-semibold">{category.name}</p>
+                        {index < 5 && <Badge variant="secondary" className="h-5 text-[9px]">Aparece no menu do topo</Badge>}
+                      </div>
+                      <p className="text-[10px] text-muted-foreground">Endereço /{category.slug} · o endereço não muda ao renomear (links antigos continuam funcionando)</p>
+                    </>
+                  )}
+                </div>
+                <div className="flex shrink-0">
+                  <Button size="icon" variant="ghost" title="Renomear" onClick={() => startEdit(category)}><Pencil className="h-4 w-4" /></Button>
+                  <Button size="icon" variant="ghost" disabled={index === 0} title="Subir" onClick={() => onMove(index, -1)}><ArrowUp className="h-4 w-4" /></Button>
+                  <Button size="icon" variant="ghost" disabled={index === categories.length - 1} title="Descer" onClick={() => onMove(index, 1)}><ArrowDown className="h-4 w-4" /></Button>
+                  <Button size="icon" variant="ghost" title="Remover categoria" onClick={() => void onDeleteCategory(category.id, category.name)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                </div>
               </div>
-              <div className="flex">
-                <Button size="icon" variant="ghost" disabled={index === 0} onClick={() => onMove(index, -1)}><ArrowUp className="h-4 w-4" /></Button>
-                <Button size="icon" variant="ghost" disabled={index === categories.length - 1} onClick={() => onMove(index, 1)}><ArrowDown className="h-4 w-4" /></Button>
-              </div>
-            </div>
-          ))}
+            );
+          })}
+          {categories.length === 0 && <div className="rounded-xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">Nenhuma categoria cadastrada ainda.</div>}
         </div>
       </section>
     </div>
