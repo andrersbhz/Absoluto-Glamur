@@ -98,8 +98,17 @@ async function callGeminiModel(
   });
   if (!res.ok) {
     const body = (await res.text()).slice(0, 350);
-    throw new Error(`gemini ${res.status} (${model}): ${body}`);
+    if (res.status === 429 && /spending cap|quota|RESOURCE_EXHAUSTED/i.test(body)) {
+      throw new Error(
+        "Cota do Gemini esgotada: a chave atingiu o limite de gastos/uso do projeto Google AI Studio. Aumente o limite de gastos ou use outra chave.",
+      );
+    }
+    if (/API_KEY_INVALID|API key not valid/i.test(body)) {
+      throw new Error("Chave da API do Gemini inválida. Verifique a chave salva na integração.");
+    }
+    throw new Error(`Gemini respondeu ${res.status} (${model}): ${body}`);
   }
+
   const json = (await res.json()) as any;
   const parts = json?.candidates?.[0]?.content?.parts ?? [];
   return parts
