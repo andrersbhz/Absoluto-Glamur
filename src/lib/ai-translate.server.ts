@@ -131,8 +131,8 @@ export async function callGemini(
       return await callGeminiModel(cred.apiKey, model, system, prompt);
     } catch (e) {
       lastError = e instanceof Error ? e : new Error(String(e));
-      if (/API_KEY_INVALID|API key not valid/i.test(lastError.message)) throw lastError;
-      if (/RESOURCE_EXHAUSTED|quota|rate limit/i.test(lastError.message)) throw lastError;
+      if (/API_KEY_INVALID|API key not valid|inválida/i.test(lastError.message)) throw lastError;
+      if (/RESOURCE_EXHAUSTED|quota|rate limit|Cota do Gemini/i.test(lastError.message)) throw lastError;
     }
   }
   throw lastError ?? new Error("Gemini não retornou resposta.");
@@ -158,7 +158,14 @@ export async function callOpenAi(
       temperature: 0.1,
     }),
   });
-  if (!res.ok) throw new Error(`openai ${res.status}: ${(await res.text()).slice(0, 350)}`);
+  if (!res.ok) {
+    const body = (await res.text()).slice(0, 350);
+    if (res.status === 429) {
+      throw new Error("Cota da OpenAI esgotada ou limite de requisições atingido. Verifique o saldo/limites da chave.");
+    }
+    if (res.status === 401) throw new Error("Chave da API da OpenAI inválida.");
+    throw new Error(`OpenAI respondeu ${res.status}: ${body}`);
+  }
   const json = (await res.json()) as any;
   return String(json?.choices?.[0]?.message?.content ?? "").trim();
 }
