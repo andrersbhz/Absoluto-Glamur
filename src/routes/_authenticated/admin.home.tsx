@@ -615,6 +615,29 @@ function Metric({ icon, label, value }: { icon: React.ReactNode; label: string; 
   );
 }
 
+function GuideCard({ step, title, text }: { step: string; title: string; text: string }) {
+  return (
+    <div className="rounded-xl border border-border bg-card p-4">
+      <div className="flex items-center gap-2">
+        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-[11px] font-bold text-primary-foreground">{step}</span>
+        <p className="text-sm font-semibold text-foreground">{title}</p>
+      </div>
+      <p className="mt-2 text-xs leading-5 text-muted-foreground">{text}</p>
+    </div>
+  );
+}
+
+function HelpNote({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex gap-2 rounded-xl border border-border bg-secondary/30 p-3 text-[11px] leading-5 text-muted-foreground">
+      <Info className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
+      <span>{children}</span>
+    </div>
+  );
+}
+
+
+
 function StructurePanel({
   blocks, selectedBlockId, blockDraft, blockDirty, savingBlock, creatingBlock, collections, categories,
   dragIndex, onDragIndex, onDrop, onMove, onSelect, onAdd, onDuplicate, onDelete, onToggle,
