@@ -36,7 +36,7 @@ const nav: NavItem[] = [
   { label: "Marketing & SEO", icon: Megaphone, to: "/admin/marketing", phase: 6 },
   { label: "Blog SEO & Social", icon: BookOpen, to: "/admin/blog", phase: 6 },
   { label: "Performance v1.2", icon: BarChart3, to: "/admin/performance", phase: 8 },
-  { label: "IA (OpenAI/Gemini)", icon: Zap, to: "/admin/ai", phase: 7 },
+  { label: "IA", icon: Zap, to: "/admin/ai", phase: 7 },
   { label: "Dashboard executivo", icon: BarChart3, to: "/admin/dashboard", phase: 8 },
   { label: "Preferências globais", icon: Settings, to: "/admin/settings", phase: 8 },
   { label: "Conformidade", icon: ShieldCheck, to: "/admin/compliance", phase: 8 },
