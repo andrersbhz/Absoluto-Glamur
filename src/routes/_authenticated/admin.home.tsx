@@ -28,6 +28,7 @@ import {
   type HomepageBlock,
 } from "@/lib/marketing";
 import { upsertSiteSetting } from "@/lib/site-settings.functions";
+import { createCategory, deleteCategory, renameCategory } from "@/lib/admin-categories.functions";
 
 export const Route = createFileRoute("/_authenticated/admin/home")({
   head: () => ({ meta: [{ title: "Home Page Builder · Admin Absoluto Glamur" }] }),
