@@ -70,6 +70,7 @@ import { Route as AuthenticatedAdminEmailRouteImport } from './routes/_authentic
 import { Route as AuthenticatedAdminDiscoverRouteImport } from './routes/_authenticated/admin.discover'
 import { Route as AuthenticatedAdminDashboardRouteImport } from './routes/_authenticated/admin.dashboard'
 import { Route as AuthenticatedAdminComplianceRouteImport } from './routes/_authenticated/admin.compliance'
+import { Route as AuthenticatedAdminCategoriesRouteImport } from './routes/_authenticated/admin.categories'
 import { Route as AuthenticatedAdminBlogRouteImport } from './routes/_authenticated/admin.blog'
 import { Route as AuthenticatedAdminAliexpressReviewsRouteImport } from './routes/_authenticated/admin.aliexpress-reviews'
 import { Route as AuthenticatedAdminAiRouteImport } from './routes/_authenticated/admin.ai'
@@ -414,6 +415,12 @@ const AuthenticatedAdminComplianceRoute =
     path: '/compliance',
     getParentRoute: () => AuthenticatedAdminRoute,
   } as any)
+const AuthenticatedAdminCategoriesRoute =
+  AuthenticatedAdminCategoriesRouteImport.update({
+    id: '/categories',
+    path: '/categories',
+    getParentRoute: () => AuthenticatedAdminRoute,
+  } as any)
 const AuthenticatedAdminBlogRoute = AuthenticatedAdminBlogRouteImport.update({
   id: '/blog',
   path: '/blog',
@@ -567,6 +574,7 @@ export interface FileRoutesByFullPath {
   '/admin/ai': typeof AuthenticatedAdminAiRoute
   '/admin/aliexpress-reviews': typeof AuthenticatedAdminAliexpressReviewsRoute
   '/admin/blog': typeof AuthenticatedAdminBlogRoute
+  '/admin/categories': typeof AuthenticatedAdminCategoriesRoute
   '/admin/compliance': typeof AuthenticatedAdminComplianceRoute
   '/admin/dashboard': typeof AuthenticatedAdminDashboardRoute
   '/admin/discover': typeof AuthenticatedAdminDiscoverRoute
@@ -648,6 +656,7 @@ export interface FileRoutesByTo {
   '/admin/ai': typeof AuthenticatedAdminAiRoute
   '/admin/aliexpress-reviews': typeof AuthenticatedAdminAliexpressReviewsRoute
   '/admin/blog': typeof AuthenticatedAdminBlogRoute
+  '/admin/categories': typeof AuthenticatedAdminCategoriesRoute
   '/admin/compliance': typeof AuthenticatedAdminComplianceRoute
   '/admin/dashboard': typeof AuthenticatedAdminDashboardRoute
   '/admin/discover': typeof AuthenticatedAdminDiscoverRoute
@@ -732,6 +741,7 @@ export interface FileRoutesById {
   '/_authenticated/admin/ai': typeof AuthenticatedAdminAiRoute
   '/_authenticated/admin/aliexpress-reviews': typeof AuthenticatedAdminAliexpressReviewsRoute
   '/_authenticated/admin/blog': typeof AuthenticatedAdminBlogRoute
+  '/_authenticated/admin/categories': typeof AuthenticatedAdminCategoriesRoute
   '/_authenticated/admin/compliance': typeof AuthenticatedAdminComplianceRoute
   '/_authenticated/admin/dashboard': typeof AuthenticatedAdminDashboardRoute
   '/_authenticated/admin/discover': typeof AuthenticatedAdminDiscoverRoute
@@ -816,6 +826,7 @@ export interface FileRouteTypes {
     | '/admin/ai'
     | '/admin/aliexpress-reviews'
     | '/admin/blog'
+    | '/admin/categories'
     | '/admin/compliance'
     | '/admin/dashboard'
     | '/admin/discover'
@@ -897,6 +908,7 @@ export interface FileRouteTypes {
     | '/admin/ai'
     | '/admin/aliexpress-reviews'
     | '/admin/blog'
+    | '/admin/categories'
     | '/admin/compliance'
     | '/admin/dashboard'
     | '/admin/discover'
@@ -980,6 +992,7 @@ export interface FileRouteTypes {
     | '/_authenticated/admin/ai'
     | '/_authenticated/admin/aliexpress-reviews'
     | '/_authenticated/admin/blog'
+    | '/_authenticated/admin/categories'
     | '/_authenticated/admin/compliance'
     | '/_authenticated/admin/dashboard'
     | '/_authenticated/admin/discover'
@@ -1491,6 +1504,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedAdminComplianceRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
     }
+    '/_authenticated/admin/categories': {
+      id: '/_authenticated/admin/categories'
+      path: '/categories'
+      fullPath: '/admin/categories'
+      preLoaderRoute: typeof AuthenticatedAdminCategoriesRouteImport
+      parentRoute: typeof AuthenticatedAdminRoute
+    }
     '/_authenticated/admin/blog': {
       id: '/_authenticated/admin/blog'
       path: '/blog'
@@ -1652,6 +1672,7 @@ interface AuthenticatedAdminRouteChildren {
   AuthenticatedAdminAiRoute: typeof AuthenticatedAdminAiRoute
   AuthenticatedAdminAliexpressReviewsRoute: typeof AuthenticatedAdminAliexpressReviewsRoute
   AuthenticatedAdminBlogRoute: typeof AuthenticatedAdminBlogRoute
+  AuthenticatedAdminCategoriesRoute: typeof AuthenticatedAdminCategoriesRoute
   AuthenticatedAdminComplianceRoute: typeof AuthenticatedAdminComplianceRoute
   AuthenticatedAdminDashboardRoute: typeof AuthenticatedAdminDashboardRoute
   AuthenticatedAdminDiscoverRoute: typeof AuthenticatedAdminDiscoverRoute
@@ -1685,6 +1706,7 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
   AuthenticatedAdminAliexpressReviewsRoute:
     AuthenticatedAdminAliexpressReviewsRoute,
   AuthenticatedAdminBlogRoute: AuthenticatedAdminBlogRoute,
+  AuthenticatedAdminCategoriesRoute: AuthenticatedAdminCategoriesRoute,
   AuthenticatedAdminComplianceRoute: AuthenticatedAdminComplianceRoute,
   AuthenticatedAdminDashboardRoute: AuthenticatedAdminDashboardRoute,
   AuthenticatedAdminDiscoverRoute: AuthenticatedAdminDiscoverRoute,
