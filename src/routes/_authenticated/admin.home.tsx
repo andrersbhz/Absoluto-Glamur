@@ -712,7 +712,8 @@ function StructurePanel({
                     <Badge variant={block.is_active ? "default" : "outline"} className="h-5 text-[9px]">{block.is_active ? "Ativo" : "Oculto"}</Badge>
                     {!supported && <Badge variant="secondary" className="h-5 text-[9px]">Preservado</Badge>}
                   </div>
-                  <p className="mt-0.5 truncate text-[10px] uppercase tracking-[0.12em] text-muted-foreground">#{index + 1} · {labelForKind(block.kind)}</p>
+                  <p className="mt-0.5 truncate text-[10px] uppercase tracking-[0.12em] text-muted-foreground">Posição #{index + 1} · {labelForKind(block.kind)}</p>
+                  <p className="mt-1 line-clamp-2 text-[11px] leading-4 text-muted-foreground">{helpForKind(block.kind)}</p>
                 </button>
                 <div className="flex shrink-0 items-center">
                   <Button size="icon" variant="ghost" disabled={index === 0} onClick={() => onMove(index, -1)} title="Subir"><ArrowUp className="h-3.5 w-3.5" /></Button>
