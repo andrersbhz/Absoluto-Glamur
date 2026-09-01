@@ -25,6 +25,7 @@ const nav: NavItem[] = [
   { label: "Pedidos", icon: ShoppingCart, to: "/admin/orders", phase: 3 },
   { label: "Recuperação de carrinho", icon: RotateCcw, to: "/admin/recovery", phase: 3 },
   { label: "Catálogo", icon: Package, to: "/admin/catalog", phase: 2 },
+  { label: "Categorias", icon: Boxes, to: "/admin/categories", phase: 2 },
   { label: "Importador AliExpress", icon: Boxes, to: "/admin/imports", phase: 4 },
   { label: "AliExpress TOP · Avaliações", icon: Star, to: "/admin/aliexpress-reviews", phase: 4 },
   { label: "Ryviu · Importar avaliações", icon: Star, to: "/admin/ryviu-reviews", phase: 4 },
