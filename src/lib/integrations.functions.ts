@@ -455,7 +455,54 @@ export const testIntegration = createServerFn({ method: "POST" })
       }
     }
 
+    if (data.provider === "aliexpress_top_reviews") {
+      const appKey = String(row.api_key ?? "").trim();
+      const appSecret = String(row.webhook_token ?? "").trim();
+      if (!appKey || !appSecret) {
+        const message = "Salve App Key TOP e App Secret TOP antes de testar.";
+        await writeVerification(db, "aliexpress_top_reviews", message);
+        throw new Error(message);
+      }
+      try {
+        const { data: imports } = await db
+          .from("product_imports")
+          .select("source_id")
+          .in("source", ["aliexpress", "aliexpress_api", "aliexpress_url"])
+          .not("source_id", "is", null)
+          .order("created_at", { ascending: false })
+          .limit(12);
+        const normalize = (value: string): string | null => {
+          const raw = value.trim();
+          if (/^\d{5,}$/.test(raw)) return raw;
+          for (const pattern of [/\/item\/(\d{5,})(?:\.html)?/i, /[?&](?:productId|product_id)=(\d{5,})/i, /\b(\d{8,})\b/]) {
+            const match = raw.match(pattern);
+            if (match?.[1]) return match[1];
+          }
+          return null;
+        };
+        const productId = ((imports ?? []) as Array<{ source_id: string | null }>)
+          .map((item) => normalize(String(item.source_id ?? "")))
+          .find(Boolean);
+        if (!productId) {
+          throw new Error("Nenhum produto AliExpress importado com ID válido foi encontrado para testar a API de avaliações.");
+        }
+        const { callAliTopPublic } = await import("./aliexpress-top-public.server");
+        await callAliTopPublic(
+          "aliexpress.social.product.evaluation.query",
+          { product_id: productId, page: 1, page_size: 1 },
+          db,
+        );
+        await writeVerification(db, "aliexpress_top_reviews", null, true);
+        return { ok: true, info: { name: `AliExpress TOP · Avaliações (produto ${productId})`, email: null } };
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        await writeVerification(db, "aliexpress_top_reviews", message);
+        throw new Error(message);
+      }
+    }
+
     const name = INTEGRATION_CATALOG.find((item) => item.provider === data.provider)?.display_name ?? data.provider;
+
     const message = `Teste automático para "${name}" ainda não está implementado. A integração foi mantida disponível e as credenciais continuam salvas; valide pelo fluxo oficial do provedor.`;
     await db
       .from("integrations")
