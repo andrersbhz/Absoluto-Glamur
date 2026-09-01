@@ -81,6 +81,13 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   // Preferência salva + idioma do navegador só são lidos no cliente,
   // evitando divergência de hidratação no SSR.
   useEffect(() => {
+    // Idioma vindo da URL (/en, /es, /es-mx) vira preferência persistida,
+    // para que as páginas internas sem prefixo mantenham o idioma escolhido.
+    if (urlLocale) {
+      persistLocale(urlLocale);
+      setPreferred(urlLocale);
+      return;
+    }
     const stored = readStoredLocale();
     if (stored) {
       setPreferred(stored);
@@ -90,7 +97,7 @@ export function I18nProvider({ children }: { children: ReactNode }) {
       typeof navigator !== "undefined" ? navigator.language : null,
     );
     if (browser) setPreferred(browser);
-  }, []);
+  }, [urlLocale]);
 
   const locale: Locale = urlLocale ?? preferred ?? DEFAULT_LOCALE;
   const canonicalPath = stripLocalePrefix(location.pathname);

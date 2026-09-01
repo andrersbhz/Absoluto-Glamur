@@ -5,6 +5,15 @@ export const Route = createFileRoute("/en/$")({
   beforeLoad: ({ params }) => {
     const rest = (params as { _splat?: string })._splat ?? "";
     if (!rest) return;
+    if (typeof window !== "undefined") {
+      // Mantém o idioma ao redirecionar um deep link com prefixo para a rota canônica.
+      try {
+        window.localStorage.setItem("ag:locale", "en-US");
+        document.cookie = "ag_locale=en-US; path=/; max-age=31536000; samesite=lax";
+      } catch {
+        /* ignore */
+      }
+    }
     throw redirect({ href: `/${rest}`, replace: true });
   },
   component: Index,
