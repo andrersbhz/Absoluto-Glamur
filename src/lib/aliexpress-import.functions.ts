@@ -420,6 +420,22 @@ export function toParagraphHtml(text: string | null | undefined): string | null 
     .join("\n");
 }
 
+/** Resumo curto em texto puro (sem tags HTML) para o campo short_description. */
+export function toShortDescription(
+  text: string | null | undefined,
+  max = 200,
+): string | null {
+  if (!text) return null;
+  const plain = stripOfficialHtml(String(text))
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!plain) return null;
+  if (plain.length <= max) return plain;
+  const cut = plain.slice(0, max - 1);
+  const lastSpace = cut.lastIndexOf(" ");
+  return `${(lastSpace > 60 ? cut.slice(0, lastSpace) : cut).trim()}…`;
+}
+
 async function translateToPtBr(input: { title: string; description: string | null }): Promise<{
   title: string;
   description: string | null;
@@ -626,7 +642,7 @@ async function commitImportRow(
     .insert({
       slug,
       name: norm.title,
-      short_description: norm.description?.slice(0, 200) ?? null,
+      short_description: toShortDescription(norm.description),
       description: norm.description ?? null,
       status: opts.status,
       is_featured: false,
@@ -979,7 +995,7 @@ export const commitImport = createServerFn({ method: "POST" })
         .from("products")
         .update({
           name: norm.title,
-          short_description: norm.description?.slice(0, 200) ?? null,
+          short_description: toShortDescription(norm.description),
           description: norm.description ?? null,
           status: data.status,
           brand_id: resolvedBrandId,
@@ -1052,7 +1068,7 @@ export const commitImport = createServerFn({ method: "POST" })
       .insert({
         slug,
         name: norm.title,
-        short_description: norm.description?.slice(0, 200) ?? null,
+        short_description: toShortDescription(norm.description),
         description: norm.description ?? null,
         status: data.status,
         is_featured: false,
