@@ -25,6 +25,7 @@ import { AdminLayout } from "@/components/admin/AdminLayout";
 import {
   getAdminProduct,
   listBrandsAndCategories,
+  createBrand,
   upsertAdminProduct,
   translateProductGlobal,
   type AdminProductInput,
@@ -121,6 +122,18 @@ function CatalogEditor() {
   const translateGlobalFn = useServerFn(translateProductGlobal);
 
   const metaQ = useQuery({ queryKey: ["admin-cat-meta"], queryFn: () => meta() });
+  const createBrandFn = useServerFn(createBrand);
+  const [newBrand, setNewBrand] = useState("");
+  const addBrand = useMutation({
+    mutationFn: () => createBrandFn({ data: { name: newBrand.trim() } }),
+    onSuccess: async (r) => {
+      toast.success(r.created ? `Marca "${r.name}" cadastrada` : `Marca "${r.name}" já existia`);
+      setNewBrand("");
+      await metaQ.refetch();
+      setForm((prev) => (prev ? { ...prev, brand_id: r.id } : prev));
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
   const prodQ = useQuery({
     queryKey: ["admin-product", id],
     queryFn: () => getProd({ data: { id } }),
