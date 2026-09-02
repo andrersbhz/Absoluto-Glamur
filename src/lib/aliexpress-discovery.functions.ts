@@ -854,7 +854,7 @@ export const importAliexpressProductToStore = createServerFn({ method: "POST" })
       .insert({
         slug,
         name: norm.title,
-        short_description: norm.description?.slice(0, 200) ?? null,
+        short_description: toShortDescription(norm.description),
         description: norm.description ?? null,
         status: data.status,
         is_featured: false,

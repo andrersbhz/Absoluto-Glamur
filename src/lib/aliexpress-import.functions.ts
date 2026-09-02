@@ -642,7 +642,7 @@ async function commitImportRow(
     .insert({
       slug,
       name: norm.title,
-      short_description: norm.description?.slice(0, 200) ?? null,
+      short_description: toShortDescription(norm.description),
       description: norm.description ?? null,
       status: opts.status,
       is_featured: false,
@@ -995,7 +995,7 @@ export const commitImport = createServerFn({ method: "POST" })
         .from("products")
         .update({
           name: norm.title,
-          short_description: norm.description?.slice(0, 200) ?? null,
+          short_description: toShortDescription(norm.description),
           description: norm.description ?? null,
           status: data.status,
           brand_id: resolvedBrandId,
@@ -1068,7 +1068,7 @@ export const commitImport = createServerFn({ method: "POST" })
       .insert({
         slug,
         name: norm.title,
-        short_description: norm.description?.slice(0, 200) ?? null,
+        short_description: toShortDescription(norm.description),
         description: norm.description ?? null,
         status: data.status,
         is_featured: false,
