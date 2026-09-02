@@ -111,16 +111,45 @@ function PricingV12Page() {
     } finally { setSaving(false); }
   }
 
-  async function runSimulation() {
-    if (!selected) return toast.error("Selecione um produto");
+  const overrides = useMemo(() => ({
+    gateway_pct: profile.gateway_pct,
+    gateway_fixed_cents: profile.gateway_fixed_cents,
+    tax_pct: profile.tax_pct,
+    fx_spread_pct: profile.fx_spread_pct,
+    returns_pct: profile.returns_pct,
+    chargeback_pct: profile.chargeback_pct,
+    operational_pct: profile.operational_pct,
+    desired_margin_pct: profile.desired_margin_pct,
+    target_ad_cost_pct: profile.target_ad_cost_pct,
+    shipping_subsidy_cents: profile.shipping_subsidy_cents,
+    packaging_cents: profile.packaging_cents,
+  }), [profile]);
+
+  async function runSimulation(silent = false) {
+    if (!selected) {
+      if (!silent) toast.error("Selecione um produto");
+      return;
+    }
+    if (pctSum >= 95) {
+      if (!silent) toast.error("Reduza os percentuais: a soma passou de 95%");
+      return;
+    }
     setRunning(true);
     try {
-      const data = await simulate({ data: { product_id: selected, profile_id: profile.id ?? null, supplier_shipping_cents: shipping, discount_pct: discount } });
+      const data = await simulate({ data: { product_id: selected, profile_id: profile.id ?? null, supplier_shipping_cents: shipping, discount_pct: discount, profile_override: overrides } });
       setResult(data);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Não foi possível simular");
+      if (!silent) toast.error(e instanceof Error ? e.message : "Não foi possível simular");
     } finally { setRunning(false); }
   }
+
+  // Recalcula automaticamente a cada ajuste (debounce curto).
+  useEffect(() => {
+    if (!selected) return;
+    const timer = window.setTimeout(() => { void runSimulation(true); }, 400);
+    return () => window.clearTimeout(timer);
+  }, [selected, shipping, discount, overrides, pctSum]);
+
 
   return (
     <AdminLayout>
