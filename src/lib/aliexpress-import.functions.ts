@@ -420,6 +420,22 @@ export function toParagraphHtml(text: string | null | undefined): string | null 
     .join("\n");
 }
 
+/** Resumo curto em texto puro (sem tags HTML) para o campo short_description. */
+export function toShortDescription(
+  text: string | null | undefined,
+  max = 200,
+): string | null {
+  if (!text) return null;
+  const plain = stripOfficialHtml(String(text))
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!plain) return null;
+  if (plain.length <= max) return plain;
+  const cut = plain.slice(0, max - 1);
+  const lastSpace = cut.lastIndexOf(" ");
+  return `${(lastSpace > 60 ? cut.slice(0, lastSpace) : cut).trim()}…`;
+}
+
 async function translateToPtBr(input: { title: string; description: string | null }): Promise<{
   title: string;
   description: string | null;
