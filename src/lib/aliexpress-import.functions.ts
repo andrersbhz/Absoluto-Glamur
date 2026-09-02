@@ -592,6 +592,11 @@ async function commitImportRow(
   const slug = slugify(norm.title) + "-" + (norm.source_id ?? Math.random().toString(36).slice(2, 8));
   const sku = norm.sku || (norm.source_id ? `AE-${norm.source_id}` : `IMP-${Date.now()}`);
 
+  // Marca escolhida manualmente tem prioridade; caso contrário usamos a marca
+  // trazida pela origem, criando o registro no catálogo quando ainda não existir.
+  const brandId = opts.brand_id ?? (await resolveOrCreateBrandId(admin, norm.brand_name ?? null));
+
+
   const { data: created, error: pe } = await admin
     .from("products")
     .insert({
