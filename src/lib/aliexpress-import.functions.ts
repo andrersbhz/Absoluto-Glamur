@@ -36,6 +36,8 @@ export type NormalizedProduct = {
   weight_grams: number | null;
   source_url: string | null;
   source_id: string | null;
+  /** Marca informada pela origem (ex.: AliExpress). Usada para vincular/criar a marca no catálogo. */
+  brand_name?: string | null;
 };
 
 export type ImportRow = {
