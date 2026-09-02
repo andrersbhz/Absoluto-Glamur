@@ -91,9 +91,8 @@ export const simulateProfessionalPrice = createServerFn({ method: "POST" })
     ]);
     if (costRes.error) throw new Error(costRes.error.message);
     if (profileRes.error) throw new Error(profileRes.error.message);
-    const baseProfile = profileRes.data ?? (data.profile_override ? {} : null);
-    if (!baseProfile) throw new Error("Configure um perfil de precificação v1.2");
-    const profile = { ...baseProfile, ...(data.profile_override ?? {}) } as Record<string, unknown> & typeof baseProfile;
+    if (!profileRes.data) throw new Error("Configure um perfil de precificação v1.2");
+    const profile = { ...profileRes.data, ...(data.profile_override ?? {}) };
 
 
     const baseProductCost = (costRes.data ?? []).reduce((sum, row) => sum + Number(row.amount_cents ?? 0), 0);
