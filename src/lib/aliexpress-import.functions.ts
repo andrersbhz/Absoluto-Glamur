@@ -782,6 +782,7 @@ export const bulkImportJson = createServerFn({ method: "POST" })
         weight_grams: n.weight_grams ?? null,
         source_url: null,
         source_id: null,
+        brand_name: n.brand_name ?? null,
       };
       const { data: row, error } = await db
         .from("product_imports")
@@ -887,6 +888,7 @@ export const updateImportDraft = createServerFn({ method: "POST" })
           currency: data.normalized.currency ?? null,
           sku: data.normalized.sku ?? null,
           weight_grams: data.normalized.weight_grams ?? null,
+          brand_name: data.normalized.brand_name ?? null,
         },
       })
       .eq("id", data.id);
@@ -960,6 +962,13 @@ export const commitImport = createServerFn({ method: "POST" })
         ? { ...settings, markup_percent: data.markup_override_percent }
         : settings;
 
+    // Marca: escolha manual > marca vinda da origem (criada se não existir) > padrão da integração.
+    const resolvedBrandId =
+      data.brand_id ??
+      (await resolveOrCreateBrandId(db, norm.brand_name ?? null)) ??
+      settings.default_brand_id ??
+      null;
+
     const priceCents =
       data.sale_price_cents_override ??
       computeSalePriceCents(norm.price_original, norm.currency, effective);
@@ -973,7 +982,7 @@ export const commitImport = createServerFn({ method: "POST" })
           short_description: norm.description?.slice(0, 200) ?? null,
           description: norm.description ?? null,
           status: data.status,
-          brand_id: data.brand_id ?? settings.default_brand_id ?? null,
+          brand_id: resolvedBrandId,
           category_id: data.category_id ?? settings.default_category_id ?? null,
         })
         .eq("id", imp.product_id);
@@ -1047,7 +1056,7 @@ export const commitImport = createServerFn({ method: "POST" })
         description: norm.description ?? null,
         status: data.status,
         is_featured: false,
-        brand_id: data.brand_id ?? settings.default_brand_id ?? null,
+        brand_id: resolvedBrandId,
         category_id: data.category_id ?? settings.default_category_id ?? null,
         tags: buildProductTags({ name: norm.title }),
       })
