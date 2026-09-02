@@ -8,6 +8,7 @@ import {
   computeSalePriceCents,
   stripBrandMentions,
   toParagraphHtml,
+  toShortDescription,
   type NormalizedProduct,
 } from "./aliexpress-import.functions";
 
