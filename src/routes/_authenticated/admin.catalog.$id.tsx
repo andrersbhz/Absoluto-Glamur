@@ -25,6 +25,7 @@ import { AdminLayout } from "@/components/admin/AdminLayout";
 import {
   getAdminProduct,
   listBrandsAndCategories,
+  createBrand,
   upsertAdminProduct,
   translateProductGlobal,
   type AdminProductInput,
@@ -121,6 +122,18 @@ function CatalogEditor() {
   const translateGlobalFn = useServerFn(translateProductGlobal);
 
   const metaQ = useQuery({ queryKey: ["admin-cat-meta"], queryFn: () => meta() });
+  const createBrandFn = useServerFn(createBrand);
+  const [newBrand, setNewBrand] = useState("");
+  const addBrand = useMutation({
+    mutationFn: () => createBrandFn({ data: { name: newBrand.trim() } }),
+    onSuccess: async (r) => {
+      toast.success(r.created ? `Marca "${r.name}" cadastrada` : `Marca "${r.name}" já existia`);
+      setNewBrand("");
+      await metaQ.refetch();
+      setForm((prev) => (prev ? { ...prev, brand_id: r.id } : prev));
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
   const prodQ = useQuery({
     queryKey: ["admin-product", id],
     queryFn: () => getProd({ data: { id } }),
@@ -455,6 +468,28 @@ function CatalogEditor() {
                             </option>
                           ))}
                         </select>
+                        <div className="mt-2 flex gap-2">
+                          <input
+                            className="input"
+                            placeholder="Cadastrar nova marca"
+                            value={newBrand}
+                            onChange={(e) => setNewBrand(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" && newBrand.trim().length >= 2) {
+                                e.preventDefault();
+                                addBrand.mutate();
+                              }
+                            }}
+                          />
+                          <button
+                            type="button"
+                            className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-border px-3 py-2 text-sm disabled:opacity-50"
+                            disabled={newBrand.trim().length < 2 || addBrand.isPending}
+                            onClick={() => addBrand.mutate()}
+                          >
+                            Criar
+                          </button>
+                        </div>
                       </Field>
                       <Field label="Categoria">
                         <select

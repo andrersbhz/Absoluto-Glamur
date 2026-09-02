@@ -36,6 +36,8 @@ export type NormalizedProduct = {
   weight_grams: number | null;
   source_url: string | null;
   source_id: string | null;
+  /** Marca informada pela origem (ex.: AliExpress). Usada para vincular/criar a marca no catálogo. */
+  brand_name?: string | null;
 };
 
 export type ImportRow = {
@@ -240,6 +242,35 @@ function stripOfficialHtml(input: string): string {
     .trim();
 }
 
+const BRAND_ATTR_NAMES = ["brand name", "brand", "marca", "品牌"];
+const BRAND_UNKNOWN = ["no brand", "none", "n/a", "na", "unbranded", "sem marca", "other", "others", "generic"];
+
+/** Lê a marca informada pela API do AliExpress (propriedades do item ou campos base). */
+export function extractBrandName(props: any, base: any, result?: any): string | null {
+  const rows: any[] =
+    (Array.isArray(props?.ae_item_property) && props.ae_item_property) ||
+    (Array.isArray(props?.ae_item_property?.ae_item_property) && props.ae_item_property.ae_item_property) ||
+    (Array.isArray(props) && props) ||
+    (Array.isArray(result?.ae_item_properties?.ae_item_property) && result.ae_item_properties.ae_item_property) ||
+    [];
+
+  let candidate: string | null = null;
+  for (const row of rows) {
+    const name = String(row?.attr_name ?? row?.attrName ?? row?.name ?? "").trim().toLowerCase();
+    if (BRAND_ATTR_NAMES.includes(name)) {
+      candidate = String(row?.attr_value ?? row?.attrValue ?? row?.value ?? "").trim();
+      if (candidate) break;
+    }
+  }
+  if (!candidate) {
+    candidate = String(base?.brand_name ?? base?.brand ?? result?.brand_name ?? "").trim();
+  }
+  if (!candidate) return null;
+  const clean = candidate.replace(/\s+/g, " ").slice(0, 80).trim();
+  if (!clean || BRAND_UNKNOWN.includes(clean.toLowerCase())) return null;
+  return clean;
+}
+
 async function loadAliExpressUrlPreview(
   input: string,
   credentialClient: any,
@@ -309,9 +340,11 @@ async function loadAliExpressUrlPreview(
   const sku = String(firstSku?.sku_code ?? firstSku?.sku_id ?? `AE-${productId}`);
   const weightKg = firstOfficialNumber(props?.package_weight, firstSku?.package_weight);
   const descriptionHtml = String(base?.detail ?? result?.package_info_dto?.package_detail ?? "");
+  const brandName = extractBrandName(props, base, result);
 
   return {
     title: rawTitle,
+    brand_name: brandName,
     description: descriptionHtml ? stripOfficialHtml(descriptionHtml).slice(0, 6000) : null,
     images: images.slice(0, 12),
     price_original: price,
@@ -483,6 +516,7 @@ const DraftSchema = z.object({
     currency: z.string().nullable().optional(),
     sku: z.string().nullable().optional(),
     weight_grams: z.number().int().nullable().optional(),
+    brand_name: z.string().max(80).nullable().optional(),
   }),
 });
 
@@ -532,6 +566,29 @@ async function syncVariantsAndRecord(
   }
 }
 
+/** Encontra (ou cria) a marca a partir do nome trazido pela origem. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function resolveOrCreateBrandId(admin: any, brandName: string | null): Promise<string | null> {
+  const name = (brandName ?? "").trim();
+  if (!name) return null;
+  const slug = slugify(name);
+  if (!slug) return null;
+
+  const { data: existing } = await admin.from("brands").select("id").eq("slug", slug).maybeSingle();
+  if (existing?.id) return existing.id as string;
+
+  const { data: created, error } = await admin
+    .from("brands")
+    .insert({ name, slug })
+    .select("id")
+    .single();
+  if (error) {
+    const { data: retry } = await admin.from("brands").select("id").eq("slug", slug).maybeSingle();
+    return (retry?.id as string | undefined) ?? null;
+  }
+  return created.id as string;
+}
+
 async function commitImportRow(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   admin: any,
@@ -559,6 +616,11 @@ async function commitImportRow(
   const slug = slugify(norm.title) + "-" + (norm.source_id ?? Math.random().toString(36).slice(2, 8));
   const sku = norm.sku || (norm.source_id ? `AE-${norm.source_id}` : `IMP-${Date.now()}`);
 
+  // Marca escolhida manualmente tem prioridade; caso contrário usamos a marca
+  // trazida pela origem, criando o registro no catálogo quando ainda não existir.
+  const brandId = opts.brand_id ?? (await resolveOrCreateBrandId(admin, norm.brand_name ?? null));
+
+
   const { data: created, error: pe } = await admin
     .from("products")
     .insert({
@@ -568,9 +630,9 @@ async function commitImportRow(
       description: norm.description ?? null,
       status: opts.status,
       is_featured: false,
-      brand_id: opts.brand_id,
+      brand_id: brandId,
       category_id: opts.category_id,
-      tags: buildProductTags({ name: norm.title }),
+      tags: buildProductTags({ name: norm.title, brandName: norm.brand_name ?? null }),
     })
     .select("id")
     .single();
@@ -657,6 +719,7 @@ export const saveImportDraft = createServerFn({ method: "POST" })
       weight_grams: data.normalized.weight_grams ?? null,
       source_url: data.source_url ?? null,
       source_id: data.source_id ?? null,
+      brand_name: data.normalized.brand_name ?? null,
     };
     const { data: created, error } = await db
       .from("product_imports")
@@ -719,6 +782,7 @@ export const bulkImportJson = createServerFn({ method: "POST" })
         weight_grams: n.weight_grams ?? null,
         source_url: null,
         source_id: null,
+        brand_name: n.brand_name ?? null,
       };
       const { data: row, error } = await db
         .from("product_imports")
@@ -824,6 +888,7 @@ export const updateImportDraft = createServerFn({ method: "POST" })
           currency: data.normalized.currency ?? null,
           sku: data.normalized.sku ?? null,
           weight_grams: data.normalized.weight_grams ?? null,
+          brand_name: data.normalized.brand_name ?? null,
         },
       })
       .eq("id", data.id);
@@ -897,6 +962,13 @@ export const commitImport = createServerFn({ method: "POST" })
         ? { ...settings, markup_percent: data.markup_override_percent }
         : settings;
 
+    // Marca: escolha manual > marca vinda da origem (criada se não existir) > padrão da integração.
+    const resolvedBrandId =
+      data.brand_id ??
+      (await resolveOrCreateBrandId(db, norm.brand_name ?? null)) ??
+      settings.default_brand_id ??
+      null;
+
     const priceCents =
       data.sale_price_cents_override ??
       computeSalePriceCents(norm.price_original, norm.currency, effective);
@@ -910,7 +982,7 @@ export const commitImport = createServerFn({ method: "POST" })
           short_description: norm.description?.slice(0, 200) ?? null,
           description: norm.description ?? null,
           status: data.status,
-          brand_id: data.brand_id ?? settings.default_brand_id ?? null,
+          brand_id: resolvedBrandId,
           category_id: data.category_id ?? settings.default_category_id ?? null,
         })
         .eq("id", imp.product_id);
@@ -984,7 +1056,7 @@ export const commitImport = createServerFn({ method: "POST" })
         description: norm.description ?? null,
         status: data.status,
         is_featured: false,
-        brand_id: data.brand_id ?? settings.default_brand_id ?? null,
+        brand_id: resolvedBrandId,
         category_id: data.category_id ?? settings.default_category_id ?? null,
         tags: buildProductTags({ name: norm.title }),
       })

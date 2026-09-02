@@ -606,3 +606,34 @@ export const exportAdminProductsCsv = createServerFn({ method: "POST" })
     const csv = "\uFEFF" + [header.join(";"), ...lines].join("\r\n");
     return { csv, count: lines.length };
   });
+
+/** Cadastra uma nova marca no catálogo (usada quando o produto importado não tem marca). */
+export const createBrand = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((v: unknown) => z.object({ name: z.string().trim().min(2).max(80) }).parse(v))
+  .handler(async ({ data, context }) => {
+    await assertCatalog(context);
+    const slug = data.name
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/(^-|-$)+/g, "")
+      .slice(0, 80);
+    if (!slug) throw new Error("Nome de marca inválido");
+
+    const { data: existing } = await context.supabase
+      .from("brands")
+      .select("id, name")
+      .eq("slug", slug)
+      .maybeSingle();
+    if (existing) return { id: existing.id as string, name: existing.name as string, created: false };
+
+    const { data: row, error } = await context.supabase
+      .from("brands")
+      .insert({ name: data.name.trim(), slug })
+      .select("id, name")
+      .single();
+    if (error) throw new Error(error.message);
+    return { id: row.id as string, name: row.name as string, created: true };
+  });
