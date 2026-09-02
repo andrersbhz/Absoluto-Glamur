@@ -516,6 +516,7 @@ const DraftSchema = z.object({
     currency: z.string().nullable().optional(),
     sku: z.string().nullable().optional(),
     weight_grams: z.number().int().nullable().optional(),
+    brand_name: z.string().max(80).nullable().optional(),
   }),
 });
 
@@ -565,6 +566,29 @@ async function syncVariantsAndRecord(
   }
 }
 
+/** Encontra (ou cria) a marca a partir do nome trazido pela origem. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export async function resolveOrCreateBrandId(admin: any, brandName: string | null): Promise<string | null> {
+  const name = (brandName ?? "").trim();
+  if (!name) return null;
+  const slug = slugify(name);
+  if (!slug) return null;
+
+  const { data: existing } = await admin.from("brands").select("id").eq("slug", slug).maybeSingle();
+  if (existing?.id) return existing.id as string;
+
+  const { data: created, error } = await admin
+    .from("brands")
+    .insert({ name, slug })
+    .select("id")
+    .single();
+  if (error) {
+    const { data: retry } = await admin.from("brands").select("id").eq("slug", slug).maybeSingle();
+    return (retry?.id as string | undefined) ?? null;
+  }
+  return created.id as string;
+}
+
 async function commitImportRow(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   admin: any,
@@ -606,9 +630,9 @@ async function commitImportRow(
       description: norm.description ?? null,
       status: opts.status,
       is_featured: false,
-      brand_id: opts.brand_id,
+      brand_id: brandId,
       category_id: opts.category_id,
-      tags: buildProductTags({ name: norm.title }),
+      tags: buildProductTags({ name: norm.title, brandName: norm.brand_name ?? null }),
     })
     .select("id")
     .single();
