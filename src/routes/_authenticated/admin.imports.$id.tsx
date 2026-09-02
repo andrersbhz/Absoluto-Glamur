@@ -3,7 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
-import { ArrowLeft, CheckCircle2, Package, Save } from "lucide-react";
+import { ArrowLeft, CheckCircle2, Package, Plus, Save } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { Badge } from "@/components/ui/badge";
@@ -15,7 +15,7 @@ import {
   computeSalePriceCents,
   type NormalizedProduct,
 } from "@/lib/aliexpress-import.functions";
-import { listBrandsAndCategories } from "@/lib/admin-catalog.functions";
+import { listBrandsAndCategories, createBrand } from "@/lib/admin-catalog.functions";
 import { formatBRL } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/admin/imports/$id")({
@@ -39,18 +39,20 @@ function ImportDetail() {
   const commitFn = useServerFn(commitImport);
   const getSettings = useServerFn(getImportSettings);
   const getRefs = useServerFn(listBrandsAndCategories);
+  const createBrandFn = useServerFn(createBrand);
 
   const { data: imp, isLoading, refetch } = useQuery({
     queryKey: ["import", id],
     queryFn: () => getFn({ data: { id } }),
   });
   const { data: settings } = useQuery({ queryKey: ["import-settings"], queryFn: () => getSettings() });
-  const { data: refs } = useQuery({ queryKey: ["admin-refs"], queryFn: () => getRefs() });
+  const { data: refs, refetch: refetchRefs } = useQuery({ queryKey: ["admin-refs"], queryFn: () => getRefs() });
 
   const [form, setForm] = useState<NormalizedProduct | null>(null);
   const [categoryId, setCategoryId] = useState<string | null>(null);
   const [brandId, setBrandId] = useState<string | null>(null);
   const [stock, setStock] = useState(10);
+  const [newBrand, setNewBrand] = useState("");
   const [markupOverride, setMarkupOverride] = useState<string>("");
   const [priceOverride, setPriceOverride] = useState<string>("");
   const [status, setStatus] = useState<"draft" | "active">("draft");
@@ -65,6 +67,28 @@ function ImportDetail() {
     if (settings) setStatus(settings.default_status);
   }, [settings]);
 
+  // Marca vinda da origem: se já existir no catálogo, seleciona automaticamente.
+  useEffect(() => {
+    const sourceBrand = form?.brand_name?.trim();
+    if (!sourceBrand || brandId || !refs?.brands?.length) return;
+    const match = refs.brands.find(
+      (b) => b.name.trim().toLowerCase() === sourceBrand.toLowerCase(),
+    );
+    if (match) setBrandId(match.id);
+    else setNewBrand((prev) => prev || sourceBrand);
+  }, [form?.brand_name, refs, brandId]);
+
+  const addBrand = useMutation({
+    mutationFn: () => createBrandFn({ data: { name: newBrand.trim() } }),
+    onSuccess: async (r) => {
+      toast.success(r.created ? `Marca "${r.name}" cadastrada` : `Marca "${r.name}" já existia`);
+      setNewBrand("");
+      await refetchRefs();
+      setBrandId(r.id);
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   const saveDraft = useMutation({
     mutationFn: () =>
       updateFn({
@@ -78,6 +102,7 @@ function ImportDetail() {
             currency: form!.currency,
             sku: form!.sku,
             weight_grams: form!.weight_grams,
+            brand_name: form!.brand_name ?? null,
           },
         },
       }),
@@ -101,6 +126,7 @@ function ImportDetail() {
             currency: form!.currency,
             sku: form!.sku,
             weight_grams: form!.weight_grams,
+            brand_name: form!.brand_name ?? null,
           },
         },
       });
@@ -282,6 +308,33 @@ function ImportDetail() {
                     </option>
                   ))}
                 </select>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {form.brand_name
+                    ? `Marca informada pela origem: ${form.brand_name}`
+                    : "A origem não informou marca. Cadastre uma abaixo se quiser."}
+                </p>
+                <div className="mt-2 flex gap-2">
+                  <input
+                    className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
+                    placeholder="Cadastrar nova marca"
+                    value={newBrand}
+                    onChange={(e) => setNewBrand(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && newBrand.trim().length >= 2) {
+                        e.preventDefault();
+                        addBrand.mutate();
+                      }
+                    }}
+                  />
+                  <button
+                    type="button"
+                    className="inline-flex items-center gap-1 rounded-lg border border-border px-3 py-2 text-sm disabled:opacity-50"
+                    disabled={newBrand.trim().length < 2 || addBrand.isPending}
+                    onClick={() => addBrand.mutate()}
+                  >
+                    <Plus className="h-4 w-4" /> Criar
+                  </button>
+                </div>
               </Fld>
               <Fld label="Estoque inicial">
                 <input
