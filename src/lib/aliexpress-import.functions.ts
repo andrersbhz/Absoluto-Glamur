@@ -719,6 +719,7 @@ export const saveImportDraft = createServerFn({ method: "POST" })
       weight_grams: data.normalized.weight_grams ?? null,
       source_url: data.source_url ?? null,
       source_id: data.source_id ?? null,
+      brand_name: data.normalized.brand_name ?? null,
     };
     const { data: created, error } = await db
       .from("product_imports")
