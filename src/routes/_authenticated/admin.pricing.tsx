@@ -111,16 +111,45 @@ function PricingV12Page() {
     } finally { setSaving(false); }
   }
 
-  async function runSimulation() {
-    if (!selected) return toast.error("Selecione um produto");
+  const overrides = useMemo(() => ({
+    gateway_pct: profile.gateway_pct,
+    gateway_fixed_cents: profile.gateway_fixed_cents,
+    tax_pct: profile.tax_pct,
+    fx_spread_pct: profile.fx_spread_pct,
+    returns_pct: profile.returns_pct,
+    chargeback_pct: profile.chargeback_pct,
+    operational_pct: profile.operational_pct,
+    desired_margin_pct: profile.desired_margin_pct,
+    target_ad_cost_pct: profile.target_ad_cost_pct,
+    shipping_subsidy_cents: profile.shipping_subsidy_cents,
+    packaging_cents: profile.packaging_cents,
+  }), [profile]);
+
+  async function runSimulation(silent = false) {
+    if (!selected) {
+      if (!silent) toast.error("Selecione um produto");
+      return;
+    }
+    if (pctSum >= 95) {
+      if (!silent) toast.error("Reduza os percentuais: a soma passou de 95%");
+      return;
+    }
     setRunning(true);
     try {
-      const data = await simulate({ data: { product_id: selected, profile_id: profile.id ?? null, supplier_shipping_cents: shipping, discount_pct: discount } });
+      const data = await simulate({ data: { product_id: selected, profile_id: profile.id ?? null, supplier_shipping_cents: shipping, discount_pct: discount, profile_override: overrides } });
       setResult(data);
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : "Não foi possível simular");
+      if (!silent) toast.error(e instanceof Error ? e.message : "Não foi possível simular");
     } finally { setRunning(false); }
   }
+
+  // Recalcula automaticamente a cada ajuste (debounce curto).
+  useEffect(() => {
+    if (!selected) return;
+    const timer = window.setTimeout(() => { void runSimulation(true); }, 400);
+    return () => window.clearTimeout(timer);
+  }, [selected, shipping, discount, overrides, pctSum]);
+
 
   return (
     <AdminLayout>
@@ -151,7 +180,7 @@ function PricingV12Page() {
             <div className="relative mt-4"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input className="pl-9" placeholder="Pesquisar produto…" value={term} onChange={(e) => setTerm(e.target.value)} /></div>
             {products.length > 0 ? <div className="mt-2 max-h-44 overflow-auto rounded-xl border border-border">{products.map((p) => <button key={p.id} className={`block w-full border-b border-border px-3 py-2 text-left text-sm last:border-0 ${selected === p.id ? "bg-primary/10" : "hover:bg-secondary"}`} onClick={() => { setSelected(p.id); setTerm(p.name); setProducts([]); }}>{p.name}</button>)}</div> : null}
             <div className="mt-4 grid gap-3 sm:grid-cols-2"><MoneyField label="Frete fornecedor" value={shipping} onChange={setShipping} /><Field label="Desconto promocional %" value={discount} onChange={setDiscount} /></div>
-            <Button className="mt-4 w-full" onClick={runSimulation} disabled={running || !selected}><Calculator className="mr-2 h-4 w-4" /> Calcular viabilidade</Button>
+            <Button className="mt-4 w-full" onClick={() => void runSimulation()} disabled={running || !selected}><Calculator className="mr-2 h-4 w-4" /> {running ? "Calculando…" : "Recalcular agora"}</Button>
 
             {result ? <div className="mt-5 grid gap-3 sm:grid-cols-2"><Metric label="Custo real" value={formatBRL(result.cost.landed_cost_cents)} /><Metric label="Preço equilíbrio" value={formatBRL(result.prices.break_even_cents)} /><Metric label="Preço recomendado" value={formatBRL(result.prices.recommended_cents)} /><Metric label="Preço promocional" value={formatBRL(result.prices.promotional_cents)} /><Metric label="Preço de tabela" value={formatBRL(result.prices.list_cents)} /><Metric label="Lucro pós-mídia" value={formatBRL(result.economics.profit_after_target_ad_cents)} /><Metric label="Margem líquida" value={`${result.economics.net_margin_pct.toFixed(2)}%`} /><Metric label="CPA máximo" value={formatBRL(result.economics.max_cpa_cents)} /><Metric label="ROAS mínimo" value={`${result.economics.break_even_roas.toFixed(2)}x`} /></div> : null}
           </section>
