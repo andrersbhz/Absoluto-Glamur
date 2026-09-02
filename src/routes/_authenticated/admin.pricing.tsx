@@ -93,9 +93,17 @@ function PricingV12Page() {
   const patch = (key: keyof ProfileDraft, value: string | number | boolean) => setProfile((old) => ({ ...old, [key]: value }));
 
   async function save() {
+    if (!profile.name.trim()) return toast.error("Dê um nome ao perfil");
+    if (profile.desired_margin_pct < 1 || profile.desired_margin_pct > 90) {
+      return toast.error("Margem desejada deve ficar entre 1% e 90%");
+    }
+    if (profile.target_ad_cost_pct < 0 || profile.target_ad_cost_pct > 90) {
+      return toast.error("CAC/meta de mídia deve ficar entre 0% e 90%");
+    }
     setSaving(true);
     try {
       const response = await saveProfile({ data: profile });
+
       setProfile((old) => ({ ...old, id: response.id }));
       toast.success("Perfil de precificação salvo");
     } catch (e) {
