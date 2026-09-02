@@ -311,9 +311,11 @@ async function loadAliExpressUrlPreview(
   const sku = String(firstSku?.sku_code ?? firstSku?.sku_id ?? `AE-${productId}`);
   const weightKg = firstOfficialNumber(props?.package_weight, firstSku?.package_weight);
   const descriptionHtml = String(base?.detail ?? result?.package_info_dto?.package_detail ?? "");
+  const brandName = extractBrandName(props, base, result);
 
   return {
     title: rawTitle,
+    brand_name: brandName,
     description: descriptionHtml ? stripOfficialHtml(descriptionHtml).slice(0, 6000) : null,
     images: images.slice(0, 12),
     price_original: price,
