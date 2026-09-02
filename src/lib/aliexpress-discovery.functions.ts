@@ -907,5 +907,24 @@ export const importAliexpressProductToStore = createServerFn({ method: "POST" })
       .update({ status: "imported", product_id: productId, error: null })
       .eq("id", imp.id);
 
-    return { product_id: productId, price_cents: priceCents };
+    // Importa também todas as variações (SKUs) reais do AliExpress.
+    let variantsSynced = 0;
+    let variantsWarning: string | null = null;
+    try {
+      const { syncVariantsForProduct } = await import("./aliexpress-variants.server");
+      const r = await syncVariantsForProduct(db, productId, String(data.product_id), settings);
+      variantsSynced = r.created + r.updated;
+      if (r.errors.length > 0) variantsWarning = r.errors.slice(0, 3).join(" | ");
+      else if (r.total_skus === 0)
+        variantsWarning = r.note ?? "Nenhuma variação (SKU) retornada pelo AliExpress.";
+    } catch (e) {
+      variantsWarning = e instanceof Error ? e.message : String(e);
+    }
+
+    return {
+      product_id: productId,
+      price_cents: priceCents,
+      variants_synced: variantsSynced,
+      variants_warning: variantsWarning,
+    };
   });
