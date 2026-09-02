@@ -242,6 +242,35 @@ function stripOfficialHtml(input: string): string {
     .trim();
 }
 
+const BRAND_ATTR_NAMES = ["brand name", "brand", "marca", "品牌"];
+const BRAND_UNKNOWN = ["no brand", "none", "n/a", "na", "unbranded", "sem marca", "other", "others", "generic"];
+
+/** Lê a marca informada pela API do AliExpress (propriedades do item ou campos base). */
+export function extractBrandName(props: any, base: any, result?: any): string | null {
+  const rows: any[] =
+    (Array.isArray(props?.ae_item_property) && props.ae_item_property) ||
+    (Array.isArray(props?.ae_item_property?.ae_item_property) && props.ae_item_property.ae_item_property) ||
+    (Array.isArray(props) && props) ||
+    (Array.isArray(result?.ae_item_properties?.ae_item_property) && result.ae_item_properties.ae_item_property) ||
+    [];
+
+  let candidate: string | null = null;
+  for (const row of rows) {
+    const name = String(row?.attr_name ?? row?.attrName ?? row?.name ?? "").trim().toLowerCase();
+    if (BRAND_ATTR_NAMES.includes(name)) {
+      candidate = String(row?.attr_value ?? row?.attrValue ?? row?.value ?? "").trim();
+      if (candidate) break;
+    }
+  }
+  if (!candidate) {
+    candidate = String(base?.brand_name ?? base?.brand ?? result?.brand_name ?? "").trim();
+  }
+  if (!candidate) return null;
+  const clean = candidate.replace(/\s+/g, " ").slice(0, 80).trim();
+  if (!clean || BRAND_UNKNOWN.includes(clean.toLowerCase())) return null;
+  return clean;
+}
+
 async function loadAliExpressUrlPreview(
   input: string,
   credentialClient: any,
