@@ -64,6 +64,20 @@ export const simulateProfessionalPrice = createServerFn({ method: "POST" })
     profile_id: z.string().uuid().nullable().optional(),
     supplier_shipping_cents: z.number().int().min(0).default(0),
     discount_pct: z.number().min(0).max(90).default(0),
+    /** Valores em edição na tela (ainda não salvos) — permitem simulação dinâmica. */
+    profile_override: z.object({
+      gateway_pct: z.number().min(0).max(100),
+      gateway_fixed_cents: z.number().int().min(0),
+      tax_pct: z.number().min(0).max(100),
+      fx_spread_pct: z.number().min(0).max(100),
+      returns_pct: z.number().min(0).max(100),
+      chargeback_pct: z.number().min(0).max(100),
+      operational_pct: z.number().min(0).max(100),
+      desired_margin_pct: z.number().min(0).max(90),
+      target_ad_cost_pct: z.number().min(0).max(90),
+      shipping_subsidy_cents: z.number().int().min(0),
+      packaging_cents: z.number().int().min(0),
+    }).partial().optional(),
   }).parse(value))
   .handler(async ({ data, context }) => {
     await assertCatalog(context);
@@ -77,8 +91,10 @@ export const simulateProfessionalPrice = createServerFn({ method: "POST" })
     ]);
     if (costRes.error) throw new Error(costRes.error.message);
     if (profileRes.error) throw new Error(profileRes.error.message);
-    const profile = profileRes.data;
-    if (!profile) throw new Error("Configure um perfil de precificação v1.2");
+    const baseProfile = profileRes.data ?? (data.profile_override ? {} : null);
+    if (!baseProfile) throw new Error("Configure um perfil de precificação v1.2");
+    const profile = { ...baseProfile, ...(data.profile_override ?? {}) } as Record<string, unknown> & typeof baseProfile;
+
 
     const baseProductCost = (costRes.data ?? []).reduce((sum, row) => sum + Number(row.amount_cents ?? 0), 0);
     const landedBase = baseProductCost + data.supplier_shipping_cents + Number(profile.packaging_cents ?? 0) + Number(profile.shipping_subsidy_cents ?? 0);
