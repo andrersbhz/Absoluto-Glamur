@@ -609,12 +609,31 @@ function CatalogEditor() {
                       </Field>
 
                     </div>
-                    <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="grid gap-4 sm:grid-cols-3">
                       <Field label="Preço cheio" required hint="Valor em reais (R$).">
                         <MoneyInput
                           value={form.list_price}
                           onChange={(v) => setForm({ ...form, list_price: v })}
                           required
+                        />
+                      </Field>
+                      <Field label="Desconto (%)" hint="0% = sem preço promocional.">
+                        <input
+                          type="number"
+                          min={0}
+                          max={100}
+                          step="1"
+                          value={discount}
+                          onChange={(e) => {
+                            const pct = Math.min(100, Math.max(0, Number(e.target.value) || 0));
+                            if (pct <= 0 || listCents <= 0) {
+                              setForm({ ...form, sale_price: "" });
+                              return;
+                            }
+                            const cents = Math.max(0, Math.round(listCents * (1 - pct / 100)));
+                            setForm({ ...form, sale_price: (cents / 100).toFixed(2) });
+                          }}
+                          className="input"
                         />
                       </Field>
                       <Field
@@ -627,6 +646,7 @@ function CatalogEditor() {
                         />
                       </Field>
                     </div>
+
                     {(listCents > 0 || saleCents > 0) && (
                       <div className="rounded-xl border border-border bg-secondary/40 p-4">
                         <p className="text-xs uppercase tracking-wide text-muted-foreground">

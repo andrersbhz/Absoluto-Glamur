@@ -764,6 +764,36 @@ export type Database = {
         }
         Relationships: []
       }
+      discount_settings: {
+        Row: {
+          created_at: string
+          enabled: boolean
+          id: string
+          percent: number
+          scope: string
+          target_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          percent?: number
+          scope: string
+          target_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          percent?: number
+          scope?: string
+          target_id?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       exchange_rates: {
         Row: {
           base_currency: string
