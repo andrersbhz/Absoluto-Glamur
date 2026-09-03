@@ -2,10 +2,22 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { callAli } from "./aliexpress-discovery.functions";
+import { applyProductPricing } from "./pricing-engine.server";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 const ALI_SOURCES = ["aliexpress", "aliexpress_api", "aliexpress_url"];
+const FALLBACK_PRICING = { markup_percent: 150, markup_fixed_cents: 0, round_to_99: true };
+
+async function loadFallbackPricing(db: any) {
+  const { data } = await db.from("integrations").select("config").eq("provider", "aliexpress").maybeSingle();
+  const raw = (data?.config as any)?.import_settings ?? data?.config ?? {};
+  return {
+    markup_percent: Number(raw.markup_percent ?? 150),
+    markup_fixed_cents: Number(raw.markup_fixed_cents ?? 0),
+    round_to_99: raw.round_to_99 !== false,
+  };
+}
 
 async function assertCatalog(context: any) {
   const { data: adm } = await context.supabase.rpc("is_admin", { _user_id: context.userId });
@@ -33,6 +45,7 @@ function num(v: unknown): number {
 async function fetchAliexpressLive(productId: string, credentialClient?: any): Promise<{
   total: number;
   bySku: Record<string, number>;
+  costBySku: Record<string, number>;
   costBrlCents: number | null;
   priceBrlCents: number | null;
 }> {
@@ -55,6 +68,7 @@ async function fetchAliexpressLive(productId: string, credentialClient?: any): P
       : [];
 
   const bySku: Record<string, number> = {};
+  const costBySku: Record<string, number> = {};
   let total = 0;
   const priceCandidates: number[] = [];
   const parsePrice = (v: unknown): number | null => {
@@ -74,6 +88,7 @@ async function fetchAliexpressLive(productId: string, credentialClient?: any): P
       s.offer_sale_price ?? s.sku_price ?? s.offer_bulk_sale_price ?? s.price,
     );
     if (p != null) priceCandidates.push(p);
+    if (code && p != null) costBySku[code] = p;
   }
   if (total === 0) {
     total = num(result.total_available_stock ?? result.stock ?? result.available_stock);
@@ -90,7 +105,7 @@ async function fetchAliexpressLive(productId: string, credentialClient?: any): P
         result.sale_price,
     ) ??
     (priceCandidates.length > 0 ? Math.min(...priceCandidates) : null);
-  return { total, bySku, costBrlCents: productPrice, priceBrlCents: productPrice };
+  return { total, bySku, costBySku, costBrlCents: productPrice, priceBrlCents: productPrice };
 }
 
 // Alias de compatibilidade para chamadas antigas.
@@ -134,11 +149,11 @@ export const syncAliexpressStock = createServerFn({ method: "POST" })
       };
     }
 
-    const { total, bySku, costBrlCents } = await fetchAliexpressLive(imp.source_id, db);
+    const { total, bySku, costBySku, costBrlCents } = await fetchAliexpressLive(imp.source_id, db);
 
     const { data: variants } = await db
       .from("product_variants")
-      .select("id, sku, is_default")
+      .select("id, sku, is_default, options")
       .eq("product_id", data.product_id);
 
     const rows: { variant_id: string; stock: number }[] = [];
@@ -148,6 +163,12 @@ export const syncAliexpressStock = createServerFn({ method: "POST" })
         const matched = v.sku && bySku[v.sku] != null ? bySku[v.sku] : null;
         const stock = matched != null ? matched : single || v.is_default ? total : 0;
         rows.push({ variant_id: v.id, stock: Math.max(0, stock) });
+        const skuCost = v.sku ? costBySku[v.sku] : null;
+        if (skuCost) {
+          await db.from("product_variants").update({
+            options: { ...((v.options as Record<string, unknown> | null) ?? {}), supplier_cost_cents: skuCost },
+          }).eq("id", v.id);
+        }
       }
     }
 
@@ -168,6 +189,10 @@ export const syncAliexpressStock = createServerFn({ method: "POST" })
         applied: false,
       } as any);
     }
+    await applyProductPricing(db, data.product_id, {
+      fallbackSettings: await loadFallbackPricing(db),
+      defaultSupplierCostCents: costBrlCents,
+    });
 
     await db
       .from("product_imports")
@@ -230,6 +255,7 @@ export async function runBulkSync(limit: number, client?: any) {
   });
 
   let ok = 0;
+  const fallbackPricing = await loadFallbackPricing(db).catch(() => FALLBACK_PRICING);
   const errors: { product_id: string; error: string }[] = [];
 
   let cursor = 0;
@@ -237,10 +263,10 @@ export async function runBulkSync(limit: number, client?: any) {
     while (cursor < list.length) {
       const row = list[cursor++];
       try {
-        const { total, bySku, costBrlCents } = await fetchAliexpressLive(row.source_id!, db);
+        const { total, bySku, costBySku, costBrlCents } = await fetchAliexpressLive(row.source_id!, db);
         const { data: variants } = await db
           .from("product_variants")
-          .select("id, sku, is_default")
+          .select("id, sku, is_default, options")
           .eq("product_id", row.product_id!);
         if (variants && variants.length > 0) {
           const single = variants.length === 1;
@@ -252,6 +278,13 @@ export async function runBulkSync(limit: number, client?: any) {
           await db
             .from("product_inventory")
             .upsert(rows, { onConflict: "variant_id" });
+          for (const variant of variants) {
+            const skuCost = variant.sku ? costBySku[variant.sku] : null;
+            if (!skuCost) continue;
+            await db.from("product_variants").update({
+              options: { ...((variant.options as Record<string, unknown> | null) ?? {}), supplier_cost_cents: skuCost },
+            }).eq("id", variant.id);
+          }
         }
         if (costBrlCents && costBrlCents > 0) {
           await db.from("pricing_calculations").insert({
@@ -264,6 +297,10 @@ export async function runBulkSync(limit: number, client?: any) {
             applied: false,
           } as any);
         }
+        await applyProductPricing(db, row.product_id!, {
+          fallbackSettings: fallbackPricing,
+          defaultSupplierCostCents: costBrlCents,
+        });
         ok += 1;
       } catch (e) {
         errors.push({

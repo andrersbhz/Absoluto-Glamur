@@ -1,8 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { generateText } from "ai";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { createLovableAiGatewayProvider } from "./ai-gateway.server";
+import { generateWithOwnKeys } from "./ai-translate.server";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 async function assertAiAccess(context: any) {
@@ -25,46 +24,24 @@ Regras obrigatórias:
 - Evite superlativos vazios ("o melhor do mundo"). Prefira benefícios sensoriais e de uso.
 - Nunca cite marcas concorrentes por nome.`;
 
-const MODELS = {
-  fast: "google/gemini-3.5-flash",
-  quality: "openai/gpt-5.4-mini",
-} as const;
-
 type CallOptions = {
   purpose: string;
   system: string;
   prompt: string;
-  model?: keyof typeof MODELS;
+  model?: "fast" | "quality";
   relatedKind?: string;
   relatedId?: string | null;
 };
 
 async function callAi(context: any, opts: CallOptions) {
-  const key = process.env.LOVABLE_API_KEY;
-  if (!key) throw new Error("LOVABLE_API_KEY ausente. Ative o Lovable AI nas configurações.");
-
-  const modelId = MODELS[opts.model ?? "fast"];
-  const gateway = createLovableAiGatewayProvider(key);
-  const model = gateway(modelId);
-
   const startedAt = Date.now();
   let status: "success" | "error" = "success";
   let output = "";
   let error: string | null = null;
-  let usage: { inputTokens?: number; outputTokens?: number; totalTokens?: number } = {};
 
   try {
-    const result = await generateText({
-      model,
-      system: opts.system,
-      prompt: opts.prompt,
-    });
-    output = result.text;
-    usage = {
-      inputTokens: (result.usage as any)?.inputTokens ?? (result.usage as any)?.promptTokens,
-      outputTokens: (result.usage as any)?.outputTokens ?? (result.usage as any)?.completionTokens,
-      totalTokens: (result.usage as any)?.totalTokens,
-    };
+    output = (await generateWithOwnKeys(opts.system, opts.prompt, context.supabase)) ?? "";
+    if (!output) throw new Error("Nenhuma integração Gemini/OpenAI habilitada respondeu.");
   } catch (e) {
     status = "error";
     error = e instanceof Error ? e.message : String(e);
@@ -75,13 +52,13 @@ async function callAi(context: any, opts: CallOptions) {
   await context.supabase.from("ai_generations").insert({
     user_id: context.userId,
     purpose: opts.purpose,
-    model: modelId,
-    provider: "lovable-ai",
+    model: opts.model ?? "automatic",
+    provider: "own-key",
     input: { prompt: opts.prompt.slice(0, 4000), system: opts.system.slice(0, 500) },
     output: output.slice(0, 12000),
-    input_tokens: usage.inputTokens ?? null,
-    output_tokens: usage.outputTokens ?? null,
-    total_tokens: usage.totalTokens ?? null,
+    input_tokens: null,
+    output_tokens: null,
+    total_tokens: null,
     latency_ms: latency,
     status,
     error,
@@ -91,11 +68,10 @@ async function callAi(context: any, opts: CallOptions) {
 
   if (status === "error") {
     if (error?.includes("429")) throw new Error("Limite de requisições atingido. Tente novamente em instantes.");
-    if (error?.includes("402")) throw new Error("Créditos de IA esgotados. Adicione créditos no workspace.");
     throw new Error(error ?? "Falha ao chamar IA");
   }
 
-  return { output, latency, usage, model: modelId };
+  return { output, latency, usage: {}, model: opts.model ?? "automatic" };
 }
 
 // ============ PRODUCT DESCRIPTION ============

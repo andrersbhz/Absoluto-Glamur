@@ -1,8 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { generateText } from "ai";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { createLovableAiGatewayProvider } from "./ai-gateway.server";
 import { generateWithOwnKeys } from "./ai-translate.server";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -436,7 +434,7 @@ export function toShortDescription(
   return `${(lastSpace > 60 ? cut.slice(0, lastSpace) : cut).trim()}…`;
 }
 
-async function translateToPtBr(input: { title: string; description: string | null }): Promise<{
+async function translateToPtBr(input: { title: string; description: string | null }, client?: any): Promise<{
   title: string;
   description: string | null;
 }> {
@@ -448,6 +446,7 @@ async function translateToPtBr(input: { title: string; description: string | nul
     const text = await generateWithOwnKeys(
       "Você traduz descrições de produtos de cosméticos para português do Brasil, mantendo tom elegante, claro e comercial. Preserve unidades, especificações e nomes próprios de ingredientes. Não invente informações. Responda APENAS com JSON válido no formato {\"title\":\"...\",\"description\":\"...\"} sem comentários nem markdown.",
       `Traduza para pt-BR o conteúdo abaixo. Reescreva de forma natural, sem estrangeirismos desnecessários.\n\n${payload}`,
+      client,
     );
     if (!text) {
       return {
@@ -501,7 +500,7 @@ export const scrapeUrlPreview = createServerFn({ method: "POST" })
     await assertCatalog(context);
     const raw = await loadAliExpressUrlPreview(data.url, context.supabase);
     const settings = await loadSettings(context.supabase);
-    const translated = await translateToPtBr({ title: raw.title, description: raw.description });
+    const translated = await translateToPtBr({ title: raw.title, description: raw.description }, context.supabase);
 
     let priceBrl: number | null = raw.price_original;
     const srcCurrency = (raw.currency ?? "BRL").toUpperCase();
@@ -657,7 +656,13 @@ async function commitImportRow(
 
   const { data: nv, error: ve } = await admin
     .from("product_variants")
-    .insert({ product_id: productId, sku, is_default: true, weight_grams: norm.weight_grams ?? null })
+    .insert({
+      product_id: productId,
+      sku,
+      is_default: true,
+      weight_grams: norm.weight_grams ?? null,
+      options: { supplier_cost_cents: norm.price_original ? Math.round(norm.price_original * 100) : null },
+    })
     .select("id")
     .single();
   if (ve) throw new Error(ve.message);
@@ -695,13 +700,8 @@ async function commitImportRow(
     .eq("id", importId);
 
   if (norm.source_id) {
-    try {
-      const { syncReviewsForProductInternal } = await import("./product-reviews.functions");
-      void syncReviewsForProductInternal(admin, productId, String(norm.source_id), 4.5);
-    } catch {
-      // reviews are non-critical
-    }
     await syncVariantsAndRecord(admin, importId, productId, String(norm.source_id), settings);
+    await syncImportedProductReviews(admin, productId);
   }
 
   return { productId, priceCents };
@@ -716,7 +716,7 @@ export const saveImportDraft = createServerFn({ method: "POST" })
     const translated = await translateToPtBr({
       title: data.normalized.title,
       description: data.normalized.description ?? null,
-    });
+    }, db);
     let priceBrl: number | null = data.normalized.price_original ?? null;
     const srcCurrency = (data.normalized.currency ?? "BRL").toUpperCase();
     if (priceBrl != null && srcCurrency !== "BRL") {
@@ -780,7 +780,7 @@ export const bulkImportJson = createServerFn({ method: "POST" })
       const translated = await translateToPtBr({
         title: n.title,
         description: n.description ?? null,
-      });
+      }, db);
       let priceBrl: number | null = n.price_original ?? null;
       const srcCurrency = (n.currency ?? "BRL").toUpperCase();
       if (priceBrl != null && srcCurrency !== "BRL") {
@@ -1088,6 +1088,7 @@ export const commitImport = createServerFn({ method: "POST" })
         sku,
         is_default: true,
         weight_grams: norm.weight_grams ?? null,
+        options: { supplier_cost_cents: norm.price_original ? Math.round(norm.price_original * 100) : null },
       })
       .select("id")
       .single();
@@ -1134,7 +1135,7 @@ export const commitImport = createServerFn({ method: "POST" })
         String(norm.source_id),
         settings,
       );
-        await syncImportedProductReviews(db, productId);
+      await syncImportedProductReviews(db, productId);
     }
 
     return { id: productId, slug, price_cents: priceCents };
