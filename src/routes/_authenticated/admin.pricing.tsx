@@ -3,6 +3,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { Calculator, Save, Search } from "lucide-react";
 import { AdminLayout } from "@/components/admin/AdminLayout";
+import { DiscountManager } from "@/components/admin/DiscountManager";
+
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
