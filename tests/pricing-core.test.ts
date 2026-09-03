@@ -4,7 +4,7 @@ import {
   computeProfessionalListPrice,
   resolveDiscountPercent,
   salePriceFromDiscount,
-} from "./pricing-core";
+} from "../src/lib/pricing-core";
 
 describe("pricing core", () => {
   test("applies the professional profile and .99 rounding", () => {

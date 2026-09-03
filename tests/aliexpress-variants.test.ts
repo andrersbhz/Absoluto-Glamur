@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { parseSkus } from "./aliexpress-variants.server";
+import { parseSkus } from "../src/lib/aliexpress-variants.server";
 
 describe("AliExpress SKU parser", () => {
   test("imports every SKU and its supplier cost", () => {

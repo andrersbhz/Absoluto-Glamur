@@ -814,7 +814,7 @@ export const importAliexpressProductToStore = createServerFn({ method: "POST" })
 
     const norm: NormalizedProduct = {
       title: stripBrandMentions(translated.title) ?? translated.title,
-      description: toParagraphHtml(stripBrandMentions(translated.description)),
+      description: stripHtml(stripBrandMentions(translated.description) ?? "") || null,
       images,
       price_original: priceBrl,
       currency: "BRL",
