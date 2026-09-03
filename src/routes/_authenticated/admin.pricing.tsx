@@ -185,7 +185,10 @@ function PricingV12Page() {
             {result ? <div className="mt-5 grid gap-3 sm:grid-cols-2"><Metric label="Custo real" value={formatBRL(result.cost.landed_cost_cents)} /><Metric label="Preço equilíbrio" value={formatBRL(result.prices.break_even_cents)} /><Metric label="Preço recomendado" value={formatBRL(result.prices.recommended_cents)} /><Metric label="Preço promocional" value={formatBRL(result.prices.promotional_cents)} /><Metric label="Preço de tabela" value={formatBRL(result.prices.list_cents)} /><Metric label="Lucro pós-mídia" value={formatBRL(result.economics.profit_after_target_ad_cents)} /><Metric label="Margem líquida" value={`${result.economics.net_margin_pct.toFixed(2)}%`} /><Metric label="CPA máximo" value={formatBRL(result.economics.max_cpa_cents)} /><Metric label="ROAS mínimo" value={`${result.economics.break_even_roas.toFixed(2)}x`} /></div> : null}
           </section>
         </div>
+
+        <DiscountManager />
       </div>
+
     </AdminLayout>
   );
 }
