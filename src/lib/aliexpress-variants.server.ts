@@ -49,6 +49,14 @@ function parseAmount(v: unknown): number | null {
 function asArray(block: any, key: string): any[] {
   if (Array.isArray(block)) return block;
   if (block && Array.isArray(block[key])) return block[key];
+  if (block && typeof block === "object") {
+    for (const value of Object.values(block)) {
+      if (Array.isArray(value)) return value;
+      if (value && typeof value === "object" && Array.isArray((value as any)[key])) {
+        return (value as any)[key];
+      }
+    }
+  }
   return [];
 }
 
@@ -60,7 +68,11 @@ export function parseSkus(json: any): ParsedSku[] {
     json;
   const result = root?.result ?? root;
   const skus = asArray(
-    result?.ae_item_sku_info_dtos ?? result?.skus ?? result?.sku_info_list,
+    result?.ae_item_sku_info_dtos ??
+      result?.ae_item_sku_info_list ??
+      result?.item_sku_info_dtos ??
+      result?.skus ??
+      result?.sku_info_list,
     "ae_item_sku_info_d_t_o",
   );
 
@@ -167,6 +179,7 @@ export async function syncVariantsForProduct(
   }, admin);
   const skus = parseSkus(json);
   if (skus.length === 0) {
+    const pricing = await applyProductPricing(admin, productId, { fallbackSettings: settings });
     return {
       source_id: sourceId,
       total_skus: 0,
@@ -174,7 +187,7 @@ export async function syncVariantsForProduct(
       updated: 0,
       unavailable: 0,
       errors: [],
-      note: "Nenhum SKU retornado pelo AliExpress.",
+      note: `Nenhum SKU retornado pelo AliExpress; ${pricing.variantsPriced} variação(ões) existente(s) foi(ram) reprecificada(s).`,
     };
   }
 
