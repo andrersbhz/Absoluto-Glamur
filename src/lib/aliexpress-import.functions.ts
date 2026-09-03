@@ -513,7 +513,7 @@ export const scrapeUrlPreview = createServerFn({ method: "POST" })
     return {
       ...raw,
       title: translated.title,
-      description: toParagraphHtml(translated.description),
+      description: stripHtml(translated.description ?? "") || null,
       price_original: priceBrl,
       currency: "BRL",
     };
