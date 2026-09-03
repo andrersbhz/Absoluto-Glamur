@@ -2,10 +2,22 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { callAli } from "./aliexpress-discovery.functions";
+import { applyProductPricing } from "./pricing-engine.server";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 const ALI_SOURCES = ["aliexpress", "aliexpress_api", "aliexpress_url"];
+const FALLBACK_PRICING = { markup_percent: 150, markup_fixed_cents: 0, round_to_99: true };
+
+async function loadFallbackPricing(db: any) {
+  const { data } = await db.from("integrations").select("config").eq("provider", "aliexpress").maybeSingle();
+  const raw = (data?.config as any)?.import_settings ?? data?.config ?? {};
+  return {
+    markup_percent: Number(raw.markup_percent ?? 150),
+    markup_fixed_cents: Number(raw.markup_fixed_cents ?? 0),
+    round_to_99: raw.round_to_99 !== false,
+  };
+}
 
 async function assertCatalog(context: any) {
   const { data: adm } = await context.supabase.rpc("is_admin", { _user_id: context.userId });
@@ -168,6 +180,10 @@ export const syncAliexpressStock = createServerFn({ method: "POST" })
         applied: false,
       } as any);
     }
+    await applyProductPricing(db, data.product_id, {
+      fallbackSettings: await loadFallbackPricing(db),
+      defaultSupplierCostCents: costBrlCents,
+    });
 
     await db
       .from("product_imports")
@@ -230,6 +246,7 @@ export async function runBulkSync(limit: number, client?: any) {
   });
 
   let ok = 0;
+  const fallbackPricing = await loadFallbackPricing(db).catch(() => FALLBACK_PRICING);
   const errors: { product_id: string; error: string }[] = [];
 
   let cursor = 0;
@@ -264,6 +281,10 @@ export async function runBulkSync(limit: number, client?: any) {
             applied: false,
           } as any);
         }
+        await applyProductPricing(db, row.product_id!, {
+          fallbackSettings: fallbackPricing,
+          defaultSupplierCostCents: costBrlCents,
+        });
         ok += 1;
       } catch (e) {
         errors.push({

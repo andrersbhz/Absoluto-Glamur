@@ -156,6 +156,7 @@ function UrlTab() {
           currency: product.currency,
           sku: product.sku,
           weight_grams: product.weight_grams,
+           brand_name: product.brand_name ?? null,
         },
       },
     });

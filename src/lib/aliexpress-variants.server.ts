@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { callAli } from "./aliexpress-discovery.functions";
-import { computeSalePriceCents, type ImportSettings } from "./aliexpress-import.functions";
+import type { ImportSettings } from "./aliexpress-import.functions";
+import { applyProductPricing } from "./pricing-engine.server";
 
 const DEFAULT_SETTINGS: ImportSettings = {
   markup_percent: 150,
@@ -206,6 +207,8 @@ export async function syncVariantsForProduct(
     const options = {
       attributes: s.attributes,
       image_url: s.image_url,
+      supplier_cost_cents: s.cost ? Math.round(s.cost * 100) : null,
+      supplier_list_cost_cents: s.cost_list ? Math.round(s.cost_list * 100) : null,
       external_sku_id: s.external_sku_id,
       sku_attr: s.external_sku_attr,
       source_id: sourceId,
@@ -258,29 +261,6 @@ export async function syncVariantsForProduct(
       created += 1;
     }
 
-    // Preço com markup da loja (mantém a mesma regra do importador).
-    const listCents = computeSalePriceCents(s.cost_list ?? s.cost, "BRL", settings);
-    const saleCents = s.cost_list ? computeSalePriceCents(s.cost, "BRL", settings) : 0;
-    if (listCents > 0) {
-      const { data: activePrice } = await admin
-        .from("product_prices")
-        .select("id")
-        .eq("variant_id", variantId)
-        .eq("is_active", true)
-        .maybeSingle();
-      const priceRow = {
-        list_price_cents: listCents,
-        sale_price_cents: saleCents > 0 && saleCents < listCents ? saleCents : null,
-        is_active: true,
-      };
-      const { error: priceErr } = activePrice?.id
-        ? await admin.from("product_prices").update(priceRow).eq("id", activePrice.id)
-        : await admin.from("product_prices").insert({ variant_id: variantId, ...priceRow });
-      if (priceErr) {
-        errors.push(`SKU ${s.external_sku_id}: falha ao gravar preço (${priceErr.message})`);
-      }
-    }
-
     const { error: invErr } = await admin
       .from("product_inventory")
       .upsert({ variant_id: variantId, stock: s.stock }, { onConflict: "variant_id" });
@@ -309,6 +289,14 @@ export async function syncVariantsForProduct(
   const available = (after ?? []).filter((v: any) => v.is_available);
   if (available.length > 0 && !available.some((v: any) => v.is_default)) {
     await admin.from("product_variants").update({ is_default: true }).eq("id", available[0].id);
+  }
+
+  // Custo e estoque vêm do fornecedor; preço de venda sempre passa pelas regras
+  // profissionais e, depois, pela hierarquia de descontos da loja.
+  try {
+    await applyProductPricing(admin, productId, { fallbackSettings: settings });
+  } catch (error) {
+    errors.push(`Falha ao reaplicar a precificação: ${error instanceof Error ? error.message : String(error)}`);
   }
 
   return {

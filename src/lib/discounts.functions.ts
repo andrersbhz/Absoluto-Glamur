@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { resolveDiscountPercent, salePriceFromDiscount } from "./pricing-core";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function assertCatalog(context: any) {
@@ -14,9 +15,7 @@ type Setting = { id: string; scope: string; target_id: string | null; percent: n
 
 /** Preço promocional a partir do preço de tabela e do percentual. Nunca negativo. */
 export function salePriceFromPercent(listCents: number, percent: number): number | null {
-  if (!(percent > 0)) return null;
-  const sale = Math.max(0, Math.round(listCents * (1 - percent / 100)));
-  return sale > 0 && sale < listCents ? sale : null;
+  return salePriceFromDiscount(listCents, percent);
 }
 
 /** Hierarquia: produto > categoria > global. `null` = não configurado (herda). */
@@ -27,13 +26,7 @@ function resolvePercent(
   byCategory: Map<string, number>,
   global: number | null,
 ): number {
-  const own = byProduct.get(productId);
-  if (own !== undefined) return own;
-  if (categoryId) {
-    const cat = byCategory.get(categoryId);
-    if (cat !== undefined) return cat;
-  }
-  return global ?? 0;
+  return resolveDiscountPercent(productId, categoryId, byProduct, byCategory, global);
 }
 
 export const listDiscountSettings = createServerFn({ method: "GET" })
