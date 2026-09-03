@@ -656,7 +656,13 @@ async function commitImportRow(
 
   const { data: nv, error: ve } = await admin
     .from("product_variants")
-    .insert({ product_id: productId, sku, is_default: true, weight_grams: norm.weight_grams ?? null })
+    .insert({
+      product_id: productId,
+      sku,
+      is_default: true,
+      weight_grams: norm.weight_grams ?? null,
+      options: { supplier_cost_cents: norm.price_original ? Math.round(norm.price_original * 100) : null },
+    })
     .select("id")
     .single();
   if (ve) throw new Error(ve.message);
@@ -1082,6 +1088,7 @@ export const commitImport = createServerFn({ method: "POST" })
         sku,
         is_default: true,
         weight_grams: norm.weight_grams ?? null,
+        options: { supplier_cost_cents: norm.price_original ? Math.round(norm.price_original * 100) : null },
       })
       .select("id")
       .single();
@@ -1128,7 +1135,7 @@ export const commitImport = createServerFn({ method: "POST" })
         String(norm.source_id),
         settings,
       );
-        await syncImportedProductReviews(db, productId);
+      await syncImportedProductReviews(db, productId);
     }
 
     return { id: productId, slug, price_cents: priceCents };

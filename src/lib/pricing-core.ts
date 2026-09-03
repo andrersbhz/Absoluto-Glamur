@@ -45,10 +45,12 @@ export function computeProfessionalListPrice(
   if (!Number.isFinite(variablePct) || variablePct >= 95) {
     throw new Error("A soma de custos percentuais e margem deve ser menor que 95%.");
   }
-  const raw = Math.ceil(
+  const recommended = roundPriceTo99(Math.ceil(
     (landed + Number(profile.gateway_fixed_cents ?? 0)) / (1 - variablePct / 100),
-  );
-  return roundPriceTo99(raw);
+  ));
+  // A v1.2 mantém 10% de espaço entre preço normal e recomendado. Descontos
+  // são aplicados depois, sem alterar este preço-base.
+  return roundPriceTo99(Math.ceil(recommended / 0.9));
 }
 
 export function computeLegacyListPrice(

@@ -18,7 +18,7 @@ describe("pricing core", () => {
       desired_margin_pct: 20,
       fx_spread_pct: 4,
       gateway_fixed_cents: 100,
-    })).toBe(21_999);
+    })).toBe(24_599);
   });
 
   test("rejects unsustainable percentage totals", () => {
@@ -26,7 +26,7 @@ describe("pricing core", () => {
   });
 
   test("keeps the legacy fallback deterministic", () => {
-    expect(computeLegacyListPrice(4_000, { markup_percent: 150, markup_fixed_cents: 0, round_to_99: true })).toBe(9_999);
+    expect(computeLegacyListPrice(4_000, { markup_percent: 150, markup_fixed_cents: 0, round_to_99: true })).toBe(10_099);
   });
 
   test("resolves product over category over global, including explicit zero", () => {

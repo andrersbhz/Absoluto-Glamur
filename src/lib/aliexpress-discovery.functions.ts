@@ -693,24 +693,19 @@ async function loadSettings(admin: any) {
       };
 }
 
-async function translateToPtBr(input: { title: string; description: string | null }): Promise<{
+async function translateToPtBr(input: { title: string; description: string | null }, client?: any): Promise<{
   title: string;
   description: string | null;
 }> {
-  const key = process.env.LOVABLE_API_KEY;
-  if (!key) return input;
   try {
-    const { generateText } = await import("ai");
-    const { createLovableAiGatewayProvider } = await import("./ai-gateway.server");
-    const gateway = createLovableAiGatewayProvider(key);
-    const model = gateway("google/gemini-2.5-flash");
+    const { generateWithOwnKeys } = await import("./ai-translate.server");
     const payload = JSON.stringify({ title: input.title, description: input.description ?? "" });
-    const { text } = await generateText({
-      model,
-      system:
+    const text = await generateWithOwnKeys(
         "Você traduz descrições de produtos de cosméticos para português do Brasil, com tom elegante, claro e comercial. Preserve unidades, especificações e nomes próprios de ingredientes. Não invente informações. Responda APENAS com JSON válido no formato {\"title\":\"...\",\"description\":\"...\"}.",
-      prompt: `Traduza para pt-BR:\n\n${payload}`,
-    });
+        `Traduza para pt-BR:\n\n${payload}`,
+        client,
+    );
+    if (!text) return input;
     const cleaned = text.trim().replace(/^```(?:json)?/i, "").replace(/```$/i, "").trim();
     const parsed = JSON.parse(cleaned);
     return {
@@ -807,7 +802,7 @@ export const importAliexpressProductToStore = createServerFn({ method: "POST" })
     const weight = firstNumber(props.package_weight, firstSku.package_weight);
 
     // Translate
-    const translated = await translateToPtBr({ title, description });
+    const translated = await translateToPtBr({ title, description }, db);
 
     // Convert to BRL
     let priceBrl: number | null = priceRaw;
@@ -875,6 +870,7 @@ export const importAliexpressProductToStore = createServerFn({ method: "POST" })
         sku: norm.sku ?? `AE-${data.product_id}`,
         is_default: true,
         weight_grams: norm.weight_grams ?? null,
+        options: { supplier_cost_cents: priceBrl ? Math.round(priceBrl * 100) : null },
       })
       .select("id")
       .single();
@@ -921,10 +917,20 @@ export const importAliexpressProductToStore = createServerFn({ method: "POST" })
       variantsWarning = e instanceof Error ? e.message : String(e);
     }
 
+    let reviewsWarning: string | null = null;
+    try {
+      const { syncLiveReviewsInternal } = await import("./product-reviews-live.functions");
+      const reviewResult = await syncLiveReviewsInternal(db, productId, true, db);
+      if (reviewResult.error && reviewResult.fetched === 0) reviewsWarning = reviewResult.error;
+    } catch (error) {
+      reviewsWarning = error instanceof Error ? error.message : String(error);
+    }
+
     return {
       product_id: productId,
       price_cents: priceCents,
       variants_synced: variantsSynced,
       variants_warning: variantsWarning,
+      reviews_warning: reviewsWarning,
     };
   });
