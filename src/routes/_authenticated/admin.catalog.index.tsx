@@ -14,13 +14,14 @@ import {
   listAdminProducts,
   deleteAdminProduct,
   exportAdminProductsCsv,
+  translateStoreGlobal,
   type AdminProductRow,
 } from "@/lib/admin-catalog.functions";
 import { optimizeProductCopy } from "@/lib/ai-product-optimize.functions";
 import { syncAllAliexpressStock, syncAliexpressStock } from "@/lib/aliexpress-stock.functions";
 import { bulkSyncAliexpressReviews } from "@/lib/product-reviews.functions";
 import { resyncAliexpressVariantsBulk } from "@/lib/aliexpress-variants.functions";
-import { Star } from "lucide-react";
+import { Star, Languages } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/admin/catalog/")({
   head: () => ({ meta: [{ title: "Catálogo · Admin Absoluto Glamur" }] }),
@@ -50,6 +51,34 @@ function CatalogList() {
   const bulkReviews = useServerFn(bulkSyncAliexpressReviews);
   const resyncVariants = useServerFn(resyncAliexpressVariantsBulk);
   const optimize = useServerFn(optimizeProductCopy);
+  const translateStore = useServerFn(translateStoreGlobal);
+  const [translating, setTranslating] = useState<string | null>(null);
+
+  async function handleTranslateStore() {
+    if (translating) return;
+    setTranslating("Preparando tradução…");
+    let translated = 0;
+    let failed = 0;
+    let lastError: string | null = null;
+    try {
+      for (let round = 0; round < 200; round += 1) {
+        const r = await translateStore({ data: { batch: 3 } });
+        translated += r.translated;
+        failed += r.failed;
+        if (r.errors.length) lastError = r.errors[0];
+        setTranslating(`Traduzindo… ${translated}/${r.pending + translated} produtos`);
+        if (r.remaining === 0 || (r.translated === 0 && r.failed === 0)) break;
+        if (r.translated === 0 && r.failed > 0 && translated === 0) break;
+      }
+      if (translated > 0) toast.success(`Loja traduzida: ${translated} produto(s) em 6 idiomas`);
+      else if (failed === 0) toast.info("Todos os produtos já estavam traduzidos");
+      if (failed > 0) toast.error(`${failed} produto(s) falharam${lastError ? `: ${lastError}` : ""}`);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Falha ao traduzir a loja");
+    } finally {
+      setTranslating(null);
+    }
+  }
   const qc = useQueryClient();
   const [q, setQ] = useState("");
   const [status, setStatus] = useState<StatusFilter>("all");
@@ -244,6 +273,15 @@ function CatalogList() {
               {bulkReviewsMut.isPending ? "Buscando avaliações…" : "Sincronizar avaliações AliExpress"}
             </button>
 
+            <button
+              onClick={() => void handleTranslateStore()}
+              disabled={!!translating}
+              className="inline-flex items-center gap-2 rounded-lg border border-primary/40 bg-primary/10 px-4 py-2 text-sm text-primary hover:bg-primary/20 disabled:opacity-60"
+              title="Traduzir todos os produtos da loja para inglês, espanhol, espanhol (MX), francês, italiano e alemão"
+            >
+              <Languages className={`h-4 w-4 ${translating ? "animate-pulse" : ""}`} />
+              {translating ?? "Traduzir loja inteira"}
+            </button>
             <button
               onClick={handleExport}
               disabled={exporting}

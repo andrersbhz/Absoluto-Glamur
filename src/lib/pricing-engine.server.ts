@@ -19,6 +19,13 @@ function supplierCostFromOptions(options: unknown): number | null {
   return Number.isFinite(raw) && raw > 0 ? Math.round(raw) : null;
 }
 
+/** Preço manual definido pelo lojista para uma variação (nunca sobrescrito pela sincronização). */
+function priceOverrideFromOptions(options: unknown): number | null {
+  if (!options || typeof options !== "object") return null;
+  const raw = Number((options as Record<string, unknown>).price_override_cents ?? 0);
+  return Number.isFinite(raw) && raw > 0 ? Math.round(raw) : null;
+}
+
 /** Único caminho usado pelas sincronizações para transformar custo em preço de venda. */
 export async function applyProductPricing(
   db: any,
@@ -65,8 +72,12 @@ export async function applyProductPricing(
   for (const variant of variantsRes.data ?? []) {
     const active = variant.prices?.find((price: any) => price.is_active) ?? variant.prices?.[0];
     const supplierCost = supplierCostFromOptions(variant.options) ?? options.defaultSupplierCostCents ?? null;
+    const override = priceOverrideFromOptions(variant.options);
     let listCents = Number(active?.list_price_cents ?? 0);
-    if (supplierCost && supplierCost > 0) {
+    if (override) {
+      // Preço manual da variação: a sincronização atualiza custo/estoque, mas nunca o preço.
+      listCents = override;
+    } else if (supplierCost && supplierCost > 0) {
       listCents = profileRes.data
         ? computeProfessionalListPrice(supplierCost, additionalCostCents, profileRes.data)
         : computeLegacyListPrice(supplierCost, options.fallbackSettings);
