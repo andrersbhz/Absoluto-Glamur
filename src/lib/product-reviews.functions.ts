@@ -58,7 +58,8 @@ async function assertCatalog(context: any) {
 async function translateReviewsToPtBr(
   items: { title: string | null; body: string | null }[],
 ): Promise<ReviewTranslation[]> {
-  if (items.length === 0) return [];
+  // Avaliações permanecem no idioma original: nada é traduzido.
+  return items.map((it) => ({ ...it, translated: false }));
   const payload = items.map((it, i) => ({ i, title: it.title ?? "", body: it.body ?? "" }));
   if (!payload.some((it) => it.title.trim() || it.body.trim())) {
     return items.map((it) => ({ ...it, translated: true }));

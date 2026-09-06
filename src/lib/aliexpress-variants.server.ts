@@ -97,12 +97,14 @@ export function parseSkus(json: any): ParsedSku[] {
       if (typeof img === "string" && img.startsWith("http") && !image_url) image_url = img;
     }
 
+    // Usamos sempre o preço original do fornecedor (sku_price); o preço
+    // promocional oscila e faria o preço da loja mudar a cada sincronização.
     const cost =
-      parseAmount(s.offer_sale_price) ??
       parseAmount(s.sku_price) ??
+      parseAmount(s.offer_sale_price) ??
       parseAmount(s.offer_bulk_sale_price) ??
       parseAmount(s.price);
-    const costList = parseAmount(s.sku_price);
+    const costList = null;
 
     out.push({
       external_sku_id: externalId,
@@ -283,12 +285,9 @@ export async function syncVariantsForProduct(
   }
 
   // SKUs que não vieram mais do fornecedor → indisponíveis (nunca excluídos).
+  // Variações nunca são excluídas nem ocultadas: apenas ficam com estoque 0.
   const stale = rows.filter((r) => !matchedIds.has(r.id));
   for (const r of stale) {
-    await admin
-      .from("product_variants")
-      .update({ is_available: false, is_default: false })
-      .eq("id", r.id);
     await admin
       .from("product_inventory")
       .upsert({ variant_id: r.id, stock: 0 }, { onConflict: "variant_id" });

@@ -4,7 +4,6 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import {
   Camera,
-  Check,
   Eye,
   EyeOff,
   LoaderCircle,
@@ -31,6 +30,7 @@ import {
   type ExternalReview,
 } from "@/lib/product-reviews.functions";
 import { useAuth } from "@/hooks/use-auth";
+import { countryFlag } from "@/lib/country-flag";
 
 type Props = { productId: string };
 
