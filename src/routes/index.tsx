@@ -247,7 +247,7 @@ export function Index() {
               <div className={`mt-12 flex flex-wrap items-center gap-x-8 gap-y-3 text-[11px] uppercase tracking-[0.28em] ${heroImageUrl ? "text-white/85" : "text-muted-foreground"}`}>
                 {trustBadges.map((b, i) => (
                   <span key={i} className="flex items-center gap-2">
-                    <Gem className="h-3 w-3 text-champagne" /> {b.label}
+                    <Gem className="h-3 w-3 text-champagne" /> {ct("home", "home_content", `trust_badges.${i}.label`, b.label)}
                   </span>
                 ))}
               </div>
@@ -337,8 +337,8 @@ export function Index() {
                   <div className="relative inline-flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-primary/15 to-champagne/25 text-primary ring-1 ring-champagne/40">
                     <Icon className="h-5 w-5" />
                   </div>
-                  <h3 className="relative mt-6 font-display text-2xl">{item.title}</h3>
-                  <p className="relative mt-3 text-sm leading-relaxed text-muted-foreground">{item.body}</p>
+                  <h3 className="relative mt-6 font-display text-2xl">{ct("home", "home_content", `pillars.items.${i}.title`, item.title)}</h3>
+                  <p className="relative mt-3 text-sm leading-relaxed text-muted-foreground">{ct("home", "home_content", `pillars.items.${i}.body`, item.body)}</p>
                 </div>
               );
             })}
@@ -647,6 +647,7 @@ function AnnouncementBar({
   announcement: { text?: string; product?: AnnouncementProduct };
 }) {
   const { t } = useI18n();
+  const ct = useContentText();
   const product = announcement.product;
   const hasProduct = !!(product?.slug && product?.category_slug);
   const href =
@@ -655,14 +656,14 @@ function AnnouncementBar({
       ? `/${product!.category_slug}/${product!.slug}${product?.variant_id ? `?variant=${product.variant_id}` : ""}`
       : "/products");
   const label = product?.cta_label || t("home.viewProduct");
-  const eyebrow = product?.eyebrow || announcement.text || t("home.dailyHighlight");
+  const eyebrow = product?.eyebrow || ct("home", "home_content", "announcement.text", announcement.text) || t("home.dailyHighlight");
 
   if (!hasProduct) {
     return (
       <div className="bg-plum text-primary-foreground">
         <div className="mx-auto flex max-w-7xl items-center justify-center gap-3 px-4 py-2 text-[11px] uppercase tracking-[0.28em] sm:px-6 lg:px-8">
           <Crown className="h-3 w-3 text-champagne" />
-          <span>{announcement.text}</span>
+          <span>{ct("home", "home_content", "announcement.text", announcement.text)}</span>
           <Crown className="h-3 w-3 text-champagne" />
         </div>
       </div>
