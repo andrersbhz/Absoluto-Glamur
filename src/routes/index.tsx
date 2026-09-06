@@ -109,6 +109,7 @@ function clampInt(value: number | undefined, fallback: number, min: number, max:
 }
 
 export function Index() {
+  const { t } = useI18n();
   const { data: bestsellers = [] } = useQuery(featuredProductsQuery("mais-vendidos"));
   const { data: newArrivals = [] } = useQuery(featuredProductsQuery("lancamentos"));
   const { data: categories = [] } = useQuery(categoriesQuery());
@@ -396,6 +397,7 @@ function CategoryGridSection({
   align?: "left" | "center";
   pillStyle?: "outline" | "soft" | "solid";
 }) {
+  const { t } = useI18n();
   if (categories.length === 0) return null;
   const pillClass = pillStyle === "solid"
     ? "border-primary bg-primary text-primary-foreground hover:bg-primary/90"
@@ -464,6 +466,7 @@ function CategoryProductsSections({
   }>;
   productLimit?: number;
 }) {
+  const { t } = useI18n();
   return (
     <>
       {rows.map((row) => (
@@ -481,6 +484,7 @@ function CategoryProductsSections({
 }
 
 function CustomBlock({ block }: { block: HomepageBlock }) {
+  const { t } = useI18n();
   const data = (block.data ?? {}) as Record<string, string | number | string[] | undefined>;
   const { data: collProducts = [] } = useQuery({
     ...featuredProductsQuery(String(data.slug ?? "")),
@@ -578,6 +582,7 @@ function CustomBlock({ block }: { block: HomepageBlock }) {
 }
 
 function FeaturedCollectionSection({ slug, name, description }: { slug: string; name: string; description: string | null }) {
+  const { t } = useI18n();
   const { data: products = [] } = useQuery(featuredProductsQuery(slug));
   if (products.length === 0) return null;
   return (
@@ -632,6 +637,7 @@ function AnnouncementBar({
 }: {
   announcement: { text?: string; product?: AnnouncementProduct };
 }) {
+  const { t } = useI18n();
   const product = announcement.product;
   const hasProduct = !!(product?.slug && product?.category_slug);
   const href =
