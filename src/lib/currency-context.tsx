@@ -73,10 +73,22 @@ export function CurrencyProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     try {
       const stored = window.localStorage.getItem(STORAGE_KEY) as CurrencyCode | null;
-      if (stored && stored in CURRENCY_LOCALE) setOverride(stored);
+      if (stored && stored in CURRENCY_LOCALE) {
+        setOverride(stored);
+        return;
+      }
     } catch {
       /* ignore */
     }
+    // Sem escolha do visitante: a moeda segue o país detectado pelo IP.
+    let cancelled = false;
+    void fetchGeoHint().then((hint) => {
+      const code = hint.currency as CurrencyCode | null;
+      if (!cancelled && code && code in CURRENCY_LOCALE) setOverride(code);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const currency = override ?? localeCurrency;
