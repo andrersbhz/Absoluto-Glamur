@@ -72,8 +72,12 @@ export async function applyProductPricing(
   for (const variant of variantsRes.data ?? []) {
     const active = variant.prices?.find((price: any) => price.is_active) ?? variant.prices?.[0];
     const supplierCost = supplierCostFromOptions(variant.options) ?? options.defaultSupplierCostCents ?? null;
+    const override = priceOverrideFromOptions(variant.options);
     let listCents = Number(active?.list_price_cents ?? 0);
-    if (supplierCost && supplierCost > 0) {
+    if (override) {
+      // Preço manual da variação: a sincronização atualiza custo/estoque, mas nunca o preço.
+      listCents = override;
+    } else if (supplierCost && supplierCost > 0) {
       listCents = profileRes.data
         ? computeProfessionalListPrice(supplierCost, additionalCostCents, profileRes.data)
         : computeLegacyListPrice(supplierCost, options.fallbackSettings);
