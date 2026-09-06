@@ -56,6 +56,7 @@ type BlockData = {
 };
 
 export function HomePageV12() {
+  const { t } = useI18n();
   const { data: home = {} } = useQuery(homeContentQuery());
   const { data: blocks = [] } = useQuery(homepageBlocksQuery());
   const { data: categories = [] } = useQuery(categoriesQuery());
@@ -87,6 +88,7 @@ export function HomePageV12() {
 }
 
 function HomeBlock({ block, categories }: { block: HomepageBlock; categories: { id: string; slug: string; name: string; position: number }[] }) {
+  const { t } = useI18n();
   const data = (block.data ?? {}) as BlockData;
   const collectionSlug = data.collection_slug ?? data.slug ?? "";
   const { data: collectionProducts = [] } = useQuery({ ...featuredProductsQuery(collectionSlug), enabled: block.kind === "collection" && collectionSlug.length > 0 });
@@ -172,6 +174,7 @@ function CategoryGrid({ title, subtitle, categories, selected, mode, columns = 4
 function SectionIntro({ title, subtitle }: { title: string; subtitle?: string }) { return <section className="mx-auto max-w-7xl px-4 pt-12 text-center sm:px-6 lg:px-8">{subtitle ? <p className="text-[11px] uppercase tracking-[0.32em] text-champagne">{subtitle}</p> : null}<h2 className="mt-2 font-display text-4xl">{title}</h2><GoldRule /></section>; }
 
 function ProductSection({ title, subtitle, products, search, limit = 4 }: { title: string; subtitle: string; products: ProductListItem[]; search: Record<string, string>; limit?: number }) {
+  const { t } = useI18n();
   if (products.length === 0) return null;
   return <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8"><div className="mb-8 flex items-end justify-between gap-4 border-b border-champagne/30 pb-4"><div><p className="text-[11px] uppercase tracking-[0.32em] text-champagne">{subtitle}</p><h2 className="mt-2 font-display text-4xl">{title}</h2></div><Link to="/products" search={search as never} className="text-xs uppercase tracking-[0.24em] text-plum hover:text-primary">{t("home.seeAll")} →</Link></div><div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">{products.slice(0, limit).map((product) => <ProductCard key={product.id} product={product} />)}</div></section>;
 }
