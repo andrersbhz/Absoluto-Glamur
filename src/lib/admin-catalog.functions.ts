@@ -290,6 +290,8 @@ export type AdminProductDetail = {
     is_available: boolean;
     stock: number;
     price_cents: number;
+    list_price_cents: number;
+    price_override_cents: number | null;
   }[];
   media: { id: string; url: string; alt: string | null; position: number }[];
   seo: { title: string | null; description: string | null };
@@ -319,7 +321,7 @@ export const getAdminProduct = createServerFn({ method: "GET" })
     type V = {
       id: string; sku: string; is_default: boolean; weight_grams: number | null;
       name?: string | null;
-      options?: { attributes?: Record<string, string>; image_url?: string | null } | null;
+      options?: { attributes?: Record<string, string>; image_url?: string | null; price_override_cents?: number | null } | null;
       is_available?: boolean | null;
       prices: { list_price_cents: number; sale_price_cents: number | null; is_active: boolean }[] | null;
       inventory: { stock: number } | { stock: number }[] | null;
@@ -372,6 +374,8 @@ export const getAdminProduct = createServerFn({ method: "GET" })
           is_available: v.is_available !== false,
           stock: st,
           price_cents: unit,
+          list_price_cents: pr?.list_price_cents ?? 0,
+          price_override_cents: v.options?.price_override_cents ?? null,
         };
       }),
       media: ((p.media as unknown as { id: string; url: string; alt: string | null; position: number }[]) ?? [])
