@@ -442,7 +442,7 @@ function ReviewCard({
 }) {
   const del = useServerFn(deleteReview);
   const [lightbox, setLightbox] = useState<string | null>(null);
-  const translated = "body_translated" in review && review.body_translated === true;
+  const flag = countryFlag(review.author_country);
   const isAli = review.source?.startsWith("aliexpress");
   const authorName = storefrontAuthorName(review.author_name);
   const displayTitle = storefrontReviewText(review.title);
@@ -476,7 +476,12 @@ function ReviewCard({
           )}
           <div className={`${authorName ? "mt-1" : "mt-2"} flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground`}>
             {review.reviewed_at && <span>{new Date(review.reviewed_at).toLocaleDateString("pt-BR")}</span>}
-            {translated && <span className="inline-flex items-center gap-1"><Check className="h-3 w-3" /> Traduzido para PT-BR</span>}
+            {flag && (
+              <span className="inline-flex items-center gap-1" title={review.author_country ?? undefined}>
+                <span aria-hidden className="text-sm leading-none">{flag}</span>
+                <span className="sr-only">{`Comprado em ${review.author_country}`}</span>
+              </span>
+            )}
           </div>
         </div>
 
