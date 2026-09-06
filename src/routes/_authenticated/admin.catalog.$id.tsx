@@ -736,17 +736,17 @@ function CatalogEditor() {
                         manual por variação — a sincronização continua atualizando custo e estoque
                         sem mexer nesse valor.
                       </p>
-                      {!isNew && (
-                        <button
-                          type="button"
-                          onClick={() => syncVariants.mutate()}
-                          disabled={syncVariants.isPending}
-                          className="inline-flex items-center gap-1 rounded-lg border border-champagne/40 bg-champagne/10 px-3 py-2 text-xs font-medium text-champagne transition hover:bg-champagne/20 disabled:opacity-50"
-                        >
-                          <RefreshCw className={`h-3.5 w-3.5 ${syncVariants.isPending ? "animate-spin" : ""}`} />
-                          Sincronizar variações
-                        </button>
-                      )}
+                       {!isNew && (
+                         <button
+                           type="button"
+                           onClick={() => syncFull.mutate()}
+                           disabled={syncFull.isPending || syncVariants.isPending}
+                           className="inline-flex items-center gap-1 rounded-lg border border-primary bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground transition hover:opacity-90 disabled:opacity-50"
+                         >
+                           <RefreshCw className={`h-3.5 w-3.5 ${syncFull.isPending ? "animate-spin" : ""}`} />
+                           Sincronizar tudo (preço, estoque e variações)
+                         </button>
+                       )}
                     </div>
 
                     {variantRows.length === 0 ? (
