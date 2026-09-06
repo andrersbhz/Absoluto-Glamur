@@ -534,6 +534,19 @@ export const upsertAdminProduct = createServerFn({ method: "POST" })
       if (error) throw new Error(error.message);
     }
 
+    // O preço digitado aqui é manual: guardamos como override para que as
+    // sincronizações seguintes atualizem custo e estoque sem reverter o valor.
+    if (data.variant.list_price_cents > 0) {
+      const { data: vRow } = await db
+        .from("product_variants")
+        .select("options")
+        .eq("id", variantId)
+        .maybeSingle();
+      const opts = { ...(((vRow?.options as Record<string, unknown>) ?? {}) as Record<string, unknown>) };
+      opts.price_override_cents = data.variant.list_price_cents;
+      await db.from("product_variants").update({ options: opts as never }).eq("id", variantId);
+    }
+
     // Inventory (upsert on variant_id PK)
     const { error: invErr } = await db
       .from("product_inventory")
