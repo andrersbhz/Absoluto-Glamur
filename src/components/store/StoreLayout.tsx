@@ -9,6 +9,7 @@ import { LatestBlogCarousel } from "@/components/store/LatestBlogCarousel";
 import { ProductRelatedBlog } from "@/components/store/ProductRelatedBlog";
 import { LocaleSwitcher } from "@/components/store/LocaleSwitcher";
 import { useI18n } from "@/lib/i18n";
+import { useContentText } from "@/lib/content-i18n";
 import "@/storefront-minimal.css";
 import "@/blog.css";
 
@@ -72,7 +73,7 @@ export function StoreLayout({ children }: { children: ReactNode }) {
                 search={{ category: c.slug } as never}
                 className="store-nav-link"
               >
-                {c.name}
+                {ct("category", c.id, "name", c.name)}
               </Link>
             ))}
             <Link to="/blog" search={{} as never} className="store-nav-link">
@@ -156,7 +157,7 @@ export function StoreLayout({ children }: { children: ReactNode }) {
               {categories.slice(0, 4).map((c) => (
                 <li key={c.id}>
                   <Link to="/products" search={{ category: c.slug } as never} className="hover:text-foreground">
-                    {c.name}
+                    {ct("category", c.id, "name", c.name)}
                   </Link>
                 </li>
               ))}
