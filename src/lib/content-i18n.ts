@@ -1,4 +1,4 @@
-import { queryOptions } from "@tanstack/react-query";
+import { queryOptions, useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { DEFAULT_LOCALE, type Locale } from "@/lib/i18n/locales";
 import { useI18n } from "@/lib/i18n";
@@ -67,12 +67,6 @@ export function buildTranslator(rows: Row[], locale: Locale): ContentTranslator 
 /** Hook de exibição: `ct("category", id, "name", category.name)`. */
 export function useContentText(): ContentTranslator {
   const { locale } = useI18n();
-  const { data } = useQuerySafe();
+  const { data } = useQuery(contentTranslationsQuery());
   return useMemo(() => buildTranslator(data ?? [], locale), [data, locale]);
-}
-
-// Import tardio para manter o helper enxuto no topo do arquivo.
-import { useQuery } from "@tanstack/react-query";
-function useQuerySafe() {
-  return useQuery(contentTranslationsQuery());
 }
