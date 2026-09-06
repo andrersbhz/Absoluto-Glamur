@@ -32,7 +32,7 @@ import {
   type AdminProductInput,
 } from "@/lib/admin-catalog.functions";
 import { syncAliexpressStock } from "@/lib/aliexpress-stock.functions";
-import { syncAliexpressVariants } from "@/lib/aliexpress-variants.functions";
+import { syncAliexpressFull, syncAliexpressVariants } from "@/lib/aliexpress-variants.functions";
 import { RefreshCw } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/admin/catalog/$id")({
@@ -216,6 +216,23 @@ function CatalogEditor() {
 
 
   const syncVariantsFn = useServerFn(syncAliexpressVariants);
+  const syncFullFn = useServerFn(syncAliexpressFull);
+  const syncFull = useMutation({
+    mutationFn: () => syncFullFn({ data: { product_id: id } }),
+    onSuccess: (r) => {
+      if (r.skipped) {
+        toast.info(r.reason ?? "Produto não está conectado ao AliExpress.");
+        return;
+      }
+      setForm((f) => ({ ...f, stock: String(r.total_stock) }));
+      toast.success(
+        `Sincronizado: ${r.total_skus} variação(ões) · ${r.created} novas · ${r.updated} atualizadas · estoque ${r.total_stock}`,
+      );
+      if (r.errors.length > 0) toast.warning(r.errors.slice(0, 2).join(" | "));
+      prodQ.refetch();
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
   const setVariantPriceFn = useServerFn(setVariantPriceOverride);
   const [variantPriceDraft, setVariantPriceDraft] = useState<Record<string, string>>({});
   const setVariantPrice = useMutation({
@@ -596,7 +613,18 @@ function CatalogEditor() {
                             <>
                               <button
                                 type="button"
+                                onClick={() => syncFull.mutate()}
+                                disabled={syncFull.isPending || syncStock.isPending || syncVariants.isPending}
+                                title="Sincronizar preço, estoque e variações do AliExpress de uma vez"
+                                className="inline-flex items-center gap-1 rounded-lg border border-primary bg-primary px-3 text-xs font-semibold text-primary-foreground transition hover:opacity-90 disabled:opacity-50"
+                              >
+                                <RefreshCw className={`h-3.5 w-3.5 ${syncFull.isPending ? "animate-spin" : ""}`} />
+                                Sincronizar tudo
+                              </button>
+                              <button
+                                type="button"
                                 onClick={() => syncStock.mutate()}
+
 
                                 disabled={syncStock.isPending}
                                 title="Sincronizar estoque com AliExpress"
@@ -708,17 +736,17 @@ function CatalogEditor() {
                         manual por variação — a sincronização continua atualizando custo e estoque
                         sem mexer nesse valor.
                       </p>
-                      {!isNew && (
-                        <button
-                          type="button"
-                          onClick={() => syncVariants.mutate()}
-                          disabled={syncVariants.isPending}
-                          className="inline-flex items-center gap-1 rounded-lg border border-champagne/40 bg-champagne/10 px-3 py-2 text-xs font-medium text-champagne transition hover:bg-champagne/20 disabled:opacity-50"
-                        >
-                          <RefreshCw className={`h-3.5 w-3.5 ${syncVariants.isPending ? "animate-spin" : ""}`} />
-                          Sincronizar variações
-                        </button>
-                      )}
+                       {!isNew && (
+                         <button
+                           type="button"
+                           onClick={() => syncFull.mutate()}
+                           disabled={syncFull.isPending || syncVariants.isPending}
+                           className="inline-flex items-center gap-1 rounded-lg border border-primary bg-primary px-3 py-2 text-xs font-semibold text-primary-foreground transition hover:opacity-90 disabled:opacity-50"
+                         >
+                           <RefreshCw className={`h-3.5 w-3.5 ${syncFull.isPending ? "animate-spin" : ""}`} />
+                           Sincronizar tudo (preço, estoque e variações)
+                         </button>
+                       )}
                     </div>
 
                     {variantRows.length === 0 ? (

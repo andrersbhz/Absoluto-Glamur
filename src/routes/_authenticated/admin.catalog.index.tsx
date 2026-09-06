@@ -19,9 +19,9 @@ import {
   type AdminProductRow,
 } from "@/lib/admin-catalog.functions";
 import { optimizeProductCopy } from "@/lib/ai-product-optimize.functions";
-import { syncAllAliexpressStock, syncAliexpressStock } from "@/lib/aliexpress-stock.functions";
+import { syncAllAliexpressStock } from "@/lib/aliexpress-stock.functions";
 import { bulkSyncAliexpressReviews } from "@/lib/product-reviews.functions";
-import { resyncAliexpressVariantsBulk } from "@/lib/aliexpress-variants.functions";
+import { resyncAliexpressVariantsBulk, syncAliexpressFull } from "@/lib/aliexpress-variants.functions";
 import { Star, Languages } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/admin/catalog/")({
@@ -47,7 +47,7 @@ function CatalogList() {
   const del = useServerFn(deleteAdminProduct);
   const exportCsv = useServerFn(exportAdminProductsCsv);
   const syncAll = useServerFn(syncAllAliexpressStock);
-  const syncOne = useServerFn(syncAliexpressStock);
+  const syncFullOne = useServerFn(syncAliexpressFull);
   const [rowSyncing, setRowSyncing] = useState<Record<string, boolean>>({});
   const bulkReviews = useServerFn(bulkSyncAliexpressReviews);
   const resyncVariants = useServerFn(resyncAliexpressVariantsBulk);
@@ -167,11 +167,13 @@ function CatalogList() {
   async function handleRowSync(id: string) {
     setRowSyncing((s) => ({ ...s, [id]: true }));
     try {
-      const r = await syncOne({ data: { product_id: id } });
+      const r = await syncFullOne({ data: { product_id: id } });
       if (r.skipped) {
         toast.info(r.reason ?? "Produto não está conectado ao AliExpress.");
       } else {
-        toast.success(`Estoque: ${r.total_stock} · ${r.variants_updated} variante(s)`);
+        toast.success(
+          `Estoque ${r.total_stock} · ${r.total_skus} variação(ões) (${r.created} novas, ${r.updated} atualizadas)`,
+        );
         qc.invalidateQueries({ queryKey: ["admin-products"] });
       }
     } catch (e) {
@@ -271,10 +273,10 @@ function CatalogList() {
               onClick={() => bulkSync.mutate()}
               disabled={bulkSync.isPending}
               className="inline-flex items-center gap-2 rounded-lg border border-primary/40 bg-primary/10 px-4 py-2 text-sm text-primary hover:bg-primary/20 disabled:opacity-60"
-              title="Sincronizar estoque de todos os produtos vinculados ao AliExpress"
+              title="Sincronizar preço, estoque e variações de todos os produtos vinculados ao AliExpress"
             >
               <RefreshCw className={`h-4 w-4 ${bulkSync.isPending ? "animate-spin" : ""}`} />
-              {bulkSync.isPending ? "Sincronizando…" : "Sincronizar estoque AliExpress"}
+              {bulkSync.isPending ? "Sincronizando…" : "Sincronizar tudo (AliExpress)"}
             </button>
             <button
               onClick={() => bulkReviewsMut.mutate()}

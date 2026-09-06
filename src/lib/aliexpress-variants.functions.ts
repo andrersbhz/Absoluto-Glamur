@@ -53,6 +53,65 @@ export const syncAliexpressVariants = createServerFn({ method: "POST" })
   });
 
 /**
+ * Sincronização COMPLETA de um produto: variações (SKUs), estoque, custo do
+ * fornecedor e reaplicação das regras de preço/desconto — tudo em uma chamada.
+ * Nada é apagado: SKUs que saírem do fornecedor apenas ficam com estoque 0.
+ */
+export const syncAliexpressFull = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((v: unknown) => z.object({ product_id: z.string().uuid() }).parse(v))
+  .handler(async ({ data, context }) => {
+    await assertCatalog(context);
+    const db = context.supabase;
+    const { syncVariantsForProduct } = await import("./aliexpress-variants.server");
+
+    const sourceId = await findSourceId(db, data.product_id);
+    if (!sourceId) {
+      return {
+        skipped: true as const,
+        reason: "Produto não está conectado ao AliExpress.",
+        total_skus: 0,
+        created: 0,
+        updated: 0,
+        unavailable: 0,
+        total_stock: 0,
+        errors: [] as string[],
+      };
+    }
+
+    // Uma segunda tentativa evita ficar "sem variação" quando a API oscila.
+    let result = await syncVariantsForProduct(db, data.product_id, sourceId);
+    if (result.total_skus === 0) {
+      result = await syncVariantsForProduct(db, data.product_id, sourceId);
+    }
+
+    const { data: variantIds } = await db
+      .from("product_variants")
+      .select("id")
+      .eq("product_id", data.product_id);
+    const ids = (variantIds ?? []).map((v: any) => v.id);
+    let totalStock = 0;
+    if (ids.length > 0) {
+      const { data: inv } = await db
+        .from("product_inventory")
+        .select("stock")
+        .in("variant_id", ids);
+      totalStock = (inv ?? []).reduce((sum: number, r: any) => sum + Number(r.stock ?? 0), 0);
+    }
+
+    return {
+      skipped: false as const,
+      reason: null,
+      total_skus: result.total_skus,
+      created: result.created,
+      updated: result.updated,
+      unavailable: result.unavailable,
+      total_stock: totalStock,
+      errors: result.errors,
+    };
+  });
+
+/**
  * Reparo do catálogo existente: ressincroniza as variações reais de vários
  * produtos AliExpress já cadastrados, sem recriar produtos nem alterar slugs.
  */
