@@ -111,6 +111,7 @@ function clampInt(value: number | undefined, fallback: number, min: number, max:
 
 export function Index() {
   const { t } = useI18n();
+  const ct = useContentText();
   const { data: bestsellers = [] } = useQuery(featuredProductsQuery("mais-vendidos"));
   const { data: newArrivals = [] } = useQuery(featuredProductsQuery("lancamentos"));
   const { data: categories = [] } = useQuery(categoriesQuery());
@@ -204,13 +205,13 @@ export function Index() {
               className={`mt-8 font-display text-5xl leading-[0.98] tracking-tight sm:text-6xl lg:text-7xl ${heroImageUrl ? "drop-shadow-[0_2px_20px_rgba(0,0,0,0.5)]" : ""}`}
               style={{ color: hero.title_color ?? (heroImageUrl ? "#ffffff" : "#251e23") }}
             >
-              {hero.title_line1 ?? "Beleza rara,"}
+              {ct("home", "home_content", "hero.title_line1", hero.title_line1) ?? "Beleza rara,"}
               <br />
               <span
                 className={!hero.highlight_color && !heroImageUrl ? "bg-gradient-to-r from-plum via-primary to-champagne bg-clip-text text-transparent" : ""}
                 style={hero.highlight_color ? { color: hero.highlight_color } : heroImageUrl ? { color: "#d7b47a" } : undefined}
               >
-                {hero.title_highlight ?? "assinatura sua."}
+                {ct("home", "home_content", "hero.title_highlight", hero.title_highlight) ?? "assinatura sua."}
               </span>
             </h1>
             {hero.subtitle ? (
@@ -218,7 +219,7 @@ export function Index() {
                 className="mt-6 max-w-xl text-base leading-relaxed sm:text-lg"
                 style={{ color: hero.subtitle_color ?? (heroImageUrl ? "rgba(255,255,255,.9)" : "#70636b") }}
               >
-                {hero.subtitle}
+                {ct("home", "home_content", "hero.subtitle", hero.subtitle)}
               </p>
             ) : null}
             <div className="mt-8 flex flex-wrap items-center gap-6">
@@ -301,12 +302,12 @@ export function Index() {
             <div className="absolute inset-0 opacity-30 bg-[radial-gradient(circle_at_20%_10%,rgba(255,255,255,0.35),transparent_45%),radial-gradient(circle_at_90%_90%,color-mix(in_oklab,var(--champagne)_70%,transparent),transparent_50%)]" />
             <div className="relative max-w-3xl">
               {manifesto.eyebrow ? (
-                <p className="text-[11px] uppercase tracking-[0.35em] text-champagne">{manifesto.eyebrow}</p>
+                <p className="text-[11px] uppercase tracking-[0.35em] text-champagne">{ct("home", "home_content", "manifesto.eyebrow", manifesto.eyebrow)}</p>
               ) : null}
-              <p className="mt-6 font-display text-3xl leading-snug sm:text-4xl">{manifesto.body}</p>
+              <p className="mt-6 font-display text-3xl leading-snug sm:text-4xl">{ct("home", "home_content", "manifesto.body", manifesto.body)}</p>
               <div className="mt-8 h-px w-24 bg-champagne" />
               {manifesto.signature ? (
-                <p className="mt-6 text-xs uppercase tracking-[0.35em] text-champagne">{manifesto.signature}</p>
+                <p className="mt-6 text-xs uppercase tracking-[0.35em] text-champagne">{ct("home", "home_content", "manifesto.signature", manifesto.signature)}</p>
               ) : null}
             </div>
           </div>
@@ -320,7 +321,7 @@ export function Index() {
               <p className="text-[11px] uppercase tracking-[0.35em] text-muted-foreground">{pillars.eyebrow}</p>
             ) : null}
             {pillars.title ? (
-              <h2 className="mt-3 font-display text-4xl text-foreground">{pillars.title}</h2>
+              <h2 className="mt-3 font-display text-4xl text-foreground">{ct("home", "home_content", "pillars.title", pillars.title)}</h2>
             ) : null}
             <GoldRule />
           </div>
