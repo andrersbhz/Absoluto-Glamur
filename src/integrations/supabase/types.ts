@@ -731,6 +731,30 @@ export type Database = {
           },
         ]
       }
+      content_translations: {
+        Row: {
+          fields: Json
+          locale: string
+          ref_id: string
+          scope: string
+          updated_at: string
+        }
+        Insert: {
+          fields?: Json
+          locale: string
+          ref_id: string
+          scope: string
+          updated_at?: string
+        }
+        Update: {
+          fields?: Json
+          locale?: string
+          ref_id?: string
+          scope?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       customer_push_subscriptions: {
         Row: {
           auth: string
