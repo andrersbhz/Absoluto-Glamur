@@ -461,14 +461,23 @@ export const upsertAdminProduct = createServerFn({ method: "POST" })
       if (error) throw new Error(error.message);
     }
 
-    // Default variant (upsert single default)
+    // Variação principal. Produtos sincronizados têm várias variações:
+    // nesses casos NÃO renomeamos o SKU nem trocamos a variação padrão —
+    // apenas o preço da variação principal é atualizado, preservando o catálogo.
     const { data: existingVars } = await db
       .from("product_variants")
       .select("id, is_default")
       .eq("product_id", productId);
+    const hasMultipleVariants = (existingVars?.length ?? 0) > 1;
     let variantId = existingVars?.find((v) => v.is_default)?.id ?? existingVars?.[0]?.id ?? null;
 
-    if (!variantId) {
+    if (hasMultipleVariants && variantId) {
+      const { error } = await db
+        .from("product_variants")
+        .update({ weight_grams: data.variant.weight_grams ?? null })
+        .eq("id", variantId);
+      if (error) throw new Error(error.message);
+    } else if (!variantId) {
       const { data: nv, error } = await db
         .from("product_variants")
         .insert({
