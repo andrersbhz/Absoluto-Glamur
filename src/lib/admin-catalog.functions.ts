@@ -553,9 +553,10 @@ export const upsertAdminProduct = createServerFn({ method: "POST" })
       .upsert({ variant_id: variantId, stock: data.variant.stock }, { onConflict: "variant_id" });
     if (invErr) throw new Error(invErr.message);
 
-    // Media: replace all
-    await db.from("product_media").delete().eq("product_id", productId);
+    // Mídia: só substituímos quando o formulário envia imagens.
+    // Salvar sem mídia (ex.: só ajuste de preço) preserva as fotos sincronizadas.
     if (data.media.length > 0) {
+      await db.from("product_media").delete().eq("product_id", productId);
       const { isVideoUrl } = await import("@/lib/media-kind");
       const { error } = await db.from("product_media").insert(
         data.media.map((m, i) => ({
