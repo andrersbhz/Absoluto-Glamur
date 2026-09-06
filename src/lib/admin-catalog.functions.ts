@@ -250,7 +250,7 @@ export const setVariantPriceOverride = createServerFn({ method: "POST" })
     if (data.listPriceCents && data.listPriceCents > 0) options.price_override_cents = data.listPriceCents;
     else delete options.price_override_cents;
 
-    const { error: upErr } = await db.from("product_variants").update({ options }).eq("id", variant.id);
+    const { error: upErr } = await db.from("product_variants").update({ options: options as any }).eq("id", variant.id);
     if (upErr) throw new Error(upErr.message);
 
     const { applyProductPricing } = await import("./pricing-engine.server");
