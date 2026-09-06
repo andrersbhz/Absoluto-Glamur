@@ -47,7 +47,7 @@ function CatalogList() {
   const del = useServerFn(deleteAdminProduct);
   const exportCsv = useServerFn(exportAdminProductsCsv);
   const syncAll = useServerFn(syncAllAliexpressStock);
-  const syncOne = useServerFn(syncAliexpressStock);
+  const syncFullOne = useServerFn(syncAliexpressFull);
   const [rowSyncing, setRowSyncing] = useState<Record<string, boolean>>({});
   const bulkReviews = useServerFn(bulkSyncAliexpressReviews);
   const resyncVariants = useServerFn(resyncAliexpressVariantsBulk);
