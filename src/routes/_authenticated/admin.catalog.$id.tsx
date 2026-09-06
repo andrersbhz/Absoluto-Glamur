@@ -216,6 +216,23 @@ function CatalogEditor() {
 
 
   const syncVariantsFn = useServerFn(syncAliexpressVariants);
+  const syncFullFn = useServerFn(syncAliexpressFull);
+  const syncFull = useMutation({
+    mutationFn: () => syncFullFn({ data: { product_id: id } }),
+    onSuccess: (r) => {
+      if (r.skipped) {
+        toast.info(r.reason ?? "Produto não está conectado ao AliExpress.");
+        return;
+      }
+      setForm((f) => ({ ...f, stock: String(r.total_stock) }));
+      toast.success(
+        `Sincronizado: ${r.total_skus} variação(ões) · ${r.created} novas · ${r.updated} atualizadas · estoque ${r.total_stock}`,
+      );
+      if (r.errors.length > 0) toast.warning(r.errors.slice(0, 2).join(" | "));
+      prodQ.refetch();
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
   const setVariantPriceFn = useServerFn(setVariantPriceOverride);
   const [variantPriceDraft, setVariantPriceDraft] = useState<Record<string, string>>({});
   const setVariantPrice = useMutation({
