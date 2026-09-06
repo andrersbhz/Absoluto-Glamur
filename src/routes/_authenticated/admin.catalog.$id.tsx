@@ -613,7 +613,18 @@ function CatalogEditor() {
                             <>
                               <button
                                 type="button"
+                                onClick={() => syncFull.mutate()}
+                                disabled={syncFull.isPending || syncStock.isPending || syncVariants.isPending}
+                                title="Sincronizar preço, estoque e variações do AliExpress de uma vez"
+                                className="inline-flex items-center gap-1 rounded-lg border border-primary bg-primary px-3 text-xs font-semibold text-primary-foreground transition hover:opacity-90 disabled:opacity-50"
+                              >
+                                <RefreshCw className={`h-3.5 w-3.5 ${syncFull.isPending ? "animate-spin" : ""}`} />
+                                Sincronizar tudo
+                              </button>
+                              <button
+                                type="button"
                                 onClick={() => syncStock.mutate()}
+
 
                                 disabled={syncStock.isPending}
                                 title="Sincronizar estoque com AliExpress"
