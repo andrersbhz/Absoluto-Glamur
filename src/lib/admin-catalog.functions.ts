@@ -146,6 +146,29 @@ export const listBrandsAndCategories = createServerFn({ method: "GET" })
     return { brands: b.data ?? [], categories: c.data ?? [] };
   });
 
+const TRANSLATION_LOCALES = ["en-US", "es", "es-MX", "fr-FR", "it-IT", "de-DE"];
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
+async function translateOneProduct(
+  db: any,
+  product: { id: string; name: string; short_description: string | null; description: string | null },
+): Promise<number> {
+  const { generateWithOwnKeys } = await import("./ai-translate.server");
+  const raw = await generateWithOwnKeys(
+    "Você é um tradutor profissional de e-commerce de beleza. Preserve nomes de marca, ingredientes, medidas e informações legais. Responda somente JSON válido.",
+    `Traduza o produto para ${TRANSLATION_LOCALES.join(", ")}. Formato: {"en-US":{"name":"","short_description":"","description":""},...}. Produto: ${JSON.stringify(product)}`,
+    db,
+  );
+  if (!raw) throw new Error("Nenhum provedor de IA configurado conseguiu traduzir o produto.");
+  let parsed: Record<string, { name?: string; short_description?: string; description?: string }>;
+  try { parsed = JSON.parse(raw.replace(/^```json\s*|\s*```$/g, "")); } catch { throw new Error("A IA retornou uma tradução em formato inválido."); }
+  const rows = TRANSLATION_LOCALES.filter((locale) => parsed[locale]?.name).map((locale) => ({ product_id: product.id, locale, name: parsed[locale].name ?? null, short_description: parsed[locale].short_description ?? null, description: parsed[locale].description ?? null, translated_at: new Date().toISOString(), is_stale: false }));
+  if (!rows.length) throw new Error("Nenhuma tradução válida foi gerada.");
+  const { error: upsertError } = await db.from("product_translations").upsert(rows, { onConflict: "product_id,locale" });
+  if (upsertError) throw new Error(upsertError.message);
+  return rows.length;
+}
+
 export const translateProductGlobal = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((v: unknown) => z.object({ productId: z.string().uuid() }).parse(v))
@@ -153,22 +176,90 @@ export const translateProductGlobal = createServerFn({ method: "POST" })
     await assertCatalog(context);
     const { data: product, error } = await context.supabase.from("products").select("id,name,short_description,description").eq("id", data.productId).single();
     if (error || !product) throw new Error(error?.message ?? "Produto não encontrado");
-    const { generateWithOwnKeys } = await import("./ai-translate.server");
-    const locales = ["en-US", "es", "es-MX", "fr-FR", "it-IT", "de-DE"];
-    const raw = await generateWithOwnKeys(
-      "Você é um tradutor profissional de e-commerce de beleza. Preserve nomes de marca, ingredientes, medidas e informações legais. Responda somente JSON válido.",
-      `Traduza o produto para ${locales.join(", ")}. Formato: {"en-US":{"name":"","short_description":"","description":""},...}. Produto: ${JSON.stringify(product)}`,
-      context.supabase,
-    );
-    if (!raw) throw new Error("Nenhum provedor de IA configurado conseguiu traduzir o produto.");
-    let parsed: Record<string, { name?: string; short_description?: string; description?: string }>;
-    try { parsed = JSON.parse(raw.replace(/^```json\s*|\s*```$/g, "")); } catch { throw new Error("A IA retornou uma tradução em formato inválido."); }
-    const rows = locales.filter((locale) => parsed[locale]?.name).map((locale) => ({ product_id: product.id, locale, name: parsed[locale].name ?? null, short_description: parsed[locale].short_description ?? null, description: parsed[locale].description ?? null, translated_at: new Date().toISOString(), is_stale: false }));
-    if (!rows.length) throw new Error("Nenhuma tradução válida foi gerada.");
-    const { error: upsertError } = await context.supabase.from("product_translations").upsert(rows, { onConflict: "product_id,locale" });
-    if (upsertError) throw new Error(upsertError.message);
-    return { translated: rows.length };
+    const translated = await translateOneProduct(context.supabase, product as any);
+    return { translated };
   });
+
+/**
+ * Traduz a loja inteira em lotes. A tela chama repetidamente até `remaining === 0`,
+ * evitando estourar o tempo limite de uma única chamada.
+ */
+export const translateStoreGlobal = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((v: unknown) =>
+    z.object({ batch: z.number().int().min(1).max(10).optional(), force: z.boolean().optional() }).parse(v ?? {}),
+  )
+  .handler(async ({ data, context }) => {
+    await assertCatalog(context);
+    const db = context.supabase;
+    const batch = data.batch ?? 3;
+
+    const [{ data: products, error }, { data: done }] = await Promise.all([
+      db.from("products").select("id,name,short_description,description").neq("status", "archived").order("updated_at", { ascending: false }),
+      db.from("product_translations").select("product_id,locale"),
+    ]);
+    if (error) throw new Error(error.message);
+
+    const counts = new Map<string, number>();
+    for (const row of done ?? []) counts.set(row.product_id, (counts.get(row.product_id) ?? 0) + 1);
+    const pending = (products ?? []).filter((p: any) => data.force || (counts.get(p.id) ?? 0) < TRANSLATION_LOCALES.length);
+
+    let translated = 0;
+    let failed = 0;
+    const errors: string[] = [];
+    for (const product of pending.slice(0, batch)) {
+      try {
+        await translateOneProduct(db, product as any);
+        translated += 1;
+      } catch (e) {
+        failed += 1;
+        errors.push(`${(product as any).name}: ${e instanceof Error ? e.message : String(e)}`);
+      }
+    }
+    return {
+      total: products?.length ?? 0,
+      pending: pending.length,
+      translated,
+      failed,
+      remaining: Math.max(0, pending.length - translated - failed),
+      errors: errors.slice(0, 3),
+    };
+  });
+
+/** Define (ou remove) o preço manual de uma variação sem quebrar a sincronia com o fornecedor. */
+export const setVariantPriceOverride = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((v: unknown) =>
+    z.object({
+      variantId: z.string().uuid(),
+      listPriceCents: z.number().int().min(0).max(100_000_000).nullable(),
+    }).parse(v),
+  )
+  .handler(async ({ data, context }) => {
+    await assertCatalog(context);
+    const db = context.supabase;
+    const { data: variant, error } = await db
+      .from("product_variants")
+      .select("id, product_id, options")
+      .eq("id", data.variantId)
+      .maybeSingle();
+    if (error) throw new Error(error.message);
+    if (!variant) throw new Error("Variação não encontrada");
+
+    const options = { ...((variant.options as Record<string, unknown>) ?? {}) };
+    if (data.listPriceCents && data.listPriceCents > 0) options.price_override_cents = data.listPriceCents;
+    else delete options.price_override_cents;
+
+    const { error: upErr } = await db.from("product_variants").update({ options }).eq("id", variant.id);
+    if (upErr) throw new Error(upErr.message);
+
+    const { applyProductPricing } = await import("./pricing-engine.server");
+    const result = await applyProductPricing(db, variant.product_id as string, {
+      fallbackSettings: { markup_percent: 150, markup_fixed_cents: 0, round_to_99: true },
+    });
+    return { ok: true as const, manual: Boolean(options.price_override_cents), ...result };
+  });
+/* eslint-enable @typescript-eslint/no-explicit-any */
 
 export type AdminProductDetail = {
   id: string;
