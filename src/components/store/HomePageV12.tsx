@@ -167,10 +167,10 @@ function HomeBlock({ block, categories }: { block: HomepageBlock; categories: { 
 }
 
 function CategoryGrid({ title, subtitle, categories, selected, mode, columns = 4 }: { title: string; subtitle?: string; categories: { id: string; slug: string; name: string }[]; selected: string[]; mode: "all" | "selected"; columns?: number }) {
+  const ct = useContentText();
   const allow = new Set(selected);
   const visible = mode === "all" || allow.size === 0 ? categories : categories.filter((c) => allow.has(c.slug));
   if (visible.length === 0) return null;
-  const ct = useContentText();
   const grid = columns >= 5 ? "lg:grid-cols-5" : columns === 3 ? "lg:grid-cols-3" : "lg:grid-cols-4";
   return <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8"><div className="mb-8 text-center">{subtitle ? <p className="text-[11px] uppercase tracking-[0.32em] text-champagne">{subtitle}</p> : null}<h2 className="mt-2 font-display text-4xl">{title}</h2><GoldRule /></div><div className={`grid gap-3 sm:grid-cols-2 ${grid}`}>{visible.map((category) => <Link key={category.id} to="/products" search={{ category: category.slug } as never} className="group flex min-h-24 items-center justify-between rounded-2xl border border-border bg-card px-5 py-4 shadow-soft transition hover:-translate-y-0.5 hover:border-champagne hover:shadow-elegant"><span className="font-display text-xl">{ct("category", category.id, "name", category.name)}</span><ArrowRight className="h-4 w-4 text-champagne transition-transform group-hover:translate-x-1" /></Link>)}</div></section>;
 }
