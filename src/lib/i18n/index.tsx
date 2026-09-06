@@ -35,7 +35,8 @@ function fallbackChain(locale: Locale): Locale[] {
 export function translate(locale: Locale, key: TranslationKey): string {
   for (const candidate of fallbackChain(locale)) {
     const dict = DICTIONARIES[candidate] as Record<string, string> | undefined;
-    const value = dict?.[key];
+    const home = HOME_DICTIONARIES[candidate] as Record<string, string> | undefined;
+    const value = dict?.[key] ?? home?.[key];
     if (value) return value;
   }
   return key;
