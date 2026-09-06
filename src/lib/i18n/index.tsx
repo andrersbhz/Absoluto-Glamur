@@ -8,7 +8,8 @@ import {
   type ReactNode,
 } from "react";
 import { useLocation, useNavigate } from "@tanstack/react-router";
-import { DICTIONARIES, type TranslationKey } from "./dictionaries";
+import { DICTIONARIES, type TranslationKey as BaseTranslationKey } from "./dictionaries";
+import { HOME_DICTIONARIES, type HomeTranslationKey } from "./dictionaries.home";
 import {
   DEFAULT_LOCALE,
   LOCALE_CONFIG,
