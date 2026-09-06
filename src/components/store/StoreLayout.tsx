@@ -26,6 +26,7 @@ function pageKind(pathname: string): "home" | "cart" | "checkout" | "catalog" | 
 export function StoreLayout({ children }: { children: ReactNode }) {
   const { user } = useAuth();
   const { t } = useI18n();
+  const ct = useContentText();
   const navigate = useNavigate();
   const location = useLocation();
   const { data: categories = [] } = useQuery(categoriesQuery());
