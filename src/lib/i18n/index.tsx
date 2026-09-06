@@ -21,7 +21,7 @@ import {
 } from "./locales";
 
 export * from "./locales";
-export type { TranslationKey };
+export type TranslationKey = BaseTranslationKey | HomeTranslationKey;
 
 const STORAGE_KEY = "ag:locale";
 
