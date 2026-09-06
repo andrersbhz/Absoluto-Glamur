@@ -28,6 +28,7 @@ import {
   createBrand,
   upsertAdminProduct,
   translateProductGlobal,
+  setVariantPriceOverride,
   type AdminProductInput,
 } from "@/lib/admin-catalog.functions";
 import { syncAliexpressStock } from "@/lib/aliexpress-stock.functions";
@@ -215,6 +216,17 @@ function CatalogEditor() {
 
 
   const syncVariantsFn = useServerFn(syncAliexpressVariants);
+  const setVariantPriceFn = useServerFn(setVariantPriceOverride);
+  const [variantPriceDraft, setVariantPriceDraft] = useState<Record<string, string>>({});
+  const setVariantPrice = useMutation({
+    mutationFn: (v: { variantId: string; listPriceCents: number | null }) => setVariantPriceFn({ data: v }),
+    onSuccess: (r) => {
+      toast.success(r.manual ? "Preço manual salvo para esta variação" : "Preço voltou a seguir as regras automáticas");
+      prodQ.refetch();
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   const syncVariants = useMutation({
     mutationFn: () => syncVariantsFn({ data: { product_id: id } }),
     onSuccess: (r) => {
@@ -691,7 +703,10 @@ function CatalogEditor() {
                     <div className="flex flex-wrap items-center justify-between gap-3">
                       <p className="text-xs text-muted-foreground">
                         Atributos, imagens, preços e estoque vêm dos SKUs reais importados do
-                        AliExpress. Use “Sincronizar variações” para atualizar.
+                        AliExpress. Use “Sincronizar variações” para atualizar: nada é apagado, os
+                        SKUs que saírem do ar apenas ficam indisponíveis. Você pode fixar um preço
+                        manual por variação — a sincronização continua atualizando custo e estoque
+                        sem mexer nesse valor.
                       </p>
                       {!isNew && (
                         <button
@@ -717,7 +732,7 @@ function CatalogEditor() {
                             <tr>
                               <th className="px-3 py-2 text-left">Variação</th>
                               <th className="px-3 py-2 text-left">SKU</th>
-                              <th className="px-3 py-2 text-right">Preço</th>
+                              <th className="px-3 py-2 text-right">Preço (R$)</th>
                               <th className="px-3 py-2 text-right">Estoque</th>
                               <th className="px-3 py-2 text-left">Status</th>
                             </tr>
@@ -748,7 +763,57 @@ function CatalogEditor() {
                                     </div>
                                   </td>
                                   <td className="px-3 py-2 font-mono text-xs text-muted-foreground">{v.sku}</td>
-                                  <td className="px-3 py-2 text-right">{brl.format(v.price_cents / 100)}</td>
+                                  <td className="px-3 py-2 text-right">
+                                    <div className="flex items-center justify-end gap-1">
+                                      <input
+                                        type="number"
+                                        step="0.01"
+                                        min={0}
+                                        className="w-24 rounded-md border border-border bg-background px-2 py-1 text-right text-sm"
+                                        value={
+                                          variantPriceDraft[v.id] ??
+                                          ((v.price_override_cents ?? v.list_price_cents) / 100).toFixed(2)
+                                        }
+                                        onChange={(e) =>
+                                          setVariantPriceDraft((d) => ({ ...d, [v.id]: e.target.value }))
+                                        }
+                                      />
+                                      <button
+                                        type="button"
+                                        title="Fixar este preço (a sincronização não vai alterá-lo)"
+                                        disabled={setVariantPrice.isPending}
+                                        onClick={() => {
+                                          const raw = Number(
+                                            variantPriceDraft[v.id] ??
+                                              ((v.price_override_cents ?? v.list_price_cents) / 100).toFixed(2),
+                                          );
+                                          if (!(raw > 0)) { toast.error("Informe um valor maior que zero"); return; }
+                                          setVariantPriceDraft((d) => { const n = { ...d }; delete n[v.id]; return n; });
+                                          setVariantPrice.mutate({ variantId: v.id, listPriceCents: Math.round(raw * 100) });
+                                        }}
+                                        className="rounded-md border border-primary/40 px-2 py-1 text-[11px] text-primary hover:bg-primary/10 disabled:opacity-50"
+                                      >
+                                        Salvar
+                                      </button>
+                                      {v.price_override_cents ? (
+                                        <button
+                                          type="button"
+                                          title="Voltar ao preço calculado automaticamente"
+                                          disabled={setVariantPrice.isPending}
+                                          onClick={() => {
+                                            setVariantPriceDraft((d) => { const n = { ...d }; delete n[v.id]; return n; });
+                                            setVariantPrice.mutate({ variantId: v.id, listPriceCents: null });
+                                          }}
+                                          className="rounded-md border border-border px-2 py-1 text-[11px] text-muted-foreground hover:bg-secondary disabled:opacity-50"
+                                        >
+                                          Auto
+                                        </button>
+                                      ) : null}
+                                    </div>
+                                    <div className="mt-1 text-[10px] text-muted-foreground">
+                                      {v.price_override_cents ? "Preço manual" : "Automático"} · vitrine {brl.format(v.price_cents / 100)}
+                                    </div>
+                                  </td>
                                   <td className={`px-3 py-2 text-right ${v.stock <= 0 ? "text-destructive" : ""}`}>
                                     {v.stock}
                                   </td>
