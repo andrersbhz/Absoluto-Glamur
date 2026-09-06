@@ -10,6 +10,7 @@ import {
 import { useLocation, useNavigate } from "@tanstack/react-router";
 import { DICTIONARIES, type TranslationKey as BaseTranslationKey } from "./dictionaries";
 import { HOME_DICTIONARIES, type HomeTranslationKey } from "./dictionaries.home";
+import { fetchGeoHint } from "@/lib/geo";
 import {
   DEFAULT_LOCALE,
   LOCALE_CONFIG,
