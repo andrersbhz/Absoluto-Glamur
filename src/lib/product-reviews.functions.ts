@@ -3,7 +3,6 @@ import { z } from "zod";
 import { queryOptions } from "@tanstack/react-query";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabase } from "@/integrations/supabase/client";
-import { generateWithOwnKeys } from "./ai-translate.server";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -58,36 +57,10 @@ async function assertCatalog(context: any) {
 async function translateReviewsToPtBr(
   items: { title: string | null; body: string | null }[],
 ): Promise<ReviewTranslation[]> {
-  if (items.length === 0) return [];
-  const payload = items.map((it, i) => ({ i, title: it.title ?? "", body: it.body ?? "" }));
-  if (!payload.some((it) => it.title.trim() || it.body.trim())) {
-    return items.map((it) => ({ ...it, translated: true }));
-  }
-
-  const system =
-    "Traduza SOMENTE o conteúdo recebido para português do Brasil. Nunca invente, complete, resuma ou acrescente conteúdo. Preserve emojis, números, unidades e pontuação. Não traduza IDs, URLs, SKUs, hashes, códigos, tokens, usernames/nicknames ou outros identificadores. Responda somente com JSON válido.";
-  const prompt = `Traduza somente title/body para PT-BR e retorne exatamente [{"i":0,"title":"...","body":"..."}].\n${JSON.stringify(payload)}`;
-
-  try {
-    const text = await generateWithOwnKeys(system, prompt);
-    if (!text) return items.map((it) => ({ ...it, translated: false }));
-    const match = text.match(/\[[\s\S]*\]/);
-    const parsed = match ? JSON.parse(match[0]) : [];
-    const map = new Map<number, { title?: unknown; body?: unknown }>();
-    for (const row of parsed) if (typeof row?.i === "number") map.set(row.i, row);
-    return items.map((orig, i) => {
-      const row = map.get(i);
-      if (!row) return { ...orig, translated: false };
-      return {
-        title: row.title == null ? orig.title : String(row.title) || orig.title,
-        body: row.body == null ? orig.body : String(row.body) || orig.body,
-        translated: true,
-      };
-    });
-  } catch {
-    return items.map((it) => ({ ...it, translated: false }));
-  }
+  // Avaliações permanecem no idioma original: nada é traduzido.
+  return items.map((it) => ({ ...it, translated: false }));
 }
+
 
 export function productReviewsQuery(productId: string | undefined) {
   return queryOptions({

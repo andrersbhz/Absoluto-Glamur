@@ -491,6 +491,10 @@ async function persistOfficialReviews(admin: any, productId: string, reviews: No
 }
 
 async function translatePendingReviews(admin: any, productId: string, limit = 36): Promise<number> {
+  // Avaliações permanecem no idioma original em que foram escritas.
+  void admin; void productId; void limit;
+  return 0;
+  // eslint-disable-next-line no-unreachable
   const { data } = await admin
     .from("product_external_reviews")
     .select("id,title,body")
