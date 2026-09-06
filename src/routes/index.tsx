@@ -7,6 +7,7 @@ import { ProductCard } from "@/components/store/ProductCard";
 import { HeroSlider } from "@/components/store/HeroSlider";
 import { categoriesQuery, collectionsQuery, featuredProductsQuery, productsByCategoryQuery } from "@/lib/catalog";
 import { hreflangLinks } from "@/lib/i18n/seo";
+import { useI18n } from "@/lib/i18n";
 import { homepageBlocksQuery, homeContentQuery, type HomepageBlock, type AnnouncementProduct } from "@/lib/marketing";
 
 export const Route = createFileRoute("/")({
@@ -108,6 +109,7 @@ function clampInt(value: number | undefined, fallback: number, min: number, max:
 }
 
 export function Index() {
+  const { t } = useI18n();
   const { data: bestsellers = [] } = useQuery(featuredProductsQuery("mais-vendidos"));
   const { data: newArrivals = [] } = useQuery(featuredProductsQuery("lancamentos"));
   const { data: categories = [] } = useQuery(categoriesQuery());
@@ -276,18 +278,18 @@ export function Index() {
 
       {newArrivals.length > 0 && (
         <FeaturedSection
-          title="Lançamentos"
-          subtitle="Acabaram de chegar"
-          link={{ label: "Ver todos", search: { collection: "lancamentos" } }}
+          title={t("home.newArrivals")}
+          subtitle={t("home.newArrivalsSub")}
+          link={{ label: t("home.seeAll"), search: { collection: "lancamentos" } }}
           products={newArrivals}
         />
       )}
 
       {bestsellers.length > 0 && (
         <FeaturedSection
-          title="Mais vendidos"
-          subtitle="Amados pelas clientes"
-          link={{ label: "Ver todos", search: { collection: "mais-vendidos" } }}
+          title={t("home.bestsellers")}
+          subtitle={t("home.bestsellersSub")}
+          link={{ label: t("home.seeAll"), search: { collection: "mais-vendidos" } }}
           products={bestsellers}
         />
       )}
@@ -395,6 +397,7 @@ function CategoryGridSection({
   align?: "left" | "center";
   pillStyle?: "outline" | "soft" | "solid";
 }) {
+  const { t } = useI18n();
   if (categories.length === 0) return null;
   const pillClass = pillStyle === "solid"
     ? "border-primary bg-primary text-primary-foreground hover:bg-primary/90"
@@ -415,7 +418,7 @@ function CategoryGridSection({
       )}
       <div
         className={`mt-6 flex w-full flex-nowrap items-center gap-3 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${align === "center" ? "lg:justify-center" : "justify-start"}`}
-        aria-label="Categorias da loja"
+        aria-label={t("home.categoriesLabel")}
       >
         {categories.map((category) => (
           <Link
@@ -463,14 +466,15 @@ function CategoryProductsSections({
   }>;
   productLimit?: number;
 }) {
+  const { t } = useI18n();
   return (
     <>
       {rows.map((row) => (
         <FeaturedSection
           key={row.category.id}
           title={row.category.name}
-          subtitle="Novidades e mais vendidos"
-          link={{ label: "Ver todos", search: { category: row.category.slug } }}
+          subtitle={t("home.latestSub")}
+          link={{ label: t("home.seeAll"), search: { category: row.category.slug } }}
           products={row.products}
           productLimit={productLimit}
         />
@@ -480,6 +484,7 @@ function CategoryProductsSections({
 }
 
 function CustomBlock({ block }: { block: HomepageBlock }) {
+  const { t } = useI18n();
   const data = (block.data ?? {}) as Record<string, string | number | string[] | undefined>;
   const { data: collProducts = [] } = useQuery({
     ...featuredProductsQuery(String(data.slug ?? "")),
@@ -507,7 +512,7 @@ function CustomBlock({ block }: { block: HomepageBlock }) {
                 href={data.cta_href}
                 className="mt-6 inline-flex rounded-full bg-background px-6 py-2.5 text-xs uppercase tracking-[0.28em] font-medium text-foreground shadow-soft hover:opacity-90"
               >
-                {typeof data.cta_label === "string" ? data.cta_label : "Ver mais"}
+                {typeof data.cta_label === "string" ? data.cta_label : t("home.seeMore")}
               </a>
             )}
           </div>
@@ -541,9 +546,9 @@ function CustomBlock({ block }: { block: HomepageBlock }) {
   if (block.kind === "collection" && collProducts.length > 0) {
     return (
       <FeaturedSection
-        title={block.title ?? "Coleção"}
+        title={block.title ?? t("home.collection")}
         subtitle={block.subtitle ?? ""}
-        link={{ label: "Ver todos", search: { collection: String(data.slug ?? "") } }}
+        link={{ label: t("home.seeAll"), search: { collection: String(data.slug ?? "") } }}
         products={collProducts}
       />
     );
@@ -577,13 +582,14 @@ function CustomBlock({ block }: { block: HomepageBlock }) {
 }
 
 function FeaturedCollectionSection({ slug, name, description }: { slug: string; name: string; description: string | null }) {
+  const { t } = useI18n();
   const { data: products = [] } = useQuery(featuredProductsQuery(slug));
   if (products.length === 0) return null;
   return (
     <FeaturedSection
       title={name}
-      subtitle={description ?? "Coleção em destaque"}
-      link={{ label: "Ver todos", search: { collection: slug } }}
+      subtitle={description ?? t("home.featuredCollection")}
+      link={{ label: t("home.seeAll"), search: { collection: slug } }}
       products={products}
     />
   );
@@ -631,6 +637,7 @@ function AnnouncementBar({
 }: {
   announcement: { text?: string; product?: AnnouncementProduct };
 }) {
+  const { t } = useI18n();
   const product = announcement.product;
   const hasProduct = !!(product?.slug && product?.category_slug);
   const href =
@@ -638,8 +645,8 @@ function AnnouncementBar({
     (hasProduct
       ? `/${product!.category_slug}/${product!.slug}${product?.variant_id ? `?variant=${product.variant_id}` : ""}`
       : "/products");
-  const label = product?.cta_label || "Ver produto";
-  const eyebrow = product?.eyebrow || announcement.text || "Destaque do dia";
+  const label = product?.cta_label || t("home.viewProduct");
+  const eyebrow = product?.eyebrow || announcement.text || t("home.dailyHighlight");
 
   if (!hasProduct) {
     return (

@@ -461,14 +461,23 @@ export const upsertAdminProduct = createServerFn({ method: "POST" })
       if (error) throw new Error(error.message);
     }
 
-    // Default variant (upsert single default)
+    // Variação principal. Produtos sincronizados têm várias variações:
+    // nesses casos NÃO renomeamos o SKU nem trocamos a variação padrão —
+    // apenas o preço da variação principal é atualizado, preservando o catálogo.
     const { data: existingVars } = await db
       .from("product_variants")
       .select("id, is_default")
       .eq("product_id", productId);
+    const hasMultipleVariants = (existingVars?.length ?? 0) > 1;
     let variantId = existingVars?.find((v) => v.is_default)?.id ?? existingVars?.[0]?.id ?? null;
 
-    if (!variantId) {
+    if (hasMultipleVariants && variantId) {
+      const { error } = await db
+        .from("product_variants")
+        .update({ weight_grams: data.variant.weight_grams ?? null })
+        .eq("id", variantId);
+      if (error) throw new Error(error.message);
+    } else if (!variantId) {
       const { data: nv, error } = await db
         .from("product_variants")
         .insert({
@@ -525,15 +534,29 @@ export const upsertAdminProduct = createServerFn({ method: "POST" })
       if (error) throw new Error(error.message);
     }
 
+    // O preço digitado aqui é manual: guardamos como override para que as
+    // sincronizações seguintes atualizem custo e estoque sem reverter o valor.
+    if (data.variant.list_price_cents > 0) {
+      const { data: vRow } = await db
+        .from("product_variants")
+        .select("options")
+        .eq("id", variantId)
+        .maybeSingle();
+      const opts = { ...(((vRow?.options as Record<string, unknown>) ?? {}) as Record<string, unknown>) };
+      opts.price_override_cents = data.variant.list_price_cents;
+      await db.from("product_variants").update({ options: opts as never }).eq("id", variantId);
+    }
+
     // Inventory (upsert on variant_id PK)
     const { error: invErr } = await db
       .from("product_inventory")
       .upsert({ variant_id: variantId, stock: data.variant.stock }, { onConflict: "variant_id" });
     if (invErr) throw new Error(invErr.message);
 
-    // Media: replace all
-    await db.from("product_media").delete().eq("product_id", productId);
+    // Mídia: só substituímos quando o formulário envia imagens.
+    // Salvar sem mídia (ex.: só ajuste de preço) preserva as fotos sincronizadas.
     if (data.media.length > 0) {
+      await db.from("product_media").delete().eq("product_id", productId);
       const { isVideoUrl } = await import("@/lib/media-kind");
       const { error } = await db.from("product_media").insert(
         data.media.map((m, i) => ({

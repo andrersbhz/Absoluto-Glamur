@@ -45,6 +45,7 @@ import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/
 import { Route as AuthenticatedAccountRouteImport } from './routes/_authenticated/account'
 import { Route as CategoriaProdutoRouteImport } from './routes/$categoria.$produto'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin.index'
+import { Route as ApiPublicGeoRouteImport } from './routes/api/public/geo'
 import { Route as ApiPublicCommerceEventRouteImport } from './routes/api/public/commerce-event'
 import { Route as ApiPublicAliexpressReviewBrowserRouteImport } from './routes/api/public/aliexpress-review-browser'
 import { Route as ApiPublicAbandonedCheckoutRouteImport } from './routes/api/public/abandoned-checkout'
@@ -270,6 +271,11 @@ const AuthenticatedAdminIndexRoute = AuthenticatedAdminIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AuthenticatedAdminRoute,
+} as any)
+const ApiPublicGeoRoute = ApiPublicGeoRouteImport.update({
+  id: '/api/public/geo',
+  path: '/api/public/geo',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPublicCommerceEventRoute = ApiPublicCommerceEventRouteImport.update({
   id: '/api/public/commerce-event',
@@ -600,6 +606,7 @@ export interface FileRoutesByFullPath {
   '/api/public/abandoned-checkout': typeof ApiPublicAbandonedCheckoutRoute
   '/api/public/aliexpress-review-browser': typeof ApiPublicAliexpressReviewBrowserRoute
   '/api/public/commerce-event': typeof ApiPublicCommerceEventRoute
+  '/api/public/geo': typeof ApiPublicGeoRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
   '/admin/catalog/$id': typeof AuthenticatedAdminCatalogIdRoute
   '/admin/imports/$id': typeof AuthenticatedAdminImportsIdRoute
@@ -682,6 +689,7 @@ export interface FileRoutesByTo {
   '/api/public/abandoned-checkout': typeof ApiPublicAbandonedCheckoutRoute
   '/api/public/aliexpress-review-browser': typeof ApiPublicAliexpressReviewBrowserRoute
   '/api/public/commerce-event': typeof ApiPublicCommerceEventRoute
+  '/api/public/geo': typeof ApiPublicGeoRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
   '/admin/catalog/$id': typeof AuthenticatedAdminCatalogIdRoute
   '/admin/imports/$id': typeof AuthenticatedAdminImportsIdRoute
@@ -767,6 +775,7 @@ export interface FileRoutesById {
   '/api/public/abandoned-checkout': typeof ApiPublicAbandonedCheckoutRoute
   '/api/public/aliexpress-review-browser': typeof ApiPublicAliexpressReviewBrowserRoute
   '/api/public/commerce-event': typeof ApiPublicCommerceEventRoute
+  '/api/public/geo': typeof ApiPublicGeoRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
   '/_authenticated/admin/catalog/$id': typeof AuthenticatedAdminCatalogIdRoute
   '/_authenticated/admin/imports/$id': typeof AuthenticatedAdminImportsIdRoute
@@ -852,6 +861,7 @@ export interface FileRouteTypes {
     | '/api/public/abandoned-checkout'
     | '/api/public/aliexpress-review-browser'
     | '/api/public/commerce-event'
+    | '/api/public/geo'
     | '/admin/'
     | '/admin/catalog/$id'
     | '/admin/imports/$id'
@@ -934,6 +944,7 @@ export interface FileRouteTypes {
     | '/api/public/abandoned-checkout'
     | '/api/public/aliexpress-review-browser'
     | '/api/public/commerce-event'
+    | '/api/public/geo'
     | '/admin'
     | '/admin/catalog/$id'
     | '/admin/imports/$id'
@@ -1018,6 +1029,7 @@ export interface FileRouteTypes {
     | '/api/public/abandoned-checkout'
     | '/api/public/aliexpress-review-browser'
     | '/api/public/commerce-event'
+    | '/api/public/geo'
     | '/_authenticated/admin/'
     | '/_authenticated/admin/catalog/$id'
     | '/_authenticated/admin/imports/$id'
@@ -1061,6 +1073,7 @@ export interface RootRouteChildren {
   ApiPublicAbandonedCheckoutRoute: typeof ApiPublicAbandonedCheckoutRoute
   ApiPublicAliexpressReviewBrowserRoute: typeof ApiPublicAliexpressReviewBrowserRoute
   ApiPublicCommerceEventRoute: typeof ApiPublicCommerceEventRoute
+  ApiPublicGeoRoute: typeof ApiPublicGeoRoute
   ApiPublicAliexpressStartRoute: typeof ApiPublicAliexpressStartRoute
   ApiPublicCronAliexpressStockRoute: typeof ApiPublicCronAliexpressStockRoute
   ApiPublicFeedsGoogleMerchantDotxmlRoute: typeof ApiPublicFeedsGoogleMerchantDotxmlRoute
@@ -1328,6 +1341,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/'
       preLoaderRoute: typeof AuthenticatedAdminIndexRouteImport
       parentRoute: typeof AuthenticatedAdminRoute
+    }
+    '/api/public/geo': {
+      id: '/api/public/geo'
+      path: '/api/public/geo'
+      fullPath: '/api/public/geo'
+      preLoaderRoute: typeof ApiPublicGeoRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/api/public/commerce-event': {
       id: '/api/public/commerce-event'
@@ -1891,6 +1911,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicAbandonedCheckoutRoute: ApiPublicAbandonedCheckoutRoute,
   ApiPublicAliexpressReviewBrowserRoute: ApiPublicAliexpressReviewBrowserRoute,
   ApiPublicCommerceEventRoute: ApiPublicCommerceEventRoute,
+  ApiPublicGeoRoute: ApiPublicGeoRoute,
   ApiPublicAliexpressStartRoute: ApiPublicAliexpressStartRoute,
   ApiPublicCronAliexpressStockRoute: ApiPublicCronAliexpressStockRoute,
   ApiPublicFeedsGoogleMerchantDotxmlRoute:

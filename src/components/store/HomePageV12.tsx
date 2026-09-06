@@ -11,6 +11,7 @@ import {
   productsByCategoryQuery,
   type ProductListItem,
 } from "@/lib/catalog";
+import { useI18n } from "@/lib/i18n";
 import { homeContentQuery, homepageBlocksQuery, type AnnouncementProduct, type HomepageBlock } from "@/lib/marketing";
 
 type BlockData = {
@@ -55,6 +56,7 @@ type BlockData = {
 };
 
 export function HomePageV12() {
+  const { t } = useI18n();
   const { data: home = {} } = useQuery(homeContentQuery());
   const { data: blocks = [] } = useQuery(homepageBlocksQuery());
   const { data: categories = [] } = useQuery(categoriesQuery());
@@ -78,7 +80,7 @@ export function HomePageV12() {
       ) : (
         <>
           <CategoryGrid title="Categorias" categories={categories} selected={[]} mode="all" />
-          {fallbackCategoryRows.map((row) => <ProductSection key={row.category.id} title={row.category.name} subtitle="Novidades e mais vendidos" products={row.products} search={{ category: row.category.slug }} />)}
+          {fallbackCategoryRows.map((row) => <ProductSection key={row.category.id} title={row.category.name} subtitle={t("home.latestSub")} products={row.products} search={{ category: row.category.slug }} />)}
         </>
       )}
     </StoreLayout>
@@ -86,6 +88,7 @@ export function HomePageV12() {
 }
 
 function HomeBlock({ block, categories }: { block: HomepageBlock; categories: { id: string; slug: string; name: string; position: number }[] }) {
+  const { t } = useI18n();
   const data = (block.data ?? {}) as BlockData;
   const collectionSlug = data.collection_slug ?? data.slug ?? "";
   const { data: collectionProducts = [] } = useQuery({ ...featuredProductsQuery(collectionSlug), enabled: block.kind === "collection" && collectionSlug.length > 0 });
@@ -98,16 +101,16 @@ function HomeBlock({ block, categories }: { block: HomepageBlock; categories: { 
     if ((data.mode ?? "all") === "all") {
       const selected = new Set(data.categories ?? []);
       const rows = selected.size > 0 ? allCategoryRows.filter((r) => selected.has(r.category.slug)) : allCategoryRows;
-      return <>{block.title ? <SectionIntro title={block.title} subtitle={block.subtitle ?? undefined} /> : null}{rows.map((row) => <ProductSection key={row.category.id} title={row.category.name} subtitle={block.subtitle ?? "Novidades e mais vendidos"} products={row.products} search={{ category: row.category.slug }} limit={data.limit ?? 4} />)}</>;
+      return <>{block.title ? <SectionIntro title={block.title} subtitle={block.subtitle ?? undefined} /> : null}{rows.map((row) => <ProductSection key={row.category.id} title={row.category.name} subtitle={block.subtitle ?? t("home.latestSub")} products={row.products} search={{ category: row.category.slug }} limit={data.limit ?? 4} />)}</>;
     }
     if (!data.category_slug) return null;
     const category = categories.find((c) => c.slug === data.category_slug);
-    return <ProductSection title={block.title || category?.name || "Categoria"} subtitle={block.subtitle ?? "Produtos selecionados"} products={categoryProducts} search={{ category: data.category_slug }} limit={data.limit ?? 4} />;
+    return <ProductSection title={block.title || category?.name || t("home.category")} subtitle={block.subtitle ?? t("home.selectedProducts")} products={categoryProducts} search={{ category: data.category_slug }} limit={data.limit ?? 4} />;
   }
 
   if (block.kind === "collection") {
     if (!collectionSlug || collectionProducts.length === 0) return null;
-    return <ProductSection title={block.title ?? "Coleção"} subtitle={block.subtitle ?? "Seleção especial"} products={collectionProducts} search={{ collection: collectionSlug }} limit={data.limit ?? 4} />;
+    return <ProductSection title={block.title ?? t("home.collection")} subtitle={block.subtitle ?? t("home.specialSelection")} products={collectionProducts} search={{ collection: collectionSlug }} limit={data.limit ?? 4} />;
   }
 
   if (block.kind === "banner") {
@@ -171,8 +174,9 @@ function CategoryGrid({ title, subtitle, categories, selected, mode, columns = 4
 function SectionIntro({ title, subtitle }: { title: string; subtitle?: string }) { return <section className="mx-auto max-w-7xl px-4 pt-12 text-center sm:px-6 lg:px-8">{subtitle ? <p className="text-[11px] uppercase tracking-[0.32em] text-champagne">{subtitle}</p> : null}<h2 className="mt-2 font-display text-4xl">{title}</h2><GoldRule /></section>; }
 
 function ProductSection({ title, subtitle, products, search, limit = 4 }: { title: string; subtitle: string; products: ProductListItem[]; search: Record<string, string>; limit?: number }) {
+  const { t } = useI18n();
   if (products.length === 0) return null;
-  return <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8"><div className="mb-8 flex items-end justify-between gap-4 border-b border-champagne/30 pb-4"><div><p className="text-[11px] uppercase tracking-[0.32em] text-champagne">{subtitle}</p><h2 className="mt-2 font-display text-4xl">{title}</h2></div><Link to="/products" search={search as never} className="text-xs uppercase tracking-[0.24em] text-plum hover:text-primary">Ver todos →</Link></div><div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">{products.slice(0, limit).map((product) => <ProductCard key={product.id} product={product} />)}</div></section>;
+  return <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8"><div className="mb-8 flex items-end justify-between gap-4 border-b border-champagne/30 pb-4"><div><p className="text-[11px] uppercase tracking-[0.32em] text-champagne">{subtitle}</p><h2 className="mt-2 font-display text-4xl">{title}</h2></div><Link to="/products" search={search as never} className="text-xs uppercase tracking-[0.24em] text-plum hover:text-primary">{t("home.seeAll")} →</Link></div><div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">{products.slice(0, limit).map((product) => <ProductCard key={product.id} product={product} />)}</div></section>;
 }
 
 function LegacyHero({ hero }: { hero: NonNullable<Awaited<ReturnType<typeof getEmptyHome>>["hero"]> }) {

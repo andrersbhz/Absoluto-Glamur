@@ -8,7 +8,9 @@ import {
   type ReactNode,
 } from "react";
 import { useLocation, useNavigate } from "@tanstack/react-router";
-import { DICTIONARIES, type TranslationKey } from "./dictionaries";
+import { DICTIONARIES, type TranslationKey as BaseTranslationKey } from "./dictionaries";
+import { HOME_DICTIONARIES, type HomeTranslationKey } from "./dictionaries.home";
+import { fetchGeoHint } from "@/lib/geo";
 import {
   DEFAULT_LOCALE,
   LOCALE_CONFIG,
@@ -20,7 +22,7 @@ import {
 } from "./locales";
 
 export * from "./locales";
-export type { TranslationKey };
+export type TranslationKey = BaseTranslationKey | HomeTranslationKey;
 
 const STORAGE_KEY = "ag:locale";
 
@@ -34,7 +36,8 @@ function fallbackChain(locale: Locale): Locale[] {
 export function translate(locale: Locale, key: TranslationKey): string {
   for (const candidate of fallbackChain(locale)) {
     const dict = DICTIONARIES[candidate] as Record<string, string> | undefined;
-    const value = dict?.[key];
+    const home = HOME_DICTIONARIES[candidate] as Record<string, string> | undefined;
+    const value = dict?.[key] ?? home?.[key];
     if (value) return value;
   }
   return key;
@@ -93,10 +96,20 @@ export function I18nProvider({ children }: { children: ReactNode }) {
       setPreferred(stored);
       return;
     }
-    const browser = matchSupportedLocale(
-      typeof navigator !== "undefined" ? navigator.language : null,
-    );
-    if (browser) setPreferred(browser);
+    // Sem preferência salva: o país do visitante (IP) define o idioma;
+    // o idioma do navegador é usado apenas como reserva.
+    let cancelled = false;
+    void fetchGeoHint().then((hint) => {
+      if (cancelled) return;
+      const browser = matchSupportedLocale(
+        typeof navigator !== "undefined" ? navigator.language : null,
+      );
+      const next = hint.locale ?? browser;
+      if (next) setPreferred(next);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [urlLocale]);
 
   const locale: Locale = urlLocale ?? preferred ?? DEFAULT_LOCALE;
