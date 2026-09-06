@@ -273,10 +273,10 @@ function CatalogList() {
               onClick={() => bulkSync.mutate()}
               disabled={bulkSync.isPending}
               className="inline-flex items-center gap-2 rounded-lg border border-primary/40 bg-primary/10 px-4 py-2 text-sm text-primary hover:bg-primary/20 disabled:opacity-60"
-              title="Sincronizar estoque de todos os produtos vinculados ao AliExpress"
+              title="Sincronizar preço, estoque e variações de todos os produtos vinculados ao AliExpress"
             >
               <RefreshCw className={`h-4 w-4 ${bulkSync.isPending ? "animate-spin" : ""}`} />
-              {bulkSync.isPending ? "Sincronizando…" : "Sincronizar estoque AliExpress"}
+              {bulkSync.isPending ? "Sincronizando…" : "Sincronizar tudo (AliExpress)"}
             </button>
             <button
               onClick={() => bulkReviewsMut.mutate()}
