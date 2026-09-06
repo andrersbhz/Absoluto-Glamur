@@ -8,6 +8,7 @@ import { HeroSlider } from "@/components/store/HeroSlider";
 import { categoriesQuery, collectionsQuery, featuredProductsQuery, productsByCategoryQuery } from "@/lib/catalog";
 import { hreflangLinks } from "@/lib/i18n/seo";
 import { useI18n } from "@/lib/i18n";
+import { useContentText } from "@/lib/content-i18n";
 import { homepageBlocksQuery, homeContentQuery, type HomepageBlock, type AnnouncementProduct } from "@/lib/marketing";
 
 export const Route = createFileRoute("/")({
@@ -271,7 +272,7 @@ export function Index() {
       })}
 
       {featuredCollections.map((c) => (
-        <FeaturedCollectionSection key={c.id} slug={c.slug} name={c.name} description={c.description} />
+        <FeaturedCollectionSection key={c.id} id={c.id} slug={c.slug} name={c.name} description={c.description} />
       ))}
 
       {!hasCategoryProductsBlock && <CategoryProductsSections rows={byCategory} productLimit={4} />}
@@ -354,6 +355,7 @@ function CategoryGridBlock({
   block: HomepageBlock;
   categories: Array<{ id: string; name: string; slug: string }>;
 }) {
+  const ct = useContentText();
   const data = blockData(block);
   const slugs = selectedSlugs(data);
   const inlineConfigured = data.layout === "inline";
@@ -373,8 +375,8 @@ function CategoryGridBlock({
   return (
     <CategoryGridSection
       categories={visible.slice(0, limit)}
-      title={block.title ?? undefined}
-      subtitle={block.subtitle ?? undefined}
+      title={ct("block", block.id, "title", block.title) ?? undefined}
+      subtitle={ct("block", block.id, "subtitle", block.subtitle) ?? undefined}
       showHeading={data.show_heading === true}
       align={data.align ?? "center"}
       pillStyle={data.pill_style ?? "outline"}
@@ -398,6 +400,7 @@ function CategoryGridSection({
   pillStyle?: "outline" | "soft" | "solid";
 }) {
   const { t } = useI18n();
+  const ct = useContentText();
   if (categories.length === 0) return null;
   const pillClass = pillStyle === "solid"
     ? "border-primary bg-primary text-primary-foreground hover:bg-primary/90"
@@ -427,7 +430,7 @@ function CategoryGridSection({
             search={{ category: category.slug } as never}
             className={`shrink-0 whitespace-nowrap rounded-full border px-5 py-2.5 text-xs uppercase tracking-[0.2em] shadow-soft transition ${pillClass}`}
           >
-            {category.name}
+            {ct("category", category.id, "name", category.name)}
           </Link>
         ))}
       </div>
@@ -467,12 +470,13 @@ function CategoryProductsSections({
   productLimit?: number;
 }) {
   const { t } = useI18n();
+  const ct = useContentText();
   return (
     <>
       {rows.map((row) => (
         <FeaturedSection
           key={row.category.id}
-          title={row.category.name}
+          title={ct("category", row.category.id, "name", row.category.name)}
           subtitle={t("home.latestSub")}
           link={{ label: t("home.seeAll"), search: { category: row.category.slug } }}
           products={row.products}
@@ -485,6 +489,9 @@ function CategoryProductsSections({
 
 function CustomBlock({ block }: { block: HomepageBlock }) {
   const { t } = useI18n();
+  const ct = useContentText();
+  const blockTitle = ct("block", block.id, "title", block.title);
+  const blockSubtitle = ct("block", block.id, "subtitle", block.subtitle);
   const data = (block.data ?? {}) as Record<string, string | number | string[] | undefined>;
   const { data: collProducts = [] } = useQuery({
     ...featuredProductsQuery(String(data.slug ?? "")),
@@ -503,10 +510,10 @@ function CustomBlock({ block }: { block: HomepageBlock }) {
           }
         >
           <div className="relative z-10 max-w-xl">
-            {block.subtitle && (
-              <p className="text-[11px] uppercase tracking-[0.32em] text-champagne">{block.subtitle}</p>
+            {blockSubtitle && (
+              <p className="text-[11px] uppercase tracking-[0.32em] text-champagne">{blockSubtitle}</p>
             )}
-            {block.title && <h2 className="mt-3 font-display text-4xl">{block.title}</h2>}
+            {blockTitle && <h2 className="mt-3 font-display text-4xl">{blockTitle}</h2>}
             {typeof data.cta_href === "string" && (
               <a
                 href={data.cta_href}
@@ -529,12 +536,12 @@ function CustomBlock({ block }: { block: HomepageBlock }) {
       <section className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         <a href={href} className="block overflow-hidden rounded-2xl border border-border shadow-soft">
           {img ? (
-            <img src={img} alt={`${block.title ?? "Banner promocional"}${block.subtitle ? ` — ${block.subtitle}` : " · Absoluto Glamur"}`} className="w-full object-cover" loading="lazy" />
+            <img src={img} alt={`${blockTitle ?? "Banner promocional"}${blockSubtitle ? ` — ${blockSubtitle}` : " · Absoluto Glamur"}`} className="w-full object-cover" loading="lazy" />
           ) : (
             <div className="flex items-center justify-between bg-secondary px-6 py-8">
               <div>
-                {block.title && <h3 className="font-display text-2xl">{block.title}</h3>}
-                {block.subtitle && <p className="text-sm text-muted-foreground">{block.subtitle}</p>}
+                {blockTitle && <h3 className="font-display text-2xl">{blockTitle}</h3>}
+                {blockSubtitle && <p className="text-sm text-muted-foreground">{blockSubtitle}</p>}
               </div>
             </div>
           )}
@@ -546,8 +553,8 @@ function CustomBlock({ block }: { block: HomepageBlock }) {
   if (block.kind === "collection" && collProducts.length > 0) {
     return (
       <FeaturedSection
-        title={block.title ?? t("home.collection")}
-        subtitle={block.subtitle ?? ""}
+        title={blockTitle ?? t("home.collection")}
+        subtitle={blockSubtitle ?? ""}
         link={{ label: t("home.seeAll"), search: { collection: String(data.slug ?? "") } }}
         products={collProducts}
       />
@@ -557,7 +564,7 @@ function CustomBlock({ block }: { block: HomepageBlock }) {
   if (block.kind === "text") {
     return (
       <section className="mx-auto max-w-3xl px-4 py-10 sm:px-6 lg:px-8 text-center">
-        {block.title && <h2 className="font-display text-3xl">{block.title}</h2>}
+        {blockTitle && <h2 className="font-display text-3xl">{blockTitle}</h2>}
         {typeof data.body === "string" && (
           <p className="mt-3 text-muted-foreground whitespace-pre-line">{data.body}</p>
         )}
@@ -581,14 +588,15 @@ function CustomBlock({ block }: { block: HomepageBlock }) {
   return null;
 }
 
-function FeaturedCollectionSection({ slug, name, description }: { slug: string; name: string; description: string | null }) {
+function FeaturedCollectionSection({ id, slug, name, description }: { id: string; slug: string; name: string; description: string | null }) {
   const { t } = useI18n();
+  const ct = useContentText();
   const { data: products = [] } = useQuery(featuredProductsQuery(slug));
   if (products.length === 0) return null;
   return (
     <FeaturedSection
-      title={name}
-      subtitle={description ?? t("home.featuredCollection")}
+      title={ct("collection", id, "name", name)}
+      subtitle={ct("collection", id, "description", description) ?? t("home.featuredCollection")}
       link={{ label: t("home.seeAll"), search: { collection: slug } }}
       products={products}
     />
