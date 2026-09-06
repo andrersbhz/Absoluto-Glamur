@@ -4,6 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { getCurrencyTable, refreshExchangeRates, type CurrencyCode, type CurrencyTable } from "@/lib/currency.functions";
 import { LOCALE_CONFIG, useI18n } from "@/lib/i18n";
 import { formatBRL } from "@/lib/format";
+import { fetchGeoHint } from "@/lib/geo";
 
 const STORAGE_KEY = "ag:currency";
 
