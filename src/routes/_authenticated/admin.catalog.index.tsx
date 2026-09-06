@@ -19,9 +19,9 @@ import {
   type AdminProductRow,
 } from "@/lib/admin-catalog.functions";
 import { optimizeProductCopy } from "@/lib/ai-product-optimize.functions";
-import { syncAllAliexpressStock, syncAliexpressStock } from "@/lib/aliexpress-stock.functions";
+import { syncAllAliexpressStock } from "@/lib/aliexpress-stock.functions";
 import { bulkSyncAliexpressReviews } from "@/lib/product-reviews.functions";
-import { resyncAliexpressVariantsBulk } from "@/lib/aliexpress-variants.functions";
+import { resyncAliexpressVariantsBulk, syncAliexpressFull } from "@/lib/aliexpress-variants.functions";
 import { Star, Languages } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/admin/catalog/")({
