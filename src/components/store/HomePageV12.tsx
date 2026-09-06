@@ -12,6 +12,7 @@ import {
   type ProductListItem,
 } from "@/lib/catalog";
 import { useI18n } from "@/lib/i18n";
+import { useContentText } from "@/lib/content-i18n";
 import { homeContentQuery, homepageBlocksQuery, type AnnouncementProduct, type HomepageBlock } from "@/lib/marketing";
 
 type BlockData = {
@@ -57,6 +58,7 @@ type BlockData = {
 
 export function HomePageV12() {
   const { t } = useI18n();
+  const ct = useContentText();
   const { data: home = {} } = useQuery(homeContentQuery());
   const { data: blocks = [] } = useQuery(homepageBlocksQuery());
   const { data: categories = [] } = useQuery(categoriesQuery());
@@ -80,7 +82,7 @@ export function HomePageV12() {
       ) : (
         <>
           <CategoryGrid title="Categorias" categories={categories} selected={[]} mode="all" />
-          {fallbackCategoryRows.map((row) => <ProductSection key={row.category.id} title={row.category.name} subtitle={t("home.latestSub")} products={row.products} search={{ category: row.category.slug }} />)}
+          {fallbackCategoryRows.map((row) => <ProductSection key={row.category.id} title={ct("category", row.category.id, "name", row.category.name)} subtitle={t("home.latestSub")} products={row.products} search={{ category: row.category.slug }} />)}
         </>
       )}
     </StoreLayout>
@@ -89,28 +91,29 @@ export function HomePageV12() {
 
 function HomeBlock({ block, categories }: { block: HomepageBlock; categories: { id: string; slug: string; name: string; position: number }[] }) {
   const { t } = useI18n();
+  const ct = useContentText();
   const data = (block.data ?? {}) as BlockData;
   const collectionSlug = data.collection_slug ?? data.slug ?? "";
   const { data: collectionProducts = [] } = useQuery({ ...featuredProductsQuery(collectionSlug), enabled: block.kind === "collection" && collectionSlug.length > 0 });
   const { data: categoryProducts = [] } = useQuery({ ...productListQuery({ category: data.category_slug, limit: data.limit ?? 4 }), enabled: block.kind === "category_products" && data.mode === "selected" && !!data.category_slug });
   const { data: allCategoryRows = [] } = useQuery({ ...productsByCategoryQuery(data.limit ?? 4), enabled: block.kind === "category_products" && (data.mode ?? "all") === "all" });
 
-  if (block.kind === "category_grid") return <CategoryGrid title={block.title ?? "Categorias"} subtitle={block.subtitle ?? undefined} categories={categories} selected={data.categories ?? []} mode={data.mode ?? "all"} columns={data.columns ?? 4} />;
+  if (block.kind === "category_grid") return <CategoryGrid title={ct("block", block.id, "title", block.title) ?? "Categorias"} subtitle={ct("block", block.id, "subtitle", block.subtitle) ?? undefined} categories={categories} selected={data.categories ?? []} mode={data.mode ?? "all"} columns={data.columns ?? 4} />;
 
   if (block.kind === "category_products") {
     if ((data.mode ?? "all") === "all") {
       const selected = new Set(data.categories ?? []);
       const rows = selected.size > 0 ? allCategoryRows.filter((r) => selected.has(r.category.slug)) : allCategoryRows;
-      return <>{block.title ? <SectionIntro title={block.title} subtitle={block.subtitle ?? undefined} /> : null}{rows.map((row) => <ProductSection key={row.category.id} title={row.category.name} subtitle={block.subtitle ?? t("home.latestSub")} products={row.products} search={{ category: row.category.slug }} limit={data.limit ?? 4} />)}</>;
+      return <>{ct("block", block.id, "title", block.title) ? <SectionIntro title={ct("block", block.id, "title", block.title) ?? ""} subtitle={ct("block", block.id, "subtitle", block.subtitle) ?? undefined} /> : null}{rows.map((row) => <ProductSection key={row.category.id} title={ct("category", row.category.id, "name", row.category.name)} subtitle={ct("block", block.id, "subtitle", block.subtitle) ?? t("home.latestSub")} products={row.products} search={{ category: row.category.slug }} limit={data.limit ?? 4} />)}</>;
     }
     if (!data.category_slug) return null;
     const category = categories.find((c) => c.slug === data.category_slug);
-    return <ProductSection title={block.title || category?.name || t("home.category")} subtitle={block.subtitle ?? t("home.selectedProducts")} products={categoryProducts} search={{ category: data.category_slug }} limit={data.limit ?? 4} />;
+    return <ProductSection title={ct("block", block.id, "title", block.title) || ct("category", category?.id, "name", category?.name) || t("home.category")} subtitle={ct("block", block.id, "subtitle", block.subtitle) ?? t("home.selectedProducts")} products={categoryProducts} search={{ category: data.category_slug }} limit={data.limit ?? 4} />;
   }
 
   if (block.kind === "collection") {
     if (!collectionSlug || collectionProducts.length === 0) return null;
-    return <ProductSection title={block.title ?? t("home.collection")} subtitle={block.subtitle ?? t("home.specialSelection")} products={collectionProducts} search={{ collection: collectionSlug }} limit={data.limit ?? 4} />;
+    return <ProductSection title={ct("block", block.id, "title", block.title) ?? t("home.collection")} subtitle={ct("block", block.id, "subtitle", block.subtitle) ?? t("home.specialSelection")} products={collectionProducts} search={{ collection: collectionSlug }} limit={data.limit ?? 4} />;
   }
 
   if (block.kind === "banner") {
@@ -120,7 +123,7 @@ function HomeBlock({ block, categories }: { block: HomepageBlock; categories: { 
     return (
       <section className={data.full_width ? "w-full" : "mx-auto max-w-7xl px-4 sm:px-6 lg:px-8"} style={{ marginTop: data.margin_top ?? 32, marginBottom: data.margin_bottom ?? 32 }}>
         <a href={href} target={data.cta_target ?? "_self"} rel={data.cta_target === "_blank" ? "noreferrer" : undefined} className="group relative block overflow-hidden border border-border bg-card shadow-elegant" style={{ borderRadius: data.border_radius ?? 32 }}>
-          {data.image_url ? <picture className="block"><source media="(max-width:767px)" srcSet={data.image_mobile_url || data.image_url} /><img src={data.image_url} alt={block.title ?? ""} className="w-full object-cover transition duration-500 group-hover:scale-[1.01]" style={{ height: data.height_desktop ?? 360, objectPosition: `${x}% ${y}%` }} /></picture> : <div className="min-h-[260px] bg-gradient-to-br from-plum via-primary to-berry" />}
+          {data.image_url ? <picture className="block"><source media="(max-width:767px)" srcSet={data.image_mobile_url || data.image_url} /><img src={data.image_url} alt={ct("block", block.id, "title", block.title) ?? ""} className="w-full object-cover transition duration-500 group-hover:scale-[1.01]" style={{ height: data.height_desktop ?? 360, objectPosition: `${x}% ${y}%` }} /></picture> : <div className="min-h-[260px] bg-gradient-to-br from-plum via-primary to-berry" />}
         </a>
       </section>
     );
@@ -147,8 +150,8 @@ function HomeBlock({ block, categories }: { block: HomepageBlock; categories: { 
           <div className="absolute inset-0" style={{ backgroundColor: data.overlay_color ?? "#000000", opacity: overlayOpacity }} />
           <div className="relative z-10 flex h-full w-full px-8 py-10 sm:px-12" style={{ justifyContent, alignItems }}>
             <div className="flex w-full flex-col gap-4" style={{ maxWidth: data.content_max_width ?? 720, alignItems, textAlign }}>
-              {block.subtitle ? <p className="uppercase tracking-[0.28em]" style={{ color: data.subtitle_color ?? "#ead6af", fontSize: subtitleMobile }}>{block.subtitle}</p> : null}
-              {block.title ? <h2 className="font-display leading-tight text-[length:var(--hero2-title-mobile)] md:text-[length:var(--hero2-title-desktop)]" style={{ color: data.title_color ?? "#ffffff", ["--hero2-title-mobile" as string]: `${titleMobile}px`, ["--hero2-title-desktop" as string]: `${titleDesktop}px` }}>{block.title}</h2> : null}
+              {ct("block", block.id, "subtitle", block.subtitle) ? <p className="uppercase tracking-[0.28em]" style={{ color: data.subtitle_color ?? "#ead6af", fontSize: subtitleMobile }}>{ct("block", block.id, "subtitle", block.subtitle)}</p> : null}
+              {ct("block", block.id, "title", block.title) ? <h2 className="font-display leading-tight text-[length:var(--hero2-title-mobile)] md:text-[length:var(--hero2-title-desktop)]" style={{ color: data.title_color ?? "#ffffff", ["--hero2-title-mobile" as string]: `${titleMobile}px`, ["--hero2-title-desktop" as string]: `${titleDesktop}px` }}>{ct("block", block.id, "title", block.title)}</h2> : null}
               {data.cta_label ? <a href={href} target={data.cta_target ?? "_self"} rel={data.cta_target === "_blank" ? "noreferrer" : undefined} className="mt-2 inline-flex items-center gap-2 px-6 py-3 text-xs font-semibold uppercase tracking-[0.2em] transition hover:scale-105" style={{ backgroundColor: data.button_bg ?? "#d7b47a", color: data.button_color ?? "#6d405f", borderRadius: data.border_radius ? Math.min(data.border_radius, 999) : 999 }} onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = data.button_hover_bg ?? data.button_bg ?? "#c8a366"; }} onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = data.button_bg ?? "#d7b47a"; }}>{data.cta_label}<ArrowRight className="h-4 w-4" /></a> : null}
             </div>
           </div>
@@ -157,18 +160,19 @@ function HomeBlock({ block, categories }: { block: HomepageBlock; categories: { 
     );
   }
 
-  if (block.kind === "text") return <section className="mx-auto max-w-4xl px-4 py-12 text-center sm:px-6 lg:px-8">{block.subtitle ? <p className="text-[11px] uppercase tracking-[0.32em] text-champagne">{block.subtitle}</p> : null}{block.title ? <h2 className="mt-2 font-display text-4xl">{block.title}</h2> : null}{data.body ? <p className="mx-auto mt-5 max-w-3xl whitespace-pre-line text-sm leading-7 text-muted-foreground sm:text-base">{data.body}</p> : null}</section>;
+  if (block.kind === "text") return <section className="mx-auto max-w-4xl px-4 py-12 text-center sm:px-6 lg:px-8">{ct("block", block.id, "subtitle", block.subtitle) ? <p className="text-[11px] uppercase tracking-[0.32em] text-champagne">{ct("block", block.id, "subtitle", block.subtitle)}</p> : null}{ct("block", block.id, "title", block.title) ? <h2 className="mt-2 font-display text-4xl">{ct("block", block.id, "title", block.title)}</h2> : null}{data.body ? <p className="mx-auto mt-5 max-w-3xl whitespace-pre-line text-sm leading-7 text-muted-foreground sm:text-base">{data.body}</p> : null}</section>;
   if (block.kind === "divider") return <div className="mx-auto my-8 h-px max-w-6xl bg-gradient-to-r from-transparent via-champagne/70 to-transparent" />;
   if (block.kind === "spacer") return <div aria-hidden style={{ height: Math.max(8, Math.min(240, Number(data.height ?? 48))) }} />;
   return null;
 }
 
 function CategoryGrid({ title, subtitle, categories, selected, mode, columns = 4 }: { title: string; subtitle?: string; categories: { id: string; slug: string; name: string }[]; selected: string[]; mode: "all" | "selected"; columns?: number }) {
+  const ct = useContentText();
   const allow = new Set(selected);
   const visible = mode === "all" || allow.size === 0 ? categories : categories.filter((c) => allow.has(c.slug));
   if (visible.length === 0) return null;
   const grid = columns >= 5 ? "lg:grid-cols-5" : columns === 3 ? "lg:grid-cols-3" : "lg:grid-cols-4";
-  return <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8"><div className="mb-8 text-center">{subtitle ? <p className="text-[11px] uppercase tracking-[0.32em] text-champagne">{subtitle}</p> : null}<h2 className="mt-2 font-display text-4xl">{title}</h2><GoldRule /></div><div className={`grid gap-3 sm:grid-cols-2 ${grid}`}>{visible.map((category) => <Link key={category.id} to="/products" search={{ category: category.slug } as never} className="group flex min-h-24 items-center justify-between rounded-2xl border border-border bg-card px-5 py-4 shadow-soft transition hover:-translate-y-0.5 hover:border-champagne hover:shadow-elegant"><span className="font-display text-xl">{category.name}</span><ArrowRight className="h-4 w-4 text-champagne transition-transform group-hover:translate-x-1" /></Link>)}</div></section>;
+  return <section className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8"><div className="mb-8 text-center">{subtitle ? <p className="text-[11px] uppercase tracking-[0.32em] text-champagne">{subtitle}</p> : null}<h2 className="mt-2 font-display text-4xl">{title}</h2><GoldRule /></div><div className={`grid gap-3 sm:grid-cols-2 ${grid}`}>{visible.map((category) => <Link key={category.id} to="/products" search={{ category: category.slug } as never} className="group flex min-h-24 items-center justify-between rounded-2xl border border-border bg-card px-5 py-4 shadow-soft transition hover:-translate-y-0.5 hover:border-champagne hover:shadow-elegant"><span className="font-display text-xl">{ct("category", category.id, "name", category.name)}</span><ArrowRight className="h-4 w-4 text-champagne transition-transform group-hover:translate-x-1" /></Link>)}</div></section>;
 }
 
 function SectionIntro({ title, subtitle }: { title: string; subtitle?: string }) { return <section className="mx-auto max-w-7xl px-4 pt-12 text-center sm:px-6 lg:px-8">{subtitle ? <p className="text-[11px] uppercase tracking-[0.32em] text-champagne">{subtitle}</p> : null}<h2 className="mt-2 font-display text-4xl">{title}</h2><GoldRule /></section>; }

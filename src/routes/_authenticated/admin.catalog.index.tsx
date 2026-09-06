@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useRef, useState } from "react";
 import { Plus, Search, Trash2, Package, ExternalLink, Download, RefreshCw, Sparkles, Loader2 } from "lucide-react";
+import { translateStoreContent } from "@/lib/content-translate.functions";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { AdminLayout } from "@/components/admin/AdminLayout";
@@ -52,6 +53,7 @@ function CatalogList() {
   const resyncVariants = useServerFn(resyncAliexpressVariantsBulk);
   const optimize = useServerFn(optimizeProductCopy);
   const translateStore = useServerFn(translateStoreGlobal);
+  const translateContent = useServerFn(translateStoreContent);
   const [translating, setTranslating] = useState<string | null>(null);
 
   async function handleTranslateStore() {
@@ -70,6 +72,17 @@ function CatalogList() {
         if (r.remaining === 0 || (r.translated === 0 && r.failed === 0)) break;
         if (r.translated === 0 && r.failed > 0 && translated === 0) break;
       }
+      // Além dos produtos, traduzimos os textos da loja: nomes de categorias,
+      // coleções e os textos da página inicial.
+      let content = 0;
+      setTranslating("Traduzindo textos da loja…");
+      for (let round = 0; round < 60; round += 1) {
+        const r = await translateContent({ data: { batch: 8 } });
+        content += r.translated;
+        if (r.errors.length) lastError = r.errors[0];
+        if (r.remaining === 0 || r.translated === 0) break;
+      }
+      if (content > 0) toast.success(`Textos da loja traduzidos: ${content} item(ns)`);
       if (translated > 0) toast.success(`Loja traduzida: ${translated} produto(s) em 6 idiomas`);
       else if (failed === 0) toast.info("Todos os produtos já estavam traduzidos");
       if (failed > 0) toast.error(`${failed} produto(s) falharam${lastError ? `: ${lastError}` : ""}`);
@@ -277,7 +290,7 @@ function CatalogList() {
               onClick={() => void handleTranslateStore()}
               disabled={!!translating}
               className="inline-flex items-center gap-2 rounded-lg border border-primary/40 bg-primary/10 px-4 py-2 text-sm text-primary hover:bg-primary/20 disabled:opacity-60"
-              title="Traduzir todos os produtos da loja para inglês, espanhol, espanhol (MX), francês, italiano e alemão"
+              title="Traduzir produtos, categorias, coleções e textos da página inicial para inglês, espanhol, espanhol (MX), francês, italiano e alemão"
             >
               <Languages className={`h-4 w-4 ${translating ? "animate-pulse" : ""}`} />
               {translating ?? "Traduzir loja inteira"}

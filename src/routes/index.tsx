@@ -8,6 +8,7 @@ import { HeroSlider } from "@/components/store/HeroSlider";
 import { categoriesQuery, collectionsQuery, featuredProductsQuery, productsByCategoryQuery } from "@/lib/catalog";
 import { hreflangLinks } from "@/lib/i18n/seo";
 import { useI18n } from "@/lib/i18n";
+import { useContentText } from "@/lib/content-i18n";
 import { homepageBlocksQuery, homeContentQuery, type HomepageBlock, type AnnouncementProduct } from "@/lib/marketing";
 
 export const Route = createFileRoute("/")({
@@ -110,6 +111,7 @@ function clampInt(value: number | undefined, fallback: number, min: number, max:
 
 export function Index() {
   const { t } = useI18n();
+  const ct = useContentText();
   const { data: bestsellers = [] } = useQuery(featuredProductsQuery("mais-vendidos"));
   const { data: newArrivals = [] } = useQuery(featuredProductsQuery("lancamentos"));
   const { data: categories = [] } = useQuery(categoriesQuery());
@@ -203,13 +205,13 @@ export function Index() {
               className={`mt-8 font-display text-5xl leading-[0.98] tracking-tight sm:text-6xl lg:text-7xl ${heroImageUrl ? "drop-shadow-[0_2px_20px_rgba(0,0,0,0.5)]" : ""}`}
               style={{ color: hero.title_color ?? (heroImageUrl ? "#ffffff" : "#251e23") }}
             >
-              {hero.title_line1 ?? "Beleza rara,"}
+              {ct("home", "home_content", "hero.title_line1", hero.title_line1) ?? "Beleza rara,"}
               <br />
               <span
                 className={!hero.highlight_color && !heroImageUrl ? "bg-gradient-to-r from-plum via-primary to-champagne bg-clip-text text-transparent" : ""}
                 style={hero.highlight_color ? { color: hero.highlight_color } : heroImageUrl ? { color: "#d7b47a" } : undefined}
               >
-                {hero.title_highlight ?? "assinatura sua."}
+                {ct("home", "home_content", "hero.title_highlight", hero.title_highlight) ?? "assinatura sua."}
               </span>
             </h1>
             {hero.subtitle ? (
@@ -217,7 +219,7 @@ export function Index() {
                 className="mt-6 max-w-xl text-base leading-relaxed sm:text-lg"
                 style={{ color: hero.subtitle_color ?? (heroImageUrl ? "rgba(255,255,255,.9)" : "#70636b") }}
               >
-                {hero.subtitle}
+                {ct("home", "home_content", "hero.subtitle", hero.subtitle)}
               </p>
             ) : null}
             <div className="mt-8 flex flex-wrap items-center gap-6">
@@ -245,7 +247,7 @@ export function Index() {
               <div className={`mt-12 flex flex-wrap items-center gap-x-8 gap-y-3 text-[11px] uppercase tracking-[0.28em] ${heroImageUrl ? "text-white/85" : "text-muted-foreground"}`}>
                 {trustBadges.map((b, i) => (
                   <span key={i} className="flex items-center gap-2">
-                    <Gem className="h-3 w-3 text-champagne" /> {b.label}
+                    <Gem className="h-3 w-3 text-champagne" /> {ct("home", "home_content", `trust_badges.${i}.label`, b.label)}
                   </span>
                 ))}
               </div>
@@ -271,7 +273,7 @@ export function Index() {
       })}
 
       {featuredCollections.map((c) => (
-        <FeaturedCollectionSection key={c.id} slug={c.slug} name={c.name} description={c.description} />
+        <FeaturedCollectionSection key={c.id} id={c.id} slug={c.slug} name={c.name} description={c.description} />
       ))}
 
       {!hasCategoryProductsBlock && <CategoryProductsSections rows={byCategory} productLimit={4} />}
@@ -300,12 +302,12 @@ export function Index() {
             <div className="absolute inset-0 opacity-30 bg-[radial-gradient(circle_at_20%_10%,rgba(255,255,255,0.35),transparent_45%),radial-gradient(circle_at_90%_90%,color-mix(in_oklab,var(--champagne)_70%,transparent),transparent_50%)]" />
             <div className="relative max-w-3xl">
               {manifesto.eyebrow ? (
-                <p className="text-[11px] uppercase tracking-[0.35em] text-champagne">{manifesto.eyebrow}</p>
+                <p className="text-[11px] uppercase tracking-[0.35em] text-champagne">{ct("home", "home_content", "manifesto.eyebrow", manifesto.eyebrow)}</p>
               ) : null}
-              <p className="mt-6 font-display text-3xl leading-snug sm:text-4xl">{manifesto.body}</p>
+              <p className="mt-6 font-display text-3xl leading-snug sm:text-4xl">{ct("home", "home_content", "manifesto.body", manifesto.body)}</p>
               <div className="mt-8 h-px w-24 bg-champagne" />
               {manifesto.signature ? (
-                <p className="mt-6 text-xs uppercase tracking-[0.35em] text-champagne">{manifesto.signature}</p>
+                <p className="mt-6 text-xs uppercase tracking-[0.35em] text-champagne">{ct("home", "home_content", "manifesto.signature", manifesto.signature)}</p>
               ) : null}
             </div>
           </div>
@@ -319,7 +321,7 @@ export function Index() {
               <p className="text-[11px] uppercase tracking-[0.35em] text-muted-foreground">{pillars.eyebrow}</p>
             ) : null}
             {pillars.title ? (
-              <h2 className="mt-3 font-display text-4xl text-foreground">{pillars.title}</h2>
+              <h2 className="mt-3 font-display text-4xl text-foreground">{ct("home", "home_content", "pillars.title", pillars.title)}</h2>
             ) : null}
             <GoldRule />
           </div>
@@ -335,8 +337,8 @@ export function Index() {
                   <div className="relative inline-flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-primary/15 to-champagne/25 text-primary ring-1 ring-champagne/40">
                     <Icon className="h-5 w-5" />
                   </div>
-                  <h3 className="relative mt-6 font-display text-2xl">{item.title}</h3>
-                  <p className="relative mt-3 text-sm leading-relaxed text-muted-foreground">{item.body}</p>
+                  <h3 className="relative mt-6 font-display text-2xl">{ct("home", "home_content", `pillars.items.${i}.title`, item.title)}</h3>
+                  <p className="relative mt-3 text-sm leading-relaxed text-muted-foreground">{ct("home", "home_content", `pillars.items.${i}.body`, item.body)}</p>
                 </div>
               );
             })}
@@ -354,6 +356,7 @@ function CategoryGridBlock({
   block: HomepageBlock;
   categories: Array<{ id: string; name: string; slug: string }>;
 }) {
+  const ct = useContentText();
   const data = blockData(block);
   const slugs = selectedSlugs(data);
   const inlineConfigured = data.layout === "inline";
@@ -373,8 +376,8 @@ function CategoryGridBlock({
   return (
     <CategoryGridSection
       categories={visible.slice(0, limit)}
-      title={block.title ?? undefined}
-      subtitle={block.subtitle ?? undefined}
+      title={ct("block", block.id, "title", block.title) ?? undefined}
+      subtitle={ct("block", block.id, "subtitle", block.subtitle) ?? undefined}
       showHeading={data.show_heading === true}
       align={data.align ?? "center"}
       pillStyle={data.pill_style ?? "outline"}
@@ -398,6 +401,7 @@ function CategoryGridSection({
   pillStyle?: "outline" | "soft" | "solid";
 }) {
   const { t } = useI18n();
+  const ct = useContentText();
   if (categories.length === 0) return null;
   const pillClass = pillStyle === "solid"
     ? "border-primary bg-primary text-primary-foreground hover:bg-primary/90"
@@ -427,7 +431,7 @@ function CategoryGridSection({
             search={{ category: category.slug } as never}
             className={`shrink-0 whitespace-nowrap rounded-full border px-5 py-2.5 text-xs uppercase tracking-[0.2em] shadow-soft transition ${pillClass}`}
           >
-            {category.name}
+            {ct("category", category.id, "name", category.name)}
           </Link>
         ))}
       </div>
@@ -467,12 +471,13 @@ function CategoryProductsSections({
   productLimit?: number;
 }) {
   const { t } = useI18n();
+  const ct = useContentText();
   return (
     <>
       {rows.map((row) => (
         <FeaturedSection
           key={row.category.id}
-          title={row.category.name}
+          title={ct("category", row.category.id, "name", row.category.name)}
           subtitle={t("home.latestSub")}
           link={{ label: t("home.seeAll"), search: { category: row.category.slug } }}
           products={row.products}
@@ -485,6 +490,9 @@ function CategoryProductsSections({
 
 function CustomBlock({ block }: { block: HomepageBlock }) {
   const { t } = useI18n();
+  const ct = useContentText();
+  const blockTitle = ct("block", block.id, "title", block.title);
+  const blockSubtitle = ct("block", block.id, "subtitle", block.subtitle);
   const data = (block.data ?? {}) as Record<string, string | number | string[] | undefined>;
   const { data: collProducts = [] } = useQuery({
     ...featuredProductsQuery(String(data.slug ?? "")),
@@ -503,10 +511,10 @@ function CustomBlock({ block }: { block: HomepageBlock }) {
           }
         >
           <div className="relative z-10 max-w-xl">
-            {block.subtitle && (
-              <p className="text-[11px] uppercase tracking-[0.32em] text-champagne">{block.subtitle}</p>
+            {blockSubtitle && (
+              <p className="text-[11px] uppercase tracking-[0.32em] text-champagne">{blockSubtitle}</p>
             )}
-            {block.title && <h2 className="mt-3 font-display text-4xl">{block.title}</h2>}
+            {blockTitle && <h2 className="mt-3 font-display text-4xl">{blockTitle}</h2>}
             {typeof data.cta_href === "string" && (
               <a
                 href={data.cta_href}
@@ -529,12 +537,12 @@ function CustomBlock({ block }: { block: HomepageBlock }) {
       <section className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         <a href={href} className="block overflow-hidden rounded-2xl border border-border shadow-soft">
           {img ? (
-            <img src={img} alt={`${block.title ?? "Banner promocional"}${block.subtitle ? ` — ${block.subtitle}` : " · Absoluto Glamur"}`} className="w-full object-cover" loading="lazy" />
+            <img src={img} alt={`${blockTitle ?? "Banner promocional"}${blockSubtitle ? ` — ${blockSubtitle}` : " · Absoluto Glamur"}`} className="w-full object-cover" loading="lazy" />
           ) : (
             <div className="flex items-center justify-between bg-secondary px-6 py-8">
               <div>
-                {block.title && <h3 className="font-display text-2xl">{block.title}</h3>}
-                {block.subtitle && <p className="text-sm text-muted-foreground">{block.subtitle}</p>}
+                {blockTitle && <h3 className="font-display text-2xl">{blockTitle}</h3>}
+                {blockSubtitle && <p className="text-sm text-muted-foreground">{blockSubtitle}</p>}
               </div>
             </div>
           )}
@@ -546,8 +554,8 @@ function CustomBlock({ block }: { block: HomepageBlock }) {
   if (block.kind === "collection" && collProducts.length > 0) {
     return (
       <FeaturedSection
-        title={block.title ?? t("home.collection")}
-        subtitle={block.subtitle ?? ""}
+        title={blockTitle ?? t("home.collection")}
+        subtitle={blockSubtitle ?? ""}
         link={{ label: t("home.seeAll"), search: { collection: String(data.slug ?? "") } }}
         products={collProducts}
       />
@@ -557,7 +565,7 @@ function CustomBlock({ block }: { block: HomepageBlock }) {
   if (block.kind === "text") {
     return (
       <section className="mx-auto max-w-3xl px-4 py-10 sm:px-6 lg:px-8 text-center">
-        {block.title && <h2 className="font-display text-3xl">{block.title}</h2>}
+        {blockTitle && <h2 className="font-display text-3xl">{blockTitle}</h2>}
         {typeof data.body === "string" && (
           <p className="mt-3 text-muted-foreground whitespace-pre-line">{data.body}</p>
         )}
@@ -581,14 +589,15 @@ function CustomBlock({ block }: { block: HomepageBlock }) {
   return null;
 }
 
-function FeaturedCollectionSection({ slug, name, description }: { slug: string; name: string; description: string | null }) {
+function FeaturedCollectionSection({ id, slug, name, description }: { id: string; slug: string; name: string; description: string | null }) {
   const { t } = useI18n();
+  const ct = useContentText();
   const { data: products = [] } = useQuery(featuredProductsQuery(slug));
   if (products.length === 0) return null;
   return (
     <FeaturedSection
-      title={name}
-      subtitle={description ?? t("home.featuredCollection")}
+      title={ct("collection", id, "name", name)}
+      subtitle={ct("collection", id, "description", description) ?? t("home.featuredCollection")}
       link={{ label: t("home.seeAll"), search: { collection: slug } }}
       products={products}
     />
@@ -638,6 +647,7 @@ function AnnouncementBar({
   announcement: { text?: string; product?: AnnouncementProduct };
 }) {
   const { t } = useI18n();
+  const ct = useContentText();
   const product = announcement.product;
   const hasProduct = !!(product?.slug && product?.category_slug);
   const href =
@@ -646,14 +656,14 @@ function AnnouncementBar({
       ? `/${product!.category_slug}/${product!.slug}${product?.variant_id ? `?variant=${product.variant_id}` : ""}`
       : "/products");
   const label = product?.cta_label || t("home.viewProduct");
-  const eyebrow = product?.eyebrow || announcement.text || t("home.dailyHighlight");
+  const eyebrow = product?.eyebrow || ct("home", "home_content", "announcement.text", announcement.text) || t("home.dailyHighlight");
 
   if (!hasProduct) {
     return (
       <div className="bg-plum text-primary-foreground">
         <div className="mx-auto flex max-w-7xl items-center justify-center gap-3 px-4 py-2 text-[11px] uppercase tracking-[0.28em] sm:px-6 lg:px-8">
           <Crown className="h-3 w-3 text-champagne" />
-          <span>{announcement.text}</span>
+          <span>{ct("home", "home_content", "announcement.text", announcement.text)}</span>
           <Crown className="h-3 w-3 text-champagne" />
         </div>
       </div>
