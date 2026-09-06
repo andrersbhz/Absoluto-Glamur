@@ -509,11 +509,12 @@ export const upsertAdminProduct = createServerFn({ method: "POST" })
       .eq("variant_id", variantId);
     const { data: existingPrice } = await db
       .from("product_prices")
-      .select("id")
+      .select("id, list_price_cents")
       .eq("variant_id", variantId)
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
+    const previousListCents = Number(existingPrice?.list_price_cents ?? 0);
     if (existingPrice?.id) {
       const { error } = await db
         .from("product_prices")
@@ -534,9 +535,9 @@ export const upsertAdminProduct = createServerFn({ method: "POST" })
       if (error) throw new Error(error.message);
     }
 
-    // O preço digitado aqui é manual: guardamos como override para que as
-    // sincronizações seguintes atualizem custo e estoque sem reverter o valor.
-    if (data.variant.list_price_cents > 0) {
+    // Só marcamos preço manual quando o lojista realmente alterou o valor.
+    // Salvar o formulário sem mexer no preço mantém a variação em modo automático.
+    if (data.variant.list_price_cents > 0 && data.variant.list_price_cents !== previousListCents) {
       const { data: vRow } = await db
         .from("product_variants")
         .select("options")
@@ -546,6 +547,7 @@ export const upsertAdminProduct = createServerFn({ method: "POST" })
       opts.price_override_cents = data.variant.list_price_cents;
       await db.from("product_variants").update({ options: opts as never }).eq("id", variantId);
     }
+
 
     // Inventory (upsert on variant_id PK)
     const { error: invErr } = await db
