@@ -104,7 +104,7 @@ function HomeBlock({ block, categories }: { block: HomepageBlock; categories: { 
     if ((data.mode ?? "all") === "all") {
       const selected = new Set(data.categories ?? []);
       const rows = selected.size > 0 ? allCategoryRows.filter((r) => selected.has(r.category.slug)) : allCategoryRows;
-      return <>{ct("block", block.id, "title", block.title) ? <SectionIntro title={ct("block", block.id, "title", block.title)} subtitle={ct("block", block.id, "subtitle", block.subtitle) ?? undefined} /> : null}{rows.map((row) => <ProductSection key={row.category.id} title={ct("category", row.category.id, "name", row.category.name)} subtitle={ct("block", block.id, "subtitle", block.subtitle) ?? t("home.latestSub")} products={row.products} search={{ category: row.category.slug }} limit={data.limit ?? 4} />)}</>;
+      return <>{ct("block", block.id, "title", block.title) ? <SectionIntro title={ct("block", block.id, "title", block.title) ?? ""} subtitle={ct("block", block.id, "subtitle", block.subtitle) ?? undefined} /> : null}{rows.map((row) => <ProductSection key={row.category.id} title={ct("category", row.category.id, "name", row.category.name)} subtitle={ct("block", block.id, "subtitle", block.subtitle) ?? t("home.latestSub")} products={row.products} search={{ category: row.category.slug }} limit={data.limit ?? 4} />)}</>;
     }
     if (!data.category_slug) return null;
     const category = categories.find((c) => c.slug === data.category_slug);
