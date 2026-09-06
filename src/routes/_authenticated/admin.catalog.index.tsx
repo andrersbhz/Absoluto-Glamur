@@ -167,11 +167,13 @@ function CatalogList() {
   async function handleRowSync(id: string) {
     setRowSyncing((s) => ({ ...s, [id]: true }));
     try {
-      const r = await syncOne({ data: { product_id: id } });
+      const r = await syncFullOne({ data: { product_id: id } });
       if (r.skipped) {
         toast.info(r.reason ?? "Produto não está conectado ao AliExpress.");
       } else {
-        toast.success(`Estoque: ${r.total_stock} · ${r.variants_updated} variante(s)`);
+        toast.success(
+          `Estoque ${r.total_stock} · ${r.total_skus} variação(ões) (${r.created} novas, ${r.updated} atualizadas)`,
+        );
         qc.invalidateQueries({ queryKey: ["admin-products"] });
       }
     } catch (e) {
