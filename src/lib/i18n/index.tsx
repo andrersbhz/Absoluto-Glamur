@@ -95,10 +95,20 @@ export function I18nProvider({ children }: { children: ReactNode }) {
       setPreferred(stored);
       return;
     }
-    const browser = matchSupportedLocale(
-      typeof navigator !== "undefined" ? navigator.language : null,
-    );
-    if (browser) setPreferred(browser);
+    // Sem preferência salva: o país do visitante (IP) define o idioma;
+    // o idioma do navegador é usado apenas como reserva.
+    let cancelled = false;
+    void fetchGeoHint().then((hint) => {
+      if (cancelled) return;
+      const browser = matchSupportedLocale(
+        typeof navigator !== "undefined" ? navigator.language : null,
+      );
+      const next = hint.locale ?? browser;
+      if (next) setPreferred(next);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [urlLocale]);
 
   const locale: Locale = urlLocale ?? preferred ?? DEFAULT_LOCALE;
