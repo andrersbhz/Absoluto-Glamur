@@ -194,7 +194,7 @@ export async function syncVariantsForProduct(
 
   const { data: existing } = await admin
     .from("product_variants")
-    .select("id, sku, external_sku_id, is_default, created_at")
+    .select("id, sku, external_sku_id, is_default, options, created_at")
     .eq("product_id", productId)
     .order("created_at", { ascending: true });
 
@@ -203,6 +203,7 @@ export async function syncVariantsForProduct(
     sku: string;
     external_sku_id: string | null;
     is_default: boolean;
+    options: Record<string, unknown> | null;
   };
   const rows: Row[] = (existing ?? []) as Row[];
   const byExternal = new Map<string, Row>();
