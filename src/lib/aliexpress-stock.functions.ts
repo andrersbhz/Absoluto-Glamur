@@ -7,18 +7,6 @@ import { parseSkus } from "./aliexpress-variants.server";
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 const ALI_SOURCES = ["aliexpress", "aliexpress_api", "aliexpress_url"];
-const FALLBACK_PRICING = { markup_percent: 150, markup_fixed_cents: 0, round_to_99: true };
-
-async function loadFallbackPricing(db: any) {
-  const { data } = await db.from("integrations").select("config").eq("provider", "aliexpress").maybeSingle();
-  const raw = (data?.config as any)?.import_settings ?? data?.config ?? {};
-  return {
-    markup_percent: Number(raw.markup_percent ?? 150),
-    markup_fixed_cents: Number(raw.markup_fixed_cents ?? 0),
-    round_to_99: raw.round_to_99 !== false,
-  };
-}
-
 async function assertCatalog(context: any) {
   const { data: adm } = await context.supabase.rpc("is_admin", { _user_id: context.userId });
   if (adm) return;
@@ -137,7 +125,7 @@ export const syncAliexpressStock = createServerFn({ method: "POST" })
       };
     }
 
-    const { total, bySku, costBySku, costBrlCents } = await fetchAliexpressLive(imp.source_id, db);
+    const { total, bySku } = await fetchAliexpressLive(imp.source_id, db);
 
     const { data: variants } = await db
       .from("product_variants")
@@ -229,7 +217,7 @@ export async function runBulkSync(limit: number, client?: any) {
     while (cursor < list.length) {
       const row = list[cursor++];
       try {
-        const { total, bySku, costBySku, costBrlCents } = await fetchAliexpressLive(row.source_id!, db);
+        const { total, bySku } = await fetchAliexpressLive(row.source_id!, db);
         const { data: variants } = await db
           .from("product_variants")
             .select("id, sku, external_sku_id, external_sku_attr, is_default, options")

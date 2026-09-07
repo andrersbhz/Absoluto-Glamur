@@ -157,7 +157,7 @@ export function parseSkus(json: any): ParsedSku[] {
       cost_list: null,
       stock: Math.max(
         0,
-        Math.round(num(s.sku_available_stock ?? s.available_stock ?? s.sku_stock ?? s.stock)),
+        Math.round(num(s.sku_available_stock ?? s.available_stock ?? s.sku_stock ?? s.stock ?? s.inventory)),
       ),
       weight_grams: (() => {
         const w = num(s.package_weight ?? s.sku_weight ?? 0); // kg
