@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { callAli } from "./aliexpress-discovery.functions";
 import { applyProductPricing } from "./pricing-engine.server";
+import { parseSkus } from "./aliexpress-variants.server";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
@@ -55,17 +56,9 @@ async function fetchAliexpressLive(productId: string, credentialClient?: any): P
     target_currency: "BRL",
     target_language: "PT",
   }, credentialClient);
-  const root =
-    (json as any).aliexpress_ds_product_get_response ??
-    (json as any).aliexpress_ds_productdetail_get_response ??
-    json;
+  const root = (json as any).aliexpress_ds_product_get_response ?? (json as any).aliexpress_ds_productdetail_get_response ?? json;
   const result = (root as any).result ?? root;
-  const skusBlock = result.ae_item_sku_info_dtos ?? result.skus ?? {};
-  const skus: any[] = Array.isArray(skusBlock?.ae_item_sku_info_d_t_o)
-    ? skusBlock.ae_item_sku_info_d_t_o
-    : Array.isArray(skusBlock)
-      ? skusBlock
-      : [];
+  const skus = parseSkus(json);
 
   const bySku: Record<string, number> = {};
   const costBySku: Record<string, number> = {};
@@ -78,17 +71,13 @@ async function fetchAliexpressLive(productId: string, credentialClient?: any): P
     return Number.isFinite(n) && n > 0 ? Math.round(n * 100) : null;
   };
   for (const s of skus) {
-    const stock = num(
-      s.sku_available_stock ?? s.available_stock ?? s.sku_stock ?? s.stock ?? s.inventory,
-    );
+    const stock = s.stock;
     total += stock;
-    const code = String(s.sku_code ?? s.sku_id ?? "").trim();
-    if (code) bySku[code] = stock;
-    const p = parsePrice(
-      s.offer_sale_price ?? s.sku_price ?? s.offer_bulk_sale_price ?? s.price,
-    );
+    const ids = [s.external_sku_id, s.sku_code, s.external_sku_attr].filter((value): value is string => Boolean(value));
+    for (const id of ids) bySku[id] = stock;
+    const p = s.cost == null ? null : Math.round(s.cost * 100);
     if (p != null) priceCandidates.push(p);
-    if (code && p != null) costBySku[code] = p;
+    if (p != null) for (const id of ids) costBySku[id] = p;
   }
   if (total === 0) {
     total = num(result.total_available_stock ?? result.stock ?? result.available_stock);
@@ -153,17 +142,18 @@ export const syncAliexpressStock = createServerFn({ method: "POST" })
 
     const { data: variants } = await db
       .from("product_variants")
-      .select("id, sku, is_default, options")
+      .select("id, sku, external_sku_id, external_sku_attr, is_default, options")
       .eq("product_id", data.product_id);
 
     const rows: { variant_id: string; stock: number }[] = [];
     if (variants && variants.length > 0) {
       const single = variants.length === 1;
       for (const v of variants) {
-        const matched = v.sku && bySku[v.sku] != null ? bySku[v.sku] : null;
+        const matchKey = [v.external_sku_id, v.external_sku_attr, v.sku].find((key) => key && bySku[key] != null);
+        const matched = matchKey ? bySku[matchKey] : null;
         const stock = matched != null ? matched : single || v.is_default ? total : 0;
         rows.push({ variant_id: v.id, stock: Math.max(0, stock) });
-        const skuCost = v.sku ? costBySku[v.sku] : null;
+        const skuCost = matchKey ? costBySku[matchKey] : null;
         if (skuCost) {
           await db.from("product_variants").update({
             options: { ...((v.options as Record<string, unknown> | null) ?? {}), supplier_cost_cents: skuCost },
@@ -266,12 +256,13 @@ export async function runBulkSync(limit: number, client?: any) {
         const { total, bySku, costBySku, costBrlCents } = await fetchAliexpressLive(row.source_id!, db);
         const { data: variants } = await db
           .from("product_variants")
-          .select("id, sku, is_default, options")
+            .select("id, sku, external_sku_id, external_sku_attr, is_default, options")
           .eq("product_id", row.product_id!);
         if (variants && variants.length > 0) {
           const single = variants.length === 1;
           const rows = variants.map((v: any) => {
-            const matched = v.sku && bySku[v.sku] != null ? bySku[v.sku] : null;
+            const matchKey = [v.external_sku_id, v.external_sku_attr, v.sku].find((key) => key && bySku[key] != null);
+            const matched = matchKey ? bySku[matchKey] : null;
             const stock = matched != null ? matched : single || v.is_default ? total : 0;
             return { variant_id: v.id, stock: Math.max(0, stock) };
           });
@@ -279,7 +270,8 @@ export async function runBulkSync(limit: number, client?: any) {
             .from("product_inventory")
             .upsert(rows, { onConflict: "variant_id" });
           for (const variant of variants) {
-            const skuCost = variant.sku ? costBySku[variant.sku] : null;
+            const matchKey = [variant.external_sku_id, variant.external_sku_attr, variant.sku].find((key) => key && costBySku[key] != null);
+            const skuCost = matchKey ? costBySku[matchKey] : null;
             if (!skuCost) continue;
             await db.from("product_variants").update({
               options: { ...((variant.options as Record<string, unknown> | null) ?? {}), supplier_cost_cents: skuCost },
