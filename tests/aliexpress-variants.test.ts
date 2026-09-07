@@ -21,4 +21,28 @@ describe("AliExpress SKU parser", () => {
     expect(parsed).toHaveLength(1);
     expect(parsed[0]?.external_sku_id).toBe("42");
   });
+
+  test("finds all SKUs in deeply nested alternate wrappers and removes duplicates", () => {
+    const parsed = parseSkus({
+      result: {
+        payload: {
+          sku_info_list: {
+            values: [
+              { sku_id: "a", sku_attr: "14:1", sku_price: "10", inventory: 4 },
+              { sku_id: "b", sku_attr: "14:2", sku_price: "12", stock: 6 },
+              { sku_id: "a", sku_attr: "14:1", sku_price: "10", inventory: 4 },
+            ],
+          },
+        },
+      },
+    });
+    expect(parsed.map((sku) => sku.external_sku_id)).toEqual(["a", "b"]);
+    expect(parsed.map((sku) => sku.stock)).toEqual([4, 6]);
+  });
+
+  test("uses sku_attr as stable identity when sku_id is absent", () => {
+    const parsed = parseSkus({ result: { skus: [{ sku_attr: "14:193;5:1", sku_price: 9, stock: 2 }] } });
+    expect(parsed).toHaveLength(1);
+    expect(parsed[0]?.external_sku_id).toBe("14:193;5:1");
+  });
 });

@@ -60,6 +60,42 @@ function asArray(block: any, key: string): any[] {
   return [];
 }
 
+function looksLikeSku(value: unknown): value is Record<string, any> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return false;
+  const row = value as Record<string, any>;
+  const hasIdentity = row.sku_id != null || row.sku_attr != null || row.sku_code != null || row.id != null;
+  const hasSkuData =
+    row.sku_available_stock != null ||
+    row.available_stock != null ||
+    row.sku_stock != null ||
+    row.stock != null ||
+    row.sku_price != null ||
+    row.offer_sale_price != null ||
+    row.price != null ||
+    row.ae_sku_property_dtos != null ||
+    row.sku_property_list != null;
+  return hasIdentity && hasSkuData;
+}
+
+/**
+ * A API já retornou a lista de SKUs com vários nomes e níveis de envelope.
+ * Esta busca recursiva evita aceitar apenas a primeira lista encontrada no JSON.
+ */
+function collectSkuRows(value: unknown, out: Record<string, any>[], seen: Set<object>): void {
+  if (!value || typeof value !== "object" || seen.has(value as object)) return;
+  seen.add(value as object);
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      if (looksLikeSku(item)) out.push(item);
+      else collectSkuRows(item, out, seen);
+    }
+    return;
+  }
+  for (const child of Object.values(value as Record<string, unknown>)) {
+    collectSkuRows(child, out, seen);
+  }
+}
+
 /** Extrai todos os SKUs reais retornados pela API do AliExpress. */
 export function parseSkus(json: any): ParsedSku[] {
   const root =
@@ -67,7 +103,7 @@ export function parseSkus(json: any): ParsedSku[] {
     json?.aliexpress_ds_productdetail_get_response ??
     json;
   const result = root?.result ?? root;
-  const skus = asArray(
+  const directSkus = asArray(
     result?.ae_item_sku_info_dtos ??
       result?.ae_item_sku_info_list ??
       result?.item_sku_info_dtos ??
@@ -75,11 +111,17 @@ export function parseSkus(json: any): ParsedSku[] {
       result?.sku_info_list,
     "ae_item_sku_info_d_t_o",
   );
+  const discoveredSkus: Record<string, any>[] = [];
+  collectSkuRows(result, discoveredSkus, new Set<object>());
+  const skus = directSkus.length > 0 ? [...directSkus, ...discoveredSkus] : discoveredSkus;
 
   const out: ParsedSku[] = [];
+  const seenIds = new Set<string>();
   for (const s of skus) {
-    const externalId = String(s.sku_id ?? s.id ?? s.sku_code ?? "").trim();
-    if (!externalId) continue;
+    const externalAttr = typeof s.sku_attr === "string" && s.sku_attr.trim() ? s.sku_attr.trim() : null;
+    const externalId = String(s.sku_id ?? s.id ?? externalAttr ?? s.sku_code ?? "").trim();
+    if (!externalId || seenIds.has(externalId)) continue;
+    seenIds.add(externalId);
 
     const attributes: Record<string, string> = {};
     let image_url: string | null = null;
@@ -107,8 +149,7 @@ export function parseSkus(json: any): ParsedSku[] {
 
     out.push({
       external_sku_id: externalId,
-      external_sku_attr:
-        typeof s.sku_attr === "string" && s.sku_attr.trim() ? s.sku_attr.trim() : null,
+      external_sku_attr: externalAttr,
       sku_code: String(s.sku_code ?? externalId).trim(),
       attributes,
       image_url,
@@ -116,7 +157,7 @@ export function parseSkus(json: any): ParsedSku[] {
       cost_list: null,
       stock: Math.max(
         0,
-        Math.round(num(s.sku_available_stock ?? s.available_stock ?? s.sku_stock ?? s.stock)),
+        Math.round(num(s.sku_available_stock ?? s.available_stock ?? s.sku_stock ?? s.stock ?? s.inventory)),
       ),
       weight_grams: (() => {
         const w = num(s.package_weight ?? s.sku_weight ?? 0); // kg
@@ -160,9 +201,8 @@ export type SyncVariantsResult = {
 
 /**
  * Sincroniza (cria/atualiza) as variações reais de um produto a partir do AliExpress.
- * - Nunca apaga variações: as que sumiram do fornecedor viram `is_available = false`
- *   (preserva o vínculo com pedidos antigos).
- * - Atualiza preço (com markup da loja), estoque e imagem de cada SKU.
+ * - Nunca apaga variações nem altera nome, atributos, imagem ou preço manual já salvos.
+ * - Adiciona SKUs novos e atualiza automaticamente somente estoque/custo.
  */
 export async function syncVariantsForProduct(
   admin: any,
@@ -172,13 +212,24 @@ export async function syncVariantsForProduct(
 ): Promise<SyncVariantsResult> {
   const settings = settingsOverride ?? (await loadSettings(admin));
 
-  const json = await callAli("aliexpress.ds.product.get", {
+  const requestParams = {
     product_id: sourceId,
     ship_to_country: "BR",
     target_currency: "BRL",
     target_language: "PT",
-  }, admin);
-  const skus = parseSkus(json);
+  };
+  // Une respostas consecutivas porque o endpoint pode devolver apenas parte
+  // dos SKUs em uma chamada. A união nunca remove uma variação já encontrada.
+  const mergedSkus = new Map<string, ParsedSku>();
+  let previousSignature = "";
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const json = await callAli("aliexpress.ds.product.get", requestParams, admin);
+    for (const sku of parseSkus(json)) mergedSkus.set(sku.external_sku_id, sku);
+    const signature = [...mergedSkus.keys()].sort().join("|");
+    if (signature && signature === previousSignature) break;
+    previousSignature = signature;
+  }
+  const skus = [...mergedSkus.values()];
   if (skus.length === 0) {
     const pricing = await applyProductPricing(admin, productId, { fallbackSettings: settings });
     return {
@@ -226,39 +277,52 @@ export async function syncVariantsForProduct(
       if (adopted) row = adopted;
     }
 
-    // Mantém tudo que o lojista salvou na variação (ex.: price_override_cents)
-    // e atualiza apenas os campos vindos do fornecedor.
-    const options = {
-      ...(row?.options && typeof row.options === "object" ? row.options : {}),
-      attributes: s.attributes,
-      image_url: s.image_url,
-      supplier_cost_cents: s.cost ? Math.round(s.cost * 100) : null,
-      supplier_list_cost_cents: s.cost_list ? Math.round(s.cost_list * 100) : null,
-      external_sku_id: s.external_sku_id,
-      sku_attr: s.external_sku_attr,
-      source_id: sourceId,
-    };
-    const payload: Record<string, unknown> = {
-      name,
-      options,
-      external_sku_id: s.external_sku_id,
-      external_sku_attr: s.external_sku_attr,
-      is_available: true,
-    };
-    if (s.weight_grams) payload.weight_grams = s.weight_grams;
-
-
     let variantId: string;
     if (row) {
-      const { error } = await admin.from("product_variants").update(payload).eq("id", row.id);
-      if (error) {
-        errors.push(`SKU ${s.external_sku_id}: falha ao atualizar variação (${error.message})`);
-        continue;
-      }
       variantId = row.id;
       matchedIds.add(row.id);
+      // Uma variação antiga sem vínculo externo é adotada uma única vez. Depois
+      // disso, sincronizações futuras não modificam mais seus dados salvos.
+      if (!row.external_sku_id) {
+        const adoptedOptions = {
+          ...(row.options && typeof row.options === "object" ? row.options : {}),
+          external_sku_id: s.external_sku_id,
+          sku_attr: s.external_sku_attr,
+          source_id: sourceId,
+          supplier_cost_cents: s.cost ? Math.round(s.cost * 100) : null,
+        };
+        const { error } = await admin
+          .from("product_variants")
+          .update({
+            options: adoptedOptions,
+            external_sku_id: s.external_sku_id,
+            external_sku_attr: s.external_sku_attr,
+          })
+          .eq("id", row.id);
+        if (error) {
+          errors.push(`SKU ${s.external_sku_id}: falha ao vincular variação (${error.message})`);
+          continue;
+        }
+      }
       updated += 1;
     } else {
+      const options = {
+        attributes: s.attributes,
+        image_url: s.image_url,
+        supplier_cost_cents: s.cost ? Math.round(s.cost * 100) : null,
+        supplier_list_cost_cents: s.cost_list ? Math.round(s.cost_list * 100) : null,
+        external_sku_id: s.external_sku_id,
+        sku_attr: s.external_sku_attr,
+        source_id: sourceId,
+      };
+      const payload: Record<string, unknown> = {
+        name,
+        options,
+        external_sku_id: s.external_sku_id,
+        external_sku_attr: s.external_sku_attr,
+        is_available: true,
+      };
+      if (s.weight_grams) payload.weight_grams = s.weight_grams;
       const sku = `AE-${sourceId}-${s.external_sku_id}`;
       const { data: ins, error } = await admin
         .from("product_variants")
@@ -289,15 +353,10 @@ export async function syncVariantsForProduct(
     }
   }
 
-  // SKUs que não vieram mais do fornecedor continuam salvos e visíveis:
-  // nunca são excluídos nem ocultados — apenas ficam com estoque 0.
+  // Uma resposta parcial do fornecedor nunca pode zerar ou excluir variações
+  // que já estavam salvas. Elas permanecem intactas até o produto inteiro ser
+  // removido explicitamente do catálogo.
   const stale = rows.filter((r) => !matchedIds.has(r.id));
-  for (const r of stale) {
-    await admin.from("product_variants").update({ is_available: true }).eq("id", r.id);
-    await admin
-      .from("product_inventory")
-      .upsert({ variant_id: r.id, stock: 0 }, { onConflict: "variant_id" });
-  }
 
   // Garante que a variação padrão seja uma disponível e com estoque.
   const { data: after } = await admin
@@ -330,7 +389,7 @@ export async function syncVariantsForProduct(
     total_skus: skus.length,
     created,
     updated,
-    unavailable: stale.length,
+    unavailable: 0,
     errors,
   };
 }
