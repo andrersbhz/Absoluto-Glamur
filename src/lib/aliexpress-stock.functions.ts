@@ -2,7 +2,6 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { callAli } from "./aliexpress-discovery.functions";
-import { applyProductPricing } from "./pricing-engine.server";
 import { parseSkus } from "./aliexpress-variants.server";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
@@ -151,14 +150,8 @@ export const syncAliexpressStock = createServerFn({ method: "POST" })
       for (const v of variants) {
         const matchKey = [v.external_sku_id, v.external_sku_attr, v.sku].find((key) => key && bySku[key] != null);
         const matched = matchKey ? bySku[matchKey] : null;
-        const stock = matched != null ? matched : single || v.is_default ? total : 0;
-        rows.push({ variant_id: v.id, stock: Math.max(0, stock) });
-        const skuCost = matchKey ? costBySku[matchKey] : null;
-        if (skuCost) {
-          await db.from("product_variants").update({
-            options: { ...((v.options as Record<string, unknown> | null) ?? {}), supplier_cost_cents: skuCost },
-          }).eq("id", v.id);
-        }
+        const stock = matched != null ? matched : single && Object.keys(bySku).length === 0 ? total : null;
+        if (stock != null) rows.push({ variant_id: v.id, stock: Math.max(0, stock) });
       }
     }
 
@@ -167,22 +160,6 @@ export const syncAliexpressStock = createServerFn({ method: "POST" })
         .from("product_inventory")
         .upsert(rows, { onConflict: "variant_id" });
     }
-
-    if (costBrlCents && costBrlCents > 0) {
-      await db.from("pricing_calculations").insert({
-        product_id: data.product_id,
-        cost_cents: costBrlCents,
-        suggested_price_cents: costBrlCents,
-        final_price_cents: costBrlCents,
-        margin_pct: 0,
-        breakdown: { source: "aliexpress_live", synced_at: new Date().toISOString() },
-        applied: false,
-      } as any);
-    }
-    await applyProductPricing(db, data.product_id, {
-      fallbackSettings: await loadFallbackPricing(db),
-      defaultSupplierCostCents: costBrlCents,
-    });
 
     await db
       .from("product_imports")
@@ -245,7 +222,6 @@ export async function runBulkSync(limit: number, client?: any) {
   });
 
   let ok = 0;
-  const fallbackPricing = await loadFallbackPricing(db).catch(() => FALLBACK_PRICING);
   const errors: { product_id: string; error: string }[] = [];
 
   let cursor = 0;
@@ -263,36 +239,15 @@ export async function runBulkSync(limit: number, client?: any) {
           const rows = variants.map((v: any) => {
             const matchKey = [v.external_sku_id, v.external_sku_attr, v.sku].find((key) => key && bySku[key] != null);
             const matched = matchKey ? bySku[matchKey] : null;
-            const stock = matched != null ? matched : single || v.is_default ? total : 0;
-            return { variant_id: v.id, stock: Math.max(0, stock) };
-          });
-          await db
-            .from("product_inventory")
-            .upsert(rows, { onConflict: "variant_id" });
-          for (const variant of variants) {
-            const matchKey = [variant.external_sku_id, variant.external_sku_attr, variant.sku].find((key) => key && costBySku[key] != null);
-            const skuCost = matchKey ? costBySku[matchKey] : null;
-            if (!skuCost) continue;
-            await db.from("product_variants").update({
-              options: { ...((variant.options as Record<string, unknown> | null) ?? {}), supplier_cost_cents: skuCost },
-            }).eq("id", variant.id);
+            const stock = matched != null ? matched : single && Object.keys(bySku).length === 0 ? total : null;
+            return stock == null ? null : { variant_id: v.id, stock: Math.max(0, stock) };
+          }).filter((row: { variant_id: string; stock: number } | null): row is { variant_id: string; stock: number } => row != null);
+          if (rows.length > 0) {
+            await db
+              .from("product_inventory")
+              .upsert(rows, { onConflict: "variant_id" });
           }
         }
-        if (costBrlCents && costBrlCents > 0) {
-          await db.from("pricing_calculations").insert({
-            product_id: row.product_id!,
-            cost_cents: costBrlCents,
-            suggested_price_cents: costBrlCents,
-            final_price_cents: costBrlCents,
-            margin_pct: 0,
-            breakdown: { source: "aliexpress_live", synced_at: new Date().toISOString() },
-            applied: false,
-          } as any);
-        }
-        await applyProductPricing(db, row.product_id!, {
-          fallbackSettings: fallbackPricing,
-          defaultSupplierCostCents: costBrlCents,
-        });
         ok += 1;
       } catch (e) {
         errors.push({

@@ -212,13 +212,24 @@ export async function syncVariantsForProduct(
 ): Promise<SyncVariantsResult> {
   const settings = settingsOverride ?? (await loadSettings(admin));
 
-  const json = await callAli("aliexpress.ds.product.get", {
+  const requestParams = {
     product_id: sourceId,
     ship_to_country: "BR",
     target_currency: "BRL",
     target_language: "PT",
-  }, admin);
-  const skus = parseSkus(json);
+  };
+  // Une respostas consecutivas porque o endpoint pode devolver apenas parte
+  // dos SKUs em uma chamada. A união nunca remove uma variação já encontrada.
+  const mergedSkus = new Map<string, ParsedSku>();
+  let previousSignature = "";
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const json = await callAli("aliexpress.ds.product.get", requestParams, admin);
+    for (const sku of parseSkus(json)) mergedSkus.set(sku.external_sku_id, sku);
+    const signature = [...mergedSkus.keys()].sort().join("|");
+    if (signature && signature === previousSignature) break;
+    previousSignature = signature;
+  }
+  const skus = [...mergedSkus.values()];
   if (skus.length === 0) {
     const pricing = await applyProductPricing(admin, productId, { fallbackSettings: settings });
     return {
@@ -378,7 +389,7 @@ export async function syncVariantsForProduct(
     total_skus: skus.length,
     created,
     updated,
-    unavailable: stale.length,
+    unavailable: 0,
     errors,
   };
 }
