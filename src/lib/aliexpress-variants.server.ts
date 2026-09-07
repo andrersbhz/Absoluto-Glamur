@@ -219,7 +219,17 @@ export async function syncVariantsForProduct(
   for (let i = 0; i < skus.length; i += 1) {
     const s = skus[i];
     const name = variantLabel(s.attributes);
+
+    let row = byExternal.get(s.external_sku_id) ?? null;
+    if (!row) {
+      const adopted = adoptable.find((r) => !matchedIds.has(r.id));
+      if (adopted) row = adopted;
+    }
+
+    // Mantém tudo que o lojista salvou na variação (ex.: price_override_cents)
+    // e atualiza apenas os campos vindos do fornecedor.
     const options = {
+      ...(row?.options && typeof row.options === "object" ? row.options : {}),
       attributes: s.attributes,
       image_url: s.image_url,
       supplier_cost_cents: s.cost ? Math.round(s.cost * 100) : null,
@@ -237,11 +247,6 @@ export async function syncVariantsForProduct(
     };
     if (s.weight_grams) payload.weight_grams = s.weight_grams;
 
-    let row = byExternal.get(s.external_sku_id) ?? null;
-    if (!row) {
-      const adopted = adoptable.find((r) => !matchedIds.has(r.id));
-      if (adopted) row = adopted;
-    }
 
     let variantId: string;
     if (row) {
