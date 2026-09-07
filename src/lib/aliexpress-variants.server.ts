@@ -194,7 +194,7 @@ export async function syncVariantsForProduct(
 
   const { data: existing } = await admin
     .from("product_variants")
-    .select("id, sku, external_sku_id, is_default, created_at")
+    .select("id, sku, external_sku_id, is_default, options, created_at")
     .eq("product_id", productId)
     .order("created_at", { ascending: true });
 
@@ -203,6 +203,7 @@ export async function syncVariantsForProduct(
     sku: string;
     external_sku_id: string | null;
     is_default: boolean;
+    options: Record<string, unknown> | null;
   };
   const rows: Row[] = (existing ?? []) as Row[];
   const byExternal = new Map<string, Row>();
@@ -218,7 +219,17 @@ export async function syncVariantsForProduct(
   for (let i = 0; i < skus.length; i += 1) {
     const s = skus[i];
     const name = variantLabel(s.attributes);
+
+    let row = byExternal.get(s.external_sku_id) ?? null;
+    if (!row) {
+      const adopted = adoptable.find((r) => !matchedIds.has(r.id));
+      if (adopted) row = adopted;
+    }
+
+    // Mantém tudo que o lojista salvou na variação (ex.: price_override_cents)
+    // e atualiza apenas os campos vindos do fornecedor.
     const options = {
+      ...(row?.options && typeof row.options === "object" ? row.options : {}),
       attributes: s.attributes,
       image_url: s.image_url,
       supplier_cost_cents: s.cost ? Math.round(s.cost * 100) : null,
@@ -236,11 +247,6 @@ export async function syncVariantsForProduct(
     };
     if (s.weight_grams) payload.weight_grams = s.weight_grams;
 
-    let row = byExternal.get(s.external_sku_id) ?? null;
-    if (!row) {
-      const adopted = adoptable.find((r) => !matchedIds.has(r.id));
-      if (adopted) row = adopted;
-    }
 
     let variantId: string;
     if (row) {
@@ -293,14 +299,22 @@ export async function syncVariantsForProduct(
       .upsert({ variant_id: r.id, stock: 0 }, { onConflict: "variant_id" });
   }
 
-  // Garante uma variação padrão entre as disponíveis.
+  // Garante que a variação padrão seja uma disponível e com estoque.
   const { data: after } = await admin
     .from("product_variants")
-    .select("id, is_default, is_available")
+    .select("id, is_default, is_available, inventory:product_inventory(stock)")
     .eq("product_id", productId);
   const available = (after ?? []).filter((v: any) => v.is_available);
-  if (available.length > 0 && !available.some((v: any) => v.is_default)) {
-    await admin.from("product_variants").update({ is_default: true }).eq("id", available[0].id);
+  const stockOf = (v: any) =>
+    Number((Array.isArray(v.inventory) ? v.inventory[0]?.stock : v.inventory?.stock) ?? 0);
+  const inStock = available.filter((v: any) => stockOf(v) > 0);
+  const pool = inStock.length > 0 ? inStock : available;
+  if (pool.length > 0 && !pool.some((v: any) => v.is_default)) {
+    const current = (after ?? []).filter((v: any) => v.is_default && v.id !== pool[0].id);
+    for (const v of current) {
+      await admin.from("product_variants").update({ is_default: false }).eq("id", v.id);
+    }
+    await admin.from("product_variants").update({ is_default: true }).eq("id", pool[0].id);
   }
 
   // Custo e estoque vêm do fornecedor; preço de venda sempre passa pelas regras
