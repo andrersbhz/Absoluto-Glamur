@@ -299,14 +299,22 @@ export async function syncVariantsForProduct(
       .upsert({ variant_id: r.id, stock: 0 }, { onConflict: "variant_id" });
   }
 
-  // Garante uma variação padrão entre as disponíveis.
+  // Garante que a variação padrão seja uma disponível e com estoque.
   const { data: after } = await admin
     .from("product_variants")
-    .select("id, is_default, is_available")
+    .select("id, is_default, is_available, inventory:product_inventory(stock)")
     .eq("product_id", productId);
   const available = (after ?? []).filter((v: any) => v.is_available);
-  if (available.length > 0 && !available.some((v: any) => v.is_default)) {
-    await admin.from("product_variants").update({ is_default: true }).eq("id", available[0].id);
+  const stockOf = (v: any) =>
+    Number((Array.isArray(v.inventory) ? v.inventory[0]?.stock : v.inventory?.stock) ?? 0);
+  const inStock = available.filter((v: any) => stockOf(v) > 0);
+  const pool = inStock.length > 0 ? inStock : available;
+  if (pool.length > 0 && !pool.some((v: any) => v.is_default)) {
+    const current = (after ?? []).filter((v: any) => v.is_default && v.id !== pool[0].id);
+    for (const v of current) {
+      await admin.from("product_variants").update({ is_default: false }).eq("id", v.id);
+    }
+    await admin.from("product_variants").update({ is_default: true }).eq("id", pool[0].id);
   }
 
   // Custo e estoque vêm do fornecedor; preço de venda sempre passa pelas regras
