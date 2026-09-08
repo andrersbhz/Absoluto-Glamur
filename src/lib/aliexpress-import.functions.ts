@@ -24,6 +24,16 @@ function slugify(v: string): string {
     .slice(0, 80);
 }
 
+/** Variação (SKU) trazida do fornecedor apenas para exibição na prévia. */
+export type VariantPreview = {
+  label: string;
+  sku_code: string;
+  attributes: Record<string, string>;
+  image_url: string | null;
+  cost: number | null;
+  stock: number;
+};
+
 export type NormalizedProduct = {
   title: string;
   description: string | null;
@@ -36,7 +46,10 @@ export type NormalizedProduct = {
   source_id: string | null;
   /** Marca informada pela origem (ex.: AliExpress). Usada para vincular/criar a marca no catálogo. */
   brand_name?: string | null;
+  /** Variações (SKUs) encontradas no fornecedor — somente leitura na prévia. */
+  variants?: VariantPreview[];
 };
+
 
 export type ImportRow = {
   id: string;
@@ -340,6 +353,16 @@ async function loadAliExpressUrlPreview(
   const descriptionHtml = String(base?.detail ?? result?.package_info_dto?.package_detail ?? "");
   const brandName = extractBrandName(props, base, result);
 
+  const { parseSkus, variantLabel } = await import("./aliexpress-variants.server");
+  const variants: VariantPreview[] = parseSkus(json).map((s) => ({
+    label: variantLabel(s.attributes) ?? s.sku_code,
+    sku_code: s.sku_code,
+    attributes: s.attributes,
+    image_url: s.image_url,
+    cost: s.cost,
+    stock: s.stock,
+  }));
+
   return {
     title: rawTitle,
     brand_name: brandName,
@@ -351,8 +374,10 @@ async function loadAliExpressUrlPreview(
     weight_grams: weightKg != null && weightKg > 0 ? Math.round(weightKg * 1000) : null,
     source_url: sourceUrl,
     source_id: productId,
+    variants,
   };
 }
+
 
 export function stripBrandMentions(input: string | null | undefined): string | null {
   if (!input) return input ?? null;

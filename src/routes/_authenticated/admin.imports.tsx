@@ -29,8 +29,10 @@ import {
   saveImportSettings,
   type ImportRow,
   type NormalizedProduct,
+  type VariantPreview,
   type ImportSettings,
 } from "@/lib/aliexpress-import.functions";
+
 import {
   discoverAliexpressProducts,
   importAliexpressProductToStore,
@@ -328,6 +330,9 @@ function PreviewEditor({
           />
         </Field>
       </div>
+
+      <VariantsPreview variants={value.variants ?? []} />
+
       <div className="mt-6 flex flex-wrap justify-end gap-2">
         <button
           onClick={onAiSave}
@@ -353,6 +358,62 @@ function PreviewEditor({
     </div>
   );
 }
+
+function VariantsPreview({ variants }: { variants: VariantPreview[] }) {
+  if (variants.length === 0) {
+    return (
+      <p className="mt-6 rounded-lg border border-dashed border-border p-3 text-xs text-muted-foreground">
+        Nenhuma variação encontrada para este produto no fornecedor.
+      </p>
+    );
+  }
+  const totalStock = variants.reduce((s, v) => s + (v.stock ?? 0), 0);
+  return (
+    <div className="mt-6">
+      <div className="mb-2 flex items-center justify-between">
+        <h4 className="text-sm font-medium">Variações encontradas ({variants.length})</h4>
+        <span className="text-xs text-muted-foreground">Estoque total: {totalStock}</span>
+      </div>
+      <div className="max-h-80 overflow-auto rounded-lg border border-border">
+        <table className="w-full text-sm">
+          <thead className="sticky top-0 bg-muted/60 text-xs text-muted-foreground">
+            <tr>
+              <th className="p-2 text-left">Variação</th>
+              <th className="p-2 text-left">SKU</th>
+              <th className="p-2 text-right">Custo</th>
+              <th className="p-2 text-right">Estoque</th>
+            </tr>
+          </thead>
+          <tbody>
+            {variants.map((v) => (
+              <tr key={v.sku_code} className="border-t border-border">
+                <td className="p-2">
+                  <div className="flex items-center gap-2">
+                    {v.image_url ? (
+                      <img src={v.image_url} alt={v.label} className="h-8 w-8 rounded object-cover" loading="lazy" />
+                    ) : (
+                      <span className="flex h-8 w-8 items-center justify-center rounded bg-muted">
+                        <ImageOff className="h-3 w-3 text-muted-foreground" />
+                      </span>
+                    )}
+                    <span>{v.label}</span>
+                  </div>
+                </td>
+                <td className="p-2 text-xs text-muted-foreground">{v.sku_code}</td>
+                <td className="p-2 text-right">{v.cost != null ? v.cost.toFixed(2) : "—"}</td>
+                <td className="p-2 text-right">{v.stock}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      <p className="mt-1 text-xs text-muted-foreground">
+        Todas estas variações são criadas automaticamente ao salvar o rascunho.
+      </p>
+    </div>
+  );
+}
+
 
 function Field({
   label,
