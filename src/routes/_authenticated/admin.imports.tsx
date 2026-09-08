@@ -328,6 +328,9 @@ function PreviewEditor({
           />
         </Field>
       </div>
+
+      <VariantsPreview variants={value.variants ?? []} />
+
       <div className="mt-6 flex flex-wrap justify-end gap-2">
         <button
           onClick={onAiSave}
