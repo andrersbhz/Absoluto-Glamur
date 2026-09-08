@@ -340,6 +340,16 @@ async function loadAliExpressUrlPreview(
   const descriptionHtml = String(base?.detail ?? result?.package_info_dto?.package_detail ?? "");
   const brandName = extractBrandName(props, base, result);
 
+  const { parseSkus, variantLabel } = await import("./aliexpress-variants.server");
+  const variants: VariantPreview[] = parseSkus(json).map((s) => ({
+    label: variantLabel(s.attributes) ?? s.sku_code,
+    sku_code: s.sku_code,
+    attributes: s.attributes,
+    image_url: s.image_url,
+    cost: s.cost,
+    stock: s.stock,
+  }));
+
   return {
     title: rawTitle,
     brand_name: brandName,
@@ -351,8 +361,10 @@ async function loadAliExpressUrlPreview(
     weight_grams: weightKg != null && weightKg > 0 ? Math.round(weightKg * 1000) : null,
     source_url: sourceUrl,
     source_id: productId,
+    variants,
   };
 }
+
 
 export function stripBrandMentions(input: string | null | undefined): string | null {
   if (!input) return input ?? null;
