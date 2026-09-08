@@ -29,8 +29,10 @@ import {
   saveImportSettings,
   type ImportRow,
   type NormalizedProduct,
+  type VariantPreview,
   type ImportSettings,
 } from "@/lib/aliexpress-import.functions";
+
 import {
   discoverAliexpressProducts,
   importAliexpressProductToStore,
