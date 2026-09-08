@@ -24,6 +24,16 @@ function slugify(v: string): string {
     .slice(0, 80);
 }
 
+/** Variação (SKU) trazida do fornecedor apenas para exibição na prévia. */
+export type VariantPreview = {
+  label: string;
+  sku_code: string;
+  attributes: Record<string, string>;
+  image_url: string | null;
+  cost: number | null;
+  stock: number;
+};
+
 export type NormalizedProduct = {
   title: string;
   description: string | null;
@@ -36,7 +46,10 @@ export type NormalizedProduct = {
   source_id: string | null;
   /** Marca informada pela origem (ex.: AliExpress). Usada para vincular/criar a marca no catálogo. */
   brand_name?: string | null;
+  /** Variações (SKUs) encontradas no fornecedor — somente leitura na prévia. */
+  variants?: VariantPreview[];
 };
+
 
 export type ImportRow = {
   id: string;
