@@ -1,6 +1,15 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import { ChevronDown, ListFilter } from "lucide-react";
 import { z } from "zod";
+import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { StoreLayout } from "@/components/store/StoreLayout";
 import { ProductCard } from "@/components/store/ProductCard";
 import { categoriesQuery, collectionsQuery, productListQuery } from "@/lib/catalog";
@@ -39,6 +48,7 @@ export const Route = createFileRoute("/products")({
 
 function ProductsPage() {
   const { q, category, collection, sort } = Route.useSearch();
+  const navigate = useNavigate();
   const { data: products = [], isLoading } = useQuery(productListQuery({ q, category, collection, sort }));
   const { data: categories = [] } = useQuery(categoriesQuery());
   const { data: collections = [] } = useQuery(collectionsQuery());
@@ -54,55 +64,63 @@ function ProductsPage() {
         <header className="mb-8 flex flex-col gap-3">
           <p className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Catálogo</p>
           <h1 className="font-display text-4xl text-foreground">{title}</h1>
-          <div className="flex flex-wrap gap-2">
-            <Link
-              to="/products"
-              search={{} as never}
-              className={`rounded-full border px-3 py-1 text-xs transition ${
-                !category && !collection ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:bg-secondary"
-              }`}
-            >
-              Todos
-            </Link>
-            {categories.map((c) => (
+          <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
+            <div className="flex min-w-0 flex-wrap gap-2">
               <Link
-                key={c.id}
                 to="/products"
-                search={{ category: c.slug } as never}
+                search={{ q, sort } as never}
                 className={`rounded-full border px-3 py-1 text-xs transition ${
-                  category === c.slug ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:bg-secondary"
+                  !category && !collection ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:bg-secondary"
                 }`}
               >
-                {c.name}
+                Todos
               </Link>
-            ))}
-          </div>
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Ordenar:</span>
-            {(
-              [
-                { value: "best_selling", label: "Mais vendidos" },
-                { value: "top_rated", label: "Mais bem avaliados" },
-                { value: "price_asc", label: "Menor preço" },
-                { value: "price_desc", label: "Maior preço" },
-              ] as const
-            ).map((opt) => {
-              const active = sort === opt.value;
-              return (
+              {categories.map((c) => (
                 <Link
-                  key={opt.value}
+                  key={c.id}
                   to="/products"
-                  search={{ q, category, collection, sort: active ? undefined : opt.value } as never}
+                  search={{ q, category: c.slug, sort } as never}
                   className={`rounded-full border px-3 py-1 text-xs transition ${
-                    active
-                      ? "border-primary bg-primary/10 text-primary"
-                      : "border-border text-muted-foreground hover:bg-secondary"
+                    category === c.slug ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:bg-secondary"
                   }`}
                 >
-                  {opt.label}
+                  {c.name}
                 </Link>
-              );
-            })}
+              ))}
+            </div>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  type="button"
+                  variant={sort ? "secondary" : "outline"}
+                  size="sm"
+                  className="shrink-0 rounded-full"
+                  aria-label="Escolher ordenação dos produtos"
+                >
+                  <ListFilter />
+                  <span className="hidden sm:inline">Ordenar</span>
+                  <ChevronDown className="hidden sm:block" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-52">
+                <DropdownMenuRadioGroup
+                  value={sort ?? ""}
+                  onValueChange={(value) => {
+                    const nextSort = value === sort ? undefined : value;
+                    navigate({
+                      to: "/products",
+                      search: { q, category, collection, sort: nextSort } as never,
+                    });
+                  }}
+                >
+                  <DropdownMenuRadioItem value="best_selling">Mais vendidos</DropdownMenuRadioItem>
+                  <DropdownMenuRadioItem value="top_rated">Mais bem avaliados</DropdownMenuRadioItem>
+                  <DropdownMenuRadioItem value="price_asc">Menor preço</DropdownMenuRadioItem>
+                  <DropdownMenuRadioItem value="price_desc">Maior preço</DropdownMenuRadioItem>
+                </DropdownMenuRadioGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </header>
 
