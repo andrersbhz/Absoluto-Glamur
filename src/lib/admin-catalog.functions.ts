@@ -375,14 +375,39 @@ export const getAdminProduct = createServerFn({ method: "GET" })
       .maybeSingle();
     if (error) throw new Error(error.message);
     if (!p) throw new Error("Produto não encontrado");
+    const [{ data: imp }, { data: shippingRows }] = await Promise.all([
+      db
+        .from("product_imports")
+        .select("source, source_id, source_url, created_at")
+        .eq("product_id", data.id)
+        .not("source_id", "is", null)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+      db
+        .from("pricing_cost_components")
+        .select("key, amount_cents")
+        .eq("product_id", data.id)
+        .in("key", ["shipping", "frete", "freight"]),
+    ]);
+    const shippingCents = (shippingRows ?? []).reduce(
+      (sum: number, row: { amount_cents: number | null }) => sum + Math.max(0, Number(row.amount_cents ?? 0)),
+      0,
+    );
     type V = {
       id: string; sku: string; is_default: boolean; weight_grams: number | null;
       name?: string | null;
-      options?: { attributes?: Record<string, string>; image_url?: string | null; price_override_cents?: number | null } | null;
+      options?: {
+        attributes?: Record<string, string>;
+        image_url?: string | null;
+        price_override_cents?: number | null;
+        supplier_cost_cents?: number | null;
+      } | null;
       is_available?: boolean | null;
       prices: { list_price_cents: number; sale_price_cents: number | null; is_active: boolean }[] | null;
       inventory: { stock: number } | { stock: number }[] | null;
     };
+
     const variants = (p.variants as unknown as V[]) ?? [];
     const def = variants.find((v) => v.is_default) ?? variants[0];
     const price = def?.prices?.find((x) => x.is_active) ?? def?.prices?.[0];
