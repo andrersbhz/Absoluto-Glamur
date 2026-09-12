@@ -627,6 +627,39 @@ function ProductRow({
         </div>
       </td>
       <td className="px-4 py-3">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-medium">
+              {row.supplier_source
+                ? row.supplier_source.startsWith("aliexpress")
+                  ? "AliExpress"
+                  : "Manual"
+                : "Sem fornecedor"}
+            </span>
+            <button
+              onClick={onChangeSupplier}
+              className="rounded-lg border border-border px-2 py-0.5 text-[11px] hover:bg-secondary"
+            >
+              Trocar
+            </button>
+          </div>
+          <p className="text-[11px] text-muted-foreground">
+            {row.supplier_cost_cents != null ? (
+              <>
+                Custo {formatBRL(row.supplier_cost_cents)}
+                {row.supplier_shipping_cents ? ` + frete ${formatBRL(row.supplier_shipping_cents)}` : ""}
+                {row.supplier_total_cents != null ? ` = ${formatBRL(row.supplier_total_cents)}` : ""}
+              </>
+            ) : (
+              "Custo não sincronizado"
+            )}
+          </p>
+          <p className="text-[11px] text-muted-foreground">
+            {row.variant_count} variação(ões) · estoque {row.total_stock ?? 0}
+          </p>
+        </div>
+      </td>
+      <td className="px-4 py-3">
         {row.cost_cents != null ? (
           <span className="text-muted-foreground">{formatBRL(row.cost_cents)}</span>
         ) : (
@@ -643,6 +676,7 @@ function ProductRow({
           <span className="text-muted-foreground">—</span>
         )}
       </td>
+
       <td className="px-4 py-3">{row.media_count}</td>
       <td className="px-4 py-3">
         <div className="flex items-center justify-end gap-2">
