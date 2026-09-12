@@ -185,6 +185,44 @@ function CatalogList() {
     }
   }
 
+  // Troca de fornecedor (link/ID de origem) direto pela lista.
+  const setSupplierFn = useServerFn(setProductSupplier);
+  const [supplierTarget, setSupplierTarget] = useState<AdminProductRow | null>(null);
+  const [supplierSource, setSupplierSource] = useState<"aliexpress_url" | "aliexpress_api" | "manual">(
+    "aliexpress_url",
+  );
+  const [supplierRef, setSupplierRef] = useState("");
+  const [supplierSaving, setSupplierSaving] = useState(false);
+
+  function openSupplier(row: AdminProductRow) {
+    setSupplierTarget(row);
+    setSupplierSource(
+      (row.supplier_source as "aliexpress_url" | "aliexpress_api" | "manual") ?? "aliexpress_url",
+    );
+    setSupplierRef(row.supplier_url ?? row.ali_source_id ?? "");
+  }
+
+  async function saveSupplier(sync: boolean) {
+    if (!supplierTarget) return;
+    setSupplierSaving(true);
+    try {
+      await setSupplierFn({
+        data: { productId: supplierTarget.id, source: supplierSource, reference: supplierRef },
+      });
+      toast.success("Fornecedor atualizado");
+      const id = supplierTarget.id;
+      setSupplierTarget(null);
+      qc.invalidateQueries({ queryKey: ["admin-products"] });
+      if (sync) await handleRowSync(id);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Falha ao salvar fornecedor");
+    } finally {
+      setSupplierSaving(false);
+    }
+  }
+
+
+
   const delMut = useMutation({
     mutationFn: (id: string) => del({ data: { id } }),
     onSuccess: () => {
