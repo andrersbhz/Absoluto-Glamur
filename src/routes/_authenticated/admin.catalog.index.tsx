@@ -345,6 +345,7 @@ function CatalogList() {
               <tr>
                 <th className="px-4 py-3">Produto</th>
                 <th className="px-4 py-3">Status</th>
+                <th className="px-4 py-3">Fornecedor</th>
                 <th className="px-4 py-3">Custo</th>
                 <th className="px-4 py-3">Preço</th>
                 <th className="px-4 py-3">Estoque</th>
@@ -355,14 +356,14 @@ function CatalogList() {
             <tbody>
               {query.isLoading && (
                 <tr>
-                  <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">
+                  <td colSpan={8} className="px-4 py-8 text-center text-muted-foreground">
                     Carregando…
                   </td>
                 </tr>
               )}
               {query.data?.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="px-4 py-10 text-center text-muted-foreground">
+                  <td colSpan={8} className="px-4 py-10 text-center text-muted-foreground">
                     Nenhum produto ainda. Clique em <b>Novo produto</b>.
                   </td>
                 </tr>
@@ -378,8 +379,10 @@ function CatalogList() {
                   optimizing={aiTarget?.id === p.id && aiLoading !== "idle"}
                   onSync={() => handleRowSync(p.id)}
                   syncing={!!rowSyncing[p.id]}
+                  onChangeSupplier={() => openSupplier(p)}
                 />
               ))}
+
             </tbody>
           </table>
         </div>
