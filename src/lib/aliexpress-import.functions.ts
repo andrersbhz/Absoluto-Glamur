@@ -197,28 +197,48 @@ async function resolveAliExpressInput(input: string): Promise<{ productId: strin
   // Short/share links do AliExpress não carregam o ID no endereço inicial.
   // We only follow the official redirect and inspect the final URL; no page scraping is performed.
   let finalUrl = parsed.toString();
+  let html = "";
   try {
     let response = await fetch(finalUrl, {
       method: "HEAD",
       redirect: "follow",
       headers: { "User-Agent": "Mozilla/5.0 (compatible; AbsolutoGlamurImporter/1.0)" },
     });
-    if (!response.ok || !response.url) {
-      response = await fetch(finalUrl, {
+    if (!response.ok || !response.url || !extractAliexpressId(response.url)) {
+      response = await fetch(response.url || finalUrl, {
         method: "GET",
         redirect: "follow",
-        headers: { "User-Agent": "Mozilla/5.0 (compatible; AbsolutoGlamurImporter/1.0)" },
+        headers: {
+          "User-Agent":
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36",
+          "Accept-Language": "pt-BR,pt;q=0.9,en;q=0.8",
+        },
       });
+      try {
+        html = await response.text();
+      } catch {
+        html = "";
+      }
     }
     finalUrl = response.url || finalUrl;
   } catch {
     throw new Error("Não foi possível resolver esse link curto do AliExpress. Cole a URL completa do produto ou o ID numérico.");
   }
 
-  const resolvedId = extractAliexpressId(finalUrl);
+  let resolvedId = extractAliexpressId(finalUrl);
+  if (!resolvedId && html) {
+    // Alguns links curtos só revelam o ID dentro da própria página (meta tags / JSON embutido).
+    const fromHtml =
+      html.match(/["'](?:productId|product_id|itemId)["']\s*[:=]\s*["']?(\d{8,20})/i)?.[1] ??
+      html.match(/\/item\/(\d{8,20})\.html/i)?.[1] ??
+      html.match(/aliexpress\.com\/item\/(\d{8,20})/i)?.[1] ??
+      null;
+    if (fromHtml) resolvedId = fromHtml;
+  }
   if (!resolvedId) {
     throw new Error("Não encontrei o ID do produto nesse link. Cole a URL completa do AliExpress ou o ID numérico.");
   }
+
 
   return {
     productId: resolvedId,
