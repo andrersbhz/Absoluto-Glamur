@@ -43,8 +43,12 @@ export function WhatsAppConnectionCard() {
   async function handleRestart() {
     setBusy(true);
     try {
-      await restart();
-      toast.success("Conexão reiniciada. Aguarde o QR Code.");
+      const result = await restart();
+      if (result?.ok) {
+        toast.success("Conexão reiniciada. Aguarde o QR Code.");
+      } else {
+        toast.error(result?.error || "Não foi possível reiniciar");
+      }
       await refresh(true);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Não foi possível reiniciar");
@@ -56,8 +60,12 @@ export function WhatsAppConnectionCard() {
   async function handleLogout() {
     setBusy(true);
     try {
-      await logout();
-      toast.success("WhatsApp desconectado");
+      const result = await logout();
+      if (result?.ok) {
+        toast.success("WhatsApp desconectado");
+      } else {
+        toast.error(result?.error || "Não foi possível desconectar");
+      }
       await refresh(true);
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Não foi possível desconectar");
