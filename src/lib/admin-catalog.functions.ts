@@ -65,10 +65,11 @@ export const listAdminProducts = createServerFn({ method: "GET" })
          brand:brands(name), category:categories(name),
          media:product_media(id, url, position, kind),
          pricing:pricing_calculations(cost_cents, computed_at),
-         variants:product_variants(id, is_default,
+         variants:product_variants(id, is_default, options,
            prices:product_prices(list_price_cents, sale_price_cents, is_active),
            inventory:product_inventory(stock)
          )`,
+
       )
       .order("updated_at", { ascending: false })
       .limit(200);
