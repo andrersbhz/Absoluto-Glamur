@@ -463,8 +463,64 @@ export const getAdminProduct = createServerFn({ method: "GET" })
       media: ((p.media as unknown as { id: string; url: string; alt: string | null; position: number }[]) ?? [])
         .sort((a, b) => a.position - b.position),
       seo: { title: seoObj?.meta_title ?? null, description: seoObj?.meta_description ?? null },
+      supplier: (() => {
+        const costs = variants
+          .map((v) => Number(v.options?.supplier_cost_cents ?? 0))
+          .filter((n) => Number.isFinite(n) && n > 0);
+        const cost = costs.length > 0 ? Math.min(...costs) : null;
+        return {
+          source: (imp?.source as string) ?? null,
+          source_id: (imp?.source_id as string) ?? null,
+          source_url: (imp?.source_url as string) ?? null,
+          cost_cents: cost,
+          shipping_cents: shippingCents > 0 ? shippingCents : null,
+          total_cents: cost != null ? cost + shippingCents : shippingCents > 0 ? shippingCents : null,
+        };
+      })(),
     };
   });
+
+/** Troca/define o fornecedor de origem do produto (link ou ID) sem apagar histórico. */
+export const setProductSupplier = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((v: unknown) =>
+    z
+      .object({
+        productId: z.string().uuid(),
+        source: z.enum(["aliexpress_url", "aliexpress_api", "manual"]),
+        reference: z.string().trim().min(1).max(400),
+      })
+      .parse(v),
+  )
+  .handler(async ({ data, context }) => {
+    await assertCatalog(context);
+    const db = context.supabase;
+
+    let sourceId = data.reference.trim();
+    let sourceUrl: string | null = null;
+    if (data.source !== "manual") {
+      const digits = sourceId.match(/(\d{6,})/);
+      if (!digits) throw new Error("Informe o link completo do AliExpress ou o ID numérico do produto.");
+      sourceId = digits[1];
+      sourceUrl = /^https?:\/\//i.test(data.reference.trim())
+        ? data.reference.trim()
+        : `https://www.aliexpress.com/item/${sourceId}.html`;
+    }
+
+    const { error } = await db.from("product_imports").insert({
+      product_id: data.productId,
+      source: data.source,
+      source_id: sourceId,
+      source_url: sourceUrl,
+      status: "done",
+      raw_data: {},
+      normalized_data: {},
+      imported_by: context.userId,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true as const, source: data.source, source_id: sourceId, source_url: sourceUrl };
+  });
+
 
 const UpsertSchema = z.object({
   id: z.string().uuid().nullable().optional(),
