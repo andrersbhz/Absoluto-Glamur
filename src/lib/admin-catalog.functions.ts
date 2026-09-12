@@ -343,6 +343,15 @@ export type AdminProductDetail = {
   }[];
   media: { id: string; url: string; alt: string | null; position: number }[];
   seo: { title: string | null; description: string | null };
+  supplier: {
+    source: string | null;
+    source_id: string | null;
+    source_url: string | null;
+    cost_cents: number | null;
+    shipping_cents: number | null;
+    total_cents: number | null;
+  };
+
 };
 
 export const getAdminProduct = createServerFn({ method: "GET" })
