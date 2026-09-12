@@ -140,6 +140,18 @@ export const listAdminProducts = createServerFn({ method: "GET" })
       const latestPricing = (r.pricing ?? [])
         .slice()
         .sort((a, b) => new Date(b.computed_at ?? 0).getTime() - new Date(a.computed_at ?? 0).getTime())[0];
+      // Custo real do fornecedor: menor custo entre as variações sincronizadas.
+      const supplierCosts = (r.variants ?? [])
+        .map((v) => Number((v.options as Record<string, unknown> | null)?.["supplier_cost_cents"] ?? 0))
+        .filter((n) => Number.isFinite(n) && n > 0);
+      const supplierCost =
+        supplierCosts.length > 0 ? Math.min(...supplierCosts) : (latestPricing?.cost_cents ?? null);
+      const shipping = shippingBy[r.id] ?? null;
+      const totalStock = (r.variants ?? []).reduce((sum, v) => {
+        const inv = v.inventory;
+        const st = inv ? (Array.isArray(inv) ? (inv[0]?.stock ?? 0) : (inv.stock ?? 0)) : 0;
+        return sum + Number(st ?? 0);
+      }, 0);
       return {
         id: r.id,
         slug: r.slug,
@@ -156,7 +168,15 @@ export const listAdminProducts = createServerFn({ method: "GET" })
         thumbnail_url: cover?.url ?? null,
         updated_at: r.updated_at,
         ali_source_id: aliBy[r.id] ?? null,
+        supplier_source: supplierBy[r.id]?.source ?? null,
+        supplier_url: supplierBy[r.id]?.url ?? null,
+        supplier_cost_cents: supplierCost,
+        supplier_shipping_cents: shipping,
+        supplier_total_cents:
+          supplierCost != null ? supplierCost + (shipping ?? 0) : shipping != null ? shipping : null,
+        total_stock: totalStock,
       };
+
     });
   });
 
