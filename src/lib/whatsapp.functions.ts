@@ -26,6 +26,13 @@ export interface WhatsAppConversation {
   };
 }
 
+export interface WhatsAppConnectionStatus {
+  state: "starting" | "qr" | "connected" | "disconnected" | "error" | "unavailable";
+  qr: string | null;
+  number: string | null;
+  error: string | null;
+}
+
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function assertWhatsAppStaff(context: any) {
   const { data: admin } = await context.supabase.rpc("is_admin", {
@@ -42,6 +49,58 @@ async function assertWhatsAppStaff(context: any) {
   }
   throw new Error("Acesso restrito à equipe de atendimento");
 }
+
+async function whatsappServiceRequest(path: string, init?: RequestInit) {
+  const baseUrl = process.env.WHATSAPP_SERVICE_URL?.replace(/\/$/, "");
+  const token = process.env.WHATSAPP_SERVICE_TOKEN;
+  if (!baseUrl || !token) {
+    throw new Error("Serviço WhatsApp Web ainda não foi configurado no servidor");
+  }
+
+  const response = await fetch(`${baseUrl}${path}`, {
+    ...init,
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+      ...(init?.headers || {}),
+    },
+  });
+  const payload = await response.json().catch(() => null);
+  if (!response.ok) {
+    throw new Error(payload?.error || `Serviço WhatsApp respondeu ${response.status}`);
+  }
+  return payload;
+}
+
+export const getWhatsAppConnectionStatus = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await assertWhatsAppStaff(context);
+    try {
+      return (await whatsappServiceRequest("/status")) as WhatsAppConnectionStatus;
+    } catch (error) {
+      return {
+        state: "unavailable",
+        qr: null,
+        number: null,
+        error: error instanceof Error ? error.message : "Serviço indisponível",
+      } satisfies WhatsAppConnectionStatus;
+    }
+  });
+
+export const restartWhatsAppConnection = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await assertWhatsAppStaff(context);
+    return whatsappServiceRequest("/restart", { method: "POST" });
+  });
+
+export const logoutWhatsAppConnection = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await assertWhatsAppStaff(context);
+    return whatsappServiceRequest("/logout", { method: "POST" });
+  });
 
 const ConversationSchema = z.object({ conversationId: z.string().uuid() });
 
@@ -112,8 +171,7 @@ export const sendWhatsAppMessage = createServerFn({ method: "POST" })
       .single();
     if (error) throw error;
 
-    // A fila registra a mensagem como pending. Um adapter externo deve trocar
-    // o status para sent/delivered após confirmação real do provedor.
+    // O worker Baileys busca mensagens pending e troca o status para sent/failed.
     return message;
   });
 
