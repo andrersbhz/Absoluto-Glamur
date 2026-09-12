@@ -401,6 +401,21 @@ function CatalogList() {
                   </td>
                 </tr>
               )}
+              {query.isError && (
+                <tr>
+                  <td colSpan={8} className="px-4 py-8 text-center text-destructive">
+                    Não foi possível carregar os produtos
+                    {query.error instanceof Error ? `: ${query.error.message}` : ""}.{" "}
+                    <button
+                      type="button"
+                      onClick={() => void query.refetch()}
+                      className="underline underline-offset-2"
+                    >
+                      Tentar novamente
+                    </button>
+                  </td>
+                </tr>
+              )}
               {query.data?.length === 0 && (
                 <tr>
                   <td colSpan={8} className="px-4 py-10 text-center text-muted-foreground">
