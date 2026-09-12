@@ -60,39 +60,39 @@ export const listAdminProducts = createServerFn({ method: "GET" })
     const db = context.supabase;
     let q = db
       .from("products")
-      .select(
-        `id, slug, name, status, is_featured, updated_at,
-         brand:brands(name), category:categories(name),
-         media:product_media(id, url, position, kind),
-         pricing:pricing_calculations(cost_cents, computed_at),
-         variants:product_variants(id, is_default, options,
-           prices:product_prices(list_price_cents, sale_price_cents, is_active),
-           inventory:product_inventory(stock)
-         )`,
-
-      )
+      .select("id, slug, name, status, is_featured, updated_at, brand:brands(name), category:categories(name)")
       .order("updated_at", { ascending: false })
       .limit(200);
     if (data.status && data.status !== "all") q = q.eq("status", data.status);
     if (data.q) q = q.ilike("name", `%${data.q}%`);
-    const { data: rows, error } = await q;
+    const { data: baseRows, error } = await q;
     if (error) throw new Error(error.message);
-    type Row = {
+
+    type Base = {
       id: string; slug: string; name: string; status: string; is_featured: boolean; updated_at: string;
       brand: { name: string } | null; category: { name: string } | null;
-      media: { id: string; url: string; position: number; kind: string | null }[] | null;
-      pricing: { cost_cents: number | null; computed_at: string | null }[] | null;
-      variants: {
-        id: string; is_default: boolean;
-        options?: Record<string, unknown> | null;
-        prices: { list_price_cents: number; sale_price_cents: number | null; is_active: boolean }[] | null;
-        inventory: { stock: number } | { stock: number }[] | null;
-      }[] | null;
     };
-    // Busca vínculos do fornecedor e frete em paralelo (sync por linha + coluna de custo).
-    const productIds = (rows as unknown as Row[]).map((r) => r.id);
+    const bases = (baseRows ?? []) as unknown as Base[];
+    const productIds = bases.map((r) => r.id);
     const idsOrNone = productIds.length > 0 ? productIds : ["00000000-0000-0000-0000-000000000000"];
-    const [{ data: imports }, { data: shippingRows }] = await Promise.all([
+
+    // Consultas menores e paralelas: o join aninhado único ficava grande demais
+    // e estourava o tempo/limite de resposta em produção.
+    const [
+      { data: mediaRows },
+      { data: pricingRows },
+      { data: variantRows },
+      { data: imports },
+      { data: shippingRows },
+    ] = await Promise.all([
+      db.from("product_media").select("product_id, url, position, kind").in("product_id", idsOrNone),
+      db.from("pricing_calculations").select("product_id, cost_cents, computed_at").in("product_id", idsOrNone),
+      db
+        .from("product_variants")
+        .select(
+          "id, product_id, is_default, supplier_cost_cents:options->supplier_cost_cents, prices:product_prices(list_price_cents, sale_price_cents, is_active), inventory:product_inventory(stock)",
+        )
+        .in("product_id", idsOrNone),
       db
         .from("product_imports")
         .select("product_id, source, source_id, source_url, created_at")
@@ -105,6 +105,29 @@ export const listAdminProducts = createServerFn({ method: "GET" })
         .in("product_id", idsOrNone)
         .in("key", ["shipping", "frete", "freight"]),
     ]);
+
+    type MediaRow = { product_id: string; url: string; position: number | null; kind: string | null };
+    type PricingRow = { product_id: string; cost_cents: number | null; computed_at: string | null };
+    type VariantRow = {
+      id: string; product_id: string; is_default: boolean;
+      supplier_cost_cents: number | string | null;
+      prices: { list_price_cents: number; sale_price_cents: number | null; is_active: boolean }[] | null;
+      inventory: { stock: number } | { stock: number }[] | null;
+    };
+
+    const mediaBy: Record<string, MediaRow[]> = {};
+    for (const m of (mediaRows ?? []) as unknown as MediaRow[]) {
+      (mediaBy[m.product_id] ??= []).push(m);
+    }
+    const pricingBy: Record<string, PricingRow[]> = {};
+    for (const p of (pricingRows ?? []) as unknown as PricingRow[]) {
+      (pricingBy[p.product_id] ??= []).push(p);
+    }
+    const variantsBy: Record<string, VariantRow[]> = {};
+    for (const v of (variantRows ?? []) as unknown as VariantRow[]) {
+      (variantsBy[v.product_id] ??= []).push(v);
+    }
+
     const aliBy: Record<string, string> = {};
     const supplierBy: Record<string, { source: string; url: string | null }> = {};
     for (const imp of imports ?? []) {
@@ -121,8 +144,10 @@ export const listAdminProducts = createServerFn({ method: "GET" })
       shippingBy[row.product_id] = (shippingBy[row.product_id] ?? 0) + Math.max(0, Number(row.amount_cents ?? 0));
     }
 
-    return (rows as unknown as Row[]).map((r) => {
-      const def = r.variants?.find((v) => v.is_default) ?? r.variants?.[0];
+    return bases.map((r) => {
+      const variants = variantsBy[r.id] ?? [];
+      const def = variants.find((v) => v.is_default) ?? variants[0];
+
       const price = def?.prices?.find((p) => p.is_active) ?? def?.prices?.[0];
       const unit = price
         ? price.sale_price_cents && price.sale_price_cents > 0 && price.sale_price_cents < price.list_price_cents
