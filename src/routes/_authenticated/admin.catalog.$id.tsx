@@ -396,7 +396,11 @@ function CatalogEditor() {
     const uploaded: { url: string; alt: string }[] = [];
     try {
       for (let i = 0; i < toUpload.length; i++) {
-        const file = toUpload[i];
+        const original = toUpload[i];
+        // Imagens são convertidas para WebP (GIF e WebP permanecem como estão).
+        const file = original.type.startsWith("image/")
+          ? await imageFileToWebpFile(original, { maxWidth: 1600, quality: 0.84 })
+          : original;
         const ext = file.name.split(".").pop()?.toLowerCase() || "bin";
         const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 60);
         const path = `${id}/${Date.now()}-${i}-${safeName}`.replace(/\/{2,}/g, "/");
