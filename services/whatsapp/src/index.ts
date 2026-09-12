@@ -18,6 +18,10 @@ const supabaseUrl = process.env.SUPABASE_URL || "";
 const supabaseKey = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || "";
 const authDir = process.env.WHATSAPP_AUTH_DIR || ".wa-auth";
 const outboxInterval = Math.max(750, Number(process.env.WHATSAPP_OUTBOX_INTERVAL_MS || 1500));
+const aiEnabled = /^true$/i.test(process.env.WHATSAPP_AI_ENABLED || "false");
+const openAiKey = process.env.OPENAI_API_KEY || "";
+const openAiModel = process.env.OPENAI_MODEL || "gpt-4.1-mini";
+const storefrontUrl = (process.env.STOREFRONT_URL || "https://absolutoglamur.com.br").replace(/\/$/, "");
 
 if (!serviceToken) throw new Error("WHATSAPP_SERVICE_TOKEN não configurado");
 if (!supabaseUrl || !supabaseKey) throw new Error("SUPABASE_URL/SUPABASE_SECRET_KEY não configurados");
@@ -37,6 +41,84 @@ let outboxBusy = false;
 
 function normalizePhone(jid: string) {
   return jid.replace(/@s\.whatsapp\.net$/, "").replace(/\D/g, "");
+}
+
+async function generateAiReply(conversationId: string, customerMessage: string) {
+  if (!aiEnabled || !openAiKey) return;
+
+  const { data: conversation } = await supabase
+    .from("whatsapp_conversations")
+    .select("status")
+    .eq("id", conversationId)
+    .maybeSingle();
+  if (!conversation || conversation.status !== "waiting") return;
+
+  const [{ data: recent }, { data: products }] = await Promise.all([
+    supabase
+      .from("whatsapp_messages")
+      .select("direction,content,created_at")
+      .eq("conversation_id", conversationId)
+      .order("created_at", { ascending: false })
+      .limit(12),
+    supabase
+      .from("products")
+      .select("name,slug,short_description")
+      .eq("status", "active")
+      .order("updated_at", { ascending: false })
+      .limit(40),
+  ]);
+
+  const productContext = (products || [])
+    .map((p) => `- ${p.name}: ${p.short_description || ""} | ${storefrontUrl}/${p.slug}`)
+    .join("\n")
+    .slice(0, 12000);
+  const history = (recent || [])
+    .slice()
+    .reverse()
+    .map((m) => `${m.direction === "inbound" ? "Cliente" : "Atendimento"}: ${m.content}`)
+    .join("\n")
+    .slice(-8000);
+
+  const response = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${openAiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: openAiModel,
+      temperature: 0.4,
+      max_tokens: 500,
+      messages: [
+        {
+          role: "system",
+          content:
+            "Você é a assistente virtual da Absoluto Glamur, uma loja de beleza. Responda em português brasileiro, de forma elegante, curta e útil. Use somente informações fornecidas no contexto. Não invente estoque, prazo, preço, composição ou promessa de resultado. Se a pergunta exigir informação indisponível, diga que um atendente pode confirmar. Quando recomendar produto, use no máximo 3 opções e inclua os links fornecidos. Não faça diagnóstico médico.",
+        },
+        {
+          role: "user",
+          content: `Catálogo disponível:\n${productContext || "Catálogo não disponível no momento."}\n\nHistórico:\n${history}\n\nMensagem atual do cliente: ${customerMessage}`,
+        },
+      ],
+    }),
+  });
+
+  if (!response.ok) {
+    const detail = await response.text().catch(() => "");
+    throw new Error(`OpenAI ${response.status}: ${detail.slice(0, 250)}`);
+  }
+  const payload = (await response.json()) as any;
+  const reply = String(payload?.choices?.[0]?.message?.content || "").trim();
+  if (!reply) return;
+
+  const inserted = await supabase.from("whatsapp_messages").insert({
+    conversation_id: conversationId,
+    direction: "outbound",
+    content: reply,
+    type: "text",
+    status: "pending",
+  });
+  if (inserted.error) throw inserted.error;
 }
 
 async function upsertInboundMessage(remoteJid: string, content: string, whatsappMessageId?: string | null) {
@@ -84,6 +166,10 @@ async function upsertInboundMessage(remoteJid: string, content: string, whatsapp
     .from("whatsapp_conversations")
     .update({ last_message_at: new Date().toISOString() })
     .eq("id", conversation.id);
+
+  if (conversation.status === "waiting") {
+    void generateAiReply(conversation.id, content).catch((err) => logger.error({ err }, "Falha na resposta automática por IA"));
+  }
 }
 
 async function processOutbox() {
@@ -118,10 +204,7 @@ async function processOutbox() {
           .eq("id", message.id);
       } catch (err) {
         logger.error({ err, messageId: message.id }, "Falha no envio WhatsApp");
-        await supabase
-          .from("whatsapp_messages")
-          .update({ status: "failed" })
-          .eq("id", message.id);
+        await supabase.from("whatsapp_messages").update({ status: "failed" }).eq("id", message.id);
       }
     }
   } catch (err) {
@@ -165,7 +248,7 @@ async function startWhatsApp() {
       connectionState = "connected";
       qrDataUrl = null;
       connectedNumber = sock?.user?.id ? normalizePhone(sock.user.id) : null;
-      logger.info({ connectedNumber }, "WhatsApp conectado");
+      logger.info({ connectedNumber, aiEnabled }, "WhatsApp conectado");
     }
     if (connection === "close") {
       connectionState = "disconnected";
@@ -173,7 +256,7 @@ async function startWhatsApp() {
       const error = lastDisconnect?.error as any;
       const statusCode = error?.output?.statusCode;
       const loggedOut = statusCode === DisconnectReason.loggedOut;
-      lastError = loggedOut ? "Sessão desconectada pelo WhatsApp" : (error?.message || "Conexão encerrada");
+      lastError = loggedOut ? "Sessão desconectada pelo WhatsApp" : error?.message || "Conexão encerrada";
       if (!loggedOut) reconnectTimer = setTimeout(() => void startWhatsApp(), 3000);
     }
   });
@@ -208,9 +291,9 @@ app.use((req, res, next) => {
   next();
 });
 
-app.get("/health", (_req, res) => res.json({ ok: true, state: connectionState }));
+app.get("/health", (_req, res) => res.json({ ok: true, state: connectionState, aiEnabled }));
 app.get("/status", (_req, res) => {
-  res.json({ state: connectionState, qr: qrDataUrl, number: connectedNumber, error: lastError });
+  res.json({ state: connectionState, qr: qrDataUrl, number: connectedNumber, error: lastError, aiEnabled });
 });
 app.post("/restart", async (_req, res) => {
   try {
@@ -236,7 +319,7 @@ app.post("/logout", async (_req, res) => {
 });
 
 setInterval(() => void processOutbox(), outboxInterval);
-app.listen(port, () => logger.info({ port }, "Absoluto Glamur WhatsApp worker iniciado"));
+app.listen(port, () => logger.info({ port, aiEnabled }, "Absoluto Glamur WhatsApp worker iniciado"));
 void startWhatsApp().catch((err) => {
   connectionState = "error";
   lastError = err instanceof Error ? err.message : String(err);
