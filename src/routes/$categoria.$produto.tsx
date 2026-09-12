@@ -291,7 +291,7 @@ function ProductPage() {
               )}
             </div>
             {media.length > 1 && (
-              <div className="flex items-center gap-2" aria-label="Galeria de mídias do produto">
+              <div className="flex min-w-0 items-center gap-2" aria-label="Galeria de mídias do produto">
                 {media.length > visibleThumbnailCount && (
                   <button
                     type="button"
@@ -303,7 +303,7 @@ function ProductPage() {
                     <ChevronLeft className="h-4 w-4" />
                   </button>
                 )}
-                <div className="grid min-w-0 flex-1 grid-cols-4 gap-2">
+                <div className="grid min-w-0 flex-1 grid-cols-4 gap-1.5">
                   {media
                     .slice(thumbnailStart, thumbnailStart + visibleThumbnailCount)
                     .map((m, visibleIndex) => {
@@ -315,7 +315,7 @@ function ProductPage() {
                           key={`${m.url}-${i}`}
                           onClick={() => selectMedia(i)}
                           onMouseEnter={() => selectMedia(i)}
-                          className={`relative aspect-square overflow-hidden rounded-lg bg-secondary/40 ring-2 transition ${
+                          className={`relative aspect-square overflow-hidden rounded-lg bg-secondary/40 ring-1 ring-inset transition ${
                             i === activeIdx ? "ring-primary" : "ring-transparent hover:ring-border"
                           }`}
                           aria-label={`Ver mídia ${i + 1}`}
