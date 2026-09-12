@@ -253,6 +253,32 @@ function CatalogEditor() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  // Fornecedor de origem: permite trocar o link/ID e atualizar o produto na hora.
+  const setSupplierFn = useServerFn(setProductSupplier);
+  const [supplierSource, setSupplierSource] = useState<"aliexpress_url" | "aliexpress_api" | "manual">(
+    "aliexpress_url",
+  );
+  const [supplierRef, setSupplierRef] = useState("");
+  const supplierLoadedRef = useRef<string | null>(null);
+  useEffect(() => {
+    const sup = prodQ.data?.supplier;
+    if (!sup || supplierLoadedRef.current === id) return;
+    supplierLoadedRef.current = id;
+    if (sup.source === "aliexpress_api" || sup.source === "manual") setSupplierSource(sup.source);
+    else if (sup.source) setSupplierSource("aliexpress_url");
+    setSupplierRef(sup.source_url ?? sup.source_id ?? "");
+  }, [prodQ.data, id]);
+  const saveSupplier = useMutation({
+    mutationFn: () =>
+      setSupplierFn({ data: { productId: id, source: supplierSource, reference: supplierRef } }),
+    onSuccess: () => {
+      toast.success("Fornecedor atualizado");
+      prodQ.refetch();
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+
 
   // Auto-sync stock from AliExpress on first open (silently, only if linked).
   const autoSyncedRef = useRef<string | null>(null);
