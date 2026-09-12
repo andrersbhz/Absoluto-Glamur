@@ -1027,18 +1027,35 @@ function CatalogEditor() {
                         <button
                           type="button"
                           disabled={uploading}
-                          onClick={() => fileInputRef.current?.click()}
+                          onClick={() => imageInputRef.current?.click()}
                           className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-xs font-medium text-primary-foreground shadow-soft transition hover:opacity-90 disabled:opacity-50"
                         >
-                          <Upload className="h-4 w-4" />
+                          <ImageIcon className="h-4 w-4" />
                           {uploading
                             ? uploadProgress
                               ? `Enviando ${uploadProgress.done}/${uploadProgress.total}…`
                               : "Enviando…"
-                            : "Selecionar arquivos"}
+                            : "Adicionar imagens"}
                         </button>
-                        <span className="text-[11px] text-muted-foreground">
-                          Até 50MB por arquivo · imagens e vídeos
+                        <button
+                          type="button"
+                          disabled={uploading}
+                          onClick={() => videoInputRef.current?.click()}
+                          className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-xs font-medium transition hover:bg-secondary disabled:opacity-50"
+                        >
+                          <Upload className="h-4 w-4" />
+                          Adicionar vídeos
+                        </button>
+                        <button
+                          type="button"
+                          disabled={uploading}
+                          onClick={() => fileInputRef.current?.click()}
+                          className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-xs font-medium transition hover:bg-secondary disabled:opacity-50"
+                        >
+                          Imagens e vídeos
+                        </button>
+                        <span className="w-full text-[11px] text-muted-foreground">
+                          Até 50MB por arquivo · imagens viram WebP automaticamente
                         </span>
                       </div>
                     </div>
