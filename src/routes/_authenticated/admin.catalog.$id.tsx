@@ -563,6 +563,62 @@ function CatalogEditor() {
                         </select>
                       </Field>
                     </div>
+
+                    {!isNew && (
+                      <div className="rounded-2xl border border-border bg-secondary/30 p-4">
+                        <h3 className="text-sm font-semibold">Fornecedor</h3>
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          {prodQ.data?.supplier.cost_cents != null
+                            ? `Custo do fornecedor ${formatBRL(prodQ.data.supplier.cost_cents)}${
+                                prodQ.data.supplier.shipping_cents
+                                  ? ` + frete ${formatBRL(prodQ.data.supplier.shipping_cents)}`
+                                  : ""
+                              }${
+                                prodQ.data.supplier.total_cents != null
+                                  ? ` = ${formatBRL(prodQ.data.supplier.total_cents)}`
+                                  : ""
+                              }`
+                            : "Custo do fornecedor ainda não sincronizado."}
+                        </p>
+                        <div className="mt-3 grid gap-3 sm:grid-cols-[220px_1fr]">
+                          <select
+                            value={supplierSource}
+                            onChange={(e) => setSupplierSource(e.target.value as typeof supplierSource)}
+                            className="input"
+                          >
+                            <option value="aliexpress_url">AliExpress (link do produto)</option>
+                            <option value="aliexpress_api">AliExpress (ID via API oficial)</option>
+                            <option value="manual">Fornecedor manual (sem sincronização)</option>
+                          </select>
+                          <input
+                            className="input"
+                            value={supplierRef}
+                            onChange={(e) => setSupplierRef(e.target.value)}
+                            placeholder="https://www.aliexpress.com/item/1005001234567890.html"
+                          />
+                        </div>
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          <button
+                            type="button"
+                            className="inline-flex items-center gap-1 rounded-lg border border-border px-3 py-2 text-sm disabled:opacity-50"
+                            disabled={!supplierRef.trim() || saveSupplier.isPending}
+                            onClick={() => saveSupplier.mutate()}
+                          >
+                            {saveSupplier.isPending ? "Salvando…" : "Salvar fornecedor"}
+                          </button>
+                          <button
+                            type="button"
+                            className="inline-flex items-center gap-1 rounded-lg bg-primary px-3 py-2 text-sm text-primary-foreground disabled:opacity-50"
+                            disabled={syncFull.isPending}
+                            onClick={() => syncFull.mutate()}
+                          >
+                            <RefreshCw className={`h-4 w-4 ${syncFull.isPending ? "animate-spin" : ""}`} />
+                            {syncFull.isPending ? "Atualizando…" : "Atualizar produto"}
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
                     <Field
                       label="Descrição curta"
                       hint={`${form.short_description.length}/200 · aparece nos cards e listagens.`}
