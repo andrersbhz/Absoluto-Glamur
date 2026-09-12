@@ -694,7 +694,7 @@ function ProductRow({
 
       <td className="px-4 py-3">{row.media_count}</td>
       <td className="px-4 py-3">
-        <div className="flex items-center justify-end gap-2">
+        <div className="flex flex-nowrap items-center justify-end gap-2 whitespace-nowrap">
           {row.ali_source_id && (
             <button
               onClick={onSync}
