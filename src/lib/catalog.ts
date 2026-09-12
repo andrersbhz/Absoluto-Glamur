@@ -72,6 +72,11 @@ export function productListQuery(filters: Filters = {}) {
           .maybeSingle();
         if (cat?.id) q = q.eq("category_id", cat.id);
       }
+      if (!filters.collection && filters.sort === "best_selling") {
+        const bestIds = await fetchBestSellerIds();
+        if (bestIds.length === 0) return [];
+        q = q.in("id", bestIds);
+      }
       if (filters.collection) {
         const { data: col } = await supabase
           .from("collections")
