@@ -5,7 +5,7 @@ import type { ComponentType } from "react";
 import { StoreLayout } from "@/components/store/StoreLayout";
 import { ProductCard } from "@/components/store/ProductCard";
 import { HeroSlider } from "@/components/store/HeroSlider";
-import { categoriesQuery, collectionsQuery, featuredProductsQuery, productsByCategoryQuery } from "@/lib/catalog";
+import { categoriesQuery, collectionsQuery, featuredProductsQuery, productListQuery, productsByCategoryQuery } from "@/lib/catalog";
 import { hreflangLinks } from "@/lib/i18n/seo";
 import { useI18n } from "@/lib/i18n";
 import { useContentText } from "@/lib/content-i18n";
@@ -112,7 +112,8 @@ function clampInt(value: number | undefined, fallback: number, min: number, max:
 export function Index() {
   const { t } = useI18n();
   const ct = useContentText();
-  const { data: bestsellers = [] } = useQuery(featuredProductsQuery("mais-vendidos"));
+  const { data: bestsellers = [] } = useQuery(productListQuery({ sort: "best_selling", limit: 8 }));
+  const { data: topRated = [] } = useQuery(productListQuery({ sort: "top_rated", limit: 8 }));
   const { data: newArrivals = [] } = useQuery(featuredProductsQuery("lancamentos"));
   const { data: categories = [] } = useQuery(categoriesQuery());
   const { data: blocks = [] } = useQuery(homepageBlocksQuery());
@@ -278,21 +279,30 @@ export function Index() {
 
       {!hasCategoryProductsBlock && <CategoryProductsSections rows={byCategory} productLimit={4} />}
 
+      {bestsellers.length > 0 && (
+        <FeaturedSection
+          title={t("home.bestsellers")}
+          subtitle={t("home.bestsellersSub")}
+          link={{ label: t("home.seeAll"), search: { sort: "best_selling" } }}
+          products={bestsellers}
+        />
+      )}
+
+      {topRated.length > 0 && (
+        <FeaturedSection
+          title={t("home.topRated")}
+          subtitle={t("home.topRatedSub")}
+          link={{ label: t("home.seeAll"), search: { sort: "top_rated" } }}
+          products={topRated}
+        />
+      )}
+
       {newArrivals.length > 0 && (
         <FeaturedSection
           title={t("home.newArrivals")}
           subtitle={t("home.newArrivalsSub")}
           link={{ label: t("home.seeAll"), search: { collection: "lancamentos" } }}
           products={newArrivals}
-        />
-      )}
-
-      {bestsellers.length > 0 && (
-        <FeaturedSection
-          title={t("home.bestsellers")}
-          subtitle={t("home.bestsellersSub")}
-          link={{ label: t("home.seeAll"), search: { collection: "mais-vendidos" } }}
-          products={bestsellers}
         />
       )}
 
