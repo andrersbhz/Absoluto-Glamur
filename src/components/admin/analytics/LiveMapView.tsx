@@ -46,7 +46,7 @@ import { toast } from "sonner";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { ComposableMap, Geographies, Geography, Marker, ZoomableGroup } from "react-simple-maps";
 
-const geoUrl = "/data/brazil-states.topo.json";
+const geoUrl = "/data/world-countries.topo.json";
 const LIVE_WINDOW_MS = 90_000;
 
 type FunnelStage = "browsing" | "product_view" | "cart" | "checkout" | "purchased";
@@ -487,7 +487,7 @@ export default function LiveMapView() {
           <div className="pointer-events-none absolute inset-x-[30%] top-[23%] h-[36%] rounded-full border border-primary/[0.05]" />
 
           <div className="relative flex-1">
-            <ComposableMap projection="geoMercator" projectionConfig={{ scale: 900, center: [-55, -15] }} style={{ width: "100%", height: "100%" }}>
+            <ComposableMap projection="geoMercator" projectionConfig={{ scale: 175, center: [-15, -8] }} style={{ width: "100%", height: "100%" }}>
               <ZoomableGroup zoom={1} maxZoom={8}>
                 <Geographies geography={geoUrl}>
                   {({ geographies }) => (
