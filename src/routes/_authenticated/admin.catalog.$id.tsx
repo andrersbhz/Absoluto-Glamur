@@ -21,6 +21,7 @@ import {
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { isVideoUrl } from "@/lib/media-kind";
+import { imageFileToWebpFile } from "@/lib/image-webp";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import {
   getAdminProduct,
