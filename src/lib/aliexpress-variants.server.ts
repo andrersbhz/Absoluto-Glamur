@@ -286,21 +286,34 @@ export async function syncVariantsForProduct(
       // Uma variação antiga sem vínculo externo é adotada uma única vez. Depois
       // disso, sincronizações futuras não modificam mais seus dados salvos.
       if (!row.external_sku_id) {
+        const prevOptions =
+          row.options && typeof row.options === "object" ? row.options : {};
+        const prevAttributes = (prevOptions as Record<string, unknown>)["attributes"];
+        const hasPrevAttributes =
+          prevAttributes && typeof prevAttributes === "object"
+            ? Object.keys(prevAttributes as Record<string, unknown>).length > 0
+            : false;
+        const prevImage = (prevOptions as Record<string, unknown>)["image_url"];
         const adoptedOptions = {
-          ...(row.options && typeof row.options === "object" ? row.options : {}),
+          ...prevOptions,
+          attributes: hasPrevAttributes ? prevAttributes : s.attributes,
+          image_url: prevImage || s.image_url,
           external_sku_id: s.external_sku_id,
           sku_attr: s.external_sku_attr,
           source_id: sourceId,
           supplier_cost_cents: s.cost ? Math.round(s.cost * 100) : null,
         };
+        const adoptedPayload: Record<string, unknown> = {
+          options: adoptedOptions,
+          external_sku_id: s.external_sku_id,
+          external_sku_attr: s.external_sku_attr,
+        };
+        if (!row.name || !row.name.trim()) adoptedPayload.name = name;
         const { error } = await admin
           .from("product_variants")
-          .update({
-            options: adoptedOptions,
-            external_sku_id: s.external_sku_id,
-            external_sku_attr: s.external_sku_attr,
-          })
+          .update(adoptedPayload)
           .eq("id", row.id);
+
         if (error) {
           errors.push(`SKU ${s.external_sku_id}: falha ao vincular variação (${error.message})`);
           continue;
