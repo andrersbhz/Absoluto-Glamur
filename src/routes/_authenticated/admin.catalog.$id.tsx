@@ -30,10 +30,10 @@ import {
   translateProductGlobal,
   setVariantPriceOverride,
   setProductSupplier,
-import { formatBRL } from "@/lib/format";
-
   type AdminProductInput,
 } from "@/lib/admin-catalog.functions";
+import { formatBRL } from "@/lib/format";
+
 import { syncAliexpressStock } from "@/lib/aliexpress-stock.functions";
 import { syncAliexpressFull, syncAliexpressVariants } from "@/lib/aliexpress-variants.functions";
 import { RefreshCw } from "lucide-react";
