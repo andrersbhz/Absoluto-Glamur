@@ -16,8 +16,10 @@ import {
   deleteAdminProduct,
   exportAdminProductsCsv,
   translateStoreGlobal,
+  setProductSupplier,
   type AdminProductRow,
 } from "@/lib/admin-catalog.functions";
+
 import { optimizeProductCopy } from "@/lib/ai-product-optimize.functions";
 import { syncAllAliexpressStock } from "@/lib/aliexpress-stock.functions";
 import { bulkSyncAliexpressReviews } from "@/lib/product-reviews.functions";
