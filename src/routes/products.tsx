@@ -25,7 +25,7 @@ export const Route = createFileRoute("/products")({
   validateSearch: (search) => searchSchema.parse(search),
   head: () => ({
     meta: [
-      { title: "Catálogo · Skincare, Maquiagem e Cabelos · Absoluto Glamur" },
+      { title: "Catálogo de Beleza · Absoluto Glamur" },
       {
         name: "description",
         content:
@@ -39,6 +39,7 @@ export const Route = createFileRoute("/products")({
       },
       { property: "og:url", content: "https://absolutoglamur.com.br/products" },
       { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
     links: [{ rel: "canonical", href: "https://absolutoglamur.com.br/products" }],
   }),
@@ -114,10 +115,28 @@ function ProductsPage() {
                     });
                   }}
                 >
-                  <DropdownMenuRadioItem value="best_selling">Mais vendidos</DropdownMenuRadioItem>
-                  <DropdownMenuRadioItem value="top_rated">Mais bem avaliados</DropdownMenuRadioItem>
-                  <DropdownMenuRadioItem value="price_asc">Menor preço</DropdownMenuRadioItem>
-                  <DropdownMenuRadioItem value="price_desc">Maior preço</DropdownMenuRadioItem>
+                  {(
+                    [
+                      { value: "best_selling", label: "Mais vendidos" },
+                      { value: "top_rated", label: "Mais bem avaliados" },
+                      { value: "price_asc", label: "Menor preço" },
+                      { value: "price_desc", label: "Maior preço" },
+                    ] as const
+                  ).map((option) => (
+                    <DropdownMenuRadioItem
+                      key={option.value}
+                      value={option.value}
+                      onSelect={() => {
+                        if (sort !== option.value) return;
+                        navigate({
+                          to: "/products",
+                          search: { q, category, collection, sort: undefined } as never,
+                        });
+                      }}
+                    >
+                      {option.label}
+                    </DropdownMenuRadioItem>
+                  ))}
                 </DropdownMenuRadioGroup>
               </DropdownMenuContent>
             </DropdownMenu>
