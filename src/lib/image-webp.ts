@@ -45,3 +45,50 @@ export async function imageFileToWebpDataUri(
     URL.revokeObjectURL(url);
   }
 }
+
+/**
+ * Converte um File de imagem em um File WebP (para upload em Storage).
+ * GIF (animado) e WebP já existentes são devolvidos sem alteração.
+ */
+export async function imageFileToWebpFile(
+  file: File,
+  opts?: { maxWidth?: number; quality?: number },
+): Promise<File> {
+  if (!file.type.startsWith("image/")) return file;
+  if (file.type === "image/webp" || file.type === "image/gif") return file;
+
+  const maxWidth = opts?.maxWidth ?? 1600;
+  const quality = opts?.quality ?? 0.84;
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const el = new Image();
+      el.onload = () => resolve(el);
+      el.onerror = () => reject(new Error("Não foi possível ler a imagem"));
+      el.src = url;
+    });
+
+    const scale = img.width > maxWidth ? maxWidth / img.width : 1;
+    const w = Math.max(1, Math.round(img.width * scale));
+    const h = Math.max(1, Math.round(img.height * scale));
+
+    const canvas = document.createElement("canvas");
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return file;
+    ctx.drawImage(img, 0, 0, w, h);
+
+    const blob = await new Promise<Blob | null>((resolve) =>
+      canvas.toBlob((b) => resolve(b), "image/webp", quality),
+    );
+    if (!blob || blob.type !== "image/webp") return file;
+
+    const name = file.name.replace(/\.[^.]+$/, "") + ".webp";
+    return new File([blob], name, { type: "image/webp" });
+  } catch {
+    return file;
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
