@@ -84,23 +84,43 @@ export const listAdminProducts = createServerFn({ method: "GET" })
       pricing: { cost_cents: number | null; computed_at: string | null }[] | null;
       variants: {
         id: string; is_default: boolean;
+        options?: Record<string, unknown> | null;
         prices: { list_price_cents: number; sale_price_cents: number | null; is_active: boolean }[] | null;
         inventory: { stock: number } | { stock: number }[] | null;
       }[] | null;
     };
-    // Busca vínculos AliExpress em paralelo para exibir botão de sync por linha.
+    // Busca vínculos do fornecedor e frete em paralelo (sync por linha + coluna de custo).
     const productIds = (rows as unknown as Row[]).map((r) => r.id);
-    const { data: imports } = await db
-      .from("product_imports")
-      .select("product_id, source_id, created_at")
-      .in("product_id", productIds.length > 0 ? productIds : ["00000000-0000-0000-0000-000000000000"])
-      .in("source", ["aliexpress", "aliexpress_api"])
-      .not("source_id", "is", null)
-      .order("created_at", { ascending: false });
+    const idsOrNone = productIds.length > 0 ? productIds : ["00000000-0000-0000-0000-000000000000"];
+    const [{ data: imports }, { data: shippingRows }] = await Promise.all([
+      db
+        .from("product_imports")
+        .select("product_id, source, source_id, source_url, created_at")
+        .in("product_id", idsOrNone)
+        .not("source_id", "is", null)
+        .order("created_at", { ascending: false }),
+      db
+        .from("pricing_cost_components")
+        .select("product_id, key, amount_cents")
+        .in("product_id", idsOrNone)
+        .in("key", ["shipping", "frete", "freight"]),
+    ]);
     const aliBy: Record<string, string> = {};
+    const supplierBy: Record<string, { source: string; url: string | null }> = {};
     for (const imp of imports ?? []) {
-      if (imp.product_id && imp.source_id && !aliBy[imp.product_id]) aliBy[imp.product_id] = imp.source_id;
+      if (!imp.product_id || !imp.source_id) continue;
+      if (!supplierBy[imp.product_id]) {
+        supplierBy[imp.product_id] = { source: imp.source as string, url: (imp.source_url as string) ?? null };
+      }
+      const isAli = ["aliexpress", "aliexpress_api", "aliexpress_url"].includes(imp.source as string);
+      if (isAli && !aliBy[imp.product_id]) aliBy[imp.product_id] = imp.source_id;
     }
+    const shippingBy: Record<string, number> = {};
+    for (const row of shippingRows ?? []) {
+      if (!row.product_id) continue;
+      shippingBy[row.product_id] = (shippingBy[row.product_id] ?? 0) + Math.max(0, Number(row.amount_cents ?? 0));
+    }
+
     return (rows as unknown as Row[]).map((r) => {
       const def = r.variants?.find((v) => v.is_default) ?? r.variants?.[0];
       const price = def?.prices?.find((p) => p.is_active) ?? def?.prices?.[0];
