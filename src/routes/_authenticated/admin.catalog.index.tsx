@@ -566,6 +566,7 @@ function ProductRow({
   optimizing,
   onSync,
   syncing,
+  onChangeSupplier,
 }: {
   row: AdminProductRow;
   onDelete: () => void;
@@ -573,7 +574,9 @@ function ProductRow({
   optimizing: boolean;
   onSync: () => void;
   syncing: boolean;
+  onChangeSupplier: () => void;
 }) {
+
   const statusBadge =
     row.status === "active" ? (
       <Badge className="bg-success text-white">Ativo</Badge>
