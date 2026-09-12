@@ -160,19 +160,19 @@ export const listAdminProducts = createServerFn({ method: "GET" })
           ? (invRaw[0]?.stock ?? null)
           : (invRaw.stock ?? null)
         : null;
-      const mediaSorted = (r.media ?? []).slice().sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
+      const mediaSorted = (mediaBy[r.id] ?? []).slice().sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
       const cover = mediaSorted.find((m) => m.kind !== "video") ?? mediaSorted[0];
-      const latestPricing = (r.pricing ?? [])
+      const latestPricing = (pricingBy[r.id] ?? [])
         .slice()
         .sort((a, b) => new Date(b.computed_at ?? 0).getTime() - new Date(a.computed_at ?? 0).getTime())[0];
       // Custo real do fornecedor: menor custo entre as variações sincronizadas.
-      const supplierCosts = (r.variants ?? [])
-        .map((v) => Number((v.options as Record<string, unknown> | null)?.["supplier_cost_cents"] ?? 0))
+      const supplierCosts = variants
+        .map((v) => Number(v.supplier_cost_cents ?? 0))
         .filter((n) => Number.isFinite(n) && n > 0);
       const supplierCost =
         supplierCosts.length > 0 ? Math.min(...supplierCosts) : (latestPricing?.cost_cents ?? null);
       const shipping = shippingBy[r.id] ?? null;
-      const totalStock = (r.variants ?? []).reduce((sum, v) => {
+      const totalStock = variants.reduce((sum, v) => {
         const inv = v.inventory;
         const st = inv ? (Array.isArray(inv) ? (inv[0]?.stock ?? 0) : (inv.stock ?? 0)) : 0;
         return sum + Number(st ?? 0);
@@ -185,8 +185,9 @@ export const listAdminProducts = createServerFn({ method: "GET" })
         is_featured: r.is_featured,
         category: r.category,
         brand: r.brand,
-        media_count: r.media?.length ?? 0,
-        variant_count: r.variants?.length ?? 0,
+        media_count: mediaSorted.length,
+        variant_count: variants.length,
+
         price_cents: unit,
         cost_cents: latestPricing?.cost_cents ?? null,
         stock,
