@@ -39,7 +39,14 @@ export type AdminProductRow = {
   thumbnail_url: string | null;
   updated_at: string;
   ali_source_id: string | null;
+  supplier_source: string | null;
+  supplier_url: string | null;
+  supplier_cost_cents: number | null;
+  supplier_shipping_cents: number | null;
+  supplier_total_cents: number | null;
+  total_stock: number | null;
 };
+
 
 export const listAdminProducts = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
@@ -58,10 +65,11 @@ export const listAdminProducts = createServerFn({ method: "GET" })
          brand:brands(name), category:categories(name),
          media:product_media(id, url, position, kind),
          pricing:pricing_calculations(cost_cents, computed_at),
-         variants:product_variants(id, is_default,
+         variants:product_variants(id, is_default, options,
            prices:product_prices(list_price_cents, sale_price_cents, is_active),
            inventory:product_inventory(stock)
          )`,
+
       )
       .order("updated_at", { ascending: false })
       .limit(200);
@@ -76,23 +84,43 @@ export const listAdminProducts = createServerFn({ method: "GET" })
       pricing: { cost_cents: number | null; computed_at: string | null }[] | null;
       variants: {
         id: string; is_default: boolean;
+        options?: Record<string, unknown> | null;
         prices: { list_price_cents: number; sale_price_cents: number | null; is_active: boolean }[] | null;
         inventory: { stock: number } | { stock: number }[] | null;
       }[] | null;
     };
-    // Busca vínculos AliExpress em paralelo para exibir botão de sync por linha.
+    // Busca vínculos do fornecedor e frete em paralelo (sync por linha + coluna de custo).
     const productIds = (rows as unknown as Row[]).map((r) => r.id);
-    const { data: imports } = await db
-      .from("product_imports")
-      .select("product_id, source_id, created_at")
-      .in("product_id", productIds.length > 0 ? productIds : ["00000000-0000-0000-0000-000000000000"])
-      .in("source", ["aliexpress", "aliexpress_api"])
-      .not("source_id", "is", null)
-      .order("created_at", { ascending: false });
+    const idsOrNone = productIds.length > 0 ? productIds : ["00000000-0000-0000-0000-000000000000"];
+    const [{ data: imports }, { data: shippingRows }] = await Promise.all([
+      db
+        .from("product_imports")
+        .select("product_id, source, source_id, source_url, created_at")
+        .in("product_id", idsOrNone)
+        .not("source_id", "is", null)
+        .order("created_at", { ascending: false }),
+      db
+        .from("pricing_cost_components")
+        .select("product_id, key, amount_cents")
+        .in("product_id", idsOrNone)
+        .in("key", ["shipping", "frete", "freight"]),
+    ]);
     const aliBy: Record<string, string> = {};
+    const supplierBy: Record<string, { source: string; url: string | null }> = {};
     for (const imp of imports ?? []) {
-      if (imp.product_id && imp.source_id && !aliBy[imp.product_id]) aliBy[imp.product_id] = imp.source_id;
+      if (!imp.product_id || !imp.source_id) continue;
+      if (!supplierBy[imp.product_id]) {
+        supplierBy[imp.product_id] = { source: imp.source as string, url: (imp.source_url as string) ?? null };
+      }
+      const isAli = ["aliexpress", "aliexpress_api", "aliexpress_url"].includes(imp.source as string);
+      if (isAli && !aliBy[imp.product_id]) aliBy[imp.product_id] = imp.source_id;
     }
+    const shippingBy: Record<string, number> = {};
+    for (const row of shippingRows ?? []) {
+      if (!row.product_id) continue;
+      shippingBy[row.product_id] = (shippingBy[row.product_id] ?? 0) + Math.max(0, Number(row.amount_cents ?? 0));
+    }
+
     return (rows as unknown as Row[]).map((r) => {
       const def = r.variants?.find((v) => v.is_default) ?? r.variants?.[0];
       const price = def?.prices?.find((p) => p.is_active) ?? def?.prices?.[0];
@@ -112,6 +140,18 @@ export const listAdminProducts = createServerFn({ method: "GET" })
       const latestPricing = (r.pricing ?? [])
         .slice()
         .sort((a, b) => new Date(b.computed_at ?? 0).getTime() - new Date(a.computed_at ?? 0).getTime())[0];
+      // Custo real do fornecedor: menor custo entre as variações sincronizadas.
+      const supplierCosts = (r.variants ?? [])
+        .map((v) => Number((v.options as Record<string, unknown> | null)?.["supplier_cost_cents"] ?? 0))
+        .filter((n) => Number.isFinite(n) && n > 0);
+      const supplierCost =
+        supplierCosts.length > 0 ? Math.min(...supplierCosts) : (latestPricing?.cost_cents ?? null);
+      const shipping = shippingBy[r.id] ?? null;
+      const totalStock = (r.variants ?? []).reduce((sum, v) => {
+        const inv = v.inventory;
+        const st = inv ? (Array.isArray(inv) ? (inv[0]?.stock ?? 0) : (inv.stock ?? 0)) : 0;
+        return sum + Number(st ?? 0);
+      }, 0);
       return {
         id: r.id,
         slug: r.slug,
@@ -128,7 +168,15 @@ export const listAdminProducts = createServerFn({ method: "GET" })
         thumbnail_url: cover?.url ?? null,
         updated_at: r.updated_at,
         ali_source_id: aliBy[r.id] ?? null,
+        supplier_source: supplierBy[r.id]?.source ?? null,
+        supplier_url: supplierBy[r.id]?.url ?? null,
+        supplier_cost_cents: supplierCost,
+        supplier_shipping_cents: shipping,
+        supplier_total_cents:
+          supplierCost != null ? supplierCost + (shipping ?? 0) : shipping != null ? shipping : null,
+        total_stock: totalStock,
       };
+
     });
   });
 
@@ -295,6 +343,15 @@ export type AdminProductDetail = {
   }[];
   media: { id: string; url: string; alt: string | null; position: number }[];
   seo: { title: string | null; description: string | null };
+  supplier: {
+    source: string | null;
+    source_id: string | null;
+    source_url: string | null;
+    cost_cents: number | null;
+    shipping_cents: number | null;
+    total_cents: number | null;
+  };
+
 };
 
 export const getAdminProduct = createServerFn({ method: "GET" })
@@ -318,14 +375,39 @@ export const getAdminProduct = createServerFn({ method: "GET" })
       .maybeSingle();
     if (error) throw new Error(error.message);
     if (!p) throw new Error("Produto não encontrado");
+    const [{ data: imp }, { data: shippingRows }] = await Promise.all([
+      db
+        .from("product_imports")
+        .select("source, source_id, source_url, created_at")
+        .eq("product_id", data.id)
+        .not("source_id", "is", null)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+      db
+        .from("pricing_cost_components")
+        .select("key, amount_cents")
+        .eq("product_id", data.id)
+        .in("key", ["shipping", "frete", "freight"]),
+    ]);
+    const shippingCents = (shippingRows ?? []).reduce(
+      (sum: number, row: { amount_cents: number | null }) => sum + Math.max(0, Number(row.amount_cents ?? 0)),
+      0,
+    );
     type V = {
       id: string; sku: string; is_default: boolean; weight_grams: number | null;
       name?: string | null;
-      options?: { attributes?: Record<string, string>; image_url?: string | null; price_override_cents?: number | null } | null;
+      options?: {
+        attributes?: Record<string, string>;
+        image_url?: string | null;
+        price_override_cents?: number | null;
+        supplier_cost_cents?: number | null;
+      } | null;
       is_available?: boolean | null;
       prices: { list_price_cents: number; sale_price_cents: number | null; is_active: boolean }[] | null;
       inventory: { stock: number } | { stock: number }[] | null;
     };
+
     const variants = (p.variants as unknown as V[]) ?? [];
     const def = variants.find((v) => v.is_default) ?? variants[0];
     const price = def?.prices?.find((x) => x.is_active) ?? def?.prices?.[0];
@@ -381,8 +463,64 @@ export const getAdminProduct = createServerFn({ method: "GET" })
       media: ((p.media as unknown as { id: string; url: string; alt: string | null; position: number }[]) ?? [])
         .sort((a, b) => a.position - b.position),
       seo: { title: seoObj?.meta_title ?? null, description: seoObj?.meta_description ?? null },
+      supplier: (() => {
+        const costs = variants
+          .map((v) => Number(v.options?.supplier_cost_cents ?? 0))
+          .filter((n) => Number.isFinite(n) && n > 0);
+        const cost = costs.length > 0 ? Math.min(...costs) : null;
+        return {
+          source: (imp?.source as string) ?? null,
+          source_id: (imp?.source_id as string) ?? null,
+          source_url: (imp?.source_url as string) ?? null,
+          cost_cents: cost,
+          shipping_cents: shippingCents > 0 ? shippingCents : null,
+          total_cents: cost != null ? cost + shippingCents : shippingCents > 0 ? shippingCents : null,
+        };
+      })(),
     };
   });
+
+/** Troca/define o fornecedor de origem do produto (link ou ID) sem apagar histórico. */
+export const setProductSupplier = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((v: unknown) =>
+    z
+      .object({
+        productId: z.string().uuid(),
+        source: z.enum(["aliexpress_url", "aliexpress_api", "manual"]),
+        reference: z.string().trim().min(1).max(400),
+      })
+      .parse(v),
+  )
+  .handler(async ({ data, context }) => {
+    await assertCatalog(context);
+    const db = context.supabase;
+
+    let sourceId = data.reference.trim();
+    let sourceUrl: string | null = null;
+    if (data.source !== "manual") {
+      const digits = sourceId.match(/(\d{6,})/);
+      if (!digits) throw new Error("Informe o link completo do AliExpress ou o ID numérico do produto.");
+      sourceId = digits[1];
+      sourceUrl = /^https?:\/\//i.test(data.reference.trim())
+        ? data.reference.trim()
+        : `https://www.aliexpress.com/item/${sourceId}.html`;
+    }
+
+    const { error } = await db.from("product_imports").insert({
+      product_id: data.productId,
+      source: data.source,
+      source_id: sourceId,
+      source_url: sourceUrl,
+      status: "done",
+      raw_data: {},
+      normalized_data: {},
+      imported_by: context.userId,
+    });
+    if (error) throw new Error(error.message);
+    return { ok: true as const, source: data.source, source_id: sourceId, source_url: sourceUrl };
+  });
+
 
 const UpsertSchema = z.object({
   id: z.string().uuid().nullable().optional(),

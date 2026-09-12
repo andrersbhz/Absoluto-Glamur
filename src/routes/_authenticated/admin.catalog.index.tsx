@@ -16,8 +16,10 @@ import {
   deleteAdminProduct,
   exportAdminProductsCsv,
   translateStoreGlobal,
+  setProductSupplier,
   type AdminProductRow,
 } from "@/lib/admin-catalog.functions";
+
 import { optimizeProductCopy } from "@/lib/ai-product-optimize.functions";
 import { syncAllAliexpressStock } from "@/lib/aliexpress-stock.functions";
 import { bulkSyncAliexpressReviews } from "@/lib/product-reviews.functions";
@@ -183,6 +185,44 @@ function CatalogList() {
     }
   }
 
+  // Troca de fornecedor (link/ID de origem) direto pela lista.
+  const setSupplierFn = useServerFn(setProductSupplier);
+  const [supplierTarget, setSupplierTarget] = useState<AdminProductRow | null>(null);
+  const [supplierSource, setSupplierSource] = useState<"aliexpress_url" | "aliexpress_api" | "manual">(
+    "aliexpress_url",
+  );
+  const [supplierRef, setSupplierRef] = useState("");
+  const [supplierSaving, setSupplierSaving] = useState(false);
+
+  function openSupplier(row: AdminProductRow) {
+    setSupplierTarget(row);
+    setSupplierSource(
+      (row.supplier_source as "aliexpress_url" | "aliexpress_api" | "manual") ?? "aliexpress_url",
+    );
+    setSupplierRef(row.supplier_url ?? row.ali_source_id ?? "");
+  }
+
+  async function saveSupplier(sync: boolean) {
+    if (!supplierTarget) return;
+    setSupplierSaving(true);
+    try {
+      await setSupplierFn({
+        data: { productId: supplierTarget.id, source: supplierSource, reference: supplierRef },
+      });
+      toast.success("Fornecedor atualizado");
+      const id = supplierTarget.id;
+      setSupplierTarget(null);
+      qc.invalidateQueries({ queryKey: ["admin-products"] });
+      if (sync) await handleRowSync(id);
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Falha ao salvar fornecedor");
+    } finally {
+      setSupplierSaving(false);
+    }
+  }
+
+
+
   const delMut = useMutation({
     mutationFn: (id: string) => del({ data: { id } }),
     onSuccess: () => {
@@ -345,6 +385,7 @@ function CatalogList() {
               <tr>
                 <th className="px-4 py-3">Produto</th>
                 <th className="px-4 py-3">Status</th>
+                <th className="px-4 py-3">Fornecedor</th>
                 <th className="px-4 py-3">Custo</th>
                 <th className="px-4 py-3">Preço</th>
                 <th className="px-4 py-3">Estoque</th>
@@ -355,14 +396,14 @@ function CatalogList() {
             <tbody>
               {query.isLoading && (
                 <tr>
-                  <td colSpan={7} className="px-4 py-8 text-center text-muted-foreground">
+                  <td colSpan={8} className="px-4 py-8 text-center text-muted-foreground">
                     Carregando…
                   </td>
                 </tr>
               )}
               {query.data?.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="px-4 py-10 text-center text-muted-foreground">
+                  <td colSpan={8} className="px-4 py-10 text-center text-muted-foreground">
                     Nenhum produto ainda. Clique em <b>Novo produto</b>.
                   </td>
                 </tr>
@@ -378,8 +419,10 @@ function CatalogList() {
                   optimizing={aiTarget?.id === p.id && aiLoading !== "idle"}
                   onSync={() => handleRowSync(p.id)}
                   syncing={!!rowSyncing[p.id]}
+                  onChangeSupplier={() => openSupplier(p)}
                 />
               ))}
+
             </tbody>
           </table>
         </div>
@@ -465,8 +508,55 @@ function CatalogList() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={!!supplierTarget} onOpenChange={(o) => !o && setSupplierTarget(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Trocar fornecedor · {supplierTarget?.name}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <label className="block text-xs font-medium text-muted-foreground">
+              Origem
+              <select
+                value={supplierSource}
+                onChange={(e) => setSupplierSource(e.target.value as typeof supplierSource)}
+                className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
+              >
+                <option value="aliexpress_url">AliExpress (link do produto)</option>
+                <option value="aliexpress_api">AliExpress (ID via API oficial)</option>
+                <option value="manual">Fornecedor manual (sem sincronização)</option>
+              </select>
+            </label>
+            <label className="block text-xs font-medium text-muted-foreground">
+              {supplierSource === "manual" ? "Identificação do fornecedor" : "Link ou ID do produto"}
+              <input
+                value={supplierRef}
+                onChange={(e) => setSupplierRef(e.target.value)}
+                placeholder="https://www.aliexpress.com/item/1005001234567890.html"
+                className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
+              />
+            </label>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSupplierTarget(null)} disabled={supplierSaving}>
+              Cancelar
+            </Button>
+            <Button onClick={() => saveSupplier(false)} disabled={supplierSaving || !supplierRef.trim()} variant="secondary">
+              Salvar
+            </Button>
+            <Button onClick={() => saveSupplier(true)} disabled={supplierSaving || !supplierRef.trim()}>
+              {supplierSaving ? (
+                <><Loader2 className="mr-1 h-3 w-3 animate-spin" /> Salvando…</>
+              ) : (
+                <><RefreshCw className="mr-1 h-3 w-3" /> Salvar e atualizar produto</>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AdminLayout>
   );
+
 }
 
 function ProductRow({
@@ -476,6 +566,7 @@ function ProductRow({
   optimizing,
   onSync,
   syncing,
+  onChangeSupplier,
 }: {
   row: AdminProductRow;
   onDelete: () => void;
@@ -483,7 +574,9 @@ function ProductRow({
   optimizing: boolean;
   onSync: () => void;
   syncing: boolean;
+  onChangeSupplier: () => void;
 }) {
+
   const statusBadge =
     row.status === "active" ? (
       <Badge className="bg-success text-white">Ativo</Badge>
@@ -534,6 +627,39 @@ function ProductRow({
         </div>
       </td>
       <td className="px-4 py-3">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-medium">
+              {row.supplier_source
+                ? row.supplier_source.startsWith("aliexpress")
+                  ? "AliExpress"
+                  : "Manual"
+                : "Sem fornecedor"}
+            </span>
+            <button
+              onClick={onChangeSupplier}
+              className="rounded-lg border border-border px-2 py-0.5 text-[11px] hover:bg-secondary"
+            >
+              Trocar
+            </button>
+          </div>
+          <p className="text-[11px] text-muted-foreground">
+            {row.supplier_cost_cents != null ? (
+              <>
+                Custo {formatBRL(row.supplier_cost_cents)}
+                {row.supplier_shipping_cents ? ` + frete ${formatBRL(row.supplier_shipping_cents)}` : ""}
+                {row.supplier_total_cents != null ? ` = ${formatBRL(row.supplier_total_cents)}` : ""}
+              </>
+            ) : (
+              "Custo não sincronizado"
+            )}
+          </p>
+          <p className="text-[11px] text-muted-foreground">
+            {row.variant_count} variação(ões) · estoque {row.total_stock ?? 0}
+          </p>
+        </div>
+      </td>
+      <td className="px-4 py-3">
         {row.cost_cents != null ? (
           <span className="text-muted-foreground">{formatBRL(row.cost_cents)}</span>
         ) : (
@@ -550,6 +676,7 @@ function ProductRow({
           <span className="text-muted-foreground">—</span>
         )}
       </td>
+
       <td className="px-4 py-3">{row.media_count}</td>
       <td className="px-4 py-3">
         <div className="flex items-center justify-end gap-2">
@@ -557,16 +684,18 @@ function ProductRow({
             <button
               onClick={onSync}
               disabled={syncing}
-              title="Sincronizar estoque e custo do AliExpress"
-              className="inline-flex items-center gap-1 rounded-lg border border-border p-1.5 text-xs hover:bg-secondary disabled:opacity-60"
+              title="Atualizar preço, custo, estoque e variações do fornecedor"
+              className="inline-flex items-center gap-1 rounded-lg border border-border px-2 py-1.5 text-xs hover:bg-secondary disabled:opacity-60"
             >
               {syncing ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
               ) : (
                 <RefreshCw className="h-3.5 w-3.5" />
               )}
+              Atualizar
             </button>
           )}
+
           {row.status === "active" && (
             <Link
               to="/products/$slug"
