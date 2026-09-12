@@ -21,6 +21,7 @@ import {
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { isVideoUrl } from "@/lib/media-kind";
+import { imageFileToWebpFile } from "@/lib/image-webp";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import {
   getAdminProduct,
@@ -372,6 +373,8 @@ function CatalogEditor() {
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<{ done: number; total: number } | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const imageInputRef = useRef<HTMLInputElement | null>(null);
+  const videoInputRef = useRef<HTMLInputElement | null>(null);
 
   async function handleUploadFiles(files: FileList | File[]) {
     const arr = Array.from(files).filter((f) =>
@@ -394,7 +397,11 @@ function CatalogEditor() {
     const uploaded: { url: string; alt: string }[] = [];
     try {
       for (let i = 0; i < toUpload.length; i++) {
-        const file = toUpload[i];
+        const original = toUpload[i];
+        // Imagens são convertidas para WebP (GIF e WebP permanecem como estão).
+        const file = original.type.startsWith("image/")
+          ? await imageFileToWebpFile(original, { maxWidth: 1600, quality: 0.84 })
+          : original;
         const ext = file.name.split(".").pop()?.toLowerCase() || "bin";
         const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_").slice(0, 60);
         const path = `${id}/${Date.now()}-${i}-${safeName}`.replace(/\/{2,}/g, "/");
@@ -424,6 +431,8 @@ function CatalogEditor() {
       setUploading(false);
       setUploadProgress(null);
       if (fileInputRef.current) fileInputRef.current.value = "";
+      if (imageInputRef.current) imageInputRef.current.value = "";
+      if (videoInputRef.current) videoInputRef.current.value = "";
     }
   }
 
@@ -955,15 +964,39 @@ function CatalogEditor() {
                 {tab === "media" && (
                   <Section title="Mídias do produto">
                     <p className="text-xs text-muted-foreground">
-                      A primeira mídia é a capa. Envie do computador (imagens JPG/PNG/WEBP/GIF ou
-                      vídeos MP4/WEBM/MOV) ou cole URLs externas. Você pode selecionar vários
-                      arquivos de uma vez.
+                      A primeira mídia é a capa. Escolha enviar imagens (convertidas
+                      automaticamente para WebP) ou vídeos (MP4/WEBM/MOV), ou cole URLs externas.
+                      Você pode selecionar vários arquivos de uma vez.
                     </p>
 
                     <input
                       ref={fileInputRef}
                       type="file"
                       accept="image/*,video/*"
+                      multiple
+                      className="hidden"
+                      onChange={(e) => {
+                        if (e.target.files && e.target.files.length > 0) {
+                          void handleUploadFiles(e.target.files);
+                        }
+                      }}
+                    />
+                    <input
+                      ref={imageInputRef}
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      className="hidden"
+                      onChange={(e) => {
+                        if (e.target.files && e.target.files.length > 0) {
+                          void handleUploadFiles(e.target.files);
+                        }
+                      }}
+                    />
+                    <input
+                      ref={videoInputRef}
+                      type="file"
+                      accept="video/*"
                       multiple
                       className="hidden"
                       onChange={(e) => {
@@ -995,18 +1028,35 @@ function CatalogEditor() {
                         <button
                           type="button"
                           disabled={uploading}
-                          onClick={() => fileInputRef.current?.click()}
+                          onClick={() => imageInputRef.current?.click()}
                           className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-xs font-medium text-primary-foreground shadow-soft transition hover:opacity-90 disabled:opacity-50"
                         >
-                          <Upload className="h-4 w-4" />
+                          <ImageIcon className="h-4 w-4" />
                           {uploading
                             ? uploadProgress
                               ? `Enviando ${uploadProgress.done}/${uploadProgress.total}…`
                               : "Enviando…"
-                            : "Selecionar arquivos"}
+                            : "Adicionar imagens"}
                         </button>
-                        <span className="text-[11px] text-muted-foreground">
-                          Até 50MB por arquivo · imagens e vídeos
+                        <button
+                          type="button"
+                          disabled={uploading}
+                          onClick={() => videoInputRef.current?.click()}
+                          className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-xs font-medium transition hover:bg-secondary disabled:opacity-50"
+                        >
+                          <Upload className="h-4 w-4" />
+                          Adicionar vídeos
+                        </button>
+                        <button
+                          type="button"
+                          disabled={uploading}
+                          onClick={() => fileInputRef.current?.click()}
+                          className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2 text-xs font-medium transition hover:bg-secondary disabled:opacity-50"
+                        >
+                          Imagens e vídeos
+                        </button>
+                        <span className="w-full text-[11px] text-muted-foreground">
+                          Até 50MB por arquivo · imagens viram WebP automaticamente
                         </span>
                       </div>
                     </div>
