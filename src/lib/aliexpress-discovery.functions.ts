@@ -298,6 +298,17 @@ export async function callAli<T = any>(
     json = await requestAli(method, appKey, appSecret, newToken, bizParams);
   }
 
+  // Limite de frequência da API: aguarda o tempo indicado e tenta de novo.
+  for (let attempt = 0; attempt < 3 && json?.error_response; attempt += 1) {
+    const er = json.error_response;
+    const text = `${er.code ?? ""} ${er.sub_code ?? ""} ${er.msg ?? ""} ${er.sub_msg ?? ""}`;
+    if (!/AppApiCallLimit|frequency of app access/i.test(text)) break;
+    const secs = Number(/last (\d+) seconds?/i.exec(text)?.[1] ?? 5);
+    const waitMs = Math.min(30_000, Math.max(1_000, (secs + 1) * 1000));
+    await new Promise((r) => setTimeout(r, waitMs));
+    json = await requestAli(method, appKey, appSecret, accessToken, bizParams);
+  }
+
   if (json.error_response) {
     const er = json.error_response;
     const detail = er.sub_msg ?? er.msg ?? "erro desconhecido";
@@ -305,6 +316,7 @@ export async function callAli<T = any>(
     const requestId = er.request_id ? ` (request_id: ${er.request_id})` : "";
     throw new Error(`AliExpress ${codes}: ${detail}${requestId}`);
   }
+
   return json as T;
 }
 
