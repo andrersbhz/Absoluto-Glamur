@@ -39,7 +39,14 @@ export type AdminProductRow = {
   thumbnail_url: string | null;
   updated_at: string;
   ali_source_id: string | null;
+  supplier_source: string | null;
+  supplier_url: string | null;
+  supplier_cost_cents: number | null;
+  supplier_shipping_cents: number | null;
+  supplier_total_cents: number | null;
+  total_stock: number | null;
 };
+
 
 export const listAdminProducts = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
