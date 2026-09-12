@@ -1,0 +1,13 @@
+services:
+  whatsapp:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8787:8787"
+    env_file:
+      - .env
+    volumes:
+      - whatsapp_auth:/app/.wa-auth
+
+volumes:
+  whatsapp_auth:
