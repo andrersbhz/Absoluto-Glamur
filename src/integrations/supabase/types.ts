@@ -2995,6 +2995,7 @@ export type Database = {
           direction: Database["public"]["Enums"]["whatsapp_message_direction"]
           id: string
           media_url: string | null
+          provider_message_id: string | null
           read_at: string | null
           sent_at: string | null
           status: Database["public"]["Enums"]["whatsapp_message_status"] | null
@@ -3009,6 +3010,7 @@ export type Database = {
           direction: Database["public"]["Enums"]["whatsapp_message_direction"]
           id?: string
           media_url?: string | null
+          provider_message_id?: string | null
           read_at?: string | null
           sent_at?: string | null
           status?: Database["public"]["Enums"]["whatsapp_message_status"] | null
@@ -3023,6 +3025,7 @@ export type Database = {
           direction?: Database["public"]["Enums"]["whatsapp_message_direction"]
           id?: string
           media_url?: string | null
+          provider_message_id?: string | null
           read_at?: string | null
           sent_at?: string | null
           status?: Database["public"]["Enums"]["whatsapp_message_status"] | null
@@ -3128,7 +3131,13 @@ export type Database = {
         | "finished"
         | "transferred"
       whatsapp_message_direction: "inbound" | "outbound"
-      whatsapp_message_status: "sent" | "delivered" | "read" | "failed"
+      whatsapp_message_status:
+        | "sent"
+        | "delivered"
+        | "read"
+        | "failed"
+        | "pending"
+        | "received"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -3313,7 +3322,14 @@ export const Constants = {
         "transferred",
       ],
       whatsapp_message_direction: ["inbound", "outbound"],
-      whatsapp_message_status: ["sent", "delivered", "read", "failed"],
+      whatsapp_message_status: [
+        "sent",
+        "delivered",
+        "read",
+        "failed",
+        "pending",
+        "received",
+      ],
     },
   },
 } as const

@@ -43,15 +43,46 @@ function normalizePhone(jid: string) {
   return jid.replace(/@s\.whatsapp\.net$/, "").replace(/\D/g, "");
 }
 
+const brl = (cents: number) =>
+  (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+
+function describeProduct(product: any) {
+  const variants: any[] = Array.isArray(product.product_variants) ? product.product_variants : [];
+  let priceCents: number | null = null;
+  let stock = 0;
+  for (const variant of variants) {
+    const prices: any[] = Array.isArray(variant.product_prices) ? variant.product_prices : [];
+    for (const price of prices) {
+      if (price?.is_active === false) continue;
+      if (price?.currency && price.currency !== "BRL") continue;
+      const value = Number(price?.sale_price_cents ?? price?.list_price_cents ?? 0);
+      if (value > 0 && (priceCents === null || value < priceCents)) priceCents = value;
+    }
+    const inventory = variant.product_inventory;
+    const inventoryRows: any[] = Array.isArray(inventory) ? inventory : inventory ? [inventory] : [];
+    for (const row of inventoryRows) stock += Math.max(0, Number(row?.stock || 0));
+  }
+  const parts = [
+    `- ${product.name}`,
+    product.short_description ? `descrição: ${String(product.short_description).slice(0, 220)}` : null,
+    priceCents !== null ? `preço: ${brl(priceCents)}` : "preço: não disponível",
+    `estoque: ${stock > 0 ? `${stock} unidade(s)` : "esgotado"}`,
+    `link: ${storefrontUrl}/products/${product.slug}`,
+  ].filter(Boolean);
+  return parts.join(" | ");
+}
+
 async function generateAiReply(conversationId: string, customerMessage: string) {
   if (!aiEnabled || !openAiKey) return;
 
   const { data: conversation } = await supabase
     .from("whatsapp_conversations")
-    .select("status")
+    .select("status,assigned_user_id")
     .eq("id", conversationId)
     .maybeSingle();
-  if (!conversation || conversation.status !== "waiting") return;
+  // Assim que um atendente humano assume (status != waiting ou conversa atribuída),
+  // a IA para imediatamente nesta conversa.
+  if (!conversation || conversation.status !== "waiting" || conversation.assigned_user_id) return;
 
   const [{ data: recent }, { data: products }] = await Promise.all([
     supabase
@@ -62,14 +93,16 @@ async function generateAiReply(conversationId: string, customerMessage: string) 
       .limit(12),
     supabase
       .from("products")
-      .select("name,slug,short_description")
+      .select(
+        "name,slug,short_description,product_variants(product_prices(list_price_cents,sale_price_cents,currency,is_active),product_inventory(stock))",
+      )
       .eq("status", "active")
       .order("updated_at", { ascending: false })
-      .limit(40),
+      .limit(60),
   ]);
 
   const productContext = (products || [])
-    .map((p) => `- ${p.name}: ${p.short_description || ""} | ${storefrontUrl}/${p.slug}`)
+    .map((p) => describeProduct(p))
     .join("\n")
     .slice(0, 12000);
   const history = (recent || [])
@@ -93,11 +126,11 @@ async function generateAiReply(conversationId: string, customerMessage: string) 
         {
           role: "system",
           content:
-            "Você é a assistente virtual da Absoluto Glamur, uma loja de beleza. Responda em português brasileiro, de forma elegante, curta e útil. Use somente informações fornecidas no contexto. Não invente estoque, prazo, preço, composição ou promessa de resultado. Se a pergunta exigir informação indisponível, diga que um atendente pode confirmar. Quando recomendar produto, use no máximo 3 opções e inclua os links fornecidos. Não faça diagnóstico médico.",
+            "Você é a assistente virtual da Absoluto Glamur, uma loja de beleza. Responda em português brasileiro, de forma elegante, curta e útil (até 4 frases). Use exclusivamente as informações do catálogo enviado no contexto: preço, estoque e descrição vêm do banco de dados. NUNCA invente preço, estoque, prazo de entrega, composição, promessa de resultado ou diagnóstico médico. Se a informação não estiver no contexto (por exemplo prazo de entrega ou pedido específico), diga que vai encaminhar para um atendente humano confirmar. Ao recomendar, sugira no máximo 3 produtos com nome, preço e o link informado. Produtos com estoque esgotado só devem ser citados como indisponíveis. Se o cliente pedir para falar com uma pessoa, reclamar, tratar de pagamento, troca, devolução ou pedido já feito, responda que um atendente humano assumirá a conversa em instantes.",
         },
         {
           role: "user",
-          content: `Catálogo disponível:\n${productContext || "Catálogo não disponível no momento."}\n\nHistórico:\n${history}\n\nMensagem atual do cliente: ${customerMessage}`,
+          content: `Catálogo disponível (fonte oficial, não invente nada além disto):\n${productContext || "Catálogo não disponível no momento."}\n\nHistórico:\n${history}\n\nMensagem atual do cliente: ${customerMessage}`,
         },
       ],
     }),
@@ -110,6 +143,14 @@ async function generateAiReply(conversationId: string, customerMessage: string) 
   const payload = (await response.json()) as any;
   const reply = String(payload?.choices?.[0]?.message?.content || "").trim();
   if (!reply) return;
+
+  // Revalida: um atendente pode ter assumido enquanto a IA gerava a resposta.
+  const { data: fresh } = await supabase
+    .from("whatsapp_conversations")
+    .select("status,assigned_user_id")
+    .eq("id", conversationId)
+    .maybeSingle();
+  if (!fresh || fresh.status !== "waiting" || fresh.assigned_user_id) return;
 
   const inserted = await supabase.from("whatsapp_messages").insert({
     conversation_id: conversationId,
