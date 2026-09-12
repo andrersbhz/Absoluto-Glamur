@@ -684,16 +684,18 @@ function ProductRow({
             <button
               onClick={onSync}
               disabled={syncing}
-              title="Sincronizar estoque e custo do AliExpress"
-              className="inline-flex items-center gap-1 rounded-lg border border-border p-1.5 text-xs hover:bg-secondary disabled:opacity-60"
+              title="Atualizar preço, custo, estoque e variações do fornecedor"
+              className="inline-flex items-center gap-1 rounded-lg border border-border px-2 py-1.5 text-xs hover:bg-secondary disabled:opacity-60"
             >
               {syncing ? (
                 <Loader2 className="h-3.5 w-3.5 animate-spin" />
               ) : (
                 <RefreshCw className="h-3.5 w-3.5" />
               )}
+              Atualizar
             </button>
           )}
+
           {row.status === "active" && (
             <Link
               to="/products/$slug"
