@@ -9,6 +9,7 @@ const searchSchema = z.object({
   q: z.string().optional(),
   category: z.string().optional(),
   collection: z.string().optional(),
+  sort: z.enum(["recent", "price_asc", "price_desc", "best_selling", "top_rated"]).optional(),
 });
 
 export const Route = createFileRoute("/products")({
