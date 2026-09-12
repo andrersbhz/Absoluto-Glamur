@@ -29,6 +29,8 @@ import {
   upsertAdminProduct,
   translateProductGlobal,
   setVariantPriceOverride,
+  setProductSupplier,
+
   type AdminProductInput,
 } from "@/lib/admin-catalog.functions";
 import { syncAliexpressStock } from "@/lib/aliexpress-stock.functions";
