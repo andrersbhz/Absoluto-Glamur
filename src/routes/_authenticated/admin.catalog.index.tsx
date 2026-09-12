@@ -508,8 +508,55 @@ function CatalogList() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={!!supplierTarget} onOpenChange={(o) => !o && setSupplierTarget(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Trocar fornecedor · {supplierTarget?.name}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <label className="block text-xs font-medium text-muted-foreground">
+              Origem
+              <select
+                value={supplierSource}
+                onChange={(e) => setSupplierSource(e.target.value as typeof supplierSource)}
+                className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
+              >
+                <option value="aliexpress_url">AliExpress (link do produto)</option>
+                <option value="aliexpress_api">AliExpress (ID via API oficial)</option>
+                <option value="manual">Fornecedor manual (sem sincronização)</option>
+              </select>
+            </label>
+            <label className="block text-xs font-medium text-muted-foreground">
+              {supplierSource === "manual" ? "Identificação do fornecedor" : "Link ou ID do produto"}
+              <input
+                value={supplierRef}
+                onChange={(e) => setSupplierRef(e.target.value)}
+                placeholder="https://www.aliexpress.com/item/1005001234567890.html"
+                className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
+              />
+            </label>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSupplierTarget(null)} disabled={supplierSaving}>
+              Cancelar
+            </Button>
+            <Button onClick={() => saveSupplier(false)} disabled={supplierSaving || !supplierRef.trim()} variant="secondary">
+              Salvar
+            </Button>
+            <Button onClick={() => saveSupplier(true)} disabled={supplierSaving || !supplierRef.trim()}>
+              {supplierSaving ? (
+                <><Loader2 className="mr-1 h-3 w-3 animate-spin" /> Salvando…</>
+              ) : (
+                <><RefreshCw className="mr-1 h-3 w-3" /> Salvar e atualizar produto</>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AdminLayout>
   );
+
 }
 
 function ProductRow({
