@@ -92,14 +92,30 @@ export const restartWhatsAppConnection = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     await assertWhatsAppStaff(context);
-    return whatsappServiceRequest("/restart", { method: "POST" });
+    try {
+      await whatsappServiceRequest("/restart", { method: "POST" });
+      return { ok: true as const, error: null };
+    } catch (error) {
+      return {
+        ok: false as const,
+        error: error instanceof Error ? error.message : "Serviço indisponível",
+      };
+    }
   });
 
 export const logoutWhatsAppConnection = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     await assertWhatsAppStaff(context);
-    return whatsappServiceRequest("/logout", { method: "POST" });
+    try {
+      await whatsappServiceRequest("/logout", { method: "POST" });
+      return { ok: true as const, error: null };
+    } catch (error) {
+      return {
+        ok: false as const,
+        error: error instanceof Error ? error.message : "Serviço indisponível",
+      };
+    }
   });
 
 const ConversationSchema = z.object({ conversationId: z.string().uuid() });
