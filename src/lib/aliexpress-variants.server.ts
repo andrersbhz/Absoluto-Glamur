@@ -245,17 +245,19 @@ export async function syncVariantsForProduct(
 
   const { data: existing } = await admin
     .from("product_variants")
-    .select("id, sku, external_sku_id, is_default, options, created_at")
+    .select("id, sku, name, external_sku_id, is_default, options, created_at")
     .eq("product_id", productId)
     .order("created_at", { ascending: true });
 
   type Row = {
     id: string;
     sku: string;
+    name: string | null;
     external_sku_id: string | null;
     is_default: boolean;
     options: Record<string, unknown> | null;
   };
+
   const rows: Row[] = (existing ?? []) as Row[];
   const byExternal = new Map<string, Row>();
   rows.forEach((r) => r.external_sku_id && byExternal.set(r.external_sku_id, r));
