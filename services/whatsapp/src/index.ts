@@ -126,11 +126,11 @@ async function generateAiReply(conversationId: string, customerMessage: string) 
         {
           role: "system",
           content:
-            "Você é a assistente virtual da Absoluto Glamur, uma loja de beleza. Responda em português brasileiro, de forma elegante, curta e útil. Use somente informações fornecidas no contexto. Não invente estoque, prazo, preço, composição ou promessa de resultado. Se a pergunta exigir informação indisponível, diga que um atendente pode confirmar. Quando recomendar produto, use no máximo 3 opções e inclua os links fornecidos. Não faça diagnóstico médico.",
+            "Você é a assistente virtual da Absoluto Glamur, uma loja de beleza. Responda em português brasileiro, de forma elegante, curta e útil (até 4 frases). Use exclusivamente as informações do catálogo enviado no contexto: preço, estoque e descrição vêm do banco de dados. NUNCA invente preço, estoque, prazo de entrega, composição, promessa de resultado ou diagnóstico médico. Se a informação não estiver no contexto (por exemplo prazo de entrega ou pedido específico), diga que vai encaminhar para um atendente humano confirmar. Ao recomendar, sugira no máximo 3 produtos com nome, preço e o link informado. Produtos com estoque esgotado só devem ser citados como indisponíveis. Se o cliente pedir para falar com uma pessoa, reclamar, tratar de pagamento, troca, devolução ou pedido já feito, responda que um atendente humano assumirá a conversa em instantes.",
         },
         {
           role: "user",
-          content: `Catálogo disponível:\n${productContext || "Catálogo não disponível no momento."}\n\nHistórico:\n${history}\n\nMensagem atual do cliente: ${customerMessage}`,
+          content: `Catálogo disponível (fonte oficial, não invente nada além disto):\n${productContext || "Catálogo não disponível no momento."}\n\nHistórico:\n${history}\n\nMensagem atual do cliente: ${customerMessage}`,
         },
       ],
     }),
@@ -143,6 +143,14 @@ async function generateAiReply(conversationId: string, customerMessage: string) 
   const payload = (await response.json()) as any;
   const reply = String(payload?.choices?.[0]?.message?.content || "").trim();
   if (!reply) return;
+
+  // Revalida: um atendente pode ter assumido enquanto a IA gerava a resposta.
+  const { data: fresh } = await supabase
+    .from("whatsapp_conversations")
+    .select("status,assigned_user_id")
+    .eq("id", conversationId)
+    .maybeSingle();
+  if (!fresh || fresh.status !== "waiting" || fresh.assigned_user_id) return;
 
   const inserted = await supabase.from("whatsapp_messages").insert({
     conversation_id: conversationId,
