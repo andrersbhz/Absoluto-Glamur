@@ -30,6 +30,7 @@ import {
   translateProductGlobal,
   setVariantPriceOverride,
   setProductSupplier,
+import { formatBRL } from "@/lib/format";
 
   type AdminProductInput,
 } from "@/lib/admin-catalog.functions";
