@@ -37,9 +37,19 @@ export type Filters = {
   q?: string;
   category?: string;
   collection?: string;
-  sort?: "recent" | "price_asc" | "price_desc";
+  sort?: "recent" | "price_asc" | "price_desc" | "best_selling" | "top_rated";
   limit?: number;
 };
+
+/** Busca os IDs da coleção "mais-vendidos" (ordenados por posição de inclusão). */
+async function fetchBestSellerIds(): Promise<string[]> {
+  const { data: col } = await supabase
+    .from("collections")
+    .select("id, product_collections(product_id)")
+    .eq("slug", "mais-vendidos")
+    .maybeSingle();
+  return (col?.product_collections ?? []).map((p: { product_id: string }) => p.product_id);
+}
 
 export function productListQuery(filters: Filters = {}) {
   return queryOptions({
