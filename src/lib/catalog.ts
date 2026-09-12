@@ -37,9 +37,19 @@ export type Filters = {
   q?: string;
   category?: string;
   collection?: string;
-  sort?: "recent" | "price_asc" | "price_desc";
+  sort?: "recent" | "price_asc" | "price_desc" | "best_selling" | "top_rated";
   limit?: number;
 };
+
+/** Busca os IDs da coleção "mais-vendidos" (ordenados por posição de inclusão). */
+async function fetchBestSellerIds(): Promise<string[]> {
+  const { data: col } = await supabase
+    .from("collections")
+    .select("id, product_collections(product_id)")
+    .eq("slug", "mais-vendidos")
+    .maybeSingle();
+  return (col?.product_collections ?? []).map((p: { product_id: string }) => p.product_id);
+}
 
 export function productListQuery(filters: Filters = {}) {
   return queryOptions({
@@ -73,13 +83,39 @@ export function productListQuery(filters: Filters = {}) {
         q = q.in("id", ids);
       }
 
-      if (filters.sort === "recent" || !filters.sort) {
+      if (filters.sort === "top_rated") {
+        q = q.order("rating_avg", { ascending: false }).order("rating_count", { ascending: false });
+      } else {
         q = q.order("created_at", { ascending: false });
       }
 
       const { data, error } = await q;
       if (error) throw error;
-      return (data ?? []) as unknown as ProductListItem[];
+      let rows = (data ?? []) as unknown as ProductListItem[];
+
+      if (filters.sort === "best_selling") {
+        const bestIds = await fetchBestSellerIds();
+        const rank = new Map(bestIds.map((id, i) => [id, i]));
+        rows = rows
+          .slice()
+          .sort(
+            (a, b) =>
+              (rank.get(a.id) ?? Number.MAX_SAFE_INTEGER) -
+              (rank.get(b.id) ?? Number.MAX_SAFE_INTEGER),
+          );
+      }
+      if (filters.sort === "price_asc" || filters.sort === "price_desc") {
+        const priceOf = (p: ProductListItem) => {
+          const price = pickActivePrice(pickDefaultVariant(p));
+          return price?.sale_price_cents ?? price?.list_price_cents ?? Number.MAX_SAFE_INTEGER;
+        };
+        rows = rows
+          .slice()
+          .sort((a, b) =>
+            filters.sort === "price_asc" ? priceOf(a) - priceOf(b) : priceOf(b) - priceOf(a),
+          );
+      }
+      return rows;
     },
     staleTime: 30_000,
   });

@@ -9,6 +9,7 @@ const searchSchema = z.object({
   q: z.string().optional(),
   category: z.string().optional(),
   collection: z.string().optional(),
+  sort: z.enum(["recent", "price_asc", "price_desc", "best_selling", "top_rated"]).optional(),
 });
 
 export const Route = createFileRoute("/products")({
@@ -37,8 +38,8 @@ export const Route = createFileRoute("/products")({
 
 
 function ProductsPage() {
-  const { q, category, collection } = Route.useSearch();
-  const { data: products = [], isLoading } = useQuery(productListQuery({ q, category, collection }));
+  const { q, category, collection, sort } = Route.useSearch();
+  const { data: products = [], isLoading } = useQuery(productListQuery({ q, category, collection, sort }));
   const { data: categories = [] } = useQuery(categoriesQuery());
   const { data: collections = [] } = useQuery(collectionsQuery());
 
@@ -75,6 +76,33 @@ function ProductsPage() {
                 {c.name}
               </Link>
             ))}
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs uppercase tracking-[0.2em] text-muted-foreground">Ordenar:</span>
+            {(
+              [
+                { value: "best_selling", label: "Mais vendidos" },
+                { value: "top_rated", label: "Mais bem avaliados" },
+                { value: "price_asc", label: "Menor preço" },
+                { value: "price_desc", label: "Maior preço" },
+              ] as const
+            ).map((opt) => {
+              const active = sort === opt.value;
+              return (
+                <Link
+                  key={opt.value}
+                  to="/products"
+                  search={{ q, category, collection, sort: active ? undefined : opt.value } as never}
+                  className={`rounded-full border px-3 py-1 text-xs transition ${
+                    active
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-border text-muted-foreground hover:bg-secondary"
+                  }`}
+                >
+                  {opt.label}
+                </Link>
+              );
+            })}
           </div>
         </header>
 
