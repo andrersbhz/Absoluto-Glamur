@@ -963,15 +963,39 @@ function CatalogEditor() {
                 {tab === "media" && (
                   <Section title="Mídias do produto">
                     <p className="text-xs text-muted-foreground">
-                      A primeira mídia é a capa. Envie do computador (imagens JPG/PNG/WEBP/GIF ou
-                      vídeos MP4/WEBM/MOV) ou cole URLs externas. Você pode selecionar vários
-                      arquivos de uma vez.
+                      A primeira mídia é a capa. Escolha enviar imagens (convertidas
+                      automaticamente para WebP) ou vídeos (MP4/WEBM/MOV), ou cole URLs externas.
+                      Você pode selecionar vários arquivos de uma vez.
                     </p>
 
                     <input
                       ref={fileInputRef}
                       type="file"
                       accept="image/*,video/*"
+                      multiple
+                      className="hidden"
+                      onChange={(e) => {
+                        if (e.target.files && e.target.files.length > 0) {
+                          void handleUploadFiles(e.target.files);
+                        }
+                      }}
+                    />
+                    <input
+                      ref={imageInputRef}
+                      type="file"
+                      accept="image/*"
+                      multiple
+                      className="hidden"
+                      onChange={(e) => {
+                        if (e.target.files && e.target.files.length > 0) {
+                          void handleUploadFiles(e.target.files);
+                        }
+                      }}
+                    />
+                    <input
+                      ref={videoInputRef}
+                      type="file"
+                      accept="video/*"
                       multiple
                       className="hidden"
                       onChange={(e) => {
