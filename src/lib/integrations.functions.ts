@@ -329,7 +329,12 @@ export const testIntegration = createServerFn({ method: "POST" })
 
     if (data.provider === "mercadopago") {
       const accessToken = String(row.api_key ?? "").trim();
-      if (!accessToken) throw new Error("Preencha o Access Token do Mercado Pago antes de testar.");
+      if (!accessToken) {
+        return {
+          ok: false,
+          info: { name: "Mercado Pago", message: "Preencha o Access Token do Mercado Pago antes de testar." },
+        };
+      }
       try {
         const response = await fetch("https://api.mercadolibre.com/users/me", {
           method: "GET",
@@ -348,11 +353,15 @@ export const testIntegration = createServerFn({ method: "POST" })
           },
         };
       } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
+        const raw = error instanceof Error ? error.message : String(error);
+        const message = /unauthorized|policy|invalid.*token|401/i.test(raw)
+          ? "Access Token do Mercado Pago inválido, expirado ou sem permissão. Gere um novo token e salve novamente."
+          : raw;
         await writeVerification(db, "mercadopago", message);
-        throw new Error(message);
+        return { ok: false, info: { name: "Mercado Pago", message } };
       }
     }
+
 
     if (data.provider === "17track") {
       const token = String(row.api_key ?? "").trim();
