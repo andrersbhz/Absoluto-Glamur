@@ -104,6 +104,30 @@ export function productListQuery(filters: Filters = {}) {
       if (error) throw error;
       let rows = (data ?? []) as unknown as ProductListItem[];
 
+      if (rows.length === 0 && bestSellerFilterApplied) {
+        let fallback = supabase
+          .from("products")
+          .select(PRODUCT_SELECT)
+          .eq("status", "active")
+          .limit(filters.limit ?? 60)
+          .order("created_at", { ascending: false });
+        if (filters.q && filters.q.trim().length > 0) {
+          fallback = fallback.ilike("name", `%${filters.q.trim()}%`);
+        }
+        if (filters.category) {
+          const { data: cat } = await supabase
+            .from("categories")
+            .select("id")
+            .eq("slug", filters.category)
+            .maybeSingle();
+          if (cat?.id) fallback = fallback.eq("category_id", cat.id);
+        }
+        const { data: fbData, error: fbError } = await fallback;
+        if (fbError) throw fbError;
+        rows = (fbData ?? []) as unknown as ProductListItem[];
+      }
+
+
       if (filters.sort === "best_selling") {
         const bestIds = await fetchBestSellerIds();
         const rank = new Map(bestIds.map((id, i) => [id, i]));
