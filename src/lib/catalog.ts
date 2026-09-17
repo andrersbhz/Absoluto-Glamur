@@ -72,10 +72,16 @@ export function productListQuery(filters: Filters = {}) {
           .maybeSingle();
         if (cat?.id) q = q.eq("category_id", cat.id);
       }
+      // "Mais vendidos" prioriza a coleção curada, mas nunca esvazia o catálogo:
+      // quando a coleção está vazia (ou não cruza com o filtro atual), a lista
+      // completa continua sendo exibida, apenas reordenada mais abaixo.
+      let bestSellerFilterApplied = false;
       if (!filters.collection && filters.sort === "best_selling") {
         const bestIds = await fetchBestSellerIds();
-        if (bestIds.length === 0) return [];
-        q = q.in("id", bestIds);
+        if (bestIds.length > 0) {
+          q = q.in("id", bestIds);
+          bestSellerFilterApplied = true;
+        }
       }
       if (filters.collection) {
         const { data: col } = await supabase
@@ -97,6 +103,30 @@ export function productListQuery(filters: Filters = {}) {
       const { data, error } = await q;
       if (error) throw error;
       let rows = (data ?? []) as unknown as ProductListItem[];
+
+      if (rows.length === 0 && bestSellerFilterApplied) {
+        let fallback = supabase
+          .from("products")
+          .select(PRODUCT_SELECT)
+          .eq("status", "active")
+          .limit(filters.limit ?? 60)
+          .order("created_at", { ascending: false });
+        if (filters.q && filters.q.trim().length > 0) {
+          fallback = fallback.ilike("name", `%${filters.q.trim()}%`);
+        }
+        if (filters.category) {
+          const { data: cat } = await supabase
+            .from("categories")
+            .select("id")
+            .eq("slug", filters.category)
+            .maybeSingle();
+          if (cat?.id) fallback = fallback.eq("category_id", cat.id);
+        }
+        const { data: fbData, error: fbError } = await fallback;
+        if (fbError) throw fbError;
+        rows = (fbData ?? []) as unknown as ProductListItem[];
+      }
+
 
       if (filters.sort === "best_selling") {
         const bestIds = await fetchBestSellerIds();
