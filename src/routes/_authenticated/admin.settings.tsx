@@ -215,6 +215,45 @@ function ImportDefaultsCard({ value, onSave, saving }: CardProps) {
   );
 }
 
+function TrackingHeadCard({ value, onSave, saving }: CardProps) {
+  const [f, setF] = useForm({
+    enabled: value.enabled !== false,
+    meta_pixel_id: (value.meta_pixel_id as string) ?? "",
+    ga4_id: (value.ga4_id as string) ?? "",
+    gtm_id: (value.gtm_id as string) ?? "",
+    tiktok_pixel_id: (value.tiktok_pixel_id as string) ?? "",
+    head_html: (value.head_html as string) ?? "",
+    body_html: (value.body_html as string) ?? "",
+  });
+  return (
+    <Card>
+      <CardHeader><CardTitle>Pixels & códigos de rastreamento (head)</CardTitle></CardHeader>
+      <CardContent className="grid gap-4 md:grid-cols-2">
+        <Field label="Meta Pixel ID"><Input placeholder="123456789012345" value={f.meta_pixel_id} onChange={(e) => setF({ ...f, meta_pixel_id: e.target.value })} /></Field>
+        <Field label="Google Analytics 4 (G-XXXX)"><Input placeholder="G-XXXXXXX" value={f.ga4_id} onChange={(e) => setF({ ...f, ga4_id: e.target.value })} /></Field>
+        <Field label="Google Tag Manager (GTM-XXXX)"><Input placeholder="GTM-XXXXXXX" value={f.gtm_id} onChange={(e) => setF({ ...f, gtm_id: e.target.value })} /></Field>
+        <Field label="TikTok Pixel ID"><Input placeholder="CXXXXXXXXXXXXXXXXXXX" value={f.tiktok_pixel_id} onChange={(e) => setF({ ...f, tiktok_pixel_id: e.target.value })} /></Field>
+        <Field label="Código extra no <head> (HTML/scripts)" className="md:col-span-2">
+          <Textarea rows={6} className="font-mono text-xs" placeholder="<script>...</script>" value={f.head_html} onChange={(e) => setF({ ...f, head_html: e.target.value })} />
+        </Field>
+        <Field label="Código extra no final do <body>" className="md:col-span-2">
+          <Textarea rows={4} className="font-mono text-xs" placeholder="<script>...</script>" value={f.body_html} onChange={(e) => setF({ ...f, body_html: e.target.value })} />
+        </Field>
+        <label className="flex items-center gap-2 text-sm md:col-span-2">
+          <input type="checkbox" checked={f.enabled} onChange={(e) => setF({ ...f, enabled: e.target.checked })} />
+          Ativar rastreamento no site público
+        </label>
+        <p className="text-xs text-muted-foreground md:col-span-2">
+          Os códigos são aplicados em todas as páginas da loja. Cole apenas scripts de fontes confiáveis.
+        </p>
+        <div className="md:col-span-2">
+          <Button onClick={() => onSave(f)} disabled={saving}>Salvar rastreamento</Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 function Field({ label, children, className }: { label: string; children: React.ReactNode; className?: string }) {
   return (
     <div className={className}>
