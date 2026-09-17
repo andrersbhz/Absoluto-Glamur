@@ -755,6 +755,33 @@ export type Database = {
         }
         Relationships: []
       }
+      coupons: {
+        Row: {
+          code: string
+          created_at: string
+          enabled: boolean
+          id: string
+          percent: number
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          percent?: number
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          enabled?: boolean
+          id?: string
+          percent?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       customer_push_subscriptions: {
         Row: {
           auth: string
