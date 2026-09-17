@@ -8,6 +8,7 @@ const SETTING_KEYS = [
   "organization_jsonld",
   "import_defaults",
   "home_content",
+  "tracking_head",
 ] as const;
 
 export type SettingKey = (typeof SETTING_KEYS)[number];

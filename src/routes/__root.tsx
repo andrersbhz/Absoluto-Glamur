@@ -16,6 +16,7 @@ import { AliExpressReviewSyncBridge } from "@/components/store/AliExpressReviewS
 import { I18nProvider } from "@/lib/i18n";
 import { CurrencyProvider } from "@/lib/currency-context";
 import appCss from "@/styles.css?url";
+import { buildTrackingScripts, getHeadTracking } from "@/lib/head-tracking.functions";
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
   head: () => ({
@@ -52,7 +53,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       },
     ],
   }),
-  loader: async () => ({ gtmId: null as string | null }),
+  loader: async () => {
+    const tracking = await getHeadTracking().catch(() => null);
+    return { tracking };
+  },
   shellComponent: RootShell,
   component: RootComponent,
 });
@@ -100,12 +104,32 @@ function RootComponent() {
 }
 
 function RootShell({ children }: { children: ReactNode }) {
-  const { gtmId } = Route.useLoaderData();
+  const { tracking } = Route.useLoaderData();
+  const gtmId = tracking?.gtm_id ?? null;
+  const inlineTracking = tracking ? buildTrackingScripts(tracking) : "";
 
   return (
     <html lang="pt-BR">
       <head>
         <HeadContent />
+        {tracking?.ga4_id ? (
+          <>
+            <script async src={`https://www.googletagmanager.com/gtag/js?id=${tracking.ga4_id}`} />
+            <script
+              dangerouslySetInnerHTML={{
+                __html: `window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','${tracking.ga4_id}');`,
+              }}
+            />
+          </>
+        ) : null}
+        {inlineTracking ? <script dangerouslySetInnerHTML={{ __html: inlineTracking }} /> : null}
+        {tracking?.head_html ? (
+          <script
+            dangerouslySetInnerHTML={{
+              __html: `document.head.insertAdjacentHTML('beforeend', ${JSON.stringify(tracking.head_html)});`,
+            }}
+          />
+        ) : null}
       </head>
       <body>
         {gtmId ? (
@@ -117,6 +141,24 @@ function RootShell({ children }: { children: ReactNode }) {
               style={{ display: "none", visibility: "hidden" }}
             />
           </noscript>
+        ) : null}
+        {tracking?.meta_pixel_id ? (
+          <noscript>
+            <img
+              height="1"
+              width="1"
+              alt=""
+              style={{ display: "none" }}
+              src={`https://www.facebook.com/tr?id=${tracking.meta_pixel_id}&ev=PageView&noscript=1`}
+            />
+          </noscript>
+        ) : null}
+        {tracking?.body_html ? (
+          <script
+            dangerouslySetInnerHTML={{
+              __html: `document.body.insertAdjacentHTML('beforeend', ${JSON.stringify(tracking.body_html)});`,
+            }}
+          />
         ) : null}
         {children}
         <ScrollRestoration />
