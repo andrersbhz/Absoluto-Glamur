@@ -72,10 +72,16 @@ export function productListQuery(filters: Filters = {}) {
           .maybeSingle();
         if (cat?.id) q = q.eq("category_id", cat.id);
       }
+      // "Mais vendidos" prioriza a coleção curada, mas nunca esvazia o catálogo:
+      // quando a coleção está vazia (ou não cruza com o filtro atual), a lista
+      // completa continua sendo exibida, apenas reordenada mais abaixo.
+      let bestSellerFilterApplied = false;
       if (!filters.collection && filters.sort === "best_selling") {
         const bestIds = await fetchBestSellerIds();
-        if (bestIds.length === 0) return [];
-        q = q.in("id", bestIds);
+        if (bestIds.length > 0) {
+          q = q.in("id", bestIds);
+          bestSellerFilterApplied = true;
+        }
       }
       if (filters.collection) {
         const { data: col } = await supabase
