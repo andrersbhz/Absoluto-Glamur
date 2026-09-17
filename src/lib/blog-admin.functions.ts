@@ -190,7 +190,9 @@ export const saveBlogPost = createServerFn({ method: "POST" })
       linkedProducts: data.product_ids.length,
     });
 
+    const hasImage = Boolean(data.featured_image_url && String(data.featured_image_url).trim());
     const payload = {
+      ...(hasImage ? {} : { status: current.status === "published" ? "draft" : current.status }),
       category_id: data.category_id ?? null,
       title: data.title,
       slug,
