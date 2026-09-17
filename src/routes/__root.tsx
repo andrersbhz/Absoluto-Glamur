@@ -16,6 +16,7 @@ import { AliExpressReviewSyncBridge } from "@/components/store/AliExpressReviewS
 import { I18nProvider } from "@/lib/i18n";
 import { CurrencyProvider } from "@/lib/currency-context";
 import appCss from "@/styles.css?url";
+import { buildTrackingScripts, getHeadTracking } from "@/lib/head-tracking.functions";
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
   head: () => ({
@@ -52,7 +53,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       },
     ],
   }),
-  loader: async () => ({ gtmId: null as string | null }),
+  loader: async () => {
+    const tracking = await getHeadTracking().catch(() => null);
+    return { tracking };
+  },
   shellComponent: RootShell,
   component: RootComponent,
 });
