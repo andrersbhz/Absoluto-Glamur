@@ -215,6 +215,27 @@ function ImportDefaultsCard({ value, onSave, saving }: CardProps) {
   );
 }
 
+function detectPixelIds(code: string) {
+  const found: {
+    meta_pixel_id?: string;
+    ga4_id?: string;
+    gtm_id?: string;
+    tiktok_pixel_id?: string;
+  } = {};
+  const fbq = code.match(/fbq\(\s*['"]init['"]\s*,\s*['"](\d{5,})['"]/i)
+    ?? code.match(/facebook\.com\/tr\?id=(\d{5,})/i);
+  if (fbq) found.meta_pixel_id = fbq[1];
+  const gtm = code.match(/GTM-[A-Z0-9]{4,}/i);
+  if (gtm) found.gtm_id = gtm[0].toUpperCase();
+  const ga4 = code.match(/gtag\(\s*['"]config['"]\s*,\s*['"](G-[A-Z0-9]+)['"]/i)
+    ?? code.match(/googletagmanager\.com\/gtag\/js\?id=(G-[A-Z0-9]+)/i);
+  if (ga4) found.ga4_id = ga4[1].toUpperCase();
+  const tt = code.match(/ttq\.load\(\s*['"]([A-Z0-9]{10,})['"]/i)
+    ?? code.match(/analytics\.tiktok\.com\/[^"']*sdkid=([A-Z0-9]{10,})/i);
+  if (tt) found.tiktok_pixel_id = tt[1];
+  return found;
+}
+
 function TrackingHeadCard({ value, onSave, saving }: CardProps) {
   const [f, setF] = useForm({
     enabled: value.enabled !== false,
@@ -225,10 +246,55 @@ function TrackingHeadCard({ value, onSave, saving }: CardProps) {
     head_html: (value.head_html as string) ?? "",
     body_html: (value.body_html as string) ?? "",
   });
+  const [pixelCode, setPixelCode] = useState("");
+
+  const applyPixelCode = () => {
+    const code = pixelCode.trim();
+    if (!code) {
+      toast.error("Cole o código do pixel primeiro");
+      return;
+    }
+    const found = detectPixelIds(code);
+    const hasAny = Object.keys(found).length > 0;
+    if (hasAny) {
+      setF({ ...f, ...found });
+      const names: string[] = [];
+      if (found.meta_pixel_id) names.push(`Meta Pixel ${found.meta_pixel_id}`);
+      if (found.ga4_id) names.push(`GA4 ${found.ga4_id}`);
+      if (found.gtm_id) names.push(`GTM ${found.gtm_id}`);
+      if (found.tiktok_pixel_id) names.push(`TikTok ${found.tiktok_pixel_id}`);
+      toast.success(`Detectado: ${names.join(", ")}. Revise e clique em Salvar.`);
+    } else {
+      setF({
+        ...f,
+        head_html: f.head_html ? `${f.head_html}\n${code}` : code,
+      });
+      toast.success("Pixel não reconhecido: adicionado como código extra no <head>. Clique em Salvar.");
+    }
+    setPixelCode("");
+  };
+
   return (
     <Card>
       <CardHeader><CardTitle>Pixels & códigos de rastreamento (head)</CardTitle></CardHeader>
       <CardContent className="grid gap-4 md:grid-cols-2">
+        <Field label="Adicionar pixel colando o código completo" className="md:col-span-2">
+          <Textarea
+            rows={5}
+            className="font-mono text-xs"
+            placeholder="Cole aqui o código completo do pixel (Meta, Google, TikTok, GTM ou outro)…"
+            value={pixelCode}
+            onChange={(e) => setPixelCode(e.target.value)}
+          />
+          <div className="mt-2 flex flex-wrap items-center gap-3">
+            <Button type="button" variant="secondary" onClick={applyPixelCode} disabled={saving}>
+              Detectar e preencher
+            </Button>
+            <p className="text-xs text-muted-foreground">
+              O sistema identifica o ID automaticamente. Se não reconhecer, o código entra como script extra no head.
+            </p>
+          </div>
+        </Field>
         <Field label="Meta Pixel ID"><Input placeholder="123456789012345" value={f.meta_pixel_id} onChange={(e) => setF({ ...f, meta_pixel_id: e.target.value })} /></Field>
         <Field label="Google Analytics 4 (G-XXXX)"><Input placeholder="G-XXXXXXX" value={f.ga4_id} onChange={(e) => setF({ ...f, ga4_id: e.target.value })} /></Field>
         <Field label="Google Tag Manager (GTM-XXXX)"><Input placeholder="GTM-XXXXXXX" value={f.gtm_id} onChange={(e) => setF({ ...f, gtm_id: e.target.value })} /></Field>
