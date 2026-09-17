@@ -415,6 +415,9 @@ export const publishBlogPost = createServerFn({ method: "POST" })
       faq: faqArray(post.faq),
       linkedProducts: links?.length ?? 0,
     });
+    if (!post.featured_image_url || !String(post.featured_image_url).trim()) {
+      throw new Error("Adicione a imagem destacada do artigo. Sem imagem o artigo permanece como rascunho e não pode ser postado.");
+    }
     if (!post.focus_keyword || !post.seo_title || !post.meta_description) {
       throw new Error("Complete palavra-chave foco, SEO title e meta description antes de publicar.");
     }
