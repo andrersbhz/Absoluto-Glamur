@@ -190,9 +190,7 @@ export const saveBlogPost = createServerFn({ method: "POST" })
       linkedProducts: data.product_ids.length,
     });
 
-    const hasImage = Boolean(data.featured_image_url && String(data.featured_image_url).trim());
     const payload = {
-      ...(hasImage ? {} : { status: current.status === "published" ? "draft" : current.status }),
       category_id: data.category_id ?? null,
       title: data.title,
       slug,
@@ -417,9 +415,6 @@ export const publishBlogPost = createServerFn({ method: "POST" })
       faq: faqArray(post.faq),
       linkedProducts: links?.length ?? 0,
     });
-    if (!post.featured_image_url || !String(post.featured_image_url).trim()) {
-      throw new Error("Adicione a imagem destacada do artigo. Sem imagem o artigo permanece como rascunho e não pode ser postado.");
-    }
     if (!post.focus_keyword || !post.seo_title || !post.meta_description) {
       throw new Error("Complete palavra-chave foco, SEO title e meta description antes de publicar.");
     }
