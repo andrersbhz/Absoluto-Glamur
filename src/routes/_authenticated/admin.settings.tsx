@@ -78,6 +78,11 @@ function SettingsPage() {
             onSave={(v) => mutation.mutate({ key: "import_defaults", value: v })}
             saving={mutation.isPending}
           />
+          <TrackingHeadCard
+            value={byKey("tracking_head")}
+            onSave={(v) => mutation.mutate({ key: "tracking_head", value: v })}
+            saving={mutation.isPending}
+          />
         </div>
       )}
     </AdminLayout>
