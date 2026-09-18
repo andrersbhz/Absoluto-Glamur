@@ -16,7 +16,7 @@ import { AliExpressReviewSyncBridge } from "@/components/store/AliExpressReviewS
 import { I18nProvider } from "@/lib/i18n";
 import { CurrencyProvider } from "@/lib/currency-context";
 import appCss from "@/styles.css?url";
-import { buildTrackingScripts, getHeadTracking } from "@/lib/head-tracking.functions";
+import { buildHtmlInjector, buildTrackingScripts, getHeadTracking } from "@/lib/head-tracking.functions";
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
   head: () => ({
@@ -126,7 +126,7 @@ function RootShell({ children }: { children: ReactNode }) {
         {tracking?.head_html ? (
           <script
             dangerouslySetInnerHTML={{
-              __html: `document.head.insertAdjacentHTML('beforeend', ${JSON.stringify(tracking.head_html)});`,
+              __html: buildHtmlInjector(tracking.head_html, "head"),
             }}
           />
         ) : null}
@@ -156,7 +156,7 @@ function RootShell({ children }: { children: ReactNode }) {
         {tracking?.body_html ? (
           <script
             dangerouslySetInnerHTML={{
-              __html: `document.body.insertAdjacentHTML('beforeend', ${JSON.stringify(tracking.body_html)});`,
+              __html: buildHtmlInjector(tracking.body_html, "body"),
             }}
           />
         ) : null}

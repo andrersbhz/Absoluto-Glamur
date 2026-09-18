@@ -59,6 +59,12 @@ export const getHeadTracking = createServerFn({ method: "GET" }).handler(
   },
 );
 
+// insertAdjacentHTML marca <script> como "already started", então o código colado
+// nunca executava. Aqui recriamos cada script para que o navegador realmente o rode.
+export function buildHtmlInjector(html: string, target: "head" | "body"): string {
+  return `(function(){var host=document.${target};var tpl=document.createElement('template');tpl.innerHTML=${JSON.stringify(html)};var nodes=Array.prototype.slice.call(tpl.content.childNodes);nodes.forEach(function(node){if(node.nodeName==='SCRIPT'){var s=document.createElement('script');for(var i=0;i<node.attributes.length;i++){s.setAttribute(node.attributes[i].name,node.attributes[i].value);}s.text=node.textContent||'';host.appendChild(s);}else{host.appendChild(node);}});})();`;
+}
+
 export function buildTrackingScripts(t: HeadTracking): string {
   const parts: string[] = [];
 
