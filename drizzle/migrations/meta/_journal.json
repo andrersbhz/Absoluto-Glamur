@@ -8,6 +8,13 @@
       "when": 1789751231361,
       "tag": "0000_fix_cart_notify_enum_compare",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1790294158538,
+      "tag": "0001_tighten_analytics_and_homepage_media",
+      "breakpoints": true
     }
   ]
 }
