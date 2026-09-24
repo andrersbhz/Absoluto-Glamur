@@ -216,6 +216,7 @@ function IntegrationCard({ integration }: { integration: Integration }) {
 
   const WEBHOOK_PATHS: Record<string, string> = {
     asaas: "/api/public/webhooks/asaas",
+    amplopay: "/api/public/webhooks/amplopay",
     nupay: "/api/public/webhooks/nupay",
     pagbank: "/api/public/webhooks/pagbank",
     "17track": "/api/public/webhooks/17track",
@@ -234,6 +235,12 @@ function IntegrationCard({ integration }: { integration: Integration }) {
     string,
     { keyUrl?: string; keyLabel?: string; docsUrl?: string; instructions?: string }
   > = {
+    amplopay: {
+      keyUrl: "https://app.amplopay.com.br/",
+      keyLabel: "Abrir painel AmploPay",
+      instructions:
+        "No painel AmploPay → Integrações → API → Nova credencial, marque Criar/Consultar transações. Cole o Client ID e o Client Secret abaixo, ative, salve e clique em Testar. A URL de webhook abaixo é enviada automaticamente em cada cobrança.",
+    },
     asaas: {
       keyUrl: "https://www.asaas.com/config/index#/api",
       keyLabel: "Gerar chave no Asaas",
@@ -311,6 +318,8 @@ function IntegrationCard({ integration }: { integration: Integration }) {
   const docs = PROVIDER_DOCS[integration.provider];
 
   const isNuPay = integration.provider === "nupay";
+  const isAmplo = integration.provider === "amplopay";
+  const hasSecondKey = isNuPay || isAmplo;
   const isAliexpress = integration.provider === "aliexpress";
   const isFacebook = integration.provider === "facebook";
   const isInstagram = integration.provider === "instagram";
@@ -503,7 +512,9 @@ function IntegrationCard({ integration }: { integration: Integration }) {
           </div>
           <label className="block text-sm">
             <span className="mb-1 block text-xs text-muted-foreground">
-              {isNuPay
+              {isAmplo
+                ? "Client ID"
+                : isNuPay
                 ? "X-Merchant-Token"
                 : isAliexpress
                   ? "App Key"
@@ -544,17 +555,17 @@ function IntegrationCard({ integration }: { integration: Integration }) {
               </span>
             )}
           </label>
-          {isNuPay && (
+          {hasSecondKey && (
             <label className="block text-sm">
               <span className="mb-1 block text-xs text-muted-foreground">
-                X-Merchant-Key {currentMerchantKey && "(preenchida — deixe vazio para manter)"}
+                {isAmplo ? "Client Secret" : "X-Merchant-Key"} {currentMerchantKey && "(preenchida — deixe vazio para manter)"}
               </span>
               <div className="relative">
                 <input
                   type={showMerchantKey ? "text" : "password"}
                   value={merchantKey}
                   onChange={(e) => setMerchantKey(e.target.value)}
-                  placeholder="Merchant Key do NuPay"
+                  placeholder={isAmplo ? "Client Secret da AmploPay" : "Merchant Key do NuPay"}
                   className="w-full rounded-lg border border-border bg-background px-3 py-2 pr-10 font-mono text-sm"
                 />
                 <button type="button" onClick={() => void toggleSecret("merchant")} disabled={revealMut.isPending} className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-muted-foreground hover:text-foreground" aria-label={showMerchantKey ? "Ocultar Merchant Key" : "Mostrar Merchant Key"}>
@@ -562,7 +573,7 @@ function IntegrationCard({ integration }: { integration: Integration }) {
                 </button>
               </div>
               <span className="mt-1 block text-[11px] text-muted-foreground">
-                Encontre em NuPay Business → Configurações → Credenciais. Envie a Merchant Key aqui e o Merchant Token no campo acima.
+                {isAmplo ? "Painel AmploPay → Integrações → API → Nova credencial (permissão Criar/Consultar transações)." : "Encontre em NuPay Business → Configurações → Credenciais. Envie a Merchant Key aqui e o Merchant Token no campo acima."}
               </span>
             </label>
           )}
@@ -662,7 +673,7 @@ function IntegrationCard({ integration }: { integration: Integration }) {
             <button
               onClick={() => {
                 const cfg: Record<string, unknown> = {};
-                if (isNuPay && merchantKey) cfg.merchant_key = merchantKey;
+                if (hasSecondKey && merchantKey) cfg.merchant_key = merchantKey;
                 if (isFacebook) cfg.page_id = pageId.trim() || null;
                 if (isInstagram) cfg.ig_user_id = igUserId.trim() || null;
                 if (isAliexpress) cfg.redirect_uri = redirectUri.trim() || null;
@@ -689,6 +700,7 @@ function IntegrationCard({ integration }: { integration: Integration }) {
 }
 
 const PROVIDER_OPTIONS: { id: string; label: string }[] = [
+  { id: "amplopay", label: "AmploPay" },
   { id: "asaas", label: "Asaas" },
   { id: "nupay", label: "NuPay (Nubank)" },
   { id: "pagbank", label: "PagBank" },
@@ -699,7 +711,7 @@ const PROVIDER_OPTIONS: { id: string; label: string }[] = [
 ];
 
 const SUPPORTED_PROVIDERS_BY_METHOD: Record<PaymentMethodKey, string[]> = {
-  pix: ["asaas", "pagbank"],
+  pix: ["amplopay", "asaas", "pagbank"],
   credit_card: ["pagbank"],
   boleto: ["asaas", "pagbank"],
   nubank_redirect: ["nupay"],
