@@ -286,7 +286,7 @@ export const testIntegration = createServerFn({ method: "POST" })
       if (!row.api_key || !secret) {
         const message = "Preencha o Client ID e o Client Secret da AmploPay";
         await writeVerification(db, "amplopay", message);
-        return { ok: false, error: message } as never;
+        throw new Error(message);
       }
       const { amplopayFetch } = await import("./amplopay.server");
       try {

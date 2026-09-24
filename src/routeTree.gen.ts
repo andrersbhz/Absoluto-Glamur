@@ -84,6 +84,7 @@ import { Route as ApiPublicWebhooksNupayRouteImport } from './routes/api/public/
 import { Route as ApiPublicWebhooksMercadopagoRouteImport } from './routes/api/public/webhooks/mercadopago'
 import { Route as ApiPublicWebhooksEbanxRouteImport } from './routes/api/public/webhooks/ebanx'
 import { Route as ApiPublicWebhooksAsaasRouteImport } from './routes/api/public/webhooks/asaas'
+import { Route as ApiPublicWebhooksAmplopayRouteImport } from './routes/api/public/webhooks/amplopay'
 import { Route as ApiPublicWebhooksAliexpressRouteImport } from './routes/api/public/webhooks/aliexpress'
 import { Route as ApiPublicFeedsMetaCatalogDotcsvRouteImport } from './routes/api/public/feeds/meta-catalog[.]csv'
 import { Route as ApiPublicFeedsGoogleMerchantDotxmlRouteImport } from './routes/api/public/feeds/google-merchant[.]xml'
@@ -493,6 +494,12 @@ const ApiPublicWebhooksAsaasRoute = ApiPublicWebhooksAsaasRouteImport.update({
   path: '/api/public/webhooks/asaas',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicWebhooksAmplopayRoute =
+  ApiPublicWebhooksAmplopayRouteImport.update({
+    id: '/api/public/webhooks/amplopay',
+    path: '/api/public/webhooks/amplopay',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicWebhooksAliexpressRoute =
   ApiPublicWebhooksAliexpressRouteImport.update({
     id: '/api/public/webhooks/aliexpress',
@@ -616,6 +623,7 @@ export interface FileRoutesByFullPath {
   '/api/public/feeds/google-merchant.xml': typeof ApiPublicFeedsGoogleMerchantDotxmlRoute
   '/api/public/feeds/meta-catalog.csv': typeof ApiPublicFeedsMetaCatalogDotcsvRoute
   '/api/public/webhooks/aliexpress': typeof ApiPublicWebhooksAliexpressRoute
+  '/api/public/webhooks/amplopay': typeof ApiPublicWebhooksAmplopayRoute
   '/api/public/webhooks/asaas': typeof ApiPublicWebhooksAsaasRoute
   '/api/public/webhooks/ebanx': typeof ApiPublicWebhooksEbanxRoute
   '/api/public/webhooks/mercadopago': typeof ApiPublicWebhooksMercadopagoRoute
@@ -699,6 +707,7 @@ export interface FileRoutesByTo {
   '/api/public/feeds/google-merchant.xml': typeof ApiPublicFeedsGoogleMerchantDotxmlRoute
   '/api/public/feeds/meta-catalog.csv': typeof ApiPublicFeedsMetaCatalogDotcsvRoute
   '/api/public/webhooks/aliexpress': typeof ApiPublicWebhooksAliexpressRoute
+  '/api/public/webhooks/amplopay': typeof ApiPublicWebhooksAmplopayRoute
   '/api/public/webhooks/asaas': typeof ApiPublicWebhooksAsaasRoute
   '/api/public/webhooks/ebanx': typeof ApiPublicWebhooksEbanxRoute
   '/api/public/webhooks/mercadopago': typeof ApiPublicWebhooksMercadopagoRoute
@@ -785,6 +794,7 @@ export interface FileRoutesById {
   '/api/public/feeds/google-merchant.xml': typeof ApiPublicFeedsGoogleMerchantDotxmlRoute
   '/api/public/feeds/meta-catalog.csv': typeof ApiPublicFeedsMetaCatalogDotcsvRoute
   '/api/public/webhooks/aliexpress': typeof ApiPublicWebhooksAliexpressRoute
+  '/api/public/webhooks/amplopay': typeof ApiPublicWebhooksAmplopayRoute
   '/api/public/webhooks/asaas': typeof ApiPublicWebhooksAsaasRoute
   '/api/public/webhooks/ebanx': typeof ApiPublicWebhooksEbanxRoute
   '/api/public/webhooks/mercadopago': typeof ApiPublicWebhooksMercadopagoRoute
@@ -871,6 +881,7 @@ export interface FileRouteTypes {
     | '/api/public/feeds/google-merchant.xml'
     | '/api/public/feeds/meta-catalog.csv'
     | '/api/public/webhooks/aliexpress'
+    | '/api/public/webhooks/amplopay'
     | '/api/public/webhooks/asaas'
     | '/api/public/webhooks/ebanx'
     | '/api/public/webhooks/mercadopago'
@@ -954,6 +965,7 @@ export interface FileRouteTypes {
     | '/api/public/feeds/google-merchant.xml'
     | '/api/public/feeds/meta-catalog.csv'
     | '/api/public/webhooks/aliexpress'
+    | '/api/public/webhooks/amplopay'
     | '/api/public/webhooks/asaas'
     | '/api/public/webhooks/ebanx'
     | '/api/public/webhooks/mercadopago'
@@ -1039,6 +1051,7 @@ export interface FileRouteTypes {
     | '/api/public/feeds/google-merchant.xml'
     | '/api/public/feeds/meta-catalog.csv'
     | '/api/public/webhooks/aliexpress'
+    | '/api/public/webhooks/amplopay'
     | '/api/public/webhooks/asaas'
     | '/api/public/webhooks/ebanx'
     | '/api/public/webhooks/mercadopago'
@@ -1079,6 +1092,7 @@ export interface RootRouteChildren {
   ApiPublicFeedsGoogleMerchantDotxmlRoute: typeof ApiPublicFeedsGoogleMerchantDotxmlRoute
   ApiPublicFeedsMetaCatalogDotcsvRoute: typeof ApiPublicFeedsMetaCatalogDotcsvRoute
   ApiPublicWebhooksAliexpressRoute: typeof ApiPublicWebhooksAliexpressRoute
+  ApiPublicWebhooksAmplopayRoute: typeof ApiPublicWebhooksAmplopayRoute
   ApiPublicWebhooksAsaasRoute: typeof ApiPublicWebhooksAsaasRoute
   ApiPublicWebhooksEbanxRoute: typeof ApiPublicWebhooksEbanxRoute
   ApiPublicWebhooksMercadopagoRoute: typeof ApiPublicWebhooksMercadopagoRoute
@@ -1615,6 +1629,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicWebhooksAsaasRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/webhooks/amplopay': {
+      id: '/api/public/webhooks/amplopay'
+      path: '/api/public/webhooks/amplopay'
+      fullPath: '/api/public/webhooks/amplopay'
+      preLoaderRoute: typeof ApiPublicWebhooksAmplopayRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/webhooks/aliexpress': {
       id: '/api/public/webhooks/aliexpress'
       path: '/api/public/webhooks/aliexpress'
@@ -1918,6 +1939,7 @@ const rootRouteChildren: RootRouteChildren = {
     ApiPublicFeedsGoogleMerchantDotxmlRoute,
   ApiPublicFeedsMetaCatalogDotcsvRoute: ApiPublicFeedsMetaCatalogDotcsvRoute,
   ApiPublicWebhooksAliexpressRoute: ApiPublicWebhooksAliexpressRoute,
+  ApiPublicWebhooksAmplopayRoute: ApiPublicWebhooksAmplopayRoute,
   ApiPublicWebhooksAsaasRoute: ApiPublicWebhooksAsaasRoute,
   ApiPublicWebhooksEbanxRoute: ApiPublicWebhooksEbanxRoute,
   ApiPublicWebhooksMercadopagoRoute: ApiPublicWebhooksMercadopagoRoute,
