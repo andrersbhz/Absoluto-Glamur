@@ -301,6 +301,9 @@ export const createCheckout = createServerFn({ method: "POST" })
     const ctx: OrderContext = { orderId: order.id, code: order.code, total, document, phone, data: normalizedData };
 
     try {
+      if (provider === "amplopay" && method === "pix") {
+        return await handleAmploPayPix(ctx, integ);
+      }
       if (provider === "asaas" && method === "pix") {
         return await handleAsaasPix(ctx, integ);
       }
@@ -336,6 +339,55 @@ export const createCheckout = createServerFn({ method: "POST" })
   });
 
 export const createPixCheckout = createCheckout;
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function handleAmploPayPix(ctx: OrderContext, integ: any) {
+  const { amplopayFetch, parseAmploPayPix } = await import("./amplopay.server");
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const secret = (integ.config as { merchant_key?: string } | null)?.merchant_key;
+  if (!secret) throw new Error("Preencha o Client Secret da AmploPay em Admin → Integrações.");
+  const { getRequest } = await import("@tanstack/react-start/server");
+  const origin = new URL(getRequest().url).origin;
+  const r = await amplopayFetch<Record<string, unknown>>(
+    { clientId: integ.api_key as string, clientSecret: secret },
+    "/gateway/pix/receive",
+    {
+      method: "POST",
+      body: JSON.stringify({
+        identifier: ctx.orderId,
+        amount: Number((ctx.total / 100).toFixed(2)),
+        client: {
+          name: ctx.data.customer.name,
+          email: ctx.data.customer.email,
+          phone: ctx.phone,
+          document: ctx.document,
+        },
+        products: [
+          { id: ctx.orderId, name: `Pedido ${ctx.code}`, quantity: 1, price: Number((ctx.total / 100).toFixed(2)) },
+        ],
+        callbackUrl: `${origin}/api/public/webhooks/amplopay`,
+      }),
+    },
+  );
+  const pix = parseAmploPayPix(r);
+  if (!pix.id || !pix.code) throw new Error("AmploPay não retornou um PIX válido.");
+
+  const { error } = await supabaseAdmin.from("payments").insert({
+    order_id: ctx.orderId,
+    provider: "amplopay",
+    method: "pix",
+    status: "pending",
+    amount_cents: ctx.total,
+    external_id: pix.id,
+    pix_qr_code: pix.image,
+    pix_payload: pix.code,
+    pix_expires_at: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    raw: r as any,
+  });
+  if (error) throw new Error(error.message);
+  return { orderId: ctx.orderId, code: ctx.code, method: "pix" as const };
+}
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function handleAsaasPix(ctx: OrderContext, integ: any) {

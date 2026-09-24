@@ -44,6 +44,7 @@ type IntegrationCatalogItem = {
  * no banco para que integrações desconectadas/nunca configuradas continuem disponíveis.
  */
 export const INTEGRATION_CATALOG: IntegrationCatalogItem[] = [
+  { provider: "amplopay", category: "payments", display_name: "AmploPay", description: "Pagamentos PIX via AmploPay." },
   { provider: "asaas", category: "payments", display_name: "Asaas", description: "Pagamentos PIX, boleto e cartão no Brasil." },
   { provider: "pagbank", category: "payments", display_name: "PagBank", description: "PIX, boleto e cartão via PagBank." },
   { provider: "nupay", category: "payments", display_name: "NuPay (Nubank)", description: "Checkout e pagamentos via Nubank/NuPay Business." },
@@ -276,6 +277,25 @@ export const testIntegration = createServerFn({ method: "POST" })
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         await writeVerification(db, "asaas", message);
+        throw new Error(message);
+      }
+    }
+
+    if (data.provider === "amplopay") {
+      const secret = (row.config as { merchant_key?: string } | null)?.merchant_key;
+      if (!row.api_key || !secret) {
+        const message = "Preencha o Client ID e o Client Secret da AmploPay";
+        await writeVerification(db, "amplopay", message);
+        return { ok: false, error: message } as never;
+      }
+      const { amplopayFetch } = await import("./amplopay.server");
+      try {
+        await amplopayFetch({ clientId: row.api_key, clientSecret: secret }, "/gateway/producer/balance");
+        await writeVerification(db, "amplopay", null);
+        return { ok: true, info: { name: "AmploPay", email: null } };
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        await writeVerification(db, "amplopay", message);
         throw new Error(message);
       }
     }
