@@ -197,8 +197,8 @@ export const saveIntegration = createServerFn({ method: "POST" })
     };
     if (data.enabled !== undefined) payload.enabled = data.enabled;
     if (data.mode) payload.mode = data.mode;
-    if (data.api_key !== undefined) payload.api_key = data.api_key || null;
-    if (data.webhook_token !== undefined) payload.webhook_token = data.webhook_token || null;
+    if (data.api_key !== undefined) payload.api_key = data.api_key?.trim() || null;
+    if (data.webhook_token !== undefined) payload.webhook_token = data.webhook_token?.trim() || null;
 
     if (data.config !== undefined) {
       const prev = (existing?.config as Record<string, unknown> | null) ?? {};
