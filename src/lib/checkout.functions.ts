@@ -372,6 +372,9 @@ async function handleAmploPayPix(ctx: OrderContext, integ: any) {
   const pix = parseAmploPayPix(r);
   if (!pix.id || !pix.code) throw new Error("AmploPay não retornou um PIX válido.");
 
+  const expiresAt = pix.expiresAt && !Number.isNaN(Date.parse(pix.expiresAt))
+    ? new Date(pix.expiresAt).toISOString()
+    : new Date(Date.now() + 30 * 60 * 1000).toISOString();
   const { error } = await supabaseAdmin.from("payments").insert({
     order_id: ctx.orderId,
     provider: "amplopay",
@@ -381,7 +384,7 @@ async function handleAmploPayPix(ctx: OrderContext, integ: any) {
     external_id: pix.id,
     pix_qr_code: pix.image,
     pix_payload: pix.code,
-    pix_expires_at: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
+    pix_expires_at: expiresAt,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     raw: r as any,
   });

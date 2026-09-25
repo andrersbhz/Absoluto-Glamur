@@ -39,8 +39,9 @@ export const Route = createFileRoute("/api/public/webhooks/amplopay")({
         if (!pay) return new Response("unknown transaction", { status: 404 });
 
         // Valida o token da notificação (doc: a criação do PIX com callbackUrl
-        // retorna um token que acompanha todos os webhooks dessa transação).
-        const expectedToken = (pay.raw as { token?: string } | null)?.token;
+        // retorna `webhookToken`, que acompanha todos os webhooks da transação).
+        const raw = pay.raw as { webhookToken?: string; token?: string } | null;
+        const expectedToken = raw?.webhookToken ?? raw?.token;
         if (expectedToken && payload.token !== expectedToken) {
           return new Response("invalid token", { status: 401 });
         }

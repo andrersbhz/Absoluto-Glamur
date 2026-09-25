@@ -290,9 +290,13 @@ export const testIntegration = createServerFn({ method: "POST" })
       }
       const { amplopayFetch } = await import("./amplopay.server");
       try {
-        await amplopayFetch({ clientId: row.api_key, clientSecret: secret }, "/gateway/producer/balance");
+        const cred = await amplopayFetch<Record<string, unknown>>(
+          { clientId: row.api_key, clientSecret: secret },
+          "/gateway/producer/credentials",
+        );
         await writeVerification(db, "amplopay", null);
-        return { ok: true, info: { name: "AmploPay", email: null } };
+        const name = (cred.name ?? cred.producer ?? "AmploPay") as string;
+        return { ok: true, info: { name, email: null } };
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         await writeVerification(db, "amplopay", message);
