@@ -469,9 +469,12 @@ export const testIntegration = createServerFn({ method: "POST" })
       const appKey = String(row.api_key ?? config.app_key ?? "").trim();
       const appSecret = String(row.webhook_token ?? config.app_secret ?? "").trim();
       const accessToken = String(config.access_token ?? "").trim();
-      if (!appKey || !appSecret) throw new Error("Preencha App Key e App Secret antes de testar.");
-      if (!accessToken) {
-        throw new Error("AliExpress ainda não autorizado. Clique em 'Autorizar AliExpress' para completar o OAuth.");
+      if (!appKey || !appSecret || !accessToken) {
+        const message = !appKey || !appSecret
+          ? "Preencha App Key e App Secret antes de testar."
+          : "AliExpress ainda não autorizado. Clique em 'Autorizar AliExpress' para completar o OAuth.";
+        await writeVerification(db, "aliexpress", message);
+        return { ok: false, info: { name: "AliExpress", message } };
       }
       try {
         const { callAli } = await import("./aliexpress-discovery.functions");
