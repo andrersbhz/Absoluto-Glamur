@@ -206,7 +206,7 @@ export const saveIntegration = createServerFn({ method: "POST" })
       for (const [key, value] of Object.entries(data.config)) {
         if (value === null) delete merged[key];
       }
-      payload.config = Object.keys(data.config).length === 0 ? {} : merged;
+      payload.config = merged;
     }
 
     const { error } = await db.from("integrations").upsert(payload, { onConflict: "provider" });
