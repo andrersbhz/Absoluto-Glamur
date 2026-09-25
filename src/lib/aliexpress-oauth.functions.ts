@@ -51,7 +51,6 @@ export const createAliExpressAuthorizationUrl = createServerFn({ method: "POST" 
       client_id: appKey,
       redirect_uri: redirectUri,
       sp: "ae",
-      force_auth: "true",
       state,
     });
 
