@@ -42,8 +42,15 @@ async function validateOAuthState(
   const ageMs = Date.now() - parsed.ts;
   if (ageMs < 0 || ageMs > 10 * 60 * 1000) return false;
 
-  const { data: isAdmin } = await supabaseAdmin.rpc("is_admin", { _user_id: parsed.uid });
-  return !!isAdmin;
+  // Nao usar rpc("is_admin"): ela depende de auth.uid(), que nao existe neste
+  // callback publico do AliExpress. Consultamos os papeis direto com a chave de servico.
+  const { data: roles } = await supabaseAdmin
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", parsed.uid)
+    .in("role", ["admin", "superadmin"])
+    .limit(1);
+  return !!roles && roles.length > 0;
 }
 
 export const Route = createFileRoute("/api/public/webhooks/aliexpress")({
