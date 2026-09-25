@@ -236,10 +236,10 @@ function IntegrationCard({ integration }: { integration: Integration }) {
     { keyUrl?: string; keyLabel?: string; docsUrl?: string; instructions?: string }
   > = {
     amplopay: {
-      keyUrl: "https://app.amplopay.com.br/",
+      keyUrl: "https://app.amplopay.com/panel/gateway",
       keyLabel: "Abrir painel AmploPay",
       instructions:
-        "No painel AmploPay → Integrações → API → Nova credencial, marque Criar/Consultar transações. Cole o Client ID e o Client Secret abaixo, ative, salve e clique em Testar. A URL de webhook abaixo é enviada automaticamente em cada cobrança.",
+        "No painel AmploPay → Integrações → API → Gerar credenciais. Cole a chave pública (Client ID) e a chave secreta (Client Secret) abaixo, ative, salve e clique em Testar. A URL de webhook abaixo é enviada automaticamente em cada cobrança.",
     },
     asaas: {
       keyUrl: "https://www.asaas.com/config/index#/api",
