@@ -424,6 +424,8 @@ function IntegrationCard({ integration }: { integration: Integration }) {
           <TestTube className="h-3.5 w-3.5" />
           {testMut.isPending ? "Testando…" : "Testar conexão"}
         </button>
+        {isAliexpress && authorizeAliExpress}
+
         <button
           onClick={() =>
             saveMut.mutate({ provider: integration.provider, enabled: !integration.enabled })
