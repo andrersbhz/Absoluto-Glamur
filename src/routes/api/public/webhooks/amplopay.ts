@@ -32,11 +32,18 @@ export const Route = createFileRoute("/api/public/webhooks/amplopay")({
 
         const { data: pay } = await supabaseAdmin
           .from("payments")
-          .select("id, order_id, status")
+          .select("id, order_id, status, raw")
           .eq("provider", "amplopay")
           .eq("external_id", txId)
           .maybeSingle();
         if (!pay) return new Response("unknown transaction", { status: 404 });
+
+        // Valida o token da notificação (doc: a criação do PIX com callbackUrl
+        // retorna um token que acompanha todos os webhooks dessa transação).
+        const expectedToken = (pay.raw as { token?: string } | null)?.token;
+        if (expectedToken && payload.token !== expectedToken) {
+          return new Response("invalid token", { status: 401 });
+        }
 
         await supabaseAdmin.from("payment_events").insert({
           provider: "amplopay",
