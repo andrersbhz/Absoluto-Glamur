@@ -282,9 +282,10 @@ function IntegrationCard({ integration }: { integration: Integration }) {
       docsUrl: "https://docs.firecrawl.dev/",
     },
     aliexpress: {
-      keyUrl: "https://openservice.aliexpress.com/app/manager.htm",
+      keyUrl: "https://openservice.aliexpress.com/",
       keyLabel: "Console AliExpress Open",
-      docsUrl: "https://openservice.aliexpress.com/doc/doc.htm",
+      docsUrl: "https://openservice.aliexpress.com/",
+
       instructions:
         "1) Em openservice.aliexpress.com → Console → seu app, cole a URL de Callback exibida abaixo no campo 'Callback URL'. 2) Copie App Key e App Secret e cole nos campos 'API Key' (App Key) e 'Webhook Token' (App Secret). Salve. 3) Clique em 'Autorizar AliExpress' — o sistema gera um state temporário vinculado ao administrador antes de abrir o AliExpress.",
     },
@@ -424,6 +425,8 @@ function IntegrationCard({ integration }: { integration: Integration }) {
           <TestTube className="h-3.5 w-3.5" />
           {testMut.isPending ? "Testando…" : "Testar conexão"}
         </button>
+        {isAliexpress && authorizeAliExpress}
+
         <button
           onClick={() =>
             saveMut.mutate({ provider: integration.provider, enabled: !integration.enabled })
