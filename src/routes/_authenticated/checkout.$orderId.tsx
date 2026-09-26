@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Check, Copy, Clock } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { QRCodeSVG } from "qrcode.react";
 import { StoreLayout } from "@/components/store/StoreLayout";
 import { supabase } from "@/integrations/supabase/client";
 import { formatBRL } from "@/lib/format";
@@ -90,7 +91,7 @@ function PaymentPage() {
 
             {paid ? (
               <PaidState orderCode={order.code} />
-            ) : payment && payment.method === "pix" && payment.pix_qr_code ? (
+            ) : payment && payment.method === "pix" && (payment.pix_qr_code || payment.pix_payload) ? (
               <PendingState payment={payment} expiresAt={payment.pix_expires_at} />
             ) : payment && (payment.redirect_url || payment.invoice_url) ? (
               <RedirectState
@@ -154,12 +155,17 @@ function PendingState({
 
   const remainingMs = expiresAt ? new Date(expiresAt).getTime() - now : null;
   const expired = remainingMs !== null && remainingMs <= 0;
+  const [copied, setCopied] = useState(false);
+  const isManual = payment.provider === "pix_manual";
 
   function copyPayload() {
     if (!payment.pix_payload) return;
     navigator.clipboard.writeText(payment.pix_payload);
+    setCopied(true);
     toast.success("Código PIX copiado");
+    setTimeout(() => setCopied(false), 2500);
   }
+
 
   return (
     <div className="mt-8 grid gap-6 rounded-2xl border border-border bg-card p-6 shadow-soft md:grid-cols-[240px_1fr]">
@@ -168,6 +174,14 @@ function PendingState({
           <img
             src={`data:image/png;base64,${payment.pix_qr_code}`}
             alt="QR Code do PIX"
+            className="h-56 w-56 rounded-lg border border-border bg-white p-2"
+          />
+        ) : payment.pix_payload ? (
+          <QRCodeSVG
+            value={payment.pix_payload}
+            size={224}
+            level="M"
+            marginSize={2}
             className="h-56 w-56 rounded-lg border border-border bg-white p-2"
           />
         ) : (
@@ -179,7 +193,9 @@ function PendingState({
       <div>
         <h2 className="font-display text-xl">Pague com PIX</h2>
         <p className="mt-1 text-sm text-muted-foreground">
-          Abra o app do seu banco, escaneie o QR Code ou cole o código abaixo. A confirmação é automática.
+          {isManual
+            ? "Abra o app do seu banco, escaneie o QR Code ou copie o código abaixo. O valor já vem preenchido. Assim que recebermos, confirmamos seu pedido."
+            : "Abra o app do seu banco, escaneie o QR Code ou cole o código abaixo. A confirmação é automática."}
         </p>
 
         {payment.pix_payload && (
@@ -193,9 +209,10 @@ function PendingState({
               </code>
               <button
                 onClick={copyPayload}
-                className="inline-flex items-center gap-1 rounded-md bg-primary px-3 py-2 text-xs text-primary-foreground"
+                className={`inline-flex items-center gap-1 rounded-md px-3 py-2 text-xs transition-colors ${copied ? "bg-success text-white" : "bg-primary text-primary-foreground"}`}
               >
-                <Copy className="h-3.5 w-3.5" /> Copiar
+                {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+                {copied ? "Copiado" : "Copiar"}
               </button>
             </div>
           </>
