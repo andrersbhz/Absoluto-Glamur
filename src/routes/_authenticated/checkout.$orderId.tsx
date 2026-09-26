@@ -77,22 +77,29 @@ function PaymentPage() {
 
   return (
     <StoreLayout>
-      <div className="mx-auto max-w-3xl px-4 py-12 sm:px-6 lg:px-8">
+      <div className="mx-auto w-full min-w-0 max-w-xl px-4 py-10 sm:px-6 sm:py-14">
         {q.isLoading && <p className="text-sm text-muted-foreground">Carregando pedido…</p>}
         {order && (
           <>
-            <div className="flex flex-wrap items-baseline justify-between gap-2">
-              <div>
-                <p className="text-xs uppercase tracking-widest text-muted-foreground">Pedido</p>
-                <h1 className="font-display text-3xl">{order.code}</h1>
-              </div>
-              <p className="font-display text-2xl">{formatBRL(order.total_cents)}</p>
+            <div className="text-center">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-secondary/40 px-3 py-1 text-[11px] uppercase tracking-widest text-muted-foreground">
+                <Check className="h-3.5 w-3.5" />
+                Pedido gerado
+              </span>
+              <h1 className="mt-3 break-words font-display text-xl sm:text-2xl">{order.code}</h1>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Falta pouco: conclua o pagamento para confirmarmos seu pedido.
+              </p>
             </div>
 
             {paid ? (
               <PaidState orderCode={order.code} />
             ) : payment && payment.method === "pix" && (payment.pix_qr_code || payment.pix_payload) ? (
-              <PendingState payment={payment} expiresAt={payment.pix_expires_at} />
+              <PendingState
+                payment={payment}
+                expiresAt={payment.pix_expires_at}
+                totalCents={order.total_cents}
+              />
             ) : payment && (payment.redirect_url || payment.invoice_url) ? (
               <RedirectState
                 url={payment.redirect_url ?? payment.invoice_url!}
@@ -110,6 +117,7 @@ function PaymentPage() {
     </StoreLayout>
   );
 }
+
 
 function PaidState({ orderCode }: { orderCode: string }) {
   return (
