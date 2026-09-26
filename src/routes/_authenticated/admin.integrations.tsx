@@ -526,7 +526,9 @@ function IntegrationCard({ integration }: { integration: Integration }) {
           </div>
           <label className="block text-sm">
             <span className="mb-1 block text-xs text-muted-foreground">
-              {isAmplo
+              {isManualPix
+                ? "Chave PIX (CPF/CNPJ, e-mail, telefone ou aleatória)"
+                : isAmplo
                 ? "Client ID"
                 : isNuPay
                 ? "X-Merchant-Token"
@@ -539,7 +541,7 @@ function IntegrationCard({ integration }: { integration: Integration }) {
             </span>
             <div className="relative">
               <input
-              type={isGtm || showApiKey ? "text" : "password"}
+              type={isGtm || isManualPix || showApiKey ? "text" : "password"}
               value={apiKey}
               onChange={(e) => setApiKey(e.target.value)}
               placeholder={
@@ -557,7 +559,7 @@ function IntegrationCard({ integration }: { integration: Integration }) {
               }
               className="w-full rounded-lg border border-border bg-background px-3 py-2 pr-10 font-mono text-sm"
               />
-              {!isGtm && (
+              {!isGtm && !isManualPix && (
                 <button type="button" onClick={() => void toggleSecret("api")} disabled={revealMut.isPending} className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-muted-foreground hover:text-foreground" aria-label={showApiKey ? "Ocultar chave" : "Mostrar chave"}>
                   {showApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
@@ -590,6 +592,32 @@ function IntegrationCard({ integration }: { integration: Integration }) {
                 {isAmplo ? "Painel AmploPay → Integrações → API → Nova credencial (permissão Criar/Consultar transações)." : "Encontre em NuPay Business → Configurações → Credenciais. Envie a Merchant Key aqui e o Merchant Token no campo acima."}
               </span>
             </label>
+          )}
+          {isManualPix && (
+            <div className="grid gap-3 sm:grid-cols-2">
+              <label className="block text-sm">
+                <span className="mb-1 block text-xs text-muted-foreground">Nome da loja (aparece no app do banco)</span>
+                <input
+                  type="text"
+                  value={merchantName}
+                  onChange={(e) => setMerchantName(e.target.value)}
+                  placeholder="Absoluto Glamur"
+                  maxLength={25}
+                  className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
+                />
+              </label>
+              <label className="block text-sm">
+                <span className="mb-1 block text-xs text-muted-foreground">Cidade</span>
+                <input
+                  type="text"
+                  value={merchantCity}
+                  onChange={(e) => setMerchantCity(e.target.value)}
+                  placeholder="Sao Paulo"
+                  maxLength={15}
+                  className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"
+                />
+              </label>
+            </div>
           )}
           {isFacebook && (
             <label className="block text-sm">
@@ -688,6 +716,10 @@ function IntegrationCard({ integration }: { integration: Integration }) {
               onClick={() => {
                 const cfg: Record<string, unknown> = {};
                 if (hasSecondKey && merchantKey) cfg.merchant_key = merchantKey;
+                if (isManualPix) {
+                  cfg.merchant_name = merchantName.trim() || null;
+                  cfg.merchant_city = merchantCity.trim() || null;
+                }
                 if (isFacebook) cfg.page_id = pageId.trim() || null;
                 if (isInstagram) cfg.ig_user_id = igUserId.trim() || null;
                 if (isAliexpress) cfg.redirect_uri = redirectUri.trim() || null;
