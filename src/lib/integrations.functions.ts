@@ -44,6 +44,7 @@ type IntegrationCatalogItem = {
  * no banco para que integrações desconectadas/nunca configuradas continuem disponíveis.
  */
 export const INTEGRATION_CATALOG: IntegrationCatalogItem[] = [
+  { provider: "pix_manual", category: "payments", display_name: "PIX personalizado", description: "PIX direto na sua chave, com QR Code gerado no valor do pedido." },
   { provider: "amplopay", category: "payments", display_name: "AmploPay", description: "Pagamentos PIX via AmploPay." },
   { provider: "asaas", category: "payments", display_name: "Asaas", description: "Pagamentos PIX, boleto e cartão no Brasil." },
   { provider: "pagbank", category: "payments", display_name: "PagBank", description: "PIX, boleto e cartão via PagBank." },
