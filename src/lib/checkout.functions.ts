@@ -301,6 +301,9 @@ export const createCheckout = createServerFn({ method: "POST" })
     const ctx: OrderContext = { orderId: order.id, code: order.code, total, document, phone, data: normalizedData };
 
     try {
+      if (provider === "pix_manual" && method === "pix") {
+        return await handleManualPix(ctx, integ);
+      }
       if (provider === "amplopay" && method === "pix") {
         return await handleAmploPayPix(ctx, integ);
       }
@@ -339,6 +342,36 @@ export const createCheckout = createServerFn({ method: "POST" })
   });
 
 export const createPixCheckout = createCheckout;
+
+// PIX direto (sem intermediador): gera o BR Code com a chave da loja.
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function handleManualPix(ctx: OrderContext, integ: any) {
+  const { buildPixPayload } = await import("./pix-brcode");
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const cfg = (integ.config ?? {}) as { merchant_name?: string; merchant_city?: string };
+  const payload = buildPixPayload({
+    key: String(integ.api_key ?? ""),
+    merchantName: cfg.merchant_name ?? "LOJA",
+    merchantCity: cfg.merchant_city ?? "SAO PAULO",
+    amountCents: ctx.total,
+    txid: ctx.code.replace(/[^A-Za-z0-9]/g, "").slice(0, 25),
+  });
+
+  const { error } = await supabaseAdmin.from("payments").insert({
+    order_id: ctx.orderId,
+    provider: "pix_manual",
+    method: "pix",
+    status: "pending",
+    amount_cents: ctx.total,
+    external_id: ctx.code,
+    pix_payload: payload,
+    pix_expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    raw: { pix_key_owner: cfg.merchant_name ?? null } as any,
+  });
+  if (error) throw new Error(error.message);
+  return { orderId: ctx.orderId, code: ctx.code, method: "pix" as const };
+}
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function handleAmploPayPix(ctx: OrderContext, integ: any) {
