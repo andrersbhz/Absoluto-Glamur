@@ -77,22 +77,29 @@ function PaymentPage() {
 
   return (
     <StoreLayout>
-      <div className="mx-auto max-w-3xl px-4 py-12 sm:px-6 lg:px-8">
+      <div className="mx-auto w-full min-w-0 max-w-xl px-4 py-10 sm:px-6 sm:py-14">
         {q.isLoading && <p className="text-sm text-muted-foreground">Carregando pedido…</p>}
         {order && (
           <>
-            <div className="flex flex-wrap items-baseline justify-between gap-2">
-              <div>
-                <p className="text-xs uppercase tracking-widest text-muted-foreground">Pedido</p>
-                <h1 className="font-display text-3xl">{order.code}</h1>
-              </div>
-              <p className="font-display text-2xl">{formatBRL(order.total_cents)}</p>
+            <div className="text-center">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-secondary/40 px-3 py-1 text-[11px] uppercase tracking-widest text-muted-foreground">
+                <Check className="h-3.5 w-3.5" />
+                Pedido gerado
+              </span>
+              <h1 className="mt-3 break-words font-display text-xl sm:text-2xl">{order.code}</h1>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Falta pouco: conclua o pagamento para confirmarmos seu pedido.
+              </p>
             </div>
 
             {paid ? (
               <PaidState orderCode={order.code} />
             ) : payment && payment.method === "pix" && (payment.pix_qr_code || payment.pix_payload) ? (
-              <PendingState payment={payment} expiresAt={payment.pix_expires_at} />
+              <PendingState
+                payment={payment}
+                expiresAt={payment.pix_expires_at}
+                totalCents={order.total_cents}
+              />
             ) : payment && (payment.redirect_url || payment.invoice_url) ? (
               <RedirectState
                 url={payment.redirect_url ?? payment.invoice_url!}
@@ -110,6 +117,7 @@ function PaymentPage() {
     </StoreLayout>
   );
 }
+
 
 function PaidState({ orderCode }: { orderCode: string }) {
   return (
@@ -143,9 +151,11 @@ function PaidState({ orderCode }: { orderCode: string }) {
 function PendingState({
   payment,
   expiresAt,
+  totalCents,
 }: {
   payment: OrderWithPayment["payments"][number];
   expiresAt: string | null;
+  totalCents: number;
 }) {
   const [now, setNow] = useState(Date.now());
   useEffect(() => {
@@ -166,74 +176,102 @@ function PendingState({
     setTimeout(() => setCopied(false), 2500);
   }
 
-
   return (
-    <div className="mt-8 grid gap-6 rounded-2xl border border-border bg-card p-6 shadow-soft md:grid-cols-[240px_1fr]">
-      <div className="mx-auto md:mx-0">
-        {payment.pix_qr_code ? (
-          <img
-            src={`data:image/png;base64,${payment.pix_qr_code}`}
-            alt="QR Code do PIX"
-            className="h-56 w-56 rounded-lg border border-border bg-white p-2"
-          />
-        ) : payment.pix_payload ? (
-          <QRCodeSVG
-            value={payment.pix_payload}
-            size={224}
-            level="M"
-            marginSize={2}
-            className="h-56 w-56 rounded-lg border border-border bg-white p-2"
-          />
-        ) : (
-          <div className="flex h-56 w-56 items-center justify-center rounded-lg border border-dashed border-border">
-            <Clock className="h-6 w-6 text-muted-foreground" />
-          </div>
+    <div className="mt-6 overflow-hidden rounded-2xl border border-border bg-card shadow-soft">
+      <div className="flex flex-wrap items-end justify-between gap-3 border-b border-border/70 px-5 py-4 sm:px-7">
+        <div className="min-w-0">
+          <p className="text-[11px] uppercase tracking-widest text-muted-foreground">
+            Total a pagar
+          </p>
+          <p className="font-display text-2xl sm:text-3xl">{formatBRL(totalCents)}</p>
+        </div>
+        {expiresAt && (
+          <p
+            className={`inline-flex items-center gap-1.5 text-xs ${expired ? "text-destructive" : "text-muted-foreground"}`}
+          >
+            <Clock className="h-3.5 w-3.5" />
+            {expired ? "QR Code expirado" : `Expira em ${formatRemaining(remainingMs ?? 0)}`}
+          </p>
         )}
       </div>
-      <div>
-        <h2 className="font-display text-xl">Pague com PIX</h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {isManual
-            ? "Abra o app do seu banco, escaneie o QR Code ou copie o código abaixo. O valor já vem preenchido. Assim que recebermos, confirmamos seu pedido."
-            : "Abra o app do seu banco, escaneie o QR Code ou cole o código abaixo. A confirmação é automática."}
-        </p>
+
+      <div className="px-5 py-6 sm:px-7">
+        <div className="flex flex-col items-center text-center">
+          {payment.pix_qr_code ? (
+            <img
+              src={`data:image/png;base64,${payment.pix_qr_code}`}
+              alt="QR Code do PIX"
+              className="h-60 w-60 rounded-xl border border-border bg-white p-3"
+            />
+          ) : payment.pix_payload ? (
+            <QRCodeSVG
+              value={payment.pix_payload}
+              size={240}
+              level="M"
+              marginSize={2}
+              className="h-60 w-60 rounded-xl border border-border bg-white p-3"
+            />
+          ) : (
+            <div className="flex h-60 w-60 items-center justify-center rounded-xl border border-dashed border-border">
+              <Clock className="h-6 w-6 text-muted-foreground" />
+            </div>
+          )}
+          <p className="mt-3 text-sm text-muted-foreground">
+            Abra o app do seu banco e escaneie o QR Code
+          </p>
+        </div>
 
         {payment.pix_payload && (
           <>
-            <p className="mt-4 text-xs uppercase tracking-widest text-muted-foreground">
-              Copia e cola
-            </p>
-            <div className="mt-1 flex items-center gap-2">
-              <code className="block flex-1 truncate rounded-md border border-border bg-secondary/40 px-3 py-2 text-xs">
+            <div className="my-6 flex items-center gap-3">
+              <span className="h-px flex-1 bg-border" />
+              <span className="text-[11px] uppercase tracking-widest text-muted-foreground">
+                ou pague com copia e cola
+              </span>
+              <span className="h-px flex-1 bg-border" />
+            </div>
+
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+              <code className="block min-w-0 flex-1 truncate rounded-lg border border-border bg-secondary/40 px-3 py-2.5 text-xs">
                 {payment.pix_payload}
               </code>
               <button
                 onClick={copyPayload}
-                className={`inline-flex items-center gap-1 rounded-md px-3 py-2 text-xs transition-colors ${copied ? "bg-success text-white" : "bg-primary text-primary-foreground"}`}
+                className={`inline-flex w-full items-center justify-center gap-1.5 rounded-lg px-4 py-2.5 text-sm font-medium transition-colors sm:w-auto ${copied ? "bg-success text-white" : "bg-primary text-primary-foreground"}`}
               >
-                {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-                {copied ? "Copiado" : "Copiar"}
+                {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                {copied ? "Copiado!" : "Copiar código"}
               </button>
             </div>
           </>
         )}
 
-        {expiresAt && (
-          <p className={`mt-4 text-xs ${expired ? "text-destructive" : "text-muted-foreground"}`}>
-            {expired
-              ? "QR Code expirado. Refaça o checkout."
-              : `Expira em ${formatRemaining(remainingMs ?? 0)}.`}
-          </p>
-        )}
+        <div className="mt-6 rounded-xl border border-border/70 bg-secondary/30 p-4">
+          <p className="text-[11px] uppercase tracking-widest text-muted-foreground">Como pagar</p>
+          <ol className="mt-3 space-y-2 text-sm text-muted-foreground">
+            {[
+              "Abra o aplicativo do seu banco ou carteira digital.",
+              "Escolha pagar com Pix — QR Code ou Copia e Cola.",
+              `Confira o valor de ${formatBRL(totalCents)} e confirme.`,
+            ].map((step, i) => (
+              <li key={i} className="flex gap-2.5">
+                <span className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-[11px] font-semibold text-primary">
+                  {i + 1}
+                </span>
+                <span className="min-w-0">{step}</span>
+              </li>
+            ))}
+          </ol>
+        </div>
 
-        <p className="mt-4 inline-flex items-center gap-2 text-xs text-muted-foreground">
+        <p className="mt-5 flex items-center justify-center gap-2 text-xs text-muted-foreground">
           <span className="relative inline-flex h-2 w-2">
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-70" />
             <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
           </span>
           {isManual
             ? "Aguardando pagamento — confirmamos assim que o valor cair na conta"
-            : "Aguardando pagamento… atualizamos automaticamente"}
+            : "Aguardando pagamento — a confirmação é automática"}
         </p>
       </div>
     </div>
@@ -248,6 +286,7 @@ function formatRemaining(ms: number) {
   const pad = (n: number) => n.toString().padStart(2, "0");
   return h > 0 ? `${h}h ${pad(m)}min` : `${pad(m)}:${pad(s)}`;
 }
+
 
 function RedirectState({
   url,
