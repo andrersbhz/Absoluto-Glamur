@@ -235,6 +235,10 @@ function IntegrationCard({ integration }: { integration: Integration }) {
     string,
     { keyUrl?: string; keyLabel?: string; docsUrl?: string; instructions?: string }
   > = {
+    pix_manual: {
+      instructions:
+        "Informe sua chave PIX (CPF/CNPJ, e-mail, telefone ou chave aleatória), o nome da loja e a cidade. O QR Code é gerado automaticamente com o valor exato de cada pedido. Como é um PIX direto, sem intermediador, confirme o pagamento manualmente em Pedidos após receber.",
+    },
     amplopay: {
       keyUrl: "https://app.amplopay.com/panel/gateway",
       keyLabel: "Abrir painel AmploPay",
@@ -325,6 +329,7 @@ function IntegrationCard({ integration }: { integration: Integration }) {
   const isFacebook = integration.provider === "facebook";
   const isInstagram = integration.provider === "instagram";
   const isGtm = integration.provider === "google_tag_manager";
+  const isManualPix = integration.provider === "pix_manual";
   const currentMerchantKey = integration.has_merchant_key;
 
   const authorizeAliExpress = (
@@ -703,6 +708,7 @@ function IntegrationCard({ integration }: { integration: Integration }) {
 }
 
 const PROVIDER_OPTIONS: { id: string; label: string }[] = [
+  { id: "pix_manual", label: "PIX personalizado" },
   { id: "amplopay", label: "AmploPay" },
   { id: "asaas", label: "Asaas" },
   { id: "nupay", label: "NuPay (Nubank)" },
@@ -714,7 +720,7 @@ const PROVIDER_OPTIONS: { id: string; label: string }[] = [
 ];
 
 const SUPPORTED_PROVIDERS_BY_METHOD: Record<PaymentMethodKey, string[]> = {
-  pix: ["amplopay", "asaas", "pagbank"],
+  pix: ["pix_manual", "amplopay", "asaas", "pagbank", "mercadopago"],
   credit_card: ["pagbank"],
   boleto: ["asaas", "pagbank"],
   nubank_redirect: ["nupay"],
