@@ -231,7 +231,9 @@ function PendingState({
             <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-70" />
             <span className="relative inline-flex h-2 w-2 rounded-full bg-primary" />
           </span>
-          Aguardando pagamento… atualizamos automaticamente
+          {isManual
+            ? "Aguardando pagamento — confirmamos assim que o valor cair na conta"
+            : "Aguardando pagamento… atualizamos automaticamente"}
         </p>
       </div>
     </div>
