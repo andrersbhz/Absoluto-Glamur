@@ -144,6 +144,12 @@ function IntegrationCard({ integration }: { integration: Integration }) {
   const [igUserId, setIgUserId] = useState(
     String((integration.config as { ig_user_id?: string } | null)?.ig_user_id ?? ""),
   );
+  const [merchantName, setMerchantName] = useState(
+    String((integration.config as { merchant_name?: string } | null)?.merchant_name ?? ""),
+  );
+  const [merchantCity, setMerchantCity] = useState(
+    String((integration.config as { merchant_city?: string } | null)?.merchant_city ?? ""),
+  );
   const [showApiKey, setShowApiKey] = useState(false);
   const [showWebhookToken, setShowWebhookToken] = useState(false);
   const [showMerchantKey, setShowMerchantKey] = useState(false);
