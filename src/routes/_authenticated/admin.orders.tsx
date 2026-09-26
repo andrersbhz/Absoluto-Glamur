@@ -13,6 +13,7 @@ import {
   fulfillOrderToAliexpress,
   fulfillOrdersBulk,
 } from "@/lib/aliexpress-fulfillment.functions";
+import { confirmOrdersPayment } from "@/lib/order-admin.functions";
 
 export const Route = createFileRoute("/_authenticated/admin/orders")({
   head: () => ({ meta: [{ title: "Pedidos · Admin Absoluto Glamur" }] }),
@@ -76,6 +77,17 @@ function AdminOrdersPage() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const fulfillOne = useServerFn(fulfillOrderToAliexpress);
   const fulfillBulk = useServerFn(fulfillOrdersBulk);
+  const confirmPay = useServerFn(confirmOrdersPayment);
+  const confirm = useMutation({
+    mutationFn: (orderIds: string[]) => confirmPay({ data: { orderIds } }),
+    onSuccess: (res) => {
+      toast.success(`${res.confirmed} pagamento(s) confirmado(s)`);
+      setSelected(new Set());
+      qc.invalidateQueries({ queryKey: ["admin-orders"] });
+    },
+    onError: (e: unknown) => toast.error(e instanceof Error ? e.message : String(e)),
+  });
+  const unpaidSt = ["pending", "awaiting_payment", "failed"];
 
   const q = useQuery({
     queryKey: ["admin-orders"],
@@ -113,8 +125,10 @@ function AdminOrdersPage() {
   });
 
   const eligible = (q.data ?? []).filter(
-    (o) => o.status === "paid" && o.fulfillment_status !== "sent",
+    (o) => (o.status === "paid" && o.fulfillment_status !== "sent") || unpaidSt.includes(o.status),
   );
+  const selPaid = (q.data ?? []).filter((o) => selected.has(o.id) && o.status === "paid").map((o) => o.id);
+  const selUnpaid = (q.data ?? []).filter((o) => selected.has(o.id) && unpaidSt.includes(o.status)).map((o) => o.id);
   const allSelected = eligible.length > 0 && eligible.every((o) => selected.has(o.id));
 
   function toggleAll() {
@@ -138,17 +152,24 @@ function AdminOrdersPage() {
               Últimos 100 pedidos. Envie somente pedidos com pagamento confirmado ao AliExpress, individualmente ou em massa.
             </p>
           </div>
-          <Button
-            onClick={() => sendBulk.mutate(Array.from(selected))}
-            disabled={selected.size === 0 || sendBulk.isPending}
-          >
-            {sendBulk.isPending
-              ? "Enviando..."
-              : `Enviar ${selected.size || ""} ao AliExpress`}
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="outline"
+              onClick={() => confirm.mutate(selUnpaid)}
+              disabled={selUnpaid.length === 0 || confirm.isPending}
+            >
+              {confirm.isPending ? "Confirmando..." : `Confirmar pagamento ${selUnpaid.length || ""}`}
+            </Button>
+            <Button
+              onClick={() => sendBulk.mutate(selPaid)}
+              disabled={selPaid.length === 0 || sendBulk.isPending}
+            >
+              {sendBulk.isPending ? "Enviando..." : `Enviar ${selPaid.length || ""} ao AliExpress`}
+            </Button>
+          </div>
         </div>
 
-        <div className="mt-6 overflow-hidden rounded-2xl border border-border bg-card">
+        <div className="mt-6 overflow-x-auto rounded-2xl border border-border bg-card">
           <table className="min-w-full text-sm">
             <thead className="bg-secondary/50 text-left text-xs uppercase tracking-widest text-muted-foreground">
               <tr>
@@ -171,12 +192,13 @@ function AdminOrdersPage() {
             <tbody className="divide-y divide-border">
               {q.data?.map((o) => {
                 const canSend = o.status === "paid" && o.fulfillment_status !== "sent";
+                const canConfirm = unpaidSt.includes(o.status);
                 return (
                   <tr key={o.id} className="hover:bg-secondary/30">
                     <td className="px-3 py-3">
                       <Checkbox
                         checked={selected.has(o.id)}
-                        disabled={!canSend}
+                        disabled={!canSend && !canConfirm}
                         onCheckedChange={() => toggleOne(o.id)}
                         aria-label={`Selecionar ${o.code}`}
                       />
@@ -194,7 +216,17 @@ function AdminOrdersPage() {
                     </td>
                     <td className="px-4 py-3">{fulfillmentBadge(o)}</td>
                     <td className="px-4 py-3 text-right">{formatBRL(o.total_cents)}</td>
-                    <td className="px-4 py-3 text-right">
+                    <td className="px-4 py-3 text-right whitespace-nowrap">
+                      {canConfirm && (
+                        <Button
+                          size="sm"
+                          className="mr-2"
+                          disabled={confirm.isPending}
+                          onClick={() => confirm.mutate([o.id])}
+                        >
+                          Confirmar pagamento
+                        </Button>
+                      )}
                       <Button
                         size="sm"
                         variant="outline"
@@ -223,7 +255,7 @@ function AdminOrdersPage() {
         </div>
 
         <p className="mt-3 text-xs text-muted-foreground">
-          Só pedidos com status <strong>paid</strong> e ainda não enviados podem ser selecionados. O envio usa o AliExpress Dropshipping API com o endereço e CPF do cliente. Se a variação não estiver mapeada, o pedido falha e a mensagem aparece na coluna de envio.
+          Pedidos aguardando pagamento podem ter o pagamento confirmado manualmente (individual ou em massa); gateways continuam confirmando automaticamente. Só pedidos <strong>paid</strong> são enviados ao AliExpress. O envio usa o AliExpress Dropshipping API com o endereço e CPF do cliente. Se a variação não estiver mapeada, o pedido falha e a mensagem aparece na coluna de envio.
         </p>
 
         <div className="mt-6 text-sm">
