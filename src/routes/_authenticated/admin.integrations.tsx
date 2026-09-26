@@ -817,26 +817,26 @@ function RoutingPanel() {
       <p className="mt-1 text-xs text-muted-foreground">
         Escolha somente provedores que já possuem adapter ativo no checkout — por exemplo, PIX via Asaas ou PagBank, cartão via PagBank e Nubank via NuPay.
       </p>
-      <div className="mt-3 overflow-x-auto rounded-lg border border-border bg-card shadow-soft">
-        <table className="w-full min-w-[580px] text-sm">
-          <thead className="bg-secondary/40 text-xs uppercase tracking-widest text-muted-foreground">
+      <div className="mt-3 min-w-0 overflow-hidden rounded-lg border border-border bg-card shadow-soft">
+        <table className="block w-full text-sm sm:table">
+          <thead className="hidden bg-secondary/40 text-xs uppercase tracking-widest text-muted-foreground sm:table-header-group">
             <tr>
               <th className="px-4 py-2 text-left">Método</th>
               <th className="px-4 py-2 text-left">Provedor</th>
               <th className="px-4 py-2 text-left">Ativo</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className="block sm:table-row-group">
             {rows.map((r) => (
-              <tr key={r.method} className="border-t border-border">
-                <td className="px-4 py-3 font-medium">{METHOD_LABELS[r.method]}</td>
-                <td className="px-4 py-3">
+              <tr key={r.method} className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] items-center border-t border-border first:border-t-0 sm:table-row sm:first:border-t">
+                <td className="min-w-0 px-3 py-3 font-medium sm:px-4">{METHOD_LABELS[r.method]}</td>
+                <td className="min-w-0 px-3 py-3 sm:px-4">
                   <select
                     value={r.provider}
                     onChange={(e) =>
                       mut.mutate({ method: r.method, provider: e.target.value })
                     }
-                     className="max-w-full rounded-md border border-border bg-background px-2 py-1 text-sm"
+                     className="w-full min-w-0 rounded-md border border-border bg-background px-2 py-1 text-sm sm:w-auto"
                   >
                     {PROVIDER_OPTIONS.filter((p) =>
                       SUPPORTED_PROVIDERS_BY_METHOD[r.method].includes(p.id),
@@ -847,7 +847,7 @@ function RoutingPanel() {
                     ))}
                   </select>
                 </td>
-                <td className="px-4 py-3">
+                <td className="col-span-2 border-t border-border/50 px-3 py-2 sm:border-0 sm:px-4 sm:py-3">
                   <label className="inline-flex cursor-pointer items-center gap-2">
                     <input
                       type="checkbox"
@@ -864,7 +864,7 @@ function RoutingPanel() {
               </tr>
             ))}
             {rows.length === 0 && (
-              <tr>
+              <tr className="block sm:table-row">
                 <td colSpan={3} className="px-4 py-6 text-center text-xs text-muted-foreground">
                   {q.isLoading ? "Carregando…" : "Nenhum método configurado."}
                 </td>
