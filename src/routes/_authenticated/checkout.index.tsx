@@ -12,7 +12,7 @@ import { useCurrency } from "@/lib/currency-context";
 import { createCheckout, type CheckoutInput } from "@/lib/checkout.functions";
 import { listCheckoutMethods, type PaymentMethodKey } from "@/lib/payment-routing.functions";
 
-export const Route = createFileRoute("/_authenticated/checkout")({
+export const Route = createFileRoute("/_authenticated/checkout/")({
   head: () => ({ meta: [{ title: "Checkout · Absoluto Glamur" }] }),
   component: CheckoutPage,
 });

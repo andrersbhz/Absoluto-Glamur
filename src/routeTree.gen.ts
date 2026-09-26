@@ -40,10 +40,10 @@ import { Route as AuthResetPasswordRouteImport } from './routes/auth.reset-passw
 import { Route as AuthForgotRouteImport } from './routes/auth.forgot'
 import { Route as AuthenticatedOrdersRouteImport } from './routes/_authenticated/orders'
 import { Route as AuthenticatedFavoritesRouteImport } from './routes/_authenticated/favorites'
-import { Route as AuthenticatedCheckoutRouteImport } from './routes/_authenticated/checkout'
 import { Route as AuthenticatedAdminRouteImport } from './routes/_authenticated/admin'
 import { Route as AuthenticatedAccountRouteImport } from './routes/_authenticated/account'
 import { Route as CategoriaProdutoRouteImport } from './routes/$categoria.$produto'
+import { Route as AuthenticatedCheckoutIndexRouteImport } from './routes/_authenticated/checkout.index'
 import { Route as AuthenticatedAdminIndexRouteImport } from './routes/_authenticated/admin.index'
 import { Route as ApiPublicGeoRouteImport } from './routes/api/public/geo'
 import { Route as ApiPublicCommerceEventRouteImport } from './routes/api/public/commerce-event'
@@ -248,11 +248,6 @@ const AuthenticatedFavoritesRoute = AuthenticatedFavoritesRouteImport.update({
   path: '/favorites',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedCheckoutRoute = AuthenticatedCheckoutRouteImport.update({
-  id: '/checkout',
-  path: '/checkout',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
 const AuthenticatedAdminRoute = AuthenticatedAdminRouteImport.update({
   id: '/admin',
   path: '/admin',
@@ -268,6 +263,12 @@ const CategoriaProdutoRoute = CategoriaProdutoRouteImport.update({
   path: '/$categoria/$produto',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedCheckoutIndexRoute =
+  AuthenticatedCheckoutIndexRouteImport.update({
+    id: '/checkout/',
+    path: '/checkout/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedAdminIndexRoute = AuthenticatedAdminIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -297,9 +298,9 @@ const ApiPublicAbandonedCheckoutRoute =
   } as any)
 const AuthenticatedCheckoutOrderIdRoute =
   AuthenticatedCheckoutOrderIdRouteImport.update({
-    id: '/$orderId',
-    path: '/$orderId',
-    getParentRoute: () => AuthenticatedCheckoutRoute,
+    id: '/checkout/$orderId',
+    path: '/checkout/$orderId',
+    getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedAdminWhatsappRoute =
   AuthenticatedAdminWhatsappRouteImport.update({
@@ -565,7 +566,6 @@ export interface FileRoutesByFullPath {
   '/$categoria/$produto': typeof CategoriaProdutoRoute
   '/account': typeof AuthenticatedAccountRoute
   '/admin': typeof AuthenticatedAdminRouteWithChildren
-  '/checkout': typeof AuthenticatedCheckoutRouteWithChildren
   '/favorites': typeof AuthenticatedFavoritesRoute
   '/orders': typeof AuthenticatedOrdersRoute
   '/auth/forgot': typeof AuthForgotRoute
@@ -615,6 +615,7 @@ export interface FileRoutesByFullPath {
   '/api/public/commerce-event': typeof ApiPublicCommerceEventRoute
   '/api/public/geo': typeof ApiPublicGeoRoute
   '/admin/': typeof AuthenticatedAdminIndexRoute
+  '/checkout/': typeof AuthenticatedCheckoutIndexRoute
   '/admin/catalog/$id': typeof AuthenticatedAdminCatalogIdRoute
   '/admin/imports/$id': typeof AuthenticatedAdminImportsIdRoute
   '/admin/intelligence/$id': typeof AuthenticatedAdminIntelligenceIdRoute
@@ -649,7 +650,6 @@ export interface FileRoutesByTo {
   '/sitemap.xml': typeof SitemapDotxmlRoute
   '/$categoria/$produto': typeof CategoriaProdutoRoute
   '/account': typeof AuthenticatedAccountRoute
-  '/checkout': typeof AuthenticatedCheckoutRouteWithChildren
   '/favorites': typeof AuthenticatedFavoritesRoute
   '/orders': typeof AuthenticatedOrdersRoute
   '/auth/forgot': typeof AuthForgotRoute
@@ -699,6 +699,7 @@ export interface FileRoutesByTo {
   '/api/public/commerce-event': typeof ApiPublicCommerceEventRoute
   '/api/public/geo': typeof ApiPublicGeoRoute
   '/admin': typeof AuthenticatedAdminIndexRoute
+  '/checkout': typeof AuthenticatedCheckoutIndexRoute
   '/admin/catalog/$id': typeof AuthenticatedAdminCatalogIdRoute
   '/admin/imports/$id': typeof AuthenticatedAdminImportsIdRoute
   '/admin/intelligence/$id': typeof AuthenticatedAdminIntelligenceIdRoute
@@ -736,7 +737,6 @@ export interface FileRoutesById {
   '/$categoria/$produto': typeof CategoriaProdutoRoute
   '/_authenticated/account': typeof AuthenticatedAccountRoute
   '/_authenticated/admin': typeof AuthenticatedAdminRouteWithChildren
-  '/_authenticated/checkout': typeof AuthenticatedCheckoutRouteWithChildren
   '/_authenticated/favorites': typeof AuthenticatedFavoritesRoute
   '/_authenticated/orders': typeof AuthenticatedOrdersRoute
   '/auth/forgot': typeof AuthForgotRoute
@@ -786,6 +786,7 @@ export interface FileRoutesById {
   '/api/public/commerce-event': typeof ApiPublicCommerceEventRoute
   '/api/public/geo': typeof ApiPublicGeoRoute
   '/_authenticated/admin/': typeof AuthenticatedAdminIndexRoute
+  '/_authenticated/checkout/': typeof AuthenticatedCheckoutIndexRoute
   '/_authenticated/admin/catalog/$id': typeof AuthenticatedAdminCatalogIdRoute
   '/_authenticated/admin/imports/$id': typeof AuthenticatedAdminImportsIdRoute
   '/_authenticated/admin/intelligence/$id': typeof AuthenticatedAdminIntelligenceIdRoute
@@ -823,7 +824,6 @@ export interface FileRouteTypes {
     | '/$categoria/$produto'
     | '/account'
     | '/admin'
-    | '/checkout'
     | '/favorites'
     | '/orders'
     | '/auth/forgot'
@@ -873,6 +873,7 @@ export interface FileRouteTypes {
     | '/api/public/commerce-event'
     | '/api/public/geo'
     | '/admin/'
+    | '/checkout/'
     | '/admin/catalog/$id'
     | '/admin/imports/$id'
     | '/admin/intelligence/$id'
@@ -907,7 +908,6 @@ export interface FileRouteTypes {
     | '/sitemap.xml'
     | '/$categoria/$produto'
     | '/account'
-    | '/checkout'
     | '/favorites'
     | '/orders'
     | '/auth/forgot'
@@ -957,6 +957,7 @@ export interface FileRouteTypes {
     | '/api/public/commerce-event'
     | '/api/public/geo'
     | '/admin'
+    | '/checkout'
     | '/admin/catalog/$id'
     | '/admin/imports/$id'
     | '/admin/intelligence/$id'
@@ -993,7 +994,6 @@ export interface FileRouteTypes {
     | '/$categoria/$produto'
     | '/_authenticated/account'
     | '/_authenticated/admin'
-    | '/_authenticated/checkout'
     | '/_authenticated/favorites'
     | '/_authenticated/orders'
     | '/auth/forgot'
@@ -1043,6 +1043,7 @@ export interface FileRouteTypes {
     | '/api/public/commerce-event'
     | '/api/public/geo'
     | '/_authenticated/admin/'
+    | '/_authenticated/checkout/'
     | '/_authenticated/admin/catalog/$id'
     | '/_authenticated/admin/imports/$id'
     | '/_authenticated/admin/intelligence/$id'
@@ -1321,13 +1322,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedFavoritesRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/checkout': {
-      id: '/_authenticated/checkout'
-      path: '/checkout'
-      fullPath: '/checkout'
-      preLoaderRoute: typeof AuthenticatedCheckoutRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
     '/_authenticated/admin': {
       id: '/_authenticated/admin'
       path: '/admin'
@@ -1348,6 +1342,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/$categoria/$produto'
       preLoaderRoute: typeof CategoriaProdutoRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/checkout/': {
+      id: '/_authenticated/checkout/'
+      path: '/checkout'
+      fullPath: '/checkout/'
+      preLoaderRoute: typeof AuthenticatedCheckoutIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/admin/': {
       id: '/_authenticated/admin/'
@@ -1386,10 +1387,10 @@ declare module '@tanstack/react-router' {
     }
     '/_authenticated/checkout/$orderId': {
       id: '/_authenticated/checkout/$orderId'
-      path: '/$orderId'
+      path: '/checkout/$orderId'
       fullPath: '/checkout/$orderId'
       preLoaderRoute: typeof AuthenticatedCheckoutOrderIdRouteImport
-      parentRoute: typeof AuthenticatedCheckoutRoute
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/admin/whatsapp': {
       id: '/_authenticated/admin/whatsapp'
@@ -1781,33 +1782,22 @@ const AuthenticatedAdminRouteChildren: AuthenticatedAdminRouteChildren = {
 const AuthenticatedAdminRouteWithChildren =
   AuthenticatedAdminRoute._addFileChildren(AuthenticatedAdminRouteChildren)
 
-interface AuthenticatedCheckoutRouteChildren {
-  AuthenticatedCheckoutOrderIdRoute: typeof AuthenticatedCheckoutOrderIdRoute
-}
-
-const AuthenticatedCheckoutRouteChildren: AuthenticatedCheckoutRouteChildren = {
-  AuthenticatedCheckoutOrderIdRoute: AuthenticatedCheckoutOrderIdRoute,
-}
-
-const AuthenticatedCheckoutRouteWithChildren =
-  AuthenticatedCheckoutRoute._addFileChildren(
-    AuthenticatedCheckoutRouteChildren,
-  )
-
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedAccountRoute: typeof AuthenticatedAccountRoute
   AuthenticatedAdminRoute: typeof AuthenticatedAdminRouteWithChildren
-  AuthenticatedCheckoutRoute: typeof AuthenticatedCheckoutRouteWithChildren
   AuthenticatedFavoritesRoute: typeof AuthenticatedFavoritesRoute
   AuthenticatedOrdersRoute: typeof AuthenticatedOrdersRoute
+  AuthenticatedCheckoutOrderIdRoute: typeof AuthenticatedCheckoutOrderIdRoute
+  AuthenticatedCheckoutIndexRoute: typeof AuthenticatedCheckoutIndexRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedAccountRoute: AuthenticatedAccountRoute,
   AuthenticatedAdminRoute: AuthenticatedAdminRouteWithChildren,
-  AuthenticatedCheckoutRoute: AuthenticatedCheckoutRouteWithChildren,
   AuthenticatedFavoritesRoute: AuthenticatedFavoritesRoute,
   AuthenticatedOrdersRoute: AuthenticatedOrdersRoute,
+  AuthenticatedCheckoutOrderIdRoute: AuthenticatedCheckoutOrderIdRoute,
+  AuthenticatedCheckoutIndexRoute: AuthenticatedCheckoutIndexRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
