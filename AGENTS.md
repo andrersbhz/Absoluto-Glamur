@@ -8,3 +8,5 @@
 > Commits you push to the connected branch sync back to Lovable and show up in
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
+
+- Keep admin navigation in one shared sidebar definition and show it in an overlay on narrow screens; this keeps the same destinations accessible without widening the page.
