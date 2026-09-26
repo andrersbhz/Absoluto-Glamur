@@ -116,19 +116,19 @@ export function AdminPushToggle() {
   if (!supported) return null;
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-1 sm:gap-2">
       {enabled ? (
         <>
-          <Button size="sm" variant="outline" onClick={runTest} disabled={busy}>
-            <Bell className="mr-1 h-4 w-4" /> Testar
+          <Button size="sm" variant="outline" onClick={runTest} disabled={busy} className="h-9 px-2 sm:px-3" aria-label="Testar alertas" title="Testar alertas">
+            <Bell className="h-4 w-4" /> <span className="hidden sm:inline">Testar</span>
           </Button>
-          <Button size="sm" variant="ghost" onClick={disable} disabled={busy}>
-            <BellOff className="mr-1 h-4 w-4" /> Desativar alertas
+          <Button size="sm" variant="ghost" onClick={disable} disabled={busy} className="h-9 px-2 sm:px-3" aria-label="Desativar alertas" title="Desativar alertas">
+            <BellOff className="h-4 w-4" /> <span className="hidden sm:inline">Desativar alertas</span>
           </Button>
         </>
       ) : (
-        <Button size="sm" variant="outline" onClick={enable} disabled={busy}>
-          <Bell className="mr-1 h-4 w-4" /> Ativar alertas de venda
+        <Button size="sm" variant="outline" onClick={enable} disabled={busy} className="h-9 px-2 sm:px-3" aria-label="Ativar alertas de venda" title="Ativar alertas de venda">
+          <Bell className="h-4 w-4" /> <span className="hidden sm:inline">Ativar alertas de venda</span>
         </Button>
       )}
     </div>

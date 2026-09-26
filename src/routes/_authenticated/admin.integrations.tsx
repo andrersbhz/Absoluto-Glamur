@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { AdminLayout } from "@/components/admin/AdminLayout";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   INTEGRATION_CATALOG,
   getIntegrationSecrets,
@@ -25,7 +26,14 @@ import {
 } from "@/lib/payment-routing.functions";
 
 export const Route = createFileRoute("/_authenticated/admin/integrations")({
-  head: () => ({ meta: [{ title: "Integrações · Admin Absoluto Glamur" }] }),
+  head: () => ({ meta: [
+    { title: "Integrações · Admin Absoluto Glamur" },
+    { name: "description", content: "Gerencie provedores, credenciais e métodos de pagamento da Absoluto Glamur." },
+    { property: "og:title", content: "Integrações · Absoluto Glamur" },
+    { property: "og:description", content: "Configurações de integrações da Absoluto Glamur." },
+    { property: "og:type", content: "website" },
+    { name: "twitter:card", content: "summary" },
+  ] }),
   beforeLoad: async () => {
     const { data: userData } = await supabase.auth.getUser();
     if (!userData.user) throw redirect({ to: "/auth" });
@@ -74,20 +82,19 @@ function IntegrationsPage() {
 
   return (
     <AdminLayout>
-      <div className="mx-auto max-w-5xl admin-plain">
-        <div className="flex items-center justify-between">
-          <div>
+      <div className="admin-plain mx-auto w-full min-w-0 max-w-6xl">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0">
             <h1 className="font-display text-3xl">Integrações</h1>
             <p className="mt-1 text-sm text-muted-foreground">
               Gerencie chaves de API, ambientes (teste/produção) e webhooks de todos os provedores externos.
             </p>
           </div>
-          <button
+          <Button variant="outline" size="sm"
             onClick={() => q.refetch()}
-            className="inline-flex items-center gap-2 rounded-lg border border-border px-3 py-1.5 text-sm hover:bg-secondary"
           >
             <RefreshCw className="h-4 w-4" /> Atualizar
-          </button>
+          </Button>
         </div>
 
         {q.isLoading && <p className="mt-10 text-sm text-muted-foreground">Carregando…</p>}
@@ -352,16 +359,16 @@ function IntegrationCard({ integration }: { integration: Integration }) {
   );
 
   return (
-    <div className="rounded-2xl border border-border bg-card p-5 shadow-soft">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <Plug className="h-5 w-5 text-plum" />
-          <div>
+    <div className="min-w-0 rounded-lg border border-border bg-card p-4 shadow-soft sm:p-5">
+      <div className="flex min-w-0 flex-wrap items-start justify-between gap-3">
+        <div className="flex min-w-0 items-start gap-3">
+          <Plug className="mt-1 h-5 w-5 shrink-0 text-plum" />
+          <div className="min-w-0">
             <p className="font-display text-lg">{integration.display_name}</p>
-            <p className="text-xs text-muted-foreground">{integration.description}</p>
+            <p className="text-xs leading-relaxed text-muted-foreground break-words">{integration.description}</p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <StatusLight
             connected={integration.last_status === "ok" && integration.enabled}
             verified={integration.last_status === "ok"}
@@ -393,24 +400,24 @@ function IntegrationCard({ integration }: { integration: Integration }) {
         </div>
       )}
 
-      <div className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
-        <div>
+      <div className="mt-4 grid min-w-0 gap-3 text-sm sm:grid-cols-2">
+        <div className="min-w-0">
           <p className="text-xs text-muted-foreground">Chave da API</p>
-          <p className="font-mono text-xs">
+          <p className="break-all font-mono text-xs">
             {integration.api_key_masked ?? <span className="text-muted-foreground">— vazia —</span>}
           </p>
         </div>
         {webhookUrl && (
-          <div>
+          <div className="min-w-0">
             <p className="text-xs text-muted-foreground">URL do webhook</p>
-            <div className="flex items-center gap-1">
-              <code className="truncate text-[11px]">{webhookUrl}</code>
+            <div className="flex min-w-0 items-center gap-1">
+              <code className="min-w-0 flex-1 truncate text-[11px]" title={webhookUrl}>{webhookUrl}</code>
               <button
                 onClick={() => {
                   navigator.clipboard.writeText(webhookUrl);
                   toast.success("URL copiada");
                 }}
-                className="rounded p-1 hover:bg-secondary"
+                className="shrink-0 rounded p-1 hover:bg-secondary"
                 aria-label="Copiar URL"
               >
                 <Copy className="h-3.5 w-3.5" />
@@ -502,7 +509,7 @@ function IntegrationCard({ integration }: { integration: Integration }) {
               )}
             </div>
           )}
-          <div className="grid gap-3 sm:grid-cols-2">
+           <div className="grid min-w-0 gap-3 sm:grid-cols-2">
             <label className="text-sm">
               <span className="mb-1 block text-xs text-muted-foreground">Ambiente</span>
               <select
@@ -594,7 +601,7 @@ function IntegrationCard({ integration }: { integration: Integration }) {
             </label>
           )}
           {isManualPix && (
-            <div className="grid gap-3 sm:grid-cols-2">
+             <div className="grid min-w-0 gap-3 sm:grid-cols-2">
               <label className="block text-sm">
                 <span className="mb-1 block text-xs text-muted-foreground">Nome da loja (aparece no app do banco)</span>
                 <input
@@ -684,13 +691,13 @@ function IntegrationCard({ integration }: { integration: Integration }) {
                 <span className="mb-1 block text-xs text-muted-foreground">
                   Callback URL (deve ser IDÊNTICA à cadastrada no console AliExpress)
                 </span>
-                <div className="flex gap-2">
+                 <div className="flex min-w-0 gap-2">
                   <input
                     type="url"
                     value={redirectUri}
                     onChange={(e) => setRedirectUri(e.target.value)}
                     placeholder="https://www.absolutoglamur.com.br/api/public/webhooks/aliexpress"
-                    className="w-full rounded-lg border border-border bg-background px-3 py-2 font-mono text-xs"
+                     className="min-w-0 flex-1 rounded-lg border border-border bg-background px-3 py-2 font-mono text-xs"
                   />
                   <button
                     type="button"
@@ -698,7 +705,7 @@ function IntegrationCard({ integration }: { integration: Integration }) {
                       navigator.clipboard.writeText(redirectUri);
                       toast.success("URL copiada");
                     }}
-                    className="rounded-lg border border-border px-2 hover:bg-secondary"
+                     className="shrink-0 rounded-lg border border-border px-2 hover:bg-secondary"
                     aria-label="Copiar"
                   >
                     <Copy className="h-3.5 w-3.5" />
@@ -810,26 +817,26 @@ function RoutingPanel() {
       <p className="mt-1 text-xs text-muted-foreground">
         Escolha somente provedores que já possuem adapter ativo no checkout — por exemplo, PIX via Asaas ou PagBank, cartão via PagBank e Nubank via NuPay.
       </p>
-      <div className="mt-3 overflow-hidden rounded-2xl border border-border bg-card shadow-soft">
-        <table className="w-full text-sm">
-          <thead className="bg-secondary/40 text-xs uppercase tracking-widest text-muted-foreground">
+      <div className="mt-3 min-w-0 overflow-hidden rounded-lg border border-border bg-card shadow-soft">
+        <table className="block w-full text-sm sm:table">
+          <thead className="hidden bg-secondary/40 text-xs uppercase tracking-widest text-muted-foreground sm:table-header-group">
             <tr>
               <th className="px-4 py-2 text-left">Método</th>
               <th className="px-4 py-2 text-left">Provedor</th>
               <th className="px-4 py-2 text-left">Ativo</th>
             </tr>
           </thead>
-          <tbody>
+          <tbody className="block sm:table-row-group">
             {rows.map((r) => (
-              <tr key={r.method} className="border-t border-border">
-                <td className="px-4 py-3 font-medium">{METHOD_LABELS[r.method]}</td>
-                <td className="px-4 py-3">
+              <tr key={r.method} className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] items-center border-t border-border first:border-t-0 sm:table-row sm:first:border-t">
+                <td className="min-w-0 px-3 py-3 font-medium sm:px-4">{METHOD_LABELS[r.method]}</td>
+                <td className="min-w-0 px-3 py-3 sm:px-4">
                   <select
                     value={r.provider}
                     onChange={(e) =>
                       mut.mutate({ method: r.method, provider: e.target.value })
                     }
-                    className="rounded-md border border-border bg-background px-2 py-1 text-sm"
+                     className="w-full min-w-0 rounded-md border border-border bg-background px-2 py-1 text-sm sm:w-auto"
                   >
                     {PROVIDER_OPTIONS.filter((p) =>
                       SUPPORTED_PROVIDERS_BY_METHOD[r.method].includes(p.id),
@@ -840,7 +847,7 @@ function RoutingPanel() {
                     ))}
                   </select>
                 </td>
-                <td className="px-4 py-3">
+                <td className="col-span-2 border-t border-border/50 px-3 py-2 sm:border-0 sm:px-4 sm:py-3">
                   <label className="inline-flex cursor-pointer items-center gap-2">
                     <input
                       type="checkbox"
@@ -857,7 +864,7 @@ function RoutingPanel() {
               </tr>
             ))}
             {rows.length === 0 && (
-              <tr>
+              <tr className="block sm:table-row">
                 <td colSpan={3} className="px-4 py-6 text-center text-xs text-muted-foreground">
                   {q.isLoading ? "Carregando…" : "Nenhum método configurado."}
                 </td>

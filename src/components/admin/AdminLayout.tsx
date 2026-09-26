@@ -1,13 +1,14 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import {
   BarChart3, BookOpen, Boxes, Compass, ExternalLink, Gauge, LayoutDashboard, LockKeyhole, LogOut, Mail, Megaphone, MessageSquare, Moon, Package,
-  PanelsTopLeft, Plug, RotateCcw, Settings, ShieldCheck, ShoppingCart, Sparkles, Star, Store, Sun, Target, Users, WalletCards, Zap,
+  Menu, PanelsTopLeft, Plug, RotateCcw, Settings, ShieldCheck, ShoppingCart, Sparkles, Star, Store, Sun, Target, Users, WalletCards, X, Zap,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { useTheme } from "@/hooks/use-theme";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { AdminPushToggle } from "@/components/admin/AdminPushToggle";
 import "@/admin-blog.css";
 
@@ -49,6 +50,7 @@ export function AdminLayout({ children }: { children: ReactNode }) {
   const { theme, toggle } = useTheme();
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   async function signOut() {
     await supabase.auth.signOut();
@@ -56,33 +58,44 @@ export function AdminLayout({ children }: { children: ReactNode }) {
   }
 
   const isActive = (to?: string) => !!to && (to === "/admin" ? pathname === "/admin" : pathname.startsWith(to));
+  const sidebar = (
+    <>
+      <Link to="/" onClick={() => setMobileNavOpen(false)} className="block font-display text-2xl text-primary">absoluto glamur<span className="text-plum">.</span><span className="ml-2 align-top text-xs font-sans text-muted-foreground">admin</span></Link>
+      <nav className="mt-8 space-y-1 text-sm">
+        {nav.map((item) => {
+          const enabled = !!item.to;
+          const active = isActive(item.to);
+          const Icon = item.icon;
+          const inner = <span className="flex items-center gap-2"><Icon className="h-4 w-4 shrink-0" /><span className="min-w-0 flex-1">{item.label}</span>{!enabled && <Badge variant="outline" className="ml-auto text-[10px]">F{item.phase}</Badge>}</span>;
+          return enabled && item.to ? <Link key={item.label} to={item.to} onClick={() => setMobileNavOpen(false)} data-active={active || undefined} className="admin-nav-link flex rounded-lg px-3 py-2 text-sidebar-foreground transition">{inner}</Link> : <div key={item.label} className="flex cursor-not-allowed rounded-lg px-3 py-2 text-muted-foreground opacity-70" title={`Disponível na Fase ${item.phase}`}>{inner}</div>;
+        })}
+      </nav>
+    </>
+  );
 
   return (
     <div className="admin-shell flex min-h-screen bg-background">
-      <aside className="hidden w-56 shrink-0 border-r border-sidebar-border bg-sidebar p-3 md:block lg:w-64 lg:p-4">
-        <Link to="/" className="block font-display text-2xl text-primary">absoluto glamur<span className="text-plum">.</span><span className="ml-2 align-top text-xs font-sans text-muted-foreground">admin</span></Link>
-        <nav className="mt-8 space-y-1 text-sm">
-          {nav.map((item) => {
-            const enabled = !!item.to;
-            const active = isActive(item.to);
-            const Icon = item.icon;
-            const inner = <span className="flex items-center gap-2"><Icon className="h-4 w-4" /><span className="flex-1">{item.label}</span>{!enabled && <Badge variant="outline" className="ml-auto text-[10px]">F{item.phase}</Badge>}</span>;
-            return enabled && item.to ? <Link key={item.label} to={item.to} data-active={active || undefined} className="admin-nav-link flex rounded-lg px-3 py-2 text-sidebar-foreground transition">{inner}</Link> : <div key={item.label} className="flex cursor-not-allowed rounded-lg px-3 py-2 text-muted-foreground opacity-70" title={`Disponível na Fase ${item.phase}`}>{inner}</div>;
-          })}
-        </nav>
+      <aside className="hidden w-56 shrink-0 border-r border-sidebar-border bg-sidebar p-3 md:block lg:w-64 lg:p-4">{sidebar}</aside>
+      {mobileNavOpen && <div className="fixed inset-0 z-40 bg-foreground/30 md:hidden" onClick={() => setMobileNavOpen(false)} />}
+      <aside className={`fixed inset-y-0 left-0 z-50 w-72 max-w-[85vw] overflow-y-auto border-r border-sidebar-border bg-sidebar p-4 shadow-elegant md:hidden ${mobileNavOpen ? "block" : "hidden"}`} aria-label="Navegação administrativa">
+        <Button variant="ghost" size="icon" className="absolute right-3 top-3" onClick={() => setMobileNavOpen(false)} aria-label="Fechar menu"><X /></Button>
+        {sidebar}
       </aside>
-      <div className="flex flex-1 flex-col">
-        <header className="flex h-16 items-center justify-between border-b border-border bg-card/50 px-6 backdrop-blur">
-          <div><p className="text-xs uppercase tracking-widest text-muted-foreground">Painel administrativo · v1.2</p><p className="text-sm text-foreground">{user?.email}</p></div>
-          <div className="flex items-center gap-3">
-            <Link to="/" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 rounded-lg border border-primary/40 bg-primary/10 px-3 py-1.5 text-sm font-medium text-primary transition hover:bg-primary/20" title="Abrir a loja em nova aba"><Store className="h-4 w-4" /><span className="hidden sm:inline">Ver loja</span><ExternalLink className="h-3 w-3 opacity-70" /></Link>
+      <div className="flex min-w-0 flex-1 flex-col">
+        <header className="flex min-w-0 flex-wrap items-center justify-between gap-2 border-b border-border bg-card/50 px-4 py-3 backdrop-blur sm:px-6 lg:min-h-16">
+          <div className="flex min-w-0 items-center gap-2">
+            <Button variant="outline" size="icon" className="shrink-0 md:hidden" onClick={() => setMobileNavOpen(true)} aria-label="Abrir menu"><Menu /></Button>
+            <div className="min-w-0"><p className="truncate text-xs uppercase tracking-widest text-muted-foreground">Painel administrativo · v1.2</p><p className="truncate text-sm text-foreground">{user?.email}</p></div>
+          </div>
+          <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+            <Link to="/" target="_blank" rel="noopener noreferrer" className="inline-flex h-9 items-center gap-1 rounded-lg border border-primary/40 bg-primary/10 px-2 text-sm font-medium text-primary transition hover:bg-primary/20 sm:px-3" title="Abrir a loja em nova aba" aria-label="Ver loja"><Store className="h-4 w-4" /><span className="hidden sm:inline">Ver loja</span><ExternalLink className="hidden h-3 w-3 opacity-70 sm:block" /></Link>
             <AdminPushToggle />
             <div className="hidden gap-1 sm:flex">{roles.map((r) => <Badge key={r} variant="secondary">{r}</Badge>)}</div>
-            <button onClick={toggle} aria-label={theme === "dark" ? "Ativar modo claro" : "Ativar modo escuro"} title={theme === "dark" ? "Modo claro" : "Modo escuro"} className="inline-flex items-center gap-1 rounded-lg border border-border px-3 py-1.5 text-sm text-foreground transition hover:bg-secondary">{theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}<span className="hidden sm:inline">{theme === "dark" ? "Claro" : "Escuro"}</span></button>
-            <button onClick={signOut} className="inline-flex items-center gap-1 rounded-lg border border-border px-3 py-1.5 text-sm text-foreground transition hover:bg-secondary"><LogOut className="h-4 w-4" /> Sair</button>
+            <Button variant="outline" size="icon" onClick={toggle} aria-label={theme === "dark" ? "Ativar modo claro" : "Ativar modo escuro"} title={theme === "dark" ? "Modo claro" : "Modo escuro"}>{theme === "dark" ? <Sun /> : <Moon />}</Button>
+            <Button variant="outline" size="icon" onClick={signOut} aria-label="Sair" title="Sair"><LogOut /></Button>
           </div>
         </header>
-        <main className="flex-1 p-4 lg:p-6 overflow-hidden flex flex-col">{children}</main>
+        <main className="flex min-w-0 flex-1 flex-col overflow-hidden p-4 lg:p-6">{children}</main>
       </div>
     </div>
   );
