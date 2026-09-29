@@ -15,11 +15,13 @@ type OAuthStatePayload = {
   uid: string;
   ts: number;
   nonce: string;
+  generation?: string | null;
 };
 
 async function validateOAuthState(
   state: string | null,
   appSecret: string,
+  generation: unknown,
   supabaseAdmin: Awaited<typeof import("@/integrations/supabase/client.server")>["supabaseAdmin"],
 ): Promise<boolean> {
   if (!state) return false;
@@ -38,6 +40,7 @@ async function validateOAuthState(
     return false;
   }
 
+  if ((parsed.generation ?? null) !== (generation ?? null)) return false;
   if (!parsed.uid || !parsed.nonce || !Number.isFinite(parsed.ts)) return false;
   const ageMs = Date.now() - parsed.ts;
   if (ageMs < 0 || ageMs > 10 * 60 * 1000) return false;
@@ -91,7 +94,7 @@ export const Route = createFileRoute("/api/public/webhooks/aliexpress")({
           );
         }
 
-        if (!(await validateOAuthState(state, appSecret, supabaseAdmin))) {
+        if (!(await validateOAuthState(state, appSecret, cfg.oauth_generation, supabaseAdmin))) {
           return htmlResponse(
             `<h1>Autorização inválida ou expirada</h1>
              <p>Volte ao painel administrativo e inicie novamente a autorização do AliExpress.</p>`,
@@ -158,7 +161,7 @@ export const Route = createFileRoute("/api/public/webhooks/aliexpress")({
             );
           }
 
-          await supabaseAdmin
+          const { error: saveError, data: saved } = await supabaseAdmin
             .from("integrations")
             .update({
               config: {
@@ -172,18 +175,24 @@ export const Route = createFileRoute("/api/public/webhooks/aliexpress")({
                 aliexpress_user_id: tokenJson.user_id,
                 authorized_at: new Date().toISOString(),
                 pending_code: null,
+                reauth_required: false,
+                reauth_required_at: null,
+                refreshed_at: null,
               },
               enabled: true,
               last_status: "ok",
               last_error: null,
               last_verified_at: new Date().toISOString(),
             })
-            .eq("provider", "aliexpress");
+            .eq("provider", "aliexpress")
+            .select("provider")
+            .single();
+          if (saveError || !saved)
+            throw new Error("Não foi possível salvar a autorização AliExpress.");
 
           return htmlResponse(
             `<h1>✅ AliExpress conectado</h1>
-             <p>Access e refresh tokens salvos. Pode fechar esta aba e voltar para o painel.</p>
-             <script>setTimeout(()=>{window.close();},1500);</script>`,
+             <p>Access e refresh tokens salvos. <a href="/admin/integrations">Voltar ao painel de integrações</a>.</p>`,
             200,
           );
         } catch (e) {
@@ -208,7 +217,14 @@ function htmlResponse(html: string, status: number) {
     `<!doctype html><meta charset="utf-8"><title>AliExpress OAuth</title>
      <style>body{font-family:system-ui;padding:2rem;max-width:640px;margin:auto;color:#1a1a1a}
      pre{background:#f4f4f5;padding:1rem;border-radius:8px;white-space:pre-wrap}</style>${html}`,
-    { status, headers: { "Content-Type": "text/html; charset=utf-8" } },
+    {
+      status,
+      headers: {
+        "Content-Type": "text/html; charset=utf-8",
+        "Cache-Control": "no-store",
+        "Referrer-Policy": "no-referrer",
+      },
+    },
   );
 }
 

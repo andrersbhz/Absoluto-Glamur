@@ -2,7 +2,18 @@ import { createFileRoute, redirect, Link } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
-import { Copy, ExternalLink, Eye, EyeOff, Plug, PlugZap, RefreshCw, Route as RouteIcon, Save, TestTube } from "lucide-react";
+import {
+  Copy,
+  ExternalLink,
+  Eye,
+  EyeOff,
+  Plug,
+  PlugZap,
+  RefreshCw,
+  Route as RouteIcon,
+  Save,
+  TestTube,
+} from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { AdminLayout } from "@/components/admin/AdminLayout";
@@ -17,7 +28,10 @@ import {
   type IntegrationDTO,
   type SaveIntegrationInput,
 } from "@/lib/integrations.functions";
-import { createAliExpressAuthorizationUrl } from "@/lib/aliexpress-oauth.functions";
+import {
+  createAliExpressAuthorizationUrl,
+  resetAliExpressAuthorization,
+} from "@/lib/aliexpress-oauth.functions";
 import {
   listAdminRouting,
   updateRouting,
@@ -26,14 +40,19 @@ import {
 } from "@/lib/payment-routing.functions";
 
 export const Route = createFileRoute("/_authenticated/admin/integrations")({
-  head: () => ({ meta: [
-    { title: "Integrações · Admin Absoluto Glamur" },
-    { name: "description", content: "Gerencie provedores, credenciais e métodos de pagamento da Absoluto Glamur." },
-    { property: "og:title", content: "Integrações · Absoluto Glamur" },
-    { property: "og:description", content: "Configurações de integrações da Absoluto Glamur." },
-    { property: "og:type", content: "website" },
-    { name: "twitter:card", content: "summary" },
-  ] }),
+  head: () => ({
+    meta: [
+      { title: "Integrações · Admin Absoluto Glamur" },
+      {
+        name: "description",
+        content: "Gerencie provedores, credenciais e métodos de pagamento da Absoluto Glamur.",
+      },
+      { property: "og:title", content: "Integrações · Absoluto Glamur" },
+      { property: "og:description", content: "Configurações de integrações da Absoluto Glamur." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
+    ],
+  }),
   beforeLoad: async () => {
     const { data: userData } = await supabase.auth.getUser();
     if (!userData.user) throw redirect({ to: "/auth" });
@@ -87,22 +106,17 @@ function IntegrationsPage() {
           <div className="min-w-0">
             <h1 className="font-display text-3xl">Integrações</h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              Gerencie chaves de API, ambientes (teste/produção) e webhooks de todos os provedores externos.
+              Gerencie chaves de API, ambientes (teste/produção) e webhooks de todos os provedores
+              externos.
             </p>
           </div>
-          <Button variant="outline" size="sm"
-            onClick={() => q.refetch()}
-          >
+          <Button variant="outline" size="sm" onClick={() => q.refetch()}>
             <RefreshCw className="h-4 w-4" /> Atualizar
           </Button>
         </div>
 
         {q.isLoading && <p className="mt-10 text-sm text-muted-foreground">Carregando…</p>}
-        {q.error && (
-          <p className="mt-10 text-sm text-destructive">
-            {(q.error as Error).message}
-          </p>
-        )}
+        {q.error && <p className="mt-10 text-sm text-destructive">{(q.error as Error).message}</p>}
 
         <RoutingPanel />
 
@@ -122,7 +136,8 @@ function IntegrationsPage() {
         </div>
 
         <p className="mt-10 text-xs text-muted-foreground">
-          As chaves e tokens sensíveis permanecem no servidor; o painel recebe apenas valores mascarados e configurações não secretas.
+          As chaves e tokens sensíveis permanecem no servidor; o painel recebe apenas valores
+          mascarados e configurações não secretas.
         </p>
         <div className="mt-6 text-sm">
           <Link to="/admin" className="text-primary hover:underline">
@@ -140,6 +155,7 @@ function IntegrationCard({ integration }: { integration: Integration }) {
   const reveal = useServerFn(getIntegrationSecrets);
   const test = useServerFn(testIntegration);
   const beginAliExpressOAuth = useServerFn(createAliExpressAuthorizationUrl);
+  const resetAliExpress = useServerFn(resetAliExpressAuthorization);
 
   const [open, setOpen] = useState(false);
   const [apiKey, setApiKey] = useState("");
@@ -174,14 +190,20 @@ function IntegrationCard({ integration }: { integration: Integration }) {
   });
 
   async function toggleSecret(field: "api" | "webhook" | "merchant") {
-    const showing = field === "api" ? showApiKey : field === "webhook" ? showWebhookToken : showMerchantKey;
+    const showing =
+      field === "api" ? showApiKey : field === "webhook" ? showWebhookToken : showMerchantKey;
     if (showing) {
       if (field === "api") setShowApiKey(false);
       if (field === "webhook") setShowWebhookToken(false);
       if (field === "merchant") setShowMerchantKey(false);
       return;
     }
-    const hasSaved = field === "api" ? integration.has_api_key : field === "webhook" ? integration.has_webhook_token : integration.has_merchant_key;
+    const hasSaved =
+      field === "api"
+        ? integration.has_api_key
+        : field === "webhook"
+          ? integration.has_webhook_token
+          : integration.has_merchant_key;
     const localValue = field === "api" ? apiKey : field === "webhook" ? webhookToken : merchantKey;
     if (hasSaved && !localValue) await revealMut.mutateAsync();
     if (field === "api") setShowApiKey(true);
@@ -219,10 +241,19 @@ function IntegrationCard({ integration }: { integration: Integration }) {
   });
 
   const oauthMut = useMutation({
-    mutationFn: () =>
-      beginAliExpressOAuth({ data: { origin: window.location.origin } }),
+    mutationFn: () => beginAliExpressOAuth({ data: { origin: window.location.origin } }),
     onSuccess: ({ authUrl }) => {
-      window.open(authUrl, "_blank", "noopener,noreferrer");
+      window.location.assign(authUrl);
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const resetAliMut = useMutation({
+    mutationFn: () => resetAliExpress(),
+    onSuccess: () => {
+      setEnabled(false);
+      qc.invalidateQueries({ queryKey: ["integrations"] });
+      toast.success("Autorização anterior removida. Autorize novamente no AliExpress.");
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -317,13 +348,15 @@ function IntegrationCard({ integration }: { integration: Integration }) {
       keyUrl: "https://developers.facebook.com/apps/",
       keyLabel: "Abrir Meta for Developers",
       docsUrl: "https://developers.facebook.com/docs/graph-api/",
-      instructions: "Cole um token de acesso com permissão para a Página no campo Chave da API e informe o Facebook Page ID. Salve e use Testar conexão.",
+      instructions:
+        "Cole um token de acesso com permissão para a Página no campo Chave da API e informe o Facebook Page ID. Salve e use Testar conexão.",
     },
     instagram: {
       keyUrl: "https://developers.facebook.com/apps/",
       keyLabel: "Abrir Meta for Developers",
       docsUrl: "https://developers.facebook.com/docs/instagram-api/",
-      instructions: "Cole o token de acesso da conta profissional no campo Chave da API e informe o Instagram Professional User ID. Salve e use Testar conexão.",
+      instructions:
+        "Cole o token de acesso da conta profissional no campo Chave da API e informe o Instagram Professional User ID. Salve e use Testar conexão.",
     },
     google_tag_manager: {
       keyUrl: "https://tagmanager.google.com/",
@@ -346,16 +379,39 @@ function IntegrationCard({ integration }: { integration: Integration }) {
   const currentMerchantKey = integration.has_merchant_key;
 
   const authorizeAliExpress = (
-    <button
-      type="button"
-      onClick={() => oauthMut.mutate()}
-      disabled={oauthMut.isPending || !integration.has_api_key || !integration.has_webhook_token}
-      className="inline-flex items-center gap-2 rounded-lg border border-primary/40 bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary/20 disabled:cursor-not-allowed disabled:opacity-50"
-      title={!integration.has_api_key || !integration.has_webhook_token ? "Salve App Key e App Secret antes de autorizar" : "Autorizar conta AliExpress"}
-    >
-      <ExternalLink className="h-3.5 w-3.5" />
-      {oauthMut.isPending ? "Preparando autorização…" : "Autorizar AliExpress"}
-    </button>
+    <div className="flex flex-wrap items-center gap-2">
+      <button
+        type="button"
+        onClick={() => oauthMut.mutate()}
+        disabled={
+          oauthMut.isPending ||
+          resetAliMut.isPending ||
+          !integration.has_api_key ||
+          !integration.has_webhook_token
+        }
+        className="inline-flex items-center gap-2 rounded-lg border border-primary/40 bg-primary/10 px-3 py-1.5 text-xs font-medium text-primary hover:bg-primary/20 disabled:cursor-not-allowed disabled:opacity-50"
+        title={
+          !integration.has_api_key || !integration.has_webhook_token
+            ? "Salve App Key e App Secret antes de autorizar"
+            : "Autorizar conta AliExpress"
+        }
+      >
+        <ExternalLink className="h-3.5 w-3.5" />
+        {oauthMut.isPending ? "Preparando autorização…" : "Autorizar AliExpress"}
+      </button>
+      <button
+        type="button"
+        onClick={() => resetAliMut.mutate()}
+        disabled={resetAliMut.isPending || oauthMut.isPending}
+        className="rounded-lg border border-border px-3 py-1.5 text-xs hover:bg-muted disabled:opacity-50"
+      >
+        {resetAliMut.isPending ? "Redefinindo…" : "Limpar autorização anterior"}
+      </button>
+      <p className="w-full text-xs text-muted-foreground">
+        O login e a senha são informados no AliExpress. Para trocar a conta salva no navegador, saia
+        do AliExpress antes de autorizar novamente.
+      </p>
+    </div>
   );
 
   return (
@@ -365,7 +421,9 @@ function IntegrationCard({ integration }: { integration: Integration }) {
           <Plug className="mt-1 h-5 w-5 shrink-0 text-plum" />
           <div className="min-w-0">
             <p className="font-display text-lg">{integration.display_name}</p>
-            <p className="text-xs leading-relaxed text-muted-foreground break-words">{integration.description}</p>
+            <p className="text-xs leading-relaxed text-muted-foreground break-words">
+              {integration.description}
+            </p>
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -394,7 +452,10 @@ function IntegrationCard({ integration }: { integration: Integration }) {
         <div className="mt-4 rounded-xl border border-destructive/40 bg-destructive/10 p-3 text-sm">
           <p className="font-medium text-destructive">Reautorização necessária</p>
           <p className="mt-1 text-xs text-destructive/90">
-            O refresh_token do AliExpress expirou ou foi invalidado. Clique em <b>Autorizar AliExpress</b> abaixo (após confirmar App Key, App Secret e Callback URL) para gerar novos tokens. Enquanto isso, sincronizações de estoque, importação e fulfillment ficam suspensas.
+            O refresh_token do AliExpress expirou ou foi invalidado. Clique em{" "}
+            <b>Autorizar AliExpress</b> abaixo (após confirmar App Key, App Secret e Callback URL)
+            para gerar novos tokens. Enquanto isso, sincronizações de estoque, importação e
+            fulfillment ficam suspensas.
           </p>
           <div className="mt-2">{authorizeAliExpress}</div>
         </div>
@@ -411,7 +472,9 @@ function IntegrationCard({ integration }: { integration: Integration }) {
           <div className="min-w-0">
             <p className="text-xs text-muted-foreground">URL do webhook</p>
             <div className="flex min-w-0 items-center gap-1">
-              <code className="min-w-0 flex-1 truncate text-[11px]" title={webhookUrl}>{webhookUrl}</code>
+              <code className="min-w-0 flex-1 truncate text-[11px]" title={webhookUrl}>
+                {webhookUrl}
+              </code>
               <button
                 onClick={() => {
                   navigator.clipboard.writeText(webhookUrl);
@@ -437,7 +500,11 @@ function IntegrationCard({ integration }: { integration: Integration }) {
         <button
           onClick={() => testMut.mutate()}
           disabled={testMut.isPending || !integration.has_api_key}
-          title={!integration.has_api_key ? "Configure a chave antes de testar" : "Testar conexão com o provedor"}
+          title={
+            !integration.has_api_key
+              ? "Configure a chave antes de testar"
+              : "Testar conexão com o provedor"
+          }
           className="inline-flex items-center gap-1 rounded-lg border border-border px-3 py-1.5 text-xs hover:bg-secondary disabled:opacity-60"
         >
           <TestTube className="h-3.5 w-3.5" />
@@ -458,7 +525,12 @@ function IntegrationCard({ integration }: { integration: Integration }) {
         {(integration.has_api_key || integration.has_webhook_token || integration.enabled) && (
           <button
             onClick={() => {
-              if (!confirm(`Desconectar ${integration.display_name}? Isso remove a chave da API, o token do webhook e desativa a integração.`)) return;
+              if (
+                !confirm(
+                  `Desconectar ${integration.display_name}? Isso remove a chave da API, o token do webhook e desativa a integração.`,
+                )
+              )
+                return;
               saveMut.mutate({
                 provider: integration.provider,
                 enabled: false,
@@ -509,7 +581,7 @@ function IntegrationCard({ integration }: { integration: Integration }) {
               )}
             </div>
           )}
-           <div className="grid min-w-0 gap-3 sm:grid-cols-2">
+          <div className="grid min-w-0 gap-3 sm:grid-cols-2">
             <label className="text-sm">
               <span className="mb-1 block text-xs text-muted-foreground">Ambiente</span>
               <select
@@ -536,52 +608,60 @@ function IntegrationCard({ integration }: { integration: Integration }) {
               {isManualPix
                 ? "Chave PIX (CPF/CNPJ, e-mail, telefone ou aleatória)"
                 : isAmplo
-                ? "Client ID"
-                : isNuPay
-                ? "X-Merchant-Token"
-                : isAliexpress
-                  ? "App Key"
-                  : isGtm
-                    ? "ID do container GTM (formato GTM-XXXXXX)"
-                    : "Chave da API"}{" "}
+                  ? "Client ID"
+                  : isNuPay
+                    ? "X-Merchant-Token"
+                    : isAliexpress
+                      ? "App Key"
+                      : isGtm
+                        ? "ID do container GTM (formato GTM-XXXXXX)"
+                        : "Chave da API"}{" "}
               {integration.has_api_key && "(deixe vazio para manter a atual)"}
             </span>
             <div className="relative">
               <input
-              type={isGtm || isManualPix || showApiKey ? "text" : "password"}
-              value={apiKey}
-              onChange={(e) => setApiKey(e.target.value)}
-              placeholder={
-                integration.provider === "asaas"
-                  ? "$aact_YT..."
-                  : integration.provider === "stripe"
-                    ? "sk_live_..."
-                    : isNuPay
-                      ? "token secreto NuPay"
-                      : isAliexpress
-                        ? "App Key do console AliExpress"
-                        : isGtm
-                          ? "GTM-XXXXXX"
-                          : "chave da API"
-              }
-              className="w-full rounded-lg border border-border bg-background px-3 py-2 pr-10 font-mono text-sm"
+                type={isGtm || isManualPix || showApiKey ? "text" : "password"}
+                value={apiKey}
+                onChange={(e) => setApiKey(e.target.value)}
+                placeholder={
+                  integration.provider === "asaas"
+                    ? "$aact_YT..."
+                    : integration.provider === "stripe"
+                      ? "sk_live_..."
+                      : isNuPay
+                        ? "token secreto NuPay"
+                        : isAliexpress
+                          ? "App Key do console AliExpress"
+                          : isGtm
+                            ? "GTM-XXXXXX"
+                            : "chave da API"
+                }
+                className="w-full rounded-lg border border-border bg-background px-3 py-2 pr-10 font-mono text-sm"
               />
               {!isGtm && !isManualPix && (
-                <button type="button" onClick={() => void toggleSecret("api")} disabled={revealMut.isPending} className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-muted-foreground hover:text-foreground" aria-label={showApiKey ? "Ocultar chave" : "Mostrar chave"}>
+                <button
+                  type="button"
+                  onClick={() => void toggleSecret("api")}
+                  disabled={revealMut.isPending}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-muted-foreground hover:text-foreground"
+                  aria-label={showApiKey ? "Ocultar chave" : "Mostrar chave"}
+                >
                   {showApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               )}
             </div>
             {isGtm && (
               <span className="mt-1 block text-[11px] text-muted-foreground">
-                Ative a integração após salvar. O snippet do GTM é carregado automaticamente em todas as páginas públicas da loja.
+                Ative a integração após salvar. O snippet do GTM é carregado automaticamente em
+                todas as páginas públicas da loja.
               </span>
             )}
           </label>
           {hasSecondKey && (
             <label className="block text-sm">
               <span className="mb-1 block text-xs text-muted-foreground">
-                {isAmplo ? "Client Secret" : "X-Merchant-Key"} {currentMerchantKey && "(preenchida — deixe vazio para manter)"}
+                {isAmplo ? "Client Secret" : "X-Merchant-Key"}{" "}
+                {currentMerchantKey && "(preenchida — deixe vazio para manter)"}
               </span>
               <div className="relative">
                 <input
@@ -591,19 +671,29 @@ function IntegrationCard({ integration }: { integration: Integration }) {
                   placeholder={isAmplo ? "Client Secret da AmploPay" : "Merchant Key do NuPay"}
                   className="w-full rounded-lg border border-border bg-background px-3 py-2 pr-10 font-mono text-sm"
                 />
-                <button type="button" onClick={() => void toggleSecret("merchant")} disabled={revealMut.isPending} className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-muted-foreground hover:text-foreground" aria-label={showMerchantKey ? "Ocultar Merchant Key" : "Mostrar Merchant Key"}>
+                <button
+                  type="button"
+                  onClick={() => void toggleSecret("merchant")}
+                  disabled={revealMut.isPending}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-muted-foreground hover:text-foreground"
+                  aria-label={showMerchantKey ? "Ocultar Merchant Key" : "Mostrar Merchant Key"}
+                >
                   {showMerchantKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
               <span className="mt-1 block text-[11px] text-muted-foreground">
-                {isAmplo ? "Painel AmploPay → Integrações → API → Nova credencial (permissão Criar/Consultar transações)." : "Encontre em NuPay Business → Configurações → Credenciais. Envie a Merchant Key aqui e o Merchant Token no campo acima."}
+                {isAmplo
+                  ? "Painel AmploPay → Integrações → API → Nova credencial (permissão Criar/Consultar transações)."
+                  : "Encontre em NuPay Business → Configurações → Credenciais. Envie a Merchant Key aqui e o Merchant Token no campo acima."}
               </span>
             </label>
           )}
           {isManualPix && (
-             <div className="grid min-w-0 gap-3 sm:grid-cols-2">
+            <div className="grid min-w-0 gap-3 sm:grid-cols-2">
               <label className="block text-sm">
-                <span className="mb-1 block text-xs text-muted-foreground">Nome da loja (aparece no app do banco)</span>
+                <span className="mb-1 block text-xs text-muted-foreground">
+                  Nome da loja (aparece no app do banco)
+                </span>
                 <input
                   type="text"
                   value={merchantName}
@@ -637,13 +727,16 @@ function IntegrationCard({ integration }: { integration: Integration }) {
                 className="w-full rounded-lg border border-border bg-background px-3 py-2 font-mono text-sm"
               />
               <span className="mt-1 block text-[11px] text-muted-foreground">
-                Use o ID da Página vinculada ao token. O botão Testar valida o Page ID pela Meta Graph API.
+                Use o ID da Página vinculada ao token. O botão Testar valida o Page ID pela Meta
+                Graph API.
               </span>
             </label>
           )}
           {isInstagram && (
             <label className="block text-sm">
-              <span className="mb-1 block text-xs text-muted-foreground">Instagram Professional User ID</span>
+              <span className="mb-1 block text-xs text-muted-foreground">
+                Instagram Professional User ID
+              </span>
               <input
                 type="text"
                 value={igUserId}
@@ -652,7 +745,8 @@ function IntegrationCard({ integration }: { integration: Integration }) {
                 className="w-full rounded-lg border border-border bg-background px-3 py-2 font-mono text-sm"
               />
               <span className="mt-1 block text-[11px] text-muted-foreground">
-                Informe o ID da conta Business/Creator vinculada. O teste consulta o usuário pela Meta Graph API.
+                Informe o ID da conta Business/Creator vinculada. O teste consulta o usuário pela
+                Meta Graph API.
               </span>
             </label>
           )}
@@ -664,17 +758,23 @@ function IntegrationCard({ integration }: { integration: Integration }) {
               </span>
               <div className="relative">
                 <input
-                type={showWebhookToken ? "text" : "password"}
-                value={webhookToken}
-                onChange={(e) => setWebhookToken(e.target.value)}
-                placeholder={
-                  isAliexpress
-                    ? "App Secret do console AliExpress"
-                    : "qualquer string secreta (você define aqui e no painel do provedor)"
-                }
-                className="w-full rounded-lg border border-border bg-background px-3 py-2 pr-10 font-mono text-sm"
+                  type={showWebhookToken ? "text" : "password"}
+                  value={webhookToken}
+                  onChange={(e) => setWebhookToken(e.target.value)}
+                  placeholder={
+                    isAliexpress
+                      ? "App Secret do console AliExpress"
+                      : "qualquer string secreta (você define aqui e no painel do provedor)"
+                  }
+                  className="w-full rounded-lg border border-border bg-background px-3 py-2 pr-10 font-mono text-sm"
                 />
-                <button type="button" onClick={() => void toggleSecret("webhook")} disabled={revealMut.isPending} className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-muted-foreground hover:text-foreground" aria-label={showWebhookToken ? "Ocultar token" : "Mostrar token"}>
+                <button
+                  type="button"
+                  onClick={() => void toggleSecret("webhook")}
+                  disabled={revealMut.isPending}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-muted-foreground hover:text-foreground"
+                  aria-label={showWebhookToken ? "Ocultar token" : "Mostrar token"}
+                >
                   {showWebhookToken ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
@@ -691,13 +791,13 @@ function IntegrationCard({ integration }: { integration: Integration }) {
                 <span className="mb-1 block text-xs text-muted-foreground">
                   Callback URL (deve ser IDÊNTICA à cadastrada no console AliExpress)
                 </span>
-                 <div className="flex min-w-0 gap-2">
+                <div className="flex min-w-0 gap-2">
                   <input
                     type="url"
                     value={redirectUri}
                     onChange={(e) => setRedirectUri(e.target.value)}
                     placeholder="https://www.absolutoglamur.com.br/api/public/webhooks/aliexpress"
-                     className="min-w-0 flex-1 rounded-lg border border-border bg-background px-3 py-2 font-mono text-xs"
+                    className="min-w-0 flex-1 rounded-lg border border-border bg-background px-3 py-2 font-mono text-xs"
                   />
                   <button
                     type="button"
@@ -705,14 +805,16 @@ function IntegrationCard({ integration }: { integration: Integration }) {
                       navigator.clipboard.writeText(redirectUri);
                       toast.success("URL copiada");
                     }}
-                     className="shrink-0 rounded-lg border border-border px-2 hover:bg-secondary"
+                    className="shrink-0 rounded-lg border border-border px-2 hover:bg-secondary"
                     aria-label="Copiar"
                   >
                     <Copy className="h-3.5 w-3.5" />
                   </button>
                 </div>
                 <span className="mt-1 block text-[11px] text-muted-foreground">
-                  Erro "Redirect uri does not match the callback url of the APP" = esta URL diverge da registrada no AliExpress. Cole exatamente a mesma string dos dois lados (com/sem www, http/https, sem barra final).
+                  Erro "Redirect uri does not match the callback url of the APP" = esta URL diverge
+                  da registrada no AliExpress. Cole exatamente a mesma string dos dois lados
+                  (com/sem www, http/https, sem barra final).
                 </span>
               </label>
               {authorizeAliExpress}
@@ -791,11 +893,8 @@ function RoutingPanel() {
   const q = useQuery({ queryKey: ["admin-routing"], queryFn: () => listFn() });
 
   const mut = useMutation({
-    mutationFn: (input: {
-      method: PaymentMethodKey;
-      provider?: string;
-      enabled?: boolean;
-    }) => updateFn({ data: input }),
+    mutationFn: (input: { method: PaymentMethodKey; provider?: string; enabled?: boolean }) =>
+      updateFn({ data: input }),
     onSuccess: () => {
       toast.success("Roteamento atualizado");
       qc.invalidateQueries({ queryKey: ["admin-routing"] });
@@ -815,7 +914,8 @@ function RoutingPanel() {
         </h2>
       </div>
       <p className="mt-1 text-xs text-muted-foreground">
-        Escolha somente provedores que já possuem adapter ativo no checkout — por exemplo, PIX via Asaas ou PagBank, cartão via PagBank e Nubank via NuPay.
+        Escolha somente provedores que já possuem adapter ativo no checkout — por exemplo, PIX via
+        Asaas ou PagBank, cartão via PagBank e Nubank via NuPay.
       </p>
       <div className="mt-3 min-w-0 overflow-hidden rounded-lg border border-border bg-card shadow-soft">
         <table className="block w-full text-sm sm:table">
@@ -828,15 +928,16 @@ function RoutingPanel() {
           </thead>
           <tbody className="block sm:table-row-group">
             {rows.map((r) => (
-              <tr key={r.method} className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] items-center border-t border-border first:border-t-0 sm:table-row sm:first:border-t">
+              <tr
+                key={r.method}
+                className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] items-center border-t border-border first:border-t-0 sm:table-row sm:first:border-t"
+              >
                 <td className="min-w-0 px-3 py-3 font-medium sm:px-4">{METHOD_LABELS[r.method]}</td>
                 <td className="min-w-0 px-3 py-3 sm:px-4">
                   <select
                     value={r.provider}
-                    onChange={(e) =>
-                      mut.mutate({ method: r.method, provider: e.target.value })
-                    }
-                     className="w-full min-w-0 rounded-md border border-border bg-background px-2 py-1 text-sm sm:w-auto"
+                    onChange={(e) => mut.mutate({ method: r.method, provider: e.target.value })}
+                    className="w-full min-w-0 rounded-md border border-border bg-background px-2 py-1 text-sm sm:w-auto"
                   >
                     {PROVIDER_OPTIONS.filter((p) =>
                       SUPPORTED_PROVIDERS_BY_METHOD[r.method].includes(p.id),
@@ -852,9 +953,7 @@ function RoutingPanel() {
                     <input
                       type="checkbox"
                       checked={r.enabled}
-                      onChange={(e) =>
-                        mut.mutate({ method: r.method, enabled: e.target.checked })
-                      }
+                      onChange={(e) => mut.mutate({ method: r.method, enabled: e.target.checked })}
                     />
                     <span className="text-xs text-muted-foreground">
                       {r.enabled ? "Visível no checkout" : "Oculto"}
@@ -895,14 +994,39 @@ function StatusLight({
   const { color, label, pulse, title } = connected
     ? { color: "bg-success", label: "Conectado", pulse: true, title: "Provedor testado e ativo" }
     : verified
-      ? { color: "bg-success", label: "Validada", pulse: false, title: "Credencial testada com sucesso; integração ainda está inativa" }
+      ? {
+          color: "bg-success",
+          label: "Validada",
+          pulse: false,
+          title: "Credencial testada com sucesso; integração ainda está inativa",
+        }
       : errored
-      ? { color: "bg-destructive", label: "Erro", pulse: false, title: errorMessage ?? "Falha na última verificação" }
-      : manual
-        ? { color: "bg-warning", label: "Teste manual", pulse: false, title: "Credencial salva; este provedor ainda exige validação pelo fluxo oficial" }
-        : hasKey
-          ? { color: "bg-warning", label: "Aguardando teste", pulse: false, title: "Chave configurada — clique em 'Testar conexão'" }
-        : { color: "bg-muted-foreground/50", label: "Não configurado", pulse: false, title: "Adicione uma chave de API" };
+        ? {
+            color: "bg-destructive",
+            label: "Erro",
+            pulse: false,
+            title: errorMessage ?? "Falha na última verificação",
+          }
+        : manual
+          ? {
+              color: "bg-warning",
+              label: "Teste manual",
+              pulse: false,
+              title: "Credencial salva; este provedor ainda exige validação pelo fluxo oficial",
+            }
+          : hasKey
+            ? {
+                color: "bg-warning",
+                label: "Aguardando teste",
+                pulse: false,
+                title: "Chave configurada — clique em 'Testar conexão'",
+              }
+            : {
+                color: "bg-muted-foreground/50",
+                label: "Não configurado",
+                pulse: false,
+                title: "Adicione uma chave de API",
+              };
 
   return (
     <span
@@ -911,13 +1035,18 @@ function StatusLight({
     >
       <span className="relative flex h-2.5 w-2.5">
         {pulse && (
-          <span className={`absolute inline-flex h-full w-full animate-ping rounded-full ${color} opacity-75`} />
+          <span
+            className={`absolute inline-flex h-full w-full animate-ping rounded-full ${color} opacity-75`}
+          />
         )}
         <span
           className={`relative inline-flex h-2.5 w-2.5 rounded-full ${color}`}
           style={
             connected
-              ? { boxShadow: "0 0 10px oklch(0.58 0.12 160 / 0.9), 0 0 4px oklch(0.58 0.12 160 / 0.6)" }
+              ? {
+                  boxShadow:
+                    "0 0 10px oklch(0.58 0.12 160 / 0.9), 0 0 4px oklch(0.58 0.12 160 / 0.6)",
+                }
               : undefined
           }
         />
