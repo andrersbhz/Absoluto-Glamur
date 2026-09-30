@@ -79,7 +79,8 @@ function defaultConfig(): EmailProviderConfig {
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function rowToConfig(row: any): EmailProviderConfig {
   if (!row) return defaultConfig();
-  const raw = row.config && typeof row.config === "object" ? row.config as Record<string, unknown> : {};
+  const raw =
+    row.config && typeof row.config === "object" ? (row.config as Record<string, unknown>) : {};
   const parsed = EmailConfigSchema.safeParse({
     preset: raw.preset ?? "hostinger",
     host: raw.host ?? "smtp.hostinger.com",
@@ -90,16 +91,18 @@ function rowToConfig(row: any): EmailProviderConfig {
     from_name: raw.from_name ?? "Absoluto Glamur",
     reply_to: raw.reply_to ?? DEFAULT_EMAIL,
   });
-  const cfg = parsed.success ? parsed.data : EmailConfigSchema.parse({
-    preset: "hostinger",
-    host: "smtp.hostinger.com",
-    port: 465,
-    security: "ssl_tls",
-    username: DEFAULT_EMAIL,
-    from_email: DEFAULT_EMAIL,
-    from_name: "Absoluto Glamur",
-    reply_to: DEFAULT_EMAIL,
-  });
+  const cfg = parsed.success
+    ? parsed.data
+    : EmailConfigSchema.parse({
+        preset: "hostinger",
+        host: "smtp.hostinger.com",
+        port: 465,
+        security: "ssl_tls",
+        username: DEFAULT_EMAIL,
+        from_email: DEFAULT_EMAIL,
+        from_name: "Absoluto Glamur",
+        reply_to: DEFAULT_EMAIL,
+      });
 
   return {
     provider: PROVIDER_ID,
@@ -145,14 +148,17 @@ export const saveEmailProviderConfig = createServerFn({ method: "POST" })
       throw new Error("Informe a senha SMTP antes de ativar o envio de e-mails.");
     }
     if (data.security === "none" && data.enabled) {
-      throw new Error("Por segurança, o envio sem criptografia não pode ser ativado. Use SSL/TLS ou STARTTLS.");
+      throw new Error(
+        "Por segurança, o envio sem criptografia não pode ser ativado. Use SSL/TLS ou STARTTLS.",
+      );
     }
 
     const payload: Record<string, unknown> = {
       provider: PROVIDER_ID,
       category: "communication",
       display_name: "E-mail do sistema (SMTP)",
-      description: "Provedor SMTP usado para e-mails transacionais e notificações da Absoluto Glamur.",
+      description:
+        "Provedor SMTP usado para e-mails transacionais e notificações da Absoluto Glamur.",
       enabled: data.enabled,
       mode: "production",
       updated_by: context.userId,
@@ -169,7 +175,9 @@ export const saveEmailProviderConfig = createServerFn({ method: "POST" })
     };
     if (password) payload.api_key = password;
 
-    const { error } = await db.from("integrations").upsert(payload as never, { onConflict: "provider" });
+    const { error } = await db
+      .from("integrations")
+      .upsert(payload as never, { onConflict: "provider" });
     if (error) throw new Error(error.message);
     return { ok: true };
   });
@@ -204,7 +212,8 @@ async function loadSmtpConfig(db: any) {
   if (!row) throw new Error("Configure o provedor de e-mail antes de enviar mensagens.");
   if (!row.api_key) throw new Error("A senha SMTP ainda não foi configurada.");
 
-  const raw = row.config && typeof row.config === "object" ? row.config as Record<string, unknown> : {};
+  const raw =
+    row.config && typeof row.config === "object" ? (row.config as Record<string, unknown>) : {};
   const cfg = EmailConfigSchema.parse(raw);
   return {
     enabled: !!row.enabled,
@@ -224,7 +233,13 @@ async function loadSmtpConfig(db: any) {
 export async function sendConfiguredSystemEmail(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   db: any,
-  message: { to: string | string[]; subject: string; text?: string; html?: string },
+  message: {
+    to: string | string[];
+    subject: string;
+    text?: string;
+    html?: string;
+    attachments?: { filename: string; content: string; contentType?: string }[];
+  },
   options?: { requireEnabled?: boolean },
 ) {
   const config = await loadSmtpConfig(db);

@@ -140,7 +140,7 @@ function buildLogisticsAddress(o: OrderRow) {
 
 async function sendOrderToAli(orderId: string) {
   const order = await loadOrder(orderId);
-  if (order.status !== "paid") {
+  if (!["paid", "processing"].includes(order.status)) {
     throw new Error(`Pedido ${order.code} não pode ser enviado: status atual é "${order.status}". Aguarde a confirmação do pagamento.`);
   }
   if (order.fulfillment_status === "sent") {

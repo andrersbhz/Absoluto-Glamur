@@ -1,0 +1,26 @@
+name: Process order emails
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+permissions: {}
+concurrency:
+  group: order-email-worker
+  cancel-in-progress: false
+jobs:
+  send:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Process the protected transactional email queue
+        env:
+          SITE_URL: ${{ secrets.SITE_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$SITE_URL" ] || [ -z "$CRON_SECRET" ]; then
+            echo 'Configure SITE_URL and CRON_SECRET in repository Actions secrets.'
+            exit 1
+          fi
+          curl --fail-with-body --silent --show-error --max-time 240 \
+            -X POST "${SITE_URL%/}/api/public/cron/order-emails" \
+            -H "Authorization: Bearer $CRON_SECRET"

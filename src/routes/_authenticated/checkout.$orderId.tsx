@@ -1,4 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useServerFn } from "@tanstack/react-start";
+import { reportManualPixPaid } from "@/lib/order-lifecycle.functions";
+import { OrderProgress } from "@/components/store/OrderProgress";
+import { isPaidOrder, ORDER_LABELS } from "@/lib/order-lifecycle";
 import { useQuery } from "@tanstack/react-query";
 import { Check, Copy, Clock } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -20,6 +24,10 @@ type OrderWithPayment = {
   status: string;
   total_cents: number;
   paid_at: string | null;
+  payment_review_at: string | null;
+  tracking_number: string | null;
+  tracking_carrier: string | null;
+  tracking_status: string | null;
   payments: {
     status: string;
     method: string;
@@ -35,6 +43,8 @@ type OrderWithPayment = {
 
 function PaymentPage() {
   const { orderId } = Route.useParams();
+  const reportPaid = useServerFn(reportManualPixPaid);
+  const [reporting, setReporting] = useState(false);
 
   const q = useQuery({
     queryKey: ["order", orderId],
@@ -42,7 +52,7 @@ function PaymentPage() {
       const { data, error } = await supabase
         .from("orders")
         .select(
-          "id, code, status, total_cents, paid_at, payments(status, method, provider, pix_qr_code, pix_payload, pix_expires_at, amount_cents, invoice_url, redirect_url)",
+          "id, code, status, total_cents, paid_at, payment_review_at, tracking_number, tracking_carrier, tracking_status, payments(status, method, provider, pix_qr_code, pix_payload, pix_expires_at, amount_cents, invoice_url, redirect_url)",
         )
         .eq("id", orderId)
         .maybeSingle();
@@ -52,28 +62,33 @@ function PaymentPage() {
     refetchInterval: (query) => {
       const d = query.state.data as OrderWithPayment | null | undefined;
       if (!d) return 3000;
-      if (d.status === "paid" || d.status === "cancelled" || d.status === "refunded") return false;
+      if (["delivered", "cancelled", "refunded", "failed"].includes(d.status)) return false;
+      if (isPaidOrder(d.status)) return 15000;
       return 3000;
     },
   });
 
   const order = q.data;
   const payment = order?.payments?.[0];
-  const paid = order?.status === "paid";
+  const paid = !!order && isPaidOrder(order.status);
 
+  const purchaseId = order?.id;
+  const purchaseCode = order?.code;
+  const purchasePaidAt = order?.paid_at;
+  const purchaseTotal = order?.total_cents;
   useEffect(() => {
-    if (!paid || !order) return;
+    if (!paid || !purchaseId) return;
     trackCommerce("purchase", {
-      order_id: order.id,
-      value_cents: order.total_cents,
-      current_page: `/checkout/${order.id}`,
+      order_id: purchaseId,
+      value_cents: purchaseTotal,
+      current_page: `/checkout/${purchaseId}`,
       metadata: {
-        order_code: order.code,
-        paid_at: order.paid_at,
+        order_code: purchaseCode,
+        paid_at: purchasePaidAt,
         funnel_stage: "purchased",
       },
     });
-  }, [paid, order?.id, order?.code, order?.paid_at, order?.total_cents]);
+  }, [paid, purchaseId, purchaseCode, purchasePaidAt, purchaseTotal]);
 
   return (
     <StoreLayout>
@@ -88,13 +103,30 @@ function PaymentPage() {
               </span>
               <h1 className="mt-3 break-words font-display text-xl sm:text-2xl">{order.code}</h1>
               <p className="mt-1 text-xs text-muted-foreground">
-                Falta pouco: conclua o pagamento para confirmarmos seu pedido.
+                {paid
+                  ? "Seu pagamento está confirmado. Acompanhe as próximas etapas abaixo."
+                  : ["cancelled", "refunded", "failed"].includes(order.status)
+                    ? ORDER_LABELS[order.status]
+                    : order.payment_review_at
+                      ? "Estamos conferindo seu pagamento. Não pague novamente."
+                      : "Falta pouco: conclua o pagamento para confirmarmos seu pedido."}
               </p>
             </div>
 
             {paid ? (
               <PaidState orderCode={order.code} />
-            ) : payment && payment.method === "pix" && (payment.pix_qr_code || payment.pix_payload) ? (
+            ) : ["cancelled", "refunded", "failed"].includes(order.status) ? (
+              <p className="mt-6 text-center">
+                {ORDER_LABELS[order.status]}. Se precisar de ajuda, nossa equipe está à disposição.
+              </p>
+            ) : order.payment_review_at ? (
+              <p className="mt-6 rounded-xl border border-border p-5">
+                Recebemos seu aviso e estamos validando o pagamento. Assim que for confirmado, seu
+                pedido seguirá para preparação.
+              </p>
+            ) : payment &&
+              payment.method === "pix" &&
+              (payment.pix_qr_code || payment.pix_payload) ? (
               <PendingState
                 payment={payment}
                 expiresAt={payment.pix_expires_at}
@@ -111,13 +143,36 @@ function PaymentPage() {
                 Pagamento não gerado. Volte ao checkout e tente novamente.
               </p>
             )}
+            {!paid &&
+              order.status === "awaiting_payment" &&
+              !order.payment_review_at &&
+              payment?.provider === "pix_manual" && (
+                <button
+                  className="mt-4 w-full rounded-lg border border-primary p-3 text-sm"
+                  disabled={reporting}
+                  onClick={async () => {
+                    setReporting(true);
+                    try {
+                      await reportPaid({ data: { orderId: order.id } });
+                      await q.refetch();
+                      toast.success("Aviso recebido. Vamos conferir o pagamento.");
+                    } catch (error) {
+                      toast.error(error instanceof Error ? error.message : String(error));
+                    } finally {
+                      setReporting(false);
+                    }
+                  }}
+                >
+                  {reporting ? "Enviando aviso..." : "Já fiz o Pix: avisar a equipe"}
+                </button>
+              )}
+            <OrderProgress order={order} />
           </>
         )}
       </div>
     </StoreLayout>
   );
 }
-
 
 function PaidState({ orderCode }: { orderCode: string }) {
   return (
@@ -127,7 +182,8 @@ function PaidState({ orderCode }: { orderCode: string }) {
       </div>
       <h2 className="mt-4 font-display text-2xl">Pagamento confirmado!</h2>
       <p className="mt-2 text-sm text-muted-foreground">
-        Recebemos o pagamento do pedido {orderCode}. Você receberá o rastreamento em breve.
+        Recebemos o pagamento do pedido {orderCode}. As atualizações de preparação e envio aparecem
+        abaixo.
       </p>
       <div className="mt-6 flex justify-center gap-3">
         <Link
@@ -287,7 +343,6 @@ function formatRemaining(ms: number) {
   return h > 0 ? `${h}h ${pad(m)}min` : `${pad(m)}:${pad(s)}`;
 }
 
-
 function RedirectState({
   url,
   provider,
@@ -307,7 +362,8 @@ function RedirectState({
     <div className="mt-8 rounded-2xl border border-border bg-card p-8 text-center shadow-soft">
       <h2 className="font-display text-2xl">Finalize seu pagamento</h2>
       <p className="mt-2 text-sm text-muted-foreground">
-        Você será redirecionado para <span className="font-medium capitalize">{provider}</span> para concluir. A confirmação retorna automaticamente aqui.
+        Você será redirecionado para <span className="font-medium capitalize">{provider}</span> para
+        concluir. A confirmação retorna automaticamente aqui.
       </p>
       <a
         href={url}
