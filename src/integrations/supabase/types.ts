@@ -1159,8 +1159,28 @@ export type Database = {
           },
         ]
       }
+      order_status_history: {
+        Row: { id: string; order_id: string; status: string; description: string | null; created_at: string }
+        Insert: { id?: string; order_id: string; status: string; description?: string | null; created_at?: string }
+        Update: { status?: string; description?: string | null }
+        Relationships: []
+      }
+      order_email_outbox: {
+        Row: { id: string; order_id: string; event_key: string; status: string; attempts: number; available_at: string; locked_at: string | null; lock_token: string | null; sent_at: string | null; last_error: string | null; snapshot: Json; created_at: string }
+        Insert: { order_id: string; event_key: string; snapshot: Json }
+        Update: { status?: string; attempts?: number; available_at?: string; locked_at?: string | null; lock_token?: string | null; sent_at?: string | null; last_error?: string | null }
+        Relationships: []
+      }
       orders: {
         Row: {
+          delivered_at: string | null
+          shipped_at: string | null
+          tracking_updated_at: string | null
+          tracking_status: string | null
+          tracking_sub_status: string | null
+          tracking_carrier: string | null
+          tracking_number: string | null
+          payment_review_at: string | null
           cancelled_at: string | null
           code: string
           created_at: string
@@ -1188,6 +1208,14 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          delivered_at?: string | null
+          shipped_at?: string | null
+          tracking_updated_at?: string | null
+          tracking_status?: string | null
+          tracking_sub_status?: string | null
+          tracking_carrier?: string | null
+          tracking_number?: string | null
+          payment_review_at?: string | null
           cancelled_at?: string | null
           code: string
           created_at?: string
@@ -1215,6 +1243,14 @@ export type Database = {
           user_id: string
         }
         Update: {
+          delivered_at?: string | null
+          shipped_at?: string | null
+          tracking_updated_at?: string | null
+          tracking_status?: string | null
+          tracking_sub_status?: string | null
+          tracking_carrier?: string | null
+          tracking_number?: string | null
+          payment_review_at?: string | null
           cancelled_at?: string | null
           code?: string
           created_at?: string
@@ -3095,6 +3131,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      claim_order_emails: { Args: { batch_size?: number }; Returns: Database["public"]["Tables"]["order_email_outbox"]["Row"][] }
       cleanup_offline_sessions: { Args: never; Returns: undefined }
       generate_order_code: { Args: never; Returns: string }
       has_role: {

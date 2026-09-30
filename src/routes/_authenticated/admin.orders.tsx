@@ -13,6 +13,9 @@ import {
   fulfillOrderToAliexpress,
   fulfillOrdersBulk,
 } from "@/lib/aliexpress-fulfillment.functions";
+import { OrderOperations } from "@/components/admin/OrderOperations";
+import { ORDER_LABELS, TRACKING_LABELS } from "@/lib/order-lifecycle";
+import { retryOrderEmails } from "@/lib/order-lifecycle.functions";
 import { confirmOrdersPayment } from "@/lib/order-admin.functions";
 
 export const Route = createFileRoute("/_authenticated/admin/orders")({
@@ -35,6 +38,9 @@ type OrderRow = {
   customer_email: string;
   created_at: string;
   paid_at: string | null;
+  payment_review_at: string | null;
+  tracking_number: string | null;
+  tracking_status: string | null;
   fulfillment_status: string | null;
   fulfillment_provider: string | null;
   fulfillment_order_id: string | null;
@@ -87,15 +93,38 @@ function AdminOrdersPage() {
     },
     onError: (e: unknown) => toast.error(e instanceof Error ? e.message : String(e)),
   });
+  const processEmails = useServerFn(retryOrderEmails);
+  const emailRun = useMutation({
+    mutationFn: () => processEmails(),
+    onSuccess: (r) => {
+      toast.success(`${r.sent} e-mail(s) enviado(s); ${r.failed} com falha.`);
+      qc.invalidateQueries({ queryKey: ["order-email-queue"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+  const emails = useQuery({
+    queryKey: ["order-email-queue"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("order_email_outbox")
+        .select("id,status,last_error")
+        .neq("status", "sent")
+        .limit(100);
+      if (error) throw error;
+      return data || [];
+    },
+    refetchInterval: 30000,
+  });
   const unpaidSt = ["pending", "awaiting_payment", "failed"];
 
   const q = useQuery({
     queryKey: ["admin-orders"],
+    refetchInterval: 15000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("orders")
         .select(
-          "id, code, status, total_cents, customer_name, customer_email, created_at, paid_at, fulfillment_status, fulfillment_provider, fulfillment_order_id, fulfillment_error, fulfillment_sent_at",
+          "id, code, status, total_cents, customer_name, customer_email, created_at, paid_at, payment_review_at, tracking_number, tracking_status, fulfillment_status, fulfillment_provider, fulfillment_order_id, fulfillment_error, fulfillment_sent_at",
         )
         .order("created_at", { ascending: false })
         .limit(100);
@@ -125,10 +154,16 @@ function AdminOrdersPage() {
   });
 
   const eligible = (q.data ?? []).filter(
-    (o) => (o.status === "paid" && o.fulfillment_status !== "sent") || unpaidSt.includes(o.status),
+    (o) =>
+      (["paid", "processing"].includes(o.status) && o.fulfillment_status !== "sent") ||
+      unpaidSt.includes(o.status),
   );
-  const selPaid = (q.data ?? []).filter((o) => selected.has(o.id) && o.status === "paid").map((o) => o.id);
-  const selUnpaid = (q.data ?? []).filter((o) => selected.has(o.id) && unpaidSt.includes(o.status)).map((o) => o.id);
+  const selPaid = (q.data ?? [])
+    .filter((o) => selected.has(o.id) && ["paid", "processing"].includes(o.status))
+    .map((o) => o.id);
+  const selUnpaid = (q.data ?? [])
+    .filter((o) => selected.has(o.id) && unpaidSt.includes(o.status))
+    .map((o) => o.id);
   const allSelected = eligible.length > 0 && eligible.every((o) => selected.has(o.id));
 
   function toggleAll() {
@@ -149,7 +184,8 @@ function AdminOrdersPage() {
           <div>
             <h1 className="font-display text-3xl">Pedidos</h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              Últimos 100 pedidos. Envie somente pedidos com pagamento confirmado ao AliExpress, individualmente ou em massa.
+              Últimos 100 pedidos. Envie somente pedidos com pagamento confirmado ao AliExpress,
+              individualmente ou em massa.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -158,7 +194,9 @@ function AdminOrdersPage() {
               onClick={() => confirm.mutate(selUnpaid)}
               disabled={selUnpaid.length === 0 || confirm.isPending}
             >
-              {confirm.isPending ? "Confirmando..." : `Confirmar pagamento ${selUnpaid.length || ""}`}
+              {confirm.isPending
+                ? "Confirmando..."
+                : `Confirmar pagamento ${selUnpaid.length || ""}`}
             </Button>
             <Button
               onClick={() => sendBulk.mutate(selPaid)}
@@ -167,6 +205,25 @@ function AdminOrdersPage() {
               {sendBulk.isPending ? "Enviando..." : `Enviar ${selPaid.length || ""} ao AliExpress`}
             </Button>
           </div>
+        </div>
+
+        <div className="mt-4 rounded-xl border border-border p-4 text-sm">
+          <p>E-mails pendentes ou com falha: {emails.data?.length ?? "..."}</p>
+          {emails.isError && <p>Fila indisponível. Verifique se a migration foi aplicada.</p>}
+          {emails.data?.find((row) => row.last_error) && (
+            <p className="mt-1 text-xs text-destructive">
+              Última falha: {emails.data.find((row) => row.last_error)?.last_error}
+            </p>
+          )}
+          <Button
+            className="mt-2"
+            size="sm"
+            variant="outline"
+            disabled={emailRun.isPending}
+            onClick={() => emailRun.mutate()}
+          >
+            Processar e-mails pendentes
+          </Button>
         </div>
 
         <div className="mt-6 overflow-x-auto rounded-2xl border border-border bg-card">
@@ -191,7 +248,8 @@ function AdminOrdersPage() {
             </thead>
             <tbody className="divide-y divide-border">
               {q.data?.map((o) => {
-                const canSend = o.status === "paid" && o.fulfillment_status !== "sent";
+                const canSend =
+                  ["paid", "processing"].includes(o.status) && o.fulfillment_status !== "sent";
                 const canConfirm = unpaidSt.includes(o.status);
                 return (
                   <tr key={o.id} className="hover:bg-secondary/30">
@@ -212,7 +270,16 @@ function AdminOrdersPage() {
                       {new Date(o.created_at).toLocaleString("pt-BR")}
                     </td>
                     <td className="px-4 py-3">
-                      <Badge variant="outline">{o.status}</Badge>
+                      <Badge variant="outline">
+                        {o.status === "awaiting_payment" && o.payment_review_at
+                          ? ORDER_LABELS.validating
+                          : ORDER_LABELS[o.status] || o.status}
+                      </Badge>
+                      {o.tracking_status && (
+                        <p className="mt-1 text-xs">
+                          {TRACKING_LABELS[o.tracking_status] || o.tracking_status}
+                        </p>
+                      )}
                     </td>
                     <td className="px-4 py-3">{fulfillmentBadge(o)}</td>
                     <td className="px-4 py-3 text-right">{formatBRL(o.total_cents)}</td>
@@ -239,6 +306,7 @@ function AdminOrdersPage() {
                             ? "Reenviar"
                             : "Enviar"}
                       </Button>
+                      <OrderOperations order={o} />
                     </td>
                   </tr>
                 );
@@ -255,7 +323,11 @@ function AdminOrdersPage() {
         </div>
 
         <p className="mt-3 text-xs text-muted-foreground">
-          Pedidos aguardando pagamento podem ter o pagamento confirmado manualmente (individual ou em massa); gateways continuam confirmando automaticamente. Só pedidos <strong>paid</strong> são enviados ao AliExpress. O envio usa o AliExpress Dropshipping API com o endereço e CPF do cliente. Se a variação não estiver mapeada, o pedido falha e a mensagem aparece na coluna de envio.
+          Pedidos aguardando pagamento podem ter o pagamento confirmado manualmente (individual ou
+          em massa); gateways continuam confirmando automaticamente. Só pedidos com pagamento
+          confirmado (pagos ou em separação) são enviados ao AliExpress. O envio usa o AliExpress
+          Dropshipping API com o endereço e CPF do cliente. Se a variação não estiver mapeada, o
+          pedido falha e a mensagem aparece na coluna de envio.
         </p>
 
         <div className="mt-6 text-sm">

@@ -73,7 +73,7 @@ export const Route = createFileRoute("/api/public/commerce-event")({
             if (orderError) {
               return Response.json({ ok: false, error: orderError.message });
             }
-            if (!order || order.status !== "paid") {
+            if (!order || !["paid", "processing", "shipped", "delivered"].includes(order.status)) {
               return Response.json({ ok: false, error: "purchase_not_confirmed" }, { status: 409 });
             }
             verifiedPurchaseValue = order.total_cents;

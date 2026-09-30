@@ -20,6 +20,7 @@ export type SmtpMessage = {
   subject: string;
   text?: string;
   html?: string;
+  attachments?: { filename: string; content: string; contentType?: string }[];
 };
 
 type SmtpSocket = net.Socket | tls.TLSSocket;
@@ -43,7 +44,42 @@ function dotStuff(value: string) {
   return value.replace(/(^|\r?\n)\./g, "$1..");
 }
 
-function buildMime(config: SmtpConfig, message: SmtpMessage) {
+export function buildMime(config: SmtpConfig, message: SmtpMessage): string {
+  if (message.attachments?.length) {
+    const original = buildMime(config, { ...message, attachments: undefined });
+    const separator = original.indexOf("\r\n\r\n");
+    const headers = original.slice(0, separator).split("\r\n");
+    const contentHeaders = headers.filter((line) => /^Content-/i.test(line));
+    const baseHeaders = headers.filter((line) => !/^Content-/i.test(line));
+    const boundary = `ag-mixed-${randomBytes(12).toString("hex")}`;
+    const parts = [
+      ...baseHeaders,
+      `Content-Type: multipart/mixed; boundary="${boundary}"`,
+      "",
+      `--${boundary}`,
+      ...contentHeaders,
+      "",
+      original.slice(separator + 4),
+    ];
+    for (const attachment of message.attachments) {
+      const filename = attachment.filename.replace(/[^a-zA-Z0-9._-]/g, "_");
+      const content =
+        Buffer.from(attachment.content, "utf8")
+          .toString("base64")
+          .match(/.{1,76}/g)
+          ?.join("\r\n") ?? "";
+      parts.push(
+        `--${boundary}`,
+        `Content-Type: ${attachment.contentType || "text/plain"}; charset=UTF-8`,
+        `Content-Disposition: attachment; filename="${filename}"`,
+        "Content-Transfer-Encoding: base64",
+        "",
+        content,
+      );
+    }
+    parts.push(`--${boundary}--`, "");
+    return parts.join("\r\n");
+  }
   const to = (Array.isArray(message.to) ? message.to : [message.to]).map(cleanHeader);
   const fromName = config.fromName ? `${mimeWord(config.fromName)} ` : "";
   const boundary = `ag-${randomBytes(12).toString("hex")}`;
@@ -54,7 +90,7 @@ function buildMime(config: SmtpConfig, message: SmtpMessage) {
   const headers = [
     `Date: ${new Date().toUTCString()}`,
     `Message-ID: <${randomUUID()}@${cleanHeader(config.fromEmail).split("@")[1] || "absolutoglamur.com.br"}>`,
-    `From: ${fromName}<${cleanHeader(config.fromEmail)}>` ,
+    `From: ${fromName}<${cleanHeader(config.fromEmail)}>`,
     `To: ${to.join(", ")}`,
     `Subject: ${subject}`,
     "MIME-Version: 1.0",
@@ -93,7 +129,10 @@ function buildMime(config: SmtpConfig, message: SmtpMessage) {
 
 function waitForSocket(socket: SmtpSocket, event: "connect" | "secureConnect", timeoutMs = 12_000) {
   return new Promise<void>((resolve, reject) => {
-    const timeout = setTimeout(() => finish(new Error("Tempo esgotado ao conectar ao servidor SMTP.")), timeoutMs);
+    const timeout = setTimeout(
+      () => finish(new Error("Tempo esgotado ao conectar ao servidor SMTP.")),
+      timeoutMs,
+    );
     const cleanup = () => {
       clearTimeout(timeout);
       socket.off(event, onReady as never);
@@ -114,7 +153,10 @@ function waitForSocket(socket: SmtpSocket, event: "connect" | "secureConnect", t
 function readResponse(socket: SmtpSocket, timeoutMs = 12_000) {
   return new Promise<SmtpResponse>((resolve, reject) => {
     let buffer = "";
-    const timeout = setTimeout(() => finish(new Error("Tempo esgotado aguardando resposta do SMTP.")), timeoutMs);
+    const timeout = setTimeout(
+      () => finish(new Error("Tempo esgotado aguardando resposta do SMTP.")),
+      timeoutMs,
+    );
 
     const cleanup = () => {
       clearTimeout(timeout);

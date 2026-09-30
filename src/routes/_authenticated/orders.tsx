@@ -4,6 +4,7 @@ import { StoreLayout } from "@/components/store/StoreLayout";
 import { supabase } from "@/integrations/supabase/client";
 import { formatBRL } from "@/lib/format";
 import { useAuth } from "@/hooks/use-auth";
+import { OrderProgress } from "@/components/store/OrderProgress";
 import { Badge } from "@/components/ui/badge";
 
 export const Route = createFileRoute("/_authenticated/orders")({
@@ -11,7 +12,10 @@ export const Route = createFileRoute("/_authenticated/orders")({
   component: OrdersPage,
 });
 
-const STATUS_LABEL: Record<string, { label: string; tone: "default" | "success" | "warn" | "destructive" }> = {
+const STATUS_LABEL: Record<
+  string,
+  { label: string; tone: "default" | "success" | "warn" | "destructive" }
+> = {
   pending: { label: "Pendente", tone: "default" },
   awaiting_payment: { label: "Aguardando pagamento", tone: "warn" },
   paid: { label: "Pago", tone: "success" },
@@ -29,10 +33,13 @@ function OrdersPage() {
   const q = useQuery({
     queryKey: ["orders", user?.id],
     enabled: !!user,
+    refetchInterval: 15000,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("orders")
-        .select("id, code, status, total_cents, created_at, paid_at, order_items(product_name, quantity, image_url)")
+        .select(
+          "id, code, status, total_cents, created_at, paid_at, payment_review_at, tracking_number, tracking_carrier, tracking_status, order_items(product_name, quantity, image_url)",
+        )
         .eq("user_id", user!.id)
         .order("created_at", { ascending: false });
       if (error) throw error;
@@ -44,9 +51,7 @@ function OrdersPage() {
     <StoreLayout>
       <div className="mx-auto max-w-4xl px-4 py-12 sm:px-6 lg:px-8">
         <h1 className="font-display text-4xl">Meus pedidos</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Acompanhe seus pedidos e pagamentos.
-        </p>
+        <p className="mt-1 text-sm text-muted-foreground">Acompanhe seus pedidos e pagamentos.</p>
 
         {q.isLoading && <p className="mt-8 text-sm text-muted-foreground">Carregando…</p>}
 
@@ -66,8 +71,15 @@ function OrdersPage() {
 
         <ul className="mt-8 space-y-3">
           {q.data?.map((o) => {
-            const status = STATUS_LABEL[o.status] ?? { label: o.status, tone: "default" as const };
-            const items = (o.order_items ?? []) as { product_name: string; quantity: number; image_url: string | null }[];
+            const status =
+              o.status === "awaiting_payment" && o.payment_review_at
+                ? { label: "Pagamento em validação", tone: "warn" as const }
+                : (STATUS_LABEL[o.status] ?? { label: o.status, tone: "default" as const });
+            const items = (o.order_items ?? []) as {
+              product_name: string;
+              quantity: number;
+              image_url: string | null;
+            }[];
             return (
               <li key={o.id} className="rounded-2xl border border-border bg-card p-5 shadow-soft">
                 <div className="flex flex-wrap items-center justify-between gap-3">
@@ -106,13 +118,18 @@ function OrdersPage() {
                         className="h-10 w-10 overflow-hidden rounded-full border border-border bg-secondary/40"
                       >
                         {it.image_url ? (
-                          <img src={it.image_url} alt={it.product_name} className="h-full w-full object-cover" />
+                          <img
+                            src={it.image_url}
+                            alt={it.product_name}
+                            className="h-full w-full object-cover"
+                          />
                         ) : null}
                       </div>
                     ))}
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    {items.reduce((n, i) => n + i.quantity, 0)} {items.length === 1 ? "item" : "itens"}
+                    {items.reduce((n, i) => n + i.quantity, 0)}{" "}
+                    {items.length === 1 ? "item" : "itens"}
                   </p>
                   <div className="ml-auto flex gap-2">
                     {o.status === "awaiting_payment" && (
@@ -133,6 +150,7 @@ function OrdersPage() {
                     </Link>
                   </div>
                 </div>
+                <OrderProgress order={o} />
               </li>
             );
           })}
