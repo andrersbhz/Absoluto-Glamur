@@ -241,7 +241,13 @@ export const createCheckout = createServerFn({ method: "POST" })
     });
 
     const subtotal = orderItems.reduce((s, i) => s + i.total_cents, 0);
-    const shipping = 0;
+    const { computeShipping } = await import("./shipping.server");
+    const shipQuote = await computeShipping(
+      supabaseAdmin,
+      data.address.country === "BR" ? onlyDigits(data.address.zipCode) : "",
+      orderItems.map((i) => ({ productId: i.product_id, quantity: i.quantity, unitCents: i.unit_cents })),
+    );
+    const shipping = shipQuote.cents;
     const total = subtotal + shipping;
     if (total < 100) throw new Error("Valor mínimo do pedido é R$ 1,00.");
 
@@ -258,6 +264,7 @@ export const createCheckout = createServerFn({ method: "POST" })
         status: "awaiting_payment",
         subtotal_cents: subtotal,
         shipping_cents: shipping,
+        shipping_details: shipQuote,
         total_cents: total,
         customer_name: data.customer.name,
         customer_email: data.customer.email,

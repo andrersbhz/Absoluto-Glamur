@@ -1,3 +1,4 @@
+import { quoteShipping } from "@/lib/shipping.functions";
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
@@ -76,6 +77,20 @@ function CheckoutPage() {
 
   const createFn = useServerFn(createCheckout);
   const methodsFn = useServerFn(listCheckoutMethods);
+  const quoteFn = useServerFn(quoteShipping);
+  const [ship, setShip] = useState<{ cents: number; free: boolean; minDays: number; maxDays: number } | null>(null);
+  const cepDigits = form.zipCode.replace(/\D/g, "");
+  const itemsKey = items.map((i) => `${i.variantId}:${i.quantity}`).join(",");
+  useEffect(() => {
+    if (form.country !== "BR" || cepDigits.length !== 8 || items.length === 0) { setShip(null); return; }
+    let alive = true;
+    quoteFn({ data: { cep: cepDigits, items: items.map((i) => ({ variantId: i.variantId, quantity: i.quantity })) } })
+      .then((q) => alive && setShip(q))
+      .catch(() => alive && setShip(null));
+    return () => { alive = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cepDigits, itemsKey, form.country]);
+  const shippingCents = subtotal >= 19900 ? 0 : (ship?.cents ?? 0);
   const methodsQ = useQuery({ queryKey: ["checkout-methods"], queryFn: () => methodsFn() });
   const methods = (methodsQ.data ?? []).filter((m) => form.country === "BR" || ["paypal", "ebanx"].includes(m.provider));
   const [method, setMethod] = useState<PaymentMethodKey>("pix");
@@ -316,11 +331,19 @@ function CheckoutPage() {
               </div>
               <div className="flex justify-between">
                 <dt className="text-muted-foreground">Frete</dt>
-                <dd className="text-success">Grátis</dd>
+                <dd className={shippingCents === 0 && (ship || subtotal >= 19900) ? "text-success" : ""}>
+                  {subtotal >= 19900 || (ship && ship.cents === 0) ? "Grátis" : ship ? format(ship.cents) : "Informe o CEP"}
+                </dd>
               </div>
+              {ship && (
+                <p className="text-right text-[11px] text-muted-foreground">Entrega estimada em {ship.minDays}–{ship.maxDays} dias úteis</p>
+              )}
+              {subtotal < 19900 && (
+                <p className="text-right text-[11px] text-muted-foreground">Frete grátis acima de {format(19900)}</p>
+              )}
               <div className="flex justify-between border-t border-border pt-2 font-display text-lg">
                 <dt>Total</dt>
-                <dd>{format(subtotal)}</dd>
+                <dd>{format(subtotal + shippingCents)}</dd>
               </div>
             </dl>
             <button

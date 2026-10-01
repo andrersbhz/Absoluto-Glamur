@@ -1,3 +1,4 @@
+import { ShippingEstimate } from "@/components/store/ShippingEstimate";
 import { createFileRoute, Link, notFound, redirect } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { Heart, Star, ShoppingBag, ChevronLeft, ChevronRight, Pencil } from "lucide-react";
@@ -397,6 +398,8 @@ function ProductPage() {
               selectedId={selectedVariant?.id}
               onSelect={setVariantId}
             />
+
+            <ShippingEstimate variantId={selectedVariant?.id} />
 
             <p className="mt-4 text-xs text-muted-foreground">
               {stock > 0 ? `${stock} unidades em estoque` : "Fora de estoque"}

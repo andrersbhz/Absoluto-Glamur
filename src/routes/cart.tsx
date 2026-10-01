@@ -132,7 +132,7 @@ function CartPage() {
                 Ir para o checkout
               </Link>
               <p className="mt-2 text-center text-[11px] text-muted-foreground">
-                Pagamento seguro via PIX · frete grátis
+                Pagamento seguro · frete grátis acima de R$ 199,00
               </p>
               <button
                 onClick={clear}
