@@ -171,11 +171,11 @@ function IntegrationCard({ integration }: { integration: Integration }) {
     String((integration.config as { merchant_name?: string } | null)?.merchant_name ?? ""),
   );
   const [merchantCity, setMerchantCity] = useState(
+    String((integration.config as { merchant_city?: string } | null)?.merchant_city ?? ""),
+  );
   const isMelhorEnvio = integration.provider === "melhorenvio";
   const [originZip, setOriginZip] = useState(
     String((integration.config as { origin_zip?: string } | null)?.origin_zip ?? ""),
-  );
-    String((integration.config as { merchant_city?: string } | null)?.merchant_city ?? ""),
   );
   const [showApiKey, setShowApiKey] = useState(false);
   const [showWebhookToken, setShowWebhookToken] = useState(false);
