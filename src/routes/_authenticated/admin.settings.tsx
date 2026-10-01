@@ -14,7 +14,7 @@ import { listSiteSettings, upsertSiteSetting } from "@/lib/site-settings.functio
 export const Route = createFileRoute("/_authenticated/admin/settings")({
   component: SettingsPage,
   errorComponent: ({ error }) => (
-    <div className="p-8 text-destructive">Erro: {error.message}</div>
+    <div className="p-8 text-destructive">Erro: {(error instanceof Error ? error.message : String(error))}</div>
   ),
   notFoundComponent: () => <div className="p-8">Página não encontrada.</div>,
 });
