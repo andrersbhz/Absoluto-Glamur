@@ -171,6 +171,10 @@ function IntegrationCard({ integration }: { integration: Integration }) {
     String((integration.config as { merchant_name?: string } | null)?.merchant_name ?? ""),
   );
   const [merchantCity, setMerchantCity] = useState(
+  const isMelhorEnvio = integration.provider === "melhorenvio";
+  const [originZip, setOriginZip] = useState(
+    String((integration.config as { origin_zip?: string } | null)?.origin_zip ?? ""),
+  );
     String((integration.config as { merchant_city?: string } | null)?.merchant_city ?? ""),
   );
   const [showApiKey, setShowApiKey] = useState(false);
@@ -282,6 +286,17 @@ function IntegrationCard({ integration }: { integration: Integration }) {
     pix_manual: {
       instructions:
         "Informe sua chave PIX (CPF/CNPJ, e-mail, telefone ou chave aleatória), o nome da loja e a cidade. O QR Code é gerado automaticamente com o valor exato de cada pedido. Como é um PIX direto, sem intermediador, confirme o pagamento manualmente em Pedidos após receber.",
+    },
+    melhorenvio: {
+      keyUrl: "https://melhorenvio.com.br/painel/gerenciar/tokens",
+      keyLabel: "Gerar token no Melhor Envio",
+      docsUrl: "https://docs.melhorenvio.com.br/",
+      instructions:
+        "No Melhor Envio → Integrações → Permissões de acesso, gere um token com a permissão shipping-calculate. Cole o token abaixo, informe o CEP de origem, ative e salve. Com isso o frete e o prazo no site e no checkout passam a vir do Melhor Envio (cotação mais barata, incluindo Correios). Sem configurar, a loja usa o valor de frete cadastrado em cada produto. Compras acima de R$ 199,00 continuam com frete grátis.",
+    },
+    correios: {
+      instructions:
+        "As cotações dos Correios (PAC e SEDEX) já chegam pelo Melhor Envio. Esta integração direta fica pronta para quando você tiver contrato com os Correios.",
     },
     amplopay: {
       keyUrl: "https://app.amplopay.com/panel/gateway",
@@ -716,6 +731,21 @@ function IntegrationCard({ integration }: { integration: Integration }) {
               </label>
             </div>
           )}
+          {isMelhorEnvio && (
+            <label className="block text-sm">
+              <span className="mb-1 block text-xs text-muted-foreground">
+                CEP de origem (de onde os pedidos saem)
+              </span>
+              <input
+                type="text"
+                value={originZip}
+                onChange={(e) => setOriginZip(e.target.value)}
+                placeholder="00000-000"
+                maxLength={9}
+                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm sm:max-w-[200px]"
+              />
+            </label>
+          )}
           {isFacebook && (
             <label className="block text-sm">
               <span className="mb-1 block text-xs text-muted-foreground">Facebook Page ID</span>
@@ -829,6 +859,7 @@ function IntegrationCard({ integration }: { integration: Integration }) {
                   cfg.merchant_name = merchantName.trim() || null;
                   cfg.merchant_city = merchantCity.trim() || null;
                 }
+                if (isMelhorEnvio) cfg.origin_zip = originZip.replace(/\D/g, "") || null;
                 if (isFacebook) cfg.page_id = pageId.trim() || null;
                 if (isInstagram) cfg.ig_user_id = igUserId.trim() || null;
                 if (isAliexpress) cfg.redirect_uri = redirectUri.trim() || null;
