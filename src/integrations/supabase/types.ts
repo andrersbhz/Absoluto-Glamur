@@ -1181,6 +1181,7 @@ export type Database = {
           paid_at: string | null
           shipping_address: Json
           shipping_cents: number
+          shipping_details: Json | null
           status: Database["public"]["Enums"]["order_status"]
           subtotal_cents: number
           total_cents: number
@@ -1208,6 +1209,7 @@ export type Database = {
           paid_at?: string | null
           shipping_address: Json
           shipping_cents?: number
+          shipping_details?: Json | null
           status?: Database["public"]["Enums"]["order_status"]
           subtotal_cents: number
           total_cents: number
@@ -1235,6 +1237,7 @@ export type Database = {
           paid_at?: string | null
           shipping_address?: Json
           shipping_cents?: number
+          shipping_details?: Json | null
           status?: Database["public"]["Enums"]["order_status"]
           subtotal_cents?: number
           total_cents?: number
@@ -2439,6 +2442,7 @@ export type Database = {
           name: string
           rating_avg: number
           rating_count: number
+          shipping_fee_cents: number | null
           short_description: string | null
           slug: string
           status: Database["public"]["Enums"]["product_status"]
@@ -2456,6 +2460,7 @@ export type Database = {
           name: string
           rating_avg?: number
           rating_count?: number
+          shipping_fee_cents?: number | null
           short_description?: string | null
           slug: string
           status?: Database["public"]["Enums"]["product_status"]
@@ -2473,6 +2478,7 @@ export type Database = {
           name?: string
           rating_avg?: number
           rating_count?: number
+          shipping_fee_cents?: number | null
           short_description?: string | null
           slug?: string
           status?: Database["public"]["Enums"]["product_status"]

@@ -1,3 +1,4 @@
+import { ProductShippingFee } from "@/components/admin/ProductShippingFee";
 import { createFileRoute, Link, redirect, useNavigate } from "@tanstack/react-router";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -652,6 +653,7 @@ function CatalogEditor() {
                         placeholder="Ingredientes, modo de uso, benefícios detalhados…"
                       />
                     </Field>
+                    {!isNew && <ProductShippingFee productId={id} />}
                     <Field label="Tags" hint="Separadas por vírgula.">
                       <div className="relative">
                         <Tag className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />

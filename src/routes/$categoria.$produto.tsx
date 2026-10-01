@@ -1,3 +1,4 @@
+import { ShippingEstimate } from "@/components/store/ShippingEstimate";
 import { createFileRoute, Link, notFound, redirect } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { Heart, Star, ShoppingBag, ChevronLeft, ChevronRight, Pencil } from "lucide-react";
@@ -154,7 +155,7 @@ export const Route = createFileRoute("/$categoria/$produto")({
     <StoreLayout>
       <div className="mx-auto max-w-3xl px-4 py-24 text-center">
         <h1 className="font-display text-3xl">Não foi possível carregar o produto</h1>
-        <p className="mt-2 text-sm text-muted-foreground">{error.message}</p>
+        <p className="mt-2 text-sm text-muted-foreground">{error instanceof Error ? error.message : String(error)}</p>
       </div>
     </StoreLayout>
   ),
@@ -397,6 +398,8 @@ function ProductPage() {
               selectedId={selectedVariant?.id}
               onSelect={setVariantId}
             />
+
+            <ShippingEstimate variantId={selectedVariant?.id} />
 
             <p className="mt-4 text-xs text-muted-foreground">
               {stock > 0 ? `${stock} unidades em estoque` : "Fora de estoque"}
