@@ -155,7 +155,7 @@ export const Route = createFileRoute("/$categoria/$produto")({
     <StoreLayout>
       <div className="mx-auto max-w-3xl px-4 py-24 text-center">
         <h1 className="font-display text-3xl">Não foi possível carregar o produto</h1>
-        <p className="mt-2 text-sm text-muted-foreground">{error instanceof Error ? error.message : String(error)}
+        <p className="mt-2 text-sm text-muted-foreground">{error instanceof Error ? error.message : String(error)}</p>
       </div>
     </StoreLayout>
   ),
