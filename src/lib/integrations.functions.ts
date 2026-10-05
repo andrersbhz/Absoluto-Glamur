@@ -45,6 +45,7 @@ type IntegrationCatalogItem = {
  */
 export const INTEGRATION_CATALOG: IntegrationCatalogItem[] = [
   { provider: "pix_manual", category: "payments", display_name: "PIX personalizado", description: "PIX direto na sua chave, com QR Code gerado no valor do pedido." },
+  { provider: "nowhubpay", category: "payments", display_name: "NowHubPay", description: "Pagamentos PIX via NowHubPay (Client ID + Client Secret)." },
   { provider: "amplopay", category: "payments", display_name: "AmploPay", description: "Pagamentos PIX via AmploPay." },
   { provider: "asaas", category: "payments", display_name: "Asaas", description: "Pagamentos PIX, boleto e cartão no Brasil." },
   { provider: "pagbank", category: "payments", display_name: "PagBank", description: "PIX, boleto e cartão via PagBank." },
@@ -278,6 +279,25 @@ export const testIntegration = createServerFn({ method: "POST" })
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         await writeVerification(db, "asaas", message);
+        throw new Error(message);
+      }
+    }
+
+    if (data.provider === "nowhubpay") {
+      const secret = (row.config as { merchant_key?: string } | null)?.merchant_key;
+      if (!row.api_key || !secret) {
+        const message = "Preencha o Client ID e o Client Secret da NowHubPay";
+        await writeVerification(db, "nowhubpay", message);
+        throw new Error(message);
+      }
+      const { nowhubFetch } = await import("./nowhubpay.server");
+      try {
+        await nowhubFetch({ clientId: row.api_key, clientSecret: secret }, "/v1/balance");
+        await writeVerification(db, "nowhubpay", null);
+        return { ok: true, info: { name: "NowHubPay", email: null } };
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        await writeVerification(db, "nowhubpay", message);
         throw new Error(message);
       }
     }
