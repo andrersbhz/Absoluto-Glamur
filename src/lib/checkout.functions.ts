@@ -311,6 +311,9 @@ export const createCheckout = createServerFn({ method: "POST" })
       if (provider === "pix_manual" && method === "pix") {
         return await handleManualPix(ctx, integ);
       }
+      if (provider === "nowhubpay" && method === "pix") {
+        return await handleNowHubPix(ctx, integ);
+      }
       if (provider === "amplopay" && method === "pix") {
         return await handleAmploPayPix(ctx, integ);
       }
@@ -375,6 +378,48 @@ async function handleManualPix(ctx: OrderContext, integ: any) {
     pix_expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     raw: { pix_key_owner: cfg.merchant_name ?? null } as any,
+  });
+  if (error) throw new Error(error.message);
+  return { orderId: ctx.orderId, code: ctx.code, method: "pix" as const };
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function handleNowHubPix(ctx: OrderContext, integ: any) {
+  const { nowhubFetch } = await import("./nowhubpay.server");
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const secret = (integ.config as { merchant_key?: string } | null)?.merchant_key;
+  if (!secret) throw new Error("Preencha o Client Secret da NowHubPay em Admin → Integrações.");
+  const { getRequest } = await import("@tanstack/react-start/server");
+  const origin = new URL(getRequest().url).origin;
+  const r = await nowhubFetch<{
+    transaction_id?: string;
+    status?: string;
+    pix_copy_paste?: string;
+    pix_qr_code?: string;
+  }>({ clientId: integ.api_key as string, clientSecret: secret }, "/v1/payments/deposit", {
+    method: "POST",
+    body: JSON.stringify({
+      amount: Number((ctx.total / 100).toFixed(2)),
+      external_id: ctx.orderId,
+      payer: { name: ctx.data.customer.name, document: ctx.document },
+      clientCallbackUrl: `${origin}/api/public/webhooks/nowhubpay`,
+    }),
+  });
+  if (!r.transaction_id || !r.pix_copy_paste) throw new Error("NowHubPay não retornou um PIX válido.");
+  let image = r.pix_qr_code ?? null;
+  if (image && image.startsWith("data:")) image = image.split(",")[1] ?? image;
+  const { error } = await supabaseAdmin.from("payments").insert({
+    order_id: ctx.orderId,
+    provider: "nowhubpay",
+    method: "pix",
+    status: "pending",
+    amount_cents: ctx.total,
+    external_id: r.transaction_id,
+    pix_qr_code: image,
+    pix_payload: r.pix_copy_paste,
+    pix_expires_at: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    raw: { ...r, pix_qr_code: undefined } as any,
   });
   if (error) throw new Error(error.message);
   return { orderId: ctx.orderId, code: ctx.code, method: "pix" as const };
