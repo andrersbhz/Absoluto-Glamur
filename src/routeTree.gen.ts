@@ -89,6 +89,7 @@ import { Route as ApiPublicWebhooksAmplopayRouteImport } from './routes/api/publ
 import { Route as ApiPublicWebhooksAsaasRouteImport } from './routes/api/public/webhooks/asaas'
 import { Route as ApiPublicWebhooksEbanxRouteImport } from './routes/api/public/webhooks/ebanx'
 import { Route as ApiPublicWebhooksMercadopagoRouteImport } from './routes/api/public/webhooks/mercadopago'
+import { Route as ApiPublicWebhooksNowhubpayRouteImport } from './routes/api/public/webhooks/nowhubpay'
 import { Route as ApiPublicWebhooksNupayRouteImport } from './routes/api/public/webhooks/nupay'
 import { Route as ApiPublicWebhooksPagbankRouteImport } from './routes/api/public/webhooks/pagbank'
 import { Route as ApiPublicWebhooksPaypalRouteImport } from './routes/api/public/webhooks/paypal'
@@ -527,6 +528,12 @@ const ApiPublicWebhooksMercadopagoRoute =
     path: '/api/public/webhooks/mercadopago',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicWebhooksNowhubpayRoute =
+  ApiPublicWebhooksNowhubpayRouteImport.update({
+    id: '/api/public/webhooks/nowhubpay',
+    path: '/api/public/webhooks/nowhubpay',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicWebhooksNupayRoute = ApiPublicWebhooksNupayRouteImport.update({
   id: '/api/public/webhooks/nupay',
   path: '/api/public/webhooks/nupay',
@@ -628,6 +635,7 @@ export interface FileRoutesByFullPath {
   '/api/public/webhooks/asaas': typeof ApiPublicWebhooksAsaasRoute
   '/api/public/webhooks/ebanx': typeof ApiPublicWebhooksEbanxRoute
   '/api/public/webhooks/mercadopago': typeof ApiPublicWebhooksMercadopagoRoute
+  '/api/public/webhooks/nowhubpay': typeof ApiPublicWebhooksNowhubpayRoute
   '/api/public/webhooks/nupay': typeof ApiPublicWebhooksNupayRoute
   '/api/public/webhooks/pagbank': typeof ApiPublicWebhooksPagbankRoute
   '/api/public/webhooks/paypal': typeof ApiPublicWebhooksPaypalRoute
@@ -712,6 +720,7 @@ export interface FileRoutesByTo {
   '/api/public/webhooks/asaas': typeof ApiPublicWebhooksAsaasRoute
   '/api/public/webhooks/ebanx': typeof ApiPublicWebhooksEbanxRoute
   '/api/public/webhooks/mercadopago': typeof ApiPublicWebhooksMercadopagoRoute
+  '/api/public/webhooks/nowhubpay': typeof ApiPublicWebhooksNowhubpayRoute
   '/api/public/webhooks/nupay': typeof ApiPublicWebhooksNupayRoute
   '/api/public/webhooks/pagbank': typeof ApiPublicWebhooksPagbankRoute
   '/api/public/webhooks/paypal': typeof ApiPublicWebhooksPaypalRoute
@@ -799,6 +808,7 @@ export interface FileRoutesById {
   '/api/public/webhooks/asaas': typeof ApiPublicWebhooksAsaasRoute
   '/api/public/webhooks/ebanx': typeof ApiPublicWebhooksEbanxRoute
   '/api/public/webhooks/mercadopago': typeof ApiPublicWebhooksMercadopagoRoute
+  '/api/public/webhooks/nowhubpay': typeof ApiPublicWebhooksNowhubpayRoute
   '/api/public/webhooks/nupay': typeof ApiPublicWebhooksNupayRoute
   '/api/public/webhooks/pagbank': typeof ApiPublicWebhooksPagbankRoute
   '/api/public/webhooks/paypal': typeof ApiPublicWebhooksPaypalRoute
@@ -886,6 +896,7 @@ export interface FileRouteTypes {
     | '/api/public/webhooks/asaas'
     | '/api/public/webhooks/ebanx'
     | '/api/public/webhooks/mercadopago'
+    | '/api/public/webhooks/nowhubpay'
     | '/api/public/webhooks/nupay'
     | '/api/public/webhooks/pagbank'
     | '/api/public/webhooks/paypal'
@@ -970,6 +981,7 @@ export interface FileRouteTypes {
     | '/api/public/webhooks/asaas'
     | '/api/public/webhooks/ebanx'
     | '/api/public/webhooks/mercadopago'
+    | '/api/public/webhooks/nowhubpay'
     | '/api/public/webhooks/nupay'
     | '/api/public/webhooks/pagbank'
     | '/api/public/webhooks/paypal'
@@ -1056,6 +1068,7 @@ export interface FileRouteTypes {
     | '/api/public/webhooks/asaas'
     | '/api/public/webhooks/ebanx'
     | '/api/public/webhooks/mercadopago'
+    | '/api/public/webhooks/nowhubpay'
     | '/api/public/webhooks/nupay'
     | '/api/public/webhooks/pagbank'
     | '/api/public/webhooks/paypal'
@@ -1097,6 +1110,7 @@ export interface RootRouteChildren {
   ApiPublicWebhooksAsaasRoute: typeof ApiPublicWebhooksAsaasRoute
   ApiPublicWebhooksEbanxRoute: typeof ApiPublicWebhooksEbanxRoute
   ApiPublicWebhooksMercadopagoRoute: typeof ApiPublicWebhooksMercadopagoRoute
+  ApiPublicWebhooksNowhubpayRoute: typeof ApiPublicWebhooksNowhubpayRoute
   ApiPublicWebhooksNupayRoute: typeof ApiPublicWebhooksNupayRoute
   ApiPublicWebhooksPagbankRoute: typeof ApiPublicWebhooksPagbankRoute
   ApiPublicWebhooksPaypalRoute: typeof ApiPublicWebhooksPaypalRoute
@@ -1665,6 +1679,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicWebhooksMercadopagoRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/webhooks/nowhubpay': {
+      id: '/api/public/webhooks/nowhubpay'
+      path: '/api/public/webhooks/nowhubpay'
+      fullPath: '/api/public/webhooks/nowhubpay'
+      preLoaderRoute: typeof ApiPublicWebhooksNowhubpayRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/webhooks/nupay': {
       id: '/api/public/webhooks/nupay'
       path: '/api/public/webhooks/nupay'
@@ -1933,6 +1954,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicWebhooksAsaasRoute: ApiPublicWebhooksAsaasRoute,
   ApiPublicWebhooksEbanxRoute: ApiPublicWebhooksEbanxRoute,
   ApiPublicWebhooksMercadopagoRoute: ApiPublicWebhooksMercadopagoRoute,
+  ApiPublicWebhooksNowhubpayRoute: ApiPublicWebhooksNowhubpayRoute,
   ApiPublicWebhooksNupayRoute: ApiPublicWebhooksNupayRoute,
   ApiPublicWebhooksPagbankRoute: ApiPublicWebhooksPagbankRoute,
   ApiPublicWebhooksPaypalRoute: ApiPublicWebhooksPaypalRoute,

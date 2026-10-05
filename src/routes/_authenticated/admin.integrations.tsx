@@ -265,6 +265,7 @@ function IntegrationCard({ integration }: { integration: Integration }) {
   const WEBHOOK_PATHS: Record<string, string> = {
     asaas: "/api/public/webhooks/asaas",
     amplopay: "/api/public/webhooks/amplopay",
+    nowhubpay: "/api/public/webhooks/nowhubpay",
     nupay: "/api/public/webhooks/nupay",
     pagbank: "/api/public/webhooks/pagbank",
     "17track": "/api/public/webhooks/17track",
@@ -297,6 +298,13 @@ function IntegrationCard({ integration }: { integration: Integration }) {
     correios: {
       instructions:
         "As cotações dos Correios (PAC e SEDEX) já chegam pelo Melhor Envio. Esta integração direta fica pronta para quando você tiver contrato com os Correios.",
+    },
+    nowhubpay: {
+      keyUrl: "https://nowhubpay.com/",
+      keyLabel: "Abrir painel NowHubPay",
+      docsUrl: "https://nowhubpay.com/documentacao/",
+      instructions:
+        "1) No painel NowHubPay → Chaves API, gere suas credenciais. 2) Cole o Client ID e o Client Secret abaixo, ative e salve. 3) Clique em Testar. 4) Em Roteamento, escolha NowHubPay para o PIX. A URL de confirmação abaixo é enviada automaticamente em cada cobrança.",
     },
     amplopay: {
       keyUrl: "https://app.amplopay.com/panel/gateway",
@@ -384,7 +392,8 @@ function IntegrationCard({ integration }: { integration: Integration }) {
   const docs = PROVIDER_DOCS[integration.provider];
 
   const isNuPay = integration.provider === "nupay";
-  const isAmplo = integration.provider === "amplopay";
+  const isNowHub = integration.provider === "nowhubpay";
+  const isAmplo = integration.provider === "amplopay" || isNowHub;
   const hasSecondKey = isNuPay || isAmplo;
   const isAliexpress = integration.provider === "aliexpress";
   const isFacebook = integration.provider === "facebook";
@@ -683,7 +692,7 @@ function IntegrationCard({ integration }: { integration: Integration }) {
                   type={showMerchantKey ? "text" : "password"}
                   value={merchantKey}
                   onChange={(e) => setMerchantKey(e.target.value)}
-                  placeholder={isAmplo ? "Client Secret da AmploPay" : "Merchant Key do NuPay"}
+                  placeholder={isAmplo ? `Client Secret da ${isNowHub ? "NowHubPay" : "AmploPay"}` : "Merchant Key do NuPay"}
                   className="w-full rounded-lg border border-border bg-background px-3 py-2 pr-10 font-mono text-sm"
                 />
                 <button
@@ -697,7 +706,9 @@ function IntegrationCard({ integration }: { integration: Integration }) {
                 </button>
               </div>
               <span className="mt-1 block text-[11px] text-muted-foreground">
-                {isAmplo
+                {isNowHub
+                  ? "Painel NowHubPay → Chaves API. Cole o Client Secret aqui e o Client ID no campo acima."
+                  : isAmplo
                   ? "Painel AmploPay → Integrações → API → Nova credencial (permissão Criar/Consultar transações)."
                   : "Encontre em NuPay Business → Configurações → Credenciais. Envie a Merchant Key aqui e o Merchant Token no campo acima."}
               </span>
@@ -887,6 +898,7 @@ function IntegrationCard({ integration }: { integration: Integration }) {
 
 const PROVIDER_OPTIONS: { id: string; label: string }[] = [
   { id: "pix_manual", label: "PIX personalizado" },
+  { id: "nowhubpay", label: "NowHubPay" },
   { id: "amplopay", label: "AmploPay" },
   { id: "asaas", label: "Asaas" },
   { id: "nupay", label: "NuPay (Nubank)" },
@@ -898,7 +910,7 @@ const PROVIDER_OPTIONS: { id: string; label: string }[] = [
 ];
 
 const SUPPORTED_PROVIDERS_BY_METHOD: Record<PaymentMethodKey, string[]> = {
-  pix: ["pix_manual", "amplopay", "asaas", "pagbank", "mercadopago"],
+  pix: ["pix_manual", "nowhubpay", "amplopay", "asaas", "pagbank", "mercadopago"],
   credit_card: ["pagbank"],
   boleto: ["asaas", "pagbank"],
   nubank_redirect: ["nupay"],
