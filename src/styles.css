@@ -520,3 +520,52 @@ div[style*="Edit with Lovable"],
 .maison-luxo .bg-card {
   box-shadow: 0 1px 0 0 var(--border) !important;
 }
+
+/* Home — botões retos estilo Maison (alfaiataria), mesma direção do preview /home-luxo */
+.home-reta {
+  --maison-ink: oklch(0.17 0.01 60);
+  --maison-ink-foreground: oklch(0.95 0.03 85);
+}
+
+.home-reta button,
+.home-reta a[class*="rounded"] {
+  border-radius: 0 !important;
+}
+
+.home-reta button.bg-primary,
+.home-reta a.bg-primary {
+  background: transparent !important;
+  color: inherit !important;
+  border: 1px solid oklch(0.35 0.02 60);
+  box-shadow: none !important;
+  text-transform: uppercase;
+  letter-spacing: 0.24em;
+  font-size: 0.62rem;
+  font-weight: 600;
+  line-height: 1;
+  transition: background-color 220ms ease, color 220ms ease, border-color 220ms ease;
+}
+
+.home-reta button.bg-primary:hover:not(:disabled),
+.home-reta a.bg-primary:hover {
+  background: var(--maison-ink) !important;
+  border-color: var(--maison-ink);
+  color: var(--maison-ink-foreground) !important;
+}
+
+.home-reta button.bg-primary:disabled {
+  border-color: oklch(0.8 0.02 85);
+  color: oklch(0.6 0.02 70) !important;
+}
+
+.home-reta button[aria-label="Favoritar"],
+.home-reta button[aria-label="Remover dos favoritos"] {
+  border: 1px solid var(--border);
+  background: var(--card) !important;
+}
+
+.home-reta button[aria-label="Favoritar"]:hover,
+.home-reta button[aria-label="Remover dos favoritos"]:hover {
+  border-color: var(--champagne);
+  color: var(--champagne);
+}
