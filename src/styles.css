@@ -536,7 +536,8 @@ div[style*="Edit with Lovable"],
 .home-reta a.bg-primary {
   background: transparent !important;
   color: inherit !important;
-  border: 1px solid oklch(0.35 0.02 60);
+  border: 1px solid var(--champagne) !important;
+  padding-block: 20px;
   box-shadow: none !important;
   text-transform: uppercase;
   letter-spacing: 0.24em;
@@ -548,9 +549,9 @@ div[style*="Edit with Lovable"],
 
 .home-reta button.bg-primary:hover:not(:disabled),
 .home-reta a.bg-primary:hover {
-  background: var(--maison-ink) !important;
-  border-color: var(--maison-ink);
-  color: var(--maison-ink-foreground) !important;
+  background: var(--champagne) !important;
+  border-color: var(--champagne);
+  color: oklch(0.2 0.01 60) !important;
 }
 
 .home-reta button.bg-primary:disabled {
