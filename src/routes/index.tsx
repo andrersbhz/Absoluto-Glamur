@@ -227,22 +227,20 @@ export function Index() {
             <div className="mt-8 flex flex-wrap items-center gap-6">
               <a
                 href={primaryHref}
-                className="group relative inline-flex items-center justify-center overflow-hidden border px-10 py-4 text-[11px] font-semibold uppercase tracking-[0.32em] transition-colors duration-300"
-                style={
-                  hero.button_bg
+                className="group relative inline-flex items-center justify-center overflow-hidden border px-10 text-[11px] font-semibold uppercase tracking-[0.32em] transition-colors duration-300"
+                style={{ paddingBlock: "20px", ...(hero.button_bg
                     ? { backgroundColor: hero.button_bg, color: hero.button_color ?? "#ffffff", borderColor: hero.button_bg }
-                    : { backgroundColor: "transparent", borderColor: heroImageUrl ? "rgba(255,255,255,0.75)" : "#251e23", color: heroImageUrl ? "#ffffff" : "#251e23" }
-                }
+                    : { backgroundColor: "transparent", borderColor: "var(--champagne)", color: heroImageUrl ? "#ffffff" : "#251e23" }) }}
                 onMouseEnter={(event) => {
                   if (hero.button_bg) { event.currentTarget.style.backgroundColor = hero.button_hover_bg ?? "#a84c69"; return; }
-                  event.currentTarget.style.backgroundColor = "#1d181c";
-                  event.currentTarget.style.borderColor = "#1d181c";
-                  event.currentTarget.style.color = "#f3ead9";
+                  event.currentTarget.style.backgroundColor = "var(--champagne)";
+                  event.currentTarget.style.borderColor = "var(--champagne)";
+                  event.currentTarget.style.color = "#251e23";
                 }}
                 onMouseLeave={(event) => {
                   if (hero.button_bg) { event.currentTarget.style.backgroundColor = hero.button_bg; return; }
                   event.currentTarget.style.backgroundColor = "transparent";
-                  event.currentTarget.style.borderColor = heroImageUrl ? "rgba(255,255,255,0.75)" : "#251e23";
+                  event.currentTarget.style.borderColor = "var(--champagne)";
                   event.currentTarget.style.color = heroImageUrl ? "#ffffff" : "#251e23";
                 }}
               >
