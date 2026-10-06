@@ -434,3 +434,20 @@ div[style*="Edit with Lovable"],
   z-index: -9999 !important;
 }
 
+
+/* Maison Luxo — preview /home-luxo */
+.maison-luxo {
+  --background: oklch(0.985 0.006 85);
+  --foreground: oklch(0.2 0.01 60);
+  --card: oklch(0.995 0.004 85);
+  --muted: oklch(0.95 0.01 85);
+  --muted-foreground: oklch(0.48 0.02 70);
+  --border: oklch(0.88 0.03 85);
+  --primary: oklch(0.22 0.01 60);
+  --primary-foreground: oklch(0.97 0.02 85);
+  --champagne: oklch(0.74 0.09 80);
+  --maison-ink: oklch(0.17 0.01 60);
+  --maison-ink-foreground: oklch(0.95 0.03 85);
+  background: var(--background);
+  color: var(--foreground);
+}
