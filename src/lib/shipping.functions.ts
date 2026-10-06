@@ -7,7 +7,7 @@ export const quoteShipping = createServerFn({ method: "POST" })
   .inputValidator((v: unknown) =>
     z
       .object({
-        cep: z.string().min(8).max(10),
+        cep: z.string().max(10),
         items: z.array(z.object({ variantId: z.string().uuid(), quantity: z.number().int().min(1).max(50) })).min(1).max(50),
       })
       .parse(v),

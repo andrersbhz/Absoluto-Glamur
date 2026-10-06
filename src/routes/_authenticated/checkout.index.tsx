@@ -82,15 +82,16 @@ function CheckoutPage() {
   const cepDigits = form.zipCode.replace(/\D/g, "");
   const itemsKey = items.map((i) => `${i.variantId}:${i.quantity}`).join(",");
   useEffect(() => {
-    if (form.country !== "BR" || cepDigits.length !== 8 || items.length === 0) { setShip(null); return; }
+    setShip(null);
+    if (items.length === 0 || (form.country === "BR" && cepDigits.length !== 8)) return;
     let alive = true;
-    quoteFn({ data: { cep: cepDigits, items: items.map((i) => ({ variantId: i.variantId, quantity: i.quantity })) } })
+    quoteFn({ data: { cep: form.country === "BR" ? cepDigits : "", items: items.map((i) => ({ variantId: i.variantId, quantity: i.quantity })) } })
       .then((q) => alive && setShip(q))
       .catch(() => alive && setShip(null));
     return () => { alive = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cepDigits, itemsKey, form.country]);
-  const shippingCents = subtotal >= 19900 ? 0 : (ship?.cents ?? 0);
+  const shippingCents = ship?.cents ?? 0;
   const methodsQ = useQuery({ queryKey: ["checkout-methods"], queryFn: () => methodsFn() });
   const methods = (methodsQ.data ?? []).filter((m) => form.country === "BR" || ["paypal", "ebanx"].includes(m.provider));
   const [method, setMethod] = useState<PaymentMethodKey>("pix");
@@ -348,11 +349,13 @@ function CheckoutPage() {
             </dl>
             <button
               type="submit"
-              disabled={mut.isPending}
+              disabled={mut.isPending || !ship}
               className="mt-6 w-full rounded-lg bg-primary px-5 py-3 text-sm font-medium text-primary-foreground shadow-soft disabled:opacity-60"
             >
               {mut.isPending
                 ? "Processando…"
+                : !ship
+                  ? (form.country === "BR" ? "Informe o CEP para continuar" : "Calculando frete…")
                 : method === "pix"
                   ? "Gerar PIX"
                   : method === "boleto"
