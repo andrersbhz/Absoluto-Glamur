@@ -152,6 +152,7 @@ export function Index() {
         null;
 
   return (
+    <div className="home-reta">
     <StoreLayout>
       {announcement.enabled !== false && (announcement.text || announcement.product?.slug) ? (
         <AnnouncementBar announcement={announcement} />
@@ -226,13 +227,27 @@ export function Index() {
             <div className="mt-8 flex flex-wrap items-center gap-6">
               <a
                 href={primaryHref}
-                className="group relative inline-flex items-center justify-center overflow-hidden rounded-full px-8 py-3.5 text-xs font-medium uppercase tracking-[0.28em] shadow-elegant transition hover:shadow-[0_20px_60px_-20px_var(--primary)]"
-                style={{ backgroundColor: hero.button_bg ?? "#c64b76", color: hero.button_color ?? "#ffffff" }}
-                onMouseEnter={(event) => { event.currentTarget.style.backgroundColor = hero.button_hover_bg ?? hero.button_bg ?? "#a84c69"; }}
-                onMouseLeave={(event) => { event.currentTarget.style.backgroundColor = hero.button_bg ?? "#c64b76"; }}
+                className="group relative inline-flex items-center justify-center overflow-hidden border px-10 py-4 text-[11px] font-semibold uppercase tracking-[0.32em] transition-colors duration-300"
+                style={
+                  hero.button_bg
+                    ? { backgroundColor: hero.button_bg, color: hero.button_color ?? "#ffffff", borderColor: hero.button_bg }
+                    : { backgroundColor: "transparent", borderColor: heroImageUrl ? "rgba(255,255,255,0.75)" : "#251e23", color: heroImageUrl ? "#ffffff" : "#251e23" }
+                }
+                onMouseEnter={(event) => {
+                  if (hero.button_bg) { event.currentTarget.style.backgroundColor = hero.button_hover_bg ?? "#a84c69"; return; }
+                  event.currentTarget.style.backgroundColor = "#1d181c";
+                  event.currentTarget.style.borderColor = "#1d181c";
+                  event.currentTarget.style.color = "#f3ead9";
+                }}
+                onMouseLeave={(event) => {
+                  if (hero.button_bg) { event.currentTarget.style.backgroundColor = hero.button_bg; return; }
+                  event.currentTarget.style.backgroundColor = "transparent";
+                  event.currentTarget.style.borderColor = heroImageUrl ? "rgba(255,255,255,0.75)" : "#251e23";
+                  event.currentTarget.style.color = heroImageUrl ? "#ffffff" : "#251e23";
+                }}
               >
                 <span className="relative z-10">{hero.cta_primary_label ?? "Explorar coleção"}</span>
-                <span className="absolute inset-0 -translate-x-[120%] bg-gradient-to-r from-transparent via-white/30 to-transparent transition-transform duration-700 group-hover:translate-x-[120%]" />
+                <span className="absolute inset-0 -translate-x-[120%] bg-gradient-to-r from-transparent via-white/25 to-transparent transition-transform duration-700 group-hover:translate-x-[120%]" />
               </a>
               {hero.cta_secondary_label ? (
                 <a
@@ -356,6 +371,7 @@ export function Index() {
         </section>
       ) : null}
     </StoreLayout>
+    </div>
   );
 }
 
