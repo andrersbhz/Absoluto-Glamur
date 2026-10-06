@@ -451,3 +451,72 @@ div[style*="Edit with Lovable"],
   background: var(--background);
   color: var(--foreground);
 }
+
+/* Maison Luxo — geometria reta: nenhum canto arredondado no preview */
+.maison-luxo *,
+.maison-luxo *::before,
+.maison-luxo *::after {
+  border-radius: 0 !important;
+}
+
+/* Maison Luxo — botão primário vira peça de alfaiataria:
+   contorno fino, caixa alta, preenchimento tinta no hover */
+.maison-luxo button.bg-primary,
+.maison-luxo a.bg-primary {
+  background: transparent !important;
+  color: var(--foreground) !important;
+  border: 1px solid oklch(0.35 0.02 60);
+  box-shadow: none !important;
+  text-transform: uppercase;
+  letter-spacing: 0.24em;
+  font-size: 0.62rem;
+  font-weight: 600;
+  line-height: 1;
+  transition: background-color 220ms ease, color 220ms ease, border-color 220ms ease;
+}
+
+.maison-luxo button.bg-primary:hover:not(:disabled),
+.maison-luxo a.bg-primary:hover {
+  background: var(--maison-ink) !important;
+  border-color: var(--maison-ink);
+  color: var(--maison-ink-foreground) !important;
+}
+
+.maison-luxo button.bg-primary:disabled {
+  border-color: oklch(0.8 0.02 85);
+  color: oklch(0.6 0.02 70) !important;
+}
+
+/* Maison Luxo — botão de favorito: quadrado discreto com contorno fino */
+.maison-luxo button[aria-label="Favoritar"],
+.maison-luxo button[aria-label="Remover dos favoritos"] {
+  border: 1px solid var(--border);
+  background: var(--card) !important;
+}
+
+.maison-luxo button[aria-label="Favoritar"]:hover,
+.maison-luxo button[aria-label="Remover dos favoritos"]:hover {
+  border-color: var(--champagne);
+  color: var(--champagne);
+}
+
+/* Maison Luxo — chips de categoria: retangulares com inversão elegante */
+.maison-luxo a[class*="border-border"] {
+  transition: background-color 220ms ease, color 220ms ease, border-color 220ms ease;
+}
+
+.maison-luxo a[class*="border-border"]:hover {
+  background: var(--maison-ink);
+  border-color: var(--maison-ink);
+  color: var(--maison-ink-foreground);
+}
+
+/* Maison Luxo — cards retos, sem sombra inflada */
+.maison-luxo .shadow-soft,
+.maison-luxo .shadow-elegant {
+  box-shadow: none !important;
+}
+
+.maison-luxo .bg-card {
+  box-shadow: 0 1px 0 0 var(--border) !important;
+}
