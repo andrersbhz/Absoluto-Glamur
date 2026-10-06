@@ -19,6 +19,7 @@ import { Route as EnRouteImport } from './routes/en'
 import { Route as EsRouteImport } from './routes/es'
 import { Route as EsMxRouteImport } from './routes/es-mx'
 import { Route as FrRouteImport } from './routes/fr'
+import { Route as HomeLuxoRouteImport } from './routes/home-luxo'
 import { Route as ItRouteImport } from './routes/it'
 import { Route as ProductsRouteImport } from './routes/products'
 import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
@@ -142,6 +143,11 @@ const EsMxRoute = EsMxRouteImport.update({
 const FrRoute = FrRouteImport.update({
   id: '/fr',
   path: '/fr',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const HomeLuxoRoute = HomeLuxoRouteImport.update({
+  id: '/home-luxo',
+  path: '/home-luxo',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ItRoute = ItRouteImport.update({
@@ -567,6 +573,7 @@ export interface FileRoutesByFullPath {
   '/es': typeof EsRouteWithChildren
   '/es-mx': typeof EsMxRouteWithChildren
   '/fr': typeof FrRouteWithChildren
+  '/home-luxo': typeof HomeLuxoRoute
   '/it': typeof ItRouteWithChildren
   '/products': typeof ProductsRouteWithChildren
   '/sitemap.xml': typeof SitemapDotxmlRoute
@@ -653,6 +660,7 @@ export interface FileRoutesByTo {
   '/es': typeof EsRouteWithChildren
   '/es-mx': typeof EsMxRouteWithChildren
   '/fr': typeof FrRouteWithChildren
+  '/home-luxo': typeof HomeLuxoRoute
   '/it': typeof ItRouteWithChildren
   '/products': typeof ProductsRouteWithChildren
   '/sitemap.xml': typeof SitemapDotxmlRoute
@@ -740,6 +748,7 @@ export interface FileRoutesById {
   '/es': typeof EsRouteWithChildren
   '/es-mx': typeof EsMxRouteWithChildren
   '/fr': typeof FrRouteWithChildren
+  '/home-luxo': typeof HomeLuxoRoute
   '/it': typeof ItRouteWithChildren
   '/products': typeof ProductsRouteWithChildren
   '/sitemap.xml': typeof SitemapDotxmlRoute
@@ -828,6 +837,7 @@ export interface FileRouteTypes {
     | '/es'
     | '/es-mx'
     | '/fr'
+    | '/home-luxo'
     | '/it'
     | '/products'
     | '/sitemap.xml'
@@ -914,6 +924,7 @@ export interface FileRouteTypes {
     | '/es'
     | '/es-mx'
     | '/fr'
+    | '/home-luxo'
     | '/it'
     | '/products'
     | '/sitemap.xml'
@@ -1000,6 +1011,7 @@ export interface FileRouteTypes {
     | '/es'
     | '/es-mx'
     | '/fr'
+    | '/home-luxo'
     | '/it'
     | '/products'
     | '/sitemap.xml'
@@ -1088,6 +1100,7 @@ export interface RootRouteChildren {
   EsRoute: typeof EsRouteWithChildren
   EsMxRoute: typeof EsMxRouteWithChildren
   FrRoute: typeof FrRouteWithChildren
+  HomeLuxoRoute: typeof HomeLuxoRoute
   ItRoute: typeof ItRouteWithChildren
   ProductsRoute: typeof ProductsRouteWithChildren
   SitemapDotxmlRoute: typeof SitemapDotxmlRoute
@@ -1187,6 +1200,13 @@ declare module '@tanstack/react-router' {
       path: '/fr'
       fullPath: '/fr'
       preLoaderRoute: typeof FrRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/home-luxo': {
+      id: '/home-luxo'
+      path: '/home-luxo'
+      fullPath: '/home-luxo'
+      preLoaderRoute: typeof HomeLuxoRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/it': {
@@ -1931,6 +1951,7 @@ const rootRouteChildren: RootRouteChildren = {
   EsRoute: EsRouteWithChildren,
   EsMxRoute: EsMxRouteWithChildren,
   FrRoute: FrRouteWithChildren,
+  HomeLuxoRoute: HomeLuxoRoute,
   ItRoute: ItRouteWithChildren,
   ProductsRoute: ProductsRouteWithChildren,
   SitemapDotxmlRoute: SitemapDotxmlRoute,
