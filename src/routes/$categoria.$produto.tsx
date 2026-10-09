@@ -200,12 +200,14 @@ function ProductPage() {
 
   const media = useMemo(() => [...(product?.media ?? [])], [product]);
   const [activeIdx, setActiveIdx] = useState(0);
+  const [userPicked, setUserPicked] = useState(false);
   const [thumbnailStart, setThumbnailStart] = useState(0);
   const visibleThumbnailCount = 4;
   const maxThumbnailStart = Math.max(0, media.length - visibleThumbnailCount);
 
   const selectMedia = useCallback(
-    (index: number) => {
+    (index: number, manual = true) => {
+      if (manual) setUserPicked(true);
       setActiveIdx(index);
       setThumbnailStart((current) => {
         if (index < current) return index;
