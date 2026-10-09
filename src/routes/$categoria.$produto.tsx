@@ -231,12 +231,13 @@ function ProductPage() {
 
   if (!product) return null;
   const active = media[activeIdx] ?? media[0];
-  const activeUrl =
-    variantImageUrl && !media.some((m) => m.url === variantImageUrl)
-      ? variantImageUrl
-      : active?.url;
-  const activeIsVideo =
-    isVideoMedia(active) && !(variantImageUrl && !media.some((m) => m.url === variantImageUrl));
+  // A imagem da variação só sobrescreve a mídia ativa quando ela não existe na galeria
+  // E o usuário ainda não escolheu manualmente outra miniatura.
+  const variantOutsideGallery =
+    variantImageUrl && !media.some((m) => m.url === variantImageUrl);
+  const showVariantOverride = variantOutsideGallery && activeIdx === 0;
+  const activeUrl = showVariantOverride ? variantImageUrl : active?.url;
+  const activeIsVideo = isVideoMedia(active) && !showVariantOverride;
 
   const fav = isFavorite(product.id);
 
