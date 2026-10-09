@@ -226,9 +226,10 @@ function ProductPage() {
   // Ao trocar de variação, se ela tiver imagem própria, tenta ativar essa mídia.
   const variantImageUrl = variantImage(selectedVariant);
   useEffect(() => {
+    setUserPicked(false);
     if (!variantImageUrl) return;
     const idx = media.findIndex((m) => m.url === variantImageUrl);
-    if (idx >= 0) selectMedia(idx);
+    if (idx >= 0) selectMedia(idx, false);
   }, [variantImageUrl, media, selectMedia]);
 
   if (!product) return null;
@@ -237,7 +238,7 @@ function ProductPage() {
   // E o usuário ainda não escolheu manualmente outra miniatura.
   const variantOutsideGallery =
     variantImageUrl && !media.some((m) => m.url === variantImageUrl);
-  const showVariantOverride = variantOutsideGallery && activeIdx === 0;
+  const showVariantOverride = variantOutsideGallery && !userPicked;
   const activeUrl = showVariantOverride ? variantImageUrl : active?.url;
   const activeIsVideo = isVideoMedia(active) && !showVariantOverride;
 
