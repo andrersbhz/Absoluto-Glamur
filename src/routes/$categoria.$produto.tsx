@@ -200,12 +200,14 @@ function ProductPage() {
 
   const media = useMemo(() => [...(product?.media ?? [])], [product]);
   const [activeIdx, setActiveIdx] = useState(0);
+  const [userPicked, setUserPicked] = useState(false);
   const [thumbnailStart, setThumbnailStart] = useState(0);
   const visibleThumbnailCount = 4;
   const maxThumbnailStart = Math.max(0, media.length - visibleThumbnailCount);
 
   const selectMedia = useCallback(
-    (index: number) => {
+    (index: number, manual = true) => {
+      if (manual) setUserPicked(true);
       setActiveIdx(index);
       setThumbnailStart((current) => {
         if (index < current) return index;
@@ -224,19 +226,21 @@ function ProductPage() {
   // Ao trocar de variação, se ela tiver imagem própria, tenta ativar essa mídia.
   const variantImageUrl = variantImage(selectedVariant);
   useEffect(() => {
+    setUserPicked(false);
     if (!variantImageUrl) return;
     const idx = media.findIndex((m) => m.url === variantImageUrl);
-    if (idx >= 0) selectMedia(idx);
+    if (idx >= 0) selectMedia(idx, false);
   }, [variantImageUrl, media, selectMedia]);
 
   if (!product) return null;
   const active = media[activeIdx] ?? media[0];
-  const activeUrl =
-    variantImageUrl && !media.some((m) => m.url === variantImageUrl)
-      ? variantImageUrl
-      : active?.url;
-  const activeIsVideo =
-    isVideoMedia(active) && !(variantImageUrl && !media.some((m) => m.url === variantImageUrl));
+  // A imagem da variação só sobrescreve a mídia ativa quando ela não existe na galeria
+  // E o usuário ainda não escolheu manualmente outra miniatura.
+  const variantOutsideGallery =
+    variantImageUrl && !media.some((m) => m.url === variantImageUrl);
+  const showVariantOverride = variantOutsideGallery && !userPicked;
+  const activeUrl = showVariantOverride ? variantImageUrl : active?.url;
+  const activeIsVideo = isVideoMedia(active) && !showVariantOverride;
 
   const fav = isFavorite(product.id);
 
