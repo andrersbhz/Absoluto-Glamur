@@ -68,31 +68,22 @@ export function CurrencyProvider({ children }: { children: ReactNode }) {
     };
   }, [table, refresh, refetch]);
 
-  const localeCurrency = LOCALE_CONFIG[locale].currency as CurrencyCode;
+  // Padrão da loja: sempre Real Brasileiro. O visitante pode trocar manualmente.
+  void locale;
+  void LOCALE_CONFIG;
+  void fetchGeoHint;
   const [override, setOverride] = useState<CurrencyCode | null>(null);
 
   useEffect(() => {
     try {
       const stored = window.localStorage.getItem(STORAGE_KEY) as CurrencyCode | null;
-      if (stored && stored in CURRENCY_LOCALE) {
-        setOverride(stored);
-        return;
-      }
+      if (stored && stored in CURRENCY_LOCALE) setOverride(stored);
     } catch {
       /* ignore */
     }
-    // Sem escolha do visitante: a moeda segue o país detectado pelo IP.
-    let cancelled = false;
-    void fetchGeoHint().then((hint) => {
-      const code = hint.currency as CurrencyCode | null;
-      if (!cancelled && code && code in CURRENCY_LOCALE) setOverride(code);
-    });
-    return () => {
-      cancelled = true;
-    };
   }, []);
 
-  const currency = override ?? localeCurrency;
+  const currency = override ?? "BRL";
 
   const setCurrency = useCallback((next: CurrencyCode) => {
     setOverride(next);
