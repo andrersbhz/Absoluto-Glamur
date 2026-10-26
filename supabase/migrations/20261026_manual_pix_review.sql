@@ -18,7 +18,7 @@ as $$
  select p.id, o.id, o.code, o.customer_name, p.amount_cents::bigint, p.created_at
  from public.payments p join public.orders o on o.id = p.order_id
  where exists (select 1 from public.user_roles ur where ur.user_id = (select auth.uid()) and ur.role in ('admin','superadmin','finance'))
-   and p.provider = 'manual_nubank' and p.method = 'pix' and p.status = 'pending'
+   and p.provider = 'pix_manual' and p.method = 'pix' and p.status = 'pending'
    and o.status in ('pending','awaiting_payment')
  order by p.created_at desc
  limit 100;
@@ -37,7 +37,7 @@ begin
  select p.order_id,p.amount_cents,o.total_cents,o.status::text
  into v_order_id,v_amount,v_total,v_state
  from public.payments p join public.orders o on o.id=p.order_id
- where p.id=p_payment_id and p.provider='manual_nubank' and p.method='pix' and p.status='pending'
+ where p.id=p_payment_id and p.provider='pix_manual' and p.method='pix' and p.status='pending'
  for update of p,o;
  if not found then raise exception 'Payment already reviewed or not eligible'; end if;
  if v_state not in ('pending','awaiting_payment') or v_amount <> v_total or v_amount <= 0 then
