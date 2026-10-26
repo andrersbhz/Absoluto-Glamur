@@ -47,7 +47,7 @@ begin
     raise exception 'Other payment already settled';
  end if;
  insert into public.manual_pix_reviews(payment_id,order_id,decision,reviewer_id,note)
- values (p_payment_id,v_order_id,case when p_approve then 'approved' else 'rejected' end,auth.uid(),left(p_note,1000));
+ values (p_payment_id,v_order_id,case when p_approve then 'approved' else 'rejected' end,auth.uid(),left(coalesce(p_note,''),1000));
  if p_approve then
    update public.payments set status='confirmed',paid_at=now(),updated_at=now(),approval_code='MANUAL-NUBANK' where id=p_payment_id;
    update public.orders set status='paid',paid_at=now(),updated_at=now() where id=v_order_id;
