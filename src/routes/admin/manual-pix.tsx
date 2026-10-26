@@ -28,6 +28,7 @@ function ManualPixPage() {
  const [error,setError]=useState("");
  const [busy,setBusy]=useState<string|null>(null);
  const [allowed,setAllowed]=useState(false);
+ const [loading,setLoading]=useState(true);
  const [soundOn,setSoundOn]=useState(false);
  const [tab,setTab]=useState<"pending"|"settings"|"history">("pending");
  const seen=useRef<Set<string>|null>(null);
@@ -48,7 +49,7 @@ function ManualPixPage() {
    }
    seen.current=ids;
    setAllowed(true);setRows(next);setError("");
-  } finally {fetching.current=false;}
+  } catch {setError("Falha de conexão. Tente atualizar novamente.");} finally {fetching.current=false;setLoading(false);}
  },[soundOn]);
  useEffect(()=>{void refresh();const timer=setInterval(()=>{if(document.visibilityState==="visible")void refresh()},5000);return()=>clearInterval(timer)},[refresh]);
  useEffect(()=>()=>{void audio.current?.close()},[]);
@@ -69,10 +70,12 @@ function ManualPixPage() {
  async function review(p:Pending,approve:boolean){
   if(!window.confirm(approve?"ATENÇÃO: confirme somente se o crédito exato foi identificado no EXTRATO NUBANK. Esta ação não verifica o banco.":"Rejeitar esta cobrança Pix pendente?"))return;
   setBusy(p.payment_id);
-  const {error:err}=await supabase.rpc("review_manual_pix" as never,{p_payment_id:p.payment_id,p_approve:approve,p_note:"Conferência manual no Nubank"} as never);
-  if(err)setError(err.message);
-  else {await refresh();if(tab==="history")await loadHistory();}
-  setBusy(null);
+  try {
+   const {error:err}=await supabase.rpc("review_manual_pix" as never,{p_payment_id:p.payment_id,p_approve:approve,p_note:"Conferência manual no Nubank"} as never);
+   if(err)setError(err.message);
+   else {await refresh();if(tab==="history")await loadHistory();}
+  } catch {setError("Falha ao registrar decisão. Verifique o status antes de tentar novamente.");}
+  finally {setBusy(null);}
  }
  const total=rows.reduce((n,p)=>n+p.amount_cents,0);
  const btn={border:"1px solid #384039",padding:"11px 14px",borderRadius:10,background:"#252b27",color:"#f4f7f2",cursor:"pointer"};
@@ -104,7 +107,7 @@ function ManualPixPage() {
     <button onClick={()=>void toggleAudio()} style={{...btn,background:"#c7ff65",color:"#101510"}}>{soundOn?"Desativar som":"Ativar som e testar toque"}</button>
     <p style={{fontSize:12,color:"#95a595"}}>Um Pix gerado não significa dinheiro recebido. Sem notificações em segundo plano nesta versão.</p>
    </section>:<>
-    {!allowed?<p>Entre com seu login administrativo para ver os pedidos.</p>:rows.length===0?<section style={{padding:34,textAlign:"center",background:"#1b221c",borderRadius:16}}><ShoppingBag size={38} color="#c7ff65"/><h2>Fila vazia</h2><p style={{color:"#9eab9e"}}>Novas cobranças aparecerão aqui.</p></section>:rows.map(p=><article key={p.payment_id} style={{background:"#1b221c",border:"1px solid #374437",borderRadius:17,padding:20,marginBottom:12}}>
+    {loading?<p>Carregando pedidos com segurança...</p>:!allowed?<p>Entre com seu login administrativo para ver os pedidos.</p>:rows.length===0?<section style={{padding:34,textAlign:"center",background:"#1b221c",borderRadius:16}}><ShoppingBag size={38} color="#c7ff65"/><h2>Fila vazia</h2><p style={{color:"#9eab9e"}}>Novas cobranças aparecerão aqui.</p></section>:rows.map(p=><article key={p.payment_id} style={{background:"#1b221c",border:"1px solid #374437",borderRadius:17,padding:20,marginBottom:12}}>
      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:12,flexWrap:"wrap"}}><strong>Pedido {p.order_code}</strong><span style={{fontSize:12,color:"#f6c78a"}}>● Aguardando Pix</span></div>
      <div style={{fontWeight:800,fontSize:28,margin:"15px 0 5px"}}>{money(p.amount_cents)}</div>
      <div style={{color:"#bac4b8",fontSize:14}}>{p.customer_name}</div>
