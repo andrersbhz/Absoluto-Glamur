@@ -60,3 +60,23 @@ end;
 $$;
 revoke all on function public.review_manual_pix(uuid,boolean,text) from public;
 grant execute on function public.review_manual_pix(uuid,boolean,text) to authenticated;
+
+-- Read-only recent manual decisions for admin audit history.
+create or replace function public.list_recent_manual_pix_reviews()
+returns table(order_code text, amount_cents bigint, decision text, reviewed_at timestamptz, reviewer_id uuid)
+language sql security definer set search_path = ''
+as $$
+ select o.code, p.amount_cents::bigint, r.decision, r.reviewed_at, r.reviewer_id
+ from public.manual_pix_reviews r
+ join public.payments p on p.id=r.payment_id
+ join public.orders o on o.id=r.order_id
+ where exists (
+   select 1 from public.user_roles ur
+   where ur.user_id = (select auth.uid())
+   and ur.role in ('admin','superadmin','finance')
+ )
+ order by r.reviewed_at desc
+ limit 50;
+$$;
+revoke all on function public.list_recent_manual_pix_reviews() from public;
+grant execute on function public.list_recent_manual_pix_reviews() to authenticated;
