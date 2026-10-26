@@ -1,9 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { BellRing, Check, X, RefreshCw, Volume2, VolumeX, ShoppingBag, Clock, ShieldCheck, CreditCard } from "lucide-react";
+import { Check, X, RefreshCw, Volume2, VolumeX, ShoppingBag, Clock, ShieldCheck, CreditCard } from "lucide-react";
 
 export const Route = createFileRoute("/admin/manual-pix")({ component: ManualPixPage });
+type ReviewHistory = {order_code: string; amount_cents: number; decision: string; reviewed_at: string; reviewer_id: string};
 type Pending = { payment_id: string; order_id: string; order_code: string; customer_name: string; amount_cents: number; created_at: string };
 const money=(c:number)=>new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"}).format(c/100);
 
@@ -23,11 +24,12 @@ function playRegister(ctx: AudioContext) {
 }
 function ManualPixPage() {
  const [rows,setRows]=useState<Pending[]>([]);
+ const [history,setHistory]=useState<ReviewHistory[]>([]);
  const [error,setError]=useState("");
  const [busy,setBusy]=useState<string|null>(null);
  const [allowed,setAllowed]=useState(false);
  const [soundOn,setSoundOn]=useState(false);
- const [tab,setTab]=useState<"pending"|"settings">("pending");
+ const [tab,setTab]=useState<"pending"|"settings"|"history">("pending");
  const seen=useRef<Set<string>|null>(null);
  const audio=useRef<AudioContext|null>(null);
  const fetching=useRef(false);
@@ -59,12 +61,17 @@ function ManualPixPage() {
    playRegister(audio.current);
   }catch{setError("Ative som e permissões de áudio neste dispositivo.");}
  }
+ async function loadHistory(){
+  const {data,error:err}=await supabase.rpc("list_recent_manual_pix_reviews" as never);
+  if(err){setError("Não foi possível obter o histórico de decisões.");return;}
+  setHistory((data??[]) as ReviewHistory[]);setError("");
+ }
  async function review(p:Pending,approve:boolean){
   if(!window.confirm(approve?"ATENÇÃO: confirme somente se o crédito exato foi identificado no EXTRATO NUBANK. Esta ação não verifica o banco.":"Rejeitar esta cobrança Pix pendente?"))return;
   setBusy(p.payment_id);
   const {error:err}=await supabase.rpc("review_manual_pix" as never,{p_payment_id:p.payment_id,p_approve:approve,p_note:"Conferência manual no Nubank"} as never);
   if(err)setError(err.message);
-  else await refresh();
+  else {await refresh();if(tab==="history")await loadHistory();}
   setBusy(null);
  }
  const total=rows.reduce((n,p)=>n+p.amount_cents,0);
@@ -86,11 +93,12 @@ function ManualPixPage() {
    </div>
    <nav style={{display:"flex",gap:8,marginBottom:19}} aria-label="Navegação">
     <button onClick={()=>setTab("pending")} style={{...btn,background:tab==="pending"?"#c7ff65":"#252b27",color:tab==="pending"?"#101510":"#eee"}}>Pedidos pendentes</button>
+    <button onClick={()=>{setTab("history");void loadHistory()}} style={{...btn,background:tab==="history"?"#c7ff65":"#252b27",color:tab==="history"?"#101510":"#eee"}}>Histórico</button>
     <button onClick={()=>setTab("settings")} style={{...btn,background:tab==="settings"?"#c7ff65":"#252b27",color:tab==="settings"?"#101510":"#eee"}}>Alertas</button>
     <button onClick={()=>void refresh()} style={{...btn,marginLeft:"auto"}} aria-label="Atualizar"><RefreshCw size={18}/></button>
    </nav>
    {error&&<div role="alert" style={{border:"1px solid #e6a777",padding:12,borderRadius:12,color:"#ffca9b",marginBottom:14}}>{error}</div>}
-   {tab==="settings"?<section style={{background:"#1b221c",padding:22,borderRadius:16}}>
+   {tab==="history"?<section style={{background:"#1b221c",padding:18,borderRadius:16}}><h2>Decisões registradas</h2><p style={{fontSize:12,color:"#9fae9f"}}>Aprovação manual significa conferência realizada por um administrador, não validação via API bancária.</p>{history.length===0?<p>Nenhuma decisão disponível.</p>:history.map((h,i)=><div key={h.order_code+"-"+i} style={{padding:"14px 0",borderBottom:"1px solid #354036"}}><strong>{h.order_code}</strong> · {money(h.amount_cents)}<div style={{color:h.decision==="approved"?"#c7ff65":"#f6c78a",fontSize:13}}>{h.decision==="approved"?"Aprovado manualmente":"Rejeitado"} · {new Date(h.reviewed_at).toLocaleString("pt-BR")}</div></div>)}</section>:tab==="settings"?<section style={{background:"#1b221c",padding:22,borderRadius:16}}>
     <h2 style={{fontSize:19}}>Som de caixa registradora</h2>
     <p style={{lineHeight:1.6,color:"#b3beb4"}}>Ao detectar nova cobrança na fila, reproduz um toque de caixa registradora. Toque em “Ativar som” para liberar o áudio no Android. Funciona enquanto o aplicativo estiver aberto e conectado.</p>
     <button onClick={()=>void toggleAudio()} style={{...btn,background:"#c7ff65",color:"#101510"}}>{soundOn?"Desativar som":"Ativar som e testar toque"}</button>
