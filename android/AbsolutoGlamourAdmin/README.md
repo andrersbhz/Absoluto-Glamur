@@ -1,26 +1,19 @@
-# Absoluto Glamour Admin — Android starter
+# Absoluto Glamour Admin — Pix manual
 
-Status: architecture scaffold, not an installable APK yet.
+Native Android WebView container for https://absolutoglamur.com.br/admin/manual-pix.
+No new payment-provider account; Nubank personal Pix key is configured only on the shop server.
 
-Build a Kotlin Android app with Jetpack Compose and Firebase Cloud Messaging (FCM).
-The app signs in through Supabase Auth; a protected server endpoint verifies admin status
-before registering the user's FCM token. On Firebase token refresh, register again.
-Notifications should be sent only from a trusted backend with Firebase Admin SDK.
+## Implemented
+- Android Gradle project scaffold, MainActivity, secure HTTPS WebView shell.
+- Authenticated mobile dashboard (React route), permission-limited database list/review procedures.
+- Dark premium mobile UI, pending orders, pending total, manual approve/reject, visual warnings.
+- Cash-register-style chime synthesized by Web Audio; opt-in sound activation; new IDs detected on polling (5-second interval while visible).
+- No alarm on first sync (avoids replaying all old orders as newly generated).
 
-## Security rules
-- Never ship bank credentials, Supabase service-role key, or Firebase service-account JSON inside the APK.
-- Never use a Pix screenshot/QR display as evidence of payment.
-- Disable notifications on logout and unregister the token server-side.
-- Configure explicit admin authorization and avoid exposing customer data in push payloads.
-- Avoid logging transaction IDs, access tokens and personal data.
-
-## Pending integrations
-1. Confirm bank, official Pix API docs, sandbox access and webhook signature or mTLS method.
-2. Identify existing checkout/order model and map order_id to its primary key.
-3. Create authenticated payment endpoints, persist dynamic Pix charges and validate payment confirmation.
-4. Deploy secure Firebase push sender and administrator device-registration endpoint.
-5. Create native Android module, Gradle configuration, icon, login, orders dashboard and FCM handler.
-6. Run tests including replayed callbacks, partial payments, duplicate notifications and refunds.
-7. Generate signed APK/AAB once Firebase and Android signing credentials are configured.
-
-Never mark a payment paid without authoritative bank confirmation.
+## Not finished / required before release
+- Checkout API endpoint binding createPendingManualPix() to the verified authenticated customer and existing order; QR code UI on store.
+- Install SQL migrations and secure environment variables; review existing order auto-fulfillment triggers.
+- Add tested Android launcher icon and signing configuration; run Android build and device tests.
+- Background alerts with app closed are not implemented. Foreground sound needs user interaction to unlock audio; system power policies may pause it when app is not active.
+- Test database RLS, refresh flow, logging, manual payment approvals, replay, customer concurrency.
+- No APK built and nothing deployed to production.
